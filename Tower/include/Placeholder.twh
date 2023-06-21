@@ -1,0 +1,4 @@
+EXTERN FN printf (
+    IN format : ^_char,
+    ...
+) : _int

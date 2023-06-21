@@ -1,0 +1,41 @@
+#INCLUDE "<inc>/Placeholder.twh"
+
+FN main (
+    IN argc : _int,
+    IN argv : ^_char[],
+) : _int
+
+    wow := atoi
+
+    printf("%d\n", Fibonacci(atoi(argv[1])))
+
+    RETURN 0
+END
+
+FN atoi (
+    IN str : ^_char,
+) : ULONG
+
+    out := 0
+    i := 0
+
+    WHILE str[i] DO
+        out *= 10
+        out += str[i] - '0'
+
+        i += 1
+    END
+
+    RETURN out
+END
+
+FN Fibonacci (
+    IN num : ULONG
+) : ULONG
+
+    IF num < 2 THEN
+        RETURN num
+    ELSE
+        RETURN Fibonacci(num - 1) + Fibonacci(num - 2)
+    END
+END
