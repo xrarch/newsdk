@@ -3,9 +3,9 @@
 //
 
 #INCLUDE "<inc>/Frontend.twh"
-#INCLUDE "<inc>/Print.twh"
+#INCLUDE "<inc>/Runtime.twh"
 
-FN FeArgsParse (
+FN TwrArgsParse (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],
 )

@@ -1,0 +1,24 @@
+ENUM TwrStatus : ULONG
+	TWR_SUCCESS,
+	TWR_NO_MEMORY,
+END
+
+EXTERN FN TwrPrintString (
+	IN str : ^UBYTE,
+)
+
+EXTERN FN TwrInternalError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+EXTERN FN TwrAlloc (
+	IN bytes : ULONG,
+	OUT ptr : ^^VOID,
+) : TwrStatus
+
+EXTERN FN TwrFree (
+	IN ptr : ^VOID,
+)

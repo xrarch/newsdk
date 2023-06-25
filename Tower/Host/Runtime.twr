@@ -1,0 +1,73 @@
+//
+// Host-specific runtime functions.
+//
+
+#INCLUDE "<inc>/Runtime.twh"
+
+EXTERN FN printf (
+    IN format : ^_char,
+    ...
+) : _int
+
+EXTERN FN exit (
+	IN status : _int,
+)
+
+EXTERN FN malloc (
+	IN size : ULONG,
+) : ^VOID
+
+EXTERN FN free (
+	IN ptr : ^VOID,
+)
+
+FN TwrPrintString (
+	IN str : ^UBYTE,
+)
+
+	printf (
+		"%s\n", // format
+		str, // ...
+	)
+END
+
+FN TwrInternalError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+	printf (
+		"Internal compiler error: %s (%d %d %d)\n", // format
+		str, // ...
+		err1,
+		err2,
+		err3,
+	)
+
+	exit ( 1 )
+END
+
+FN TwrAlloc (
+	IN bytes : ULONG,
+	OUT ptr : ^^VOID,
+) : TwrStatus
+
+	memblk := malloc ( bytes )
+
+	IF memblk == 0 THEN
+		RETURN TWR_NO_MEMORY
+	END
+
+	ptr^ = memblk
+
+	RETURN TWR_SUCCESS
+END
+
+FN TwrFree (
+	IN ptr : ^VOID,
+)
+
+	free ( ptr )
+END

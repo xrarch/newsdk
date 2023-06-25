@@ -3,16 +3,28 @@
 //
 
 #INCLUDE "<inc>/Frontend.twh"
+#INCLUDE "<inc>/Runtime.twh"
 
 FN main (
     IN argc : _int,
     IN argv : ^_char[],
 ) : _int
 
-    FeArgsParse (
+    TwrArgsParse (
         argc, // argc
         argv, // argv
     )
+
+    ptr : ^VOID
+
+    test := TwrAlloc (
+        500, // bytes
+        &ptr, // OUT ptr
+    )
+
+    TwrFree ( ptr )
+
+    TwrInternalError ( "bleh", test, test, ptr )
 
     RETURN 0
 END
