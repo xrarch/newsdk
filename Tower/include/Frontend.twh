@@ -1,0 +1,4 @@
+EXTERN FN FeArgsParse (
+	IN argc : ULONG,
+	IN argv : ^UBYTE[],
+)

@@ -1,0 +1,10 @@
+EXTERN FN TwrPrintString (
+	IN str : ^UBYTE,
+)
+
+EXTERN FN TwrInternalError (
+	IN str  : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)

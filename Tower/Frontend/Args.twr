@@ -1,0 +1,19 @@
+//
+// Arguments parsing.
+//
+
+#INCLUDE "<inc>/Frontend.twh"
+#INCLUDE "<inc>/Print.twh"
+
+FN FeArgsParse (
+	IN argc : ULONG,
+	IN argv : ^UBYTE[],
+)
+
+	i := 0
+
+	WHILE i < argc DO
+		TwrPrintString ( argv[i] )
+		i += 1
+	END
+END

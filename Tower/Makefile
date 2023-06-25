@@ -1,6 +1,7 @@
-COMPONENTS := .
+COMPONENTS := Host \
+			Frontend
 
-OUTPUTFILE := tower
+OUTPUTFILE := twr
 
 INCDIR := ./include/
 

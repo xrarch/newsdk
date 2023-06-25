@@ -1,0 +1,18 @@
+//
+// Host-specific entrypoint for the TOWER compiler program.
+//
+
+#INCLUDE "<inc>/Frontend.twh"
+
+FN main (
+    IN argc : _int,
+    IN argv : ^_char[],
+) : _int
+
+    FeArgsParse (
+        argc, // argc
+        argv, // argv
+    )
+
+    RETURN 0
+END
