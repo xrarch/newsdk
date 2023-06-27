@@ -1,3 +1,5 @@
+CONST TWRPATHLISTBUFFERSIZE : ULONG = 256
+
 EXTERN FN TwrArgsParse (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],

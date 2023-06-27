@@ -5,15 +5,80 @@
 #INCLUDE "<inc>/Frontend.twh"
 #INCLUDE "<inc>/Runtime.twh"
 
+TwrLibraryDirectory : UBYTE[TWRPATHLISTBUFFERSIZE]
+TwrIncludeDirectory : UBYTE[TWRPATHLISTBUFFERSIZE]
+TwrInputFile : UBYTE[TWRPATHLISTBUFFERSIZE]
+TwrOutputFile : UBYTE[TWRPATHLISTBUFFERSIZE]
+
 FN TwrArgsParse (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],
 )
 
-	i := 0
+	//
+	// Find the value of these arguments, if they exist:
+	//  libdir=
+	//  incdir=
+	//
+	// Identify the source and destination filenames.
+	//
+
+	TwrLibraryDirectory[0] = 0
+	TwrIncludeDirectory[0] = 0
+
+	foundinput := FALSE
+	foundoutput := FALSE
+
+	i := 1
 
 	WHILE i < argc DO
-		TwrPrintString ( argv[i] )
+		IF TwrStringCompareCount ( argv[i], "libdir=", 7 ) == 0 THEN
+			TwrStringCopy (
+				&TwrLibraryDirectory, // dest
+				&argv[i][7], // src
+				TWRPATHLISTBUFFERSIZE, // bufsize
+			)
+		ELSEIF TwrStringCompareCount ( argv[i], "incdir=", 7 ) == 0 THEN
+			TwrStringCopy (
+				&TwrIncludeDirectory, // dest
+				&argv[i][7], // src
+				TWRPATHLISTBUFFERSIZE, // bufsize
+			)
+		ELSEIF foundinput THEN
+			IF foundoutput THEN
+				TwrUserError ( "Too many arguments specified!", 0, 0, 0 )
+			END
+
+			foundoutput = TRUE
+
+			TwrStringCopy (
+				&TwrOutputFile, // dest
+				argv[i], // src
+				TWRPATHLISTBUFFERSIZE, // bufsize
+			)
+		ELSE
+			foundinput = TRUE
+
+			TwrStringCopy (
+				&TwrInputFile, // dest
+				argv[i], // src
+				TWRPATHLISTBUFFERSIZE, // bufsize
+			)
+		END
+
 		i += 1
 	END
+
+	IF NOT foundinput THEN
+		TwrUserError ( "No input file specified.", 0, 0, 0 )
+	END
+
+	IF NOT foundoutput THEN
+		TwrUserError ( "No output file specified.", 0, 0, 0 )
+	END
+
+	TwrPrintString(&TwrLibraryDirectory)
+	TwrPrintString(&TwrIncludeDirectory)
+	TwrPrintString(&TwrInputFile)
+	TwrPrintString(&TwrOutputFile)
 END

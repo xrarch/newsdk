@@ -1,5 +1,7 @@
 //
 // Host-specific runtime functions.
+// These are mostly just a bunch of wrapper functions, around libc for the C
+// transpilation host, and around Rtl for the MINTIA host.
 //
 
 #INCLUDE "<inc>/Runtime.twh"
@@ -20,6 +22,19 @@ EXTERN FN malloc (
 EXTERN FN free (
 	IN ptr : ^VOID,
 )
+
+EXTERN FN strcmp (
+	IN s1 : ^_char,
+	IN s2 : ^_char,
+) : _int
+
+EXTERN FN strncmp (
+	IN s1 : ^_char,
+	IN s2 : ^_char,
+	IN n : ULONG,
+) : _int
+
+
 
 FN TwrPrintString (
 	IN str : ^UBYTE,
@@ -49,18 +64,34 @@ FN TwrInternalError (
 	exit ( 1 )
 END
 
+FN TwrUserError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+	printf (
+		"User error: %s (%d %d %d)\n", // format
+		str, // ...
+		err1,
+		err2,
+		err3,
+	)
+
+	exit ( 1 )
+END
+
 FN TwrAlloc (
 	IN bytes : ULONG,
 	OUT ptr : ^^VOID,
 ) : TwrStatus
 
-	memblk := malloc ( bytes )
+	ptr^ = malloc ( bytes )
 
-	IF memblk == 0 THEN
+	IF ptr^ == 0 THEN
 		RETURN TWR_NO_MEMORY
 	END
-
-	ptr^ = memblk
 
 	RETURN TWR_SUCCESS
 END
@@ -70,4 +101,45 @@ FN TwrFree (
 )
 
 	free ( ptr )
+END
+
+FN TwrStringCompare (
+	IN str1 : ^UBYTE,
+	IN str2 : ^UBYTE,
+) : ULONG
+
+	RETURN strcmp ( str1, str2 )
+END
+
+FN TwrStringCompareCount (
+	IN str1 : ^UBYTE,
+	IN str2 : ^UBYTE,
+	IN count : ULONG,
+) : ULONG
+
+	RETURN strncmp ( str1, str2, count )
+END
+
+FN TwrStringCopy (
+	IN dest : ^UBYTE,
+	IN src : ^UBYTE,
+	IN bufsize : ULONG,
+)
+	IF NOT bufsize THEN
+		LEAVE
+	END
+
+	WHILE bufsize - 1 DO
+		dest^ = src^
+
+		dest += 1
+		src += 1
+		bufsize -= 1
+
+		IF src^ == 0 THEN
+			BREAK
+		END
+	END
+
+	dest^ = 0
 END

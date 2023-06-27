@@ -14,6 +14,13 @@ EXTERN FN TwrInternalError (
 	IN err3 : ULONG,
 )
 
+EXTERN FN TwrUserError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
 EXTERN FN TwrAlloc (
 	IN bytes : ULONG,
 	OUT ptr : ^^VOID,
@@ -21,4 +28,21 @@ EXTERN FN TwrAlloc (
 
 EXTERN FN TwrFree (
 	IN ptr : ^VOID,
+)
+
+EXTERN FN TwrStringCompare (
+	IN str1 : ^UBYTE,
+	IN str2 : ^UBYTE,
+) : ULONG
+
+EXTERN FN TwrStringCompareCount (
+	IN str1 : ^UBYTE,
+	IN str2 : ^UBYTE,
+	IN count : ULONG,
+) : ULONG
+
+EXTERN FN TwrStringCopy (
+	IN dest : ^UBYTE,
+	IN src : ^UBYTE,
+	IN bufsize : ULONG,
 )
