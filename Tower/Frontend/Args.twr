@@ -76,9 +76,4 @@ FN TwrArgsParse (
 	IF NOT foundoutput THEN
 		TwrUserError ( "No output file specified.", 0, 0, 0 )
 	END
-
-	TwrPrintString(&TwrLibraryDirectory)
-	TwrPrintString(&TwrIncludeDirectory)
-	TwrPrintString(&TwrInputFile)
-	TwrPrintString(&TwrOutputFile)
 END

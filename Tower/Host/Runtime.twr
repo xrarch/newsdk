@@ -34,6 +34,29 @@ EXTERN FN strncmp (
 	IN n : ULONG,
 ) : _int
 
+EXTERN FN fopen (
+	IN path : ^_char,
+	IN mode : ^_char,
+) : ^VOID
+
+EXTERN FN fclose (
+	IN stream : ^VOID,
+) : ^_int
+
+EXTERN FN fread (
+	OUT ptr : ^VOID,
+	IN size : ULONG,
+	IN nitems : ULONG,
+	IN stream : ^VOID,
+) : ULONG
+
+EXTERN FN fwrite (
+	IN ptr : ^VOID,
+	IN size : ULONG,
+	IN nitems : ULONG,
+	IN stream : ^VOID,
+) : ULONG
+
 
 
 FN TwrPrintString (
@@ -142,4 +165,50 @@ FN TwrStringCopy (
 	END
 
 	dest^ = 0
+END
+
+FN TwrOpenSource (
+	IN filename : ^UBYTE,
+	OUT handle : ^^VOID,
+) : TwrStatus
+
+	handle^ = fopen ( filename, "r" )
+
+	IF handle^ == 0 THEN
+		RETURN TWR_COULDNT_OPEN
+	END
+
+	RETURN TWR_SUCCESS
+END
+
+FN TwrOpenDestination (
+	IN filename : ^UBYTE,
+	OUT handle : ^^VOID,
+) : TwrStatus
+
+	handle^ = fopen ( filename, "w" )
+
+	IF handle^ == 0 THEN
+		RETURN TWR_COULDNT_OPEN
+	END
+
+	RETURN TWR_SUCCESS
+END
+
+FN TwrReadFile (
+	IN handle : ^VOID,
+	IN bytes : ULONG,
+	OUT buffer : ^VOID,
+) : ULONG
+
+	RETURN fread ( buffer, bytes, 1, handle )
+END
+
+FN TwrWriteFile (
+	IN handle : ^VOID,
+	IN bytes : ULONG,
+	IN buffer : ^VOID,
+) : ULONG
+
+	RETURN fwrite ( buffer, bytes, 1, handle )
 END

@@ -5,26 +5,37 @@
 #INCLUDE "<inc>/Frontend.twh"
 #INCLUDE "<inc>/Runtime.twh"
 
+TwrInputFileHandle : ^VOID
+TwrOutputFileHandle : ^VOID
+
 FN main (
     IN argc : _int,
     IN argv : ^_char[],
 ) : _int
 
-    TwrArgsParse (
-        argc, // argc
-        argv, // argv
+    // Parse the arguments and identify the input and output files.
+
+    TwrArgsParse ( argc, argv )
+
+    // Open the input and output files.
+
+    status := TwrOpenSource (
+            &TwrInputFile, // filename
+            &TwrInputFileHandle, // OUT handle
     )
 
-    ptr : ^VOID
+    IF status THEN
+        TwrUserError ( "Failed to open source file.", 0, 0, 0 )
+    END
 
-    test := TwrAlloc (
-        500, // bytes
-        &ptr, // OUT ptr
+    status = TwrOpenDestination (
+            &TwrOutputFile, // filename
+            &TwrOutputFileHandle, // OUT handle
     )
 
-    TwrFree ( ptr )
-
-    TwrInternalError ( "bleh", test, test, ptr )
+    IF status THEN
+        TwrUserError ( "Failed to open destination file.", 0, 0, 0 )
+    END
 
     RETURN 0
 END

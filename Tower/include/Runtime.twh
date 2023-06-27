@@ -1,6 +1,7 @@
 ENUM TwrStatus : ULONG
 	TWR_SUCCESS,
 	TWR_NO_MEMORY,
+	TWR_COULDNT_OPEN,
 END
 
 EXTERN FN TwrPrintString (
@@ -46,3 +47,25 @@ EXTERN FN TwrStringCopy (
 	IN src : ^UBYTE,
 	IN bufsize : ULONG,
 )
+
+EXTERN FN TwrOpenSource (
+	IN filename : ^UBYTE,
+	OUT handle : ^^VOID,
+) : TwrStatus
+
+EXTERN FN TwrOpenDestination (
+	IN filename : ^UBYTE,
+	OUT handle : ^^VOID,
+) : TwrStatus
+
+EXTERN FN TwrReadFile (
+	IN handle : ^VOID,
+	IN bytes : ULONG,
+	OUT buffer : ^VOID,
+) : ULONG
+
+EXTERN FN TwrWriteFile (
+	IN handle : ^VOID,
+	IN bytes : ULONG,
+	IN buffer : ^VOID,
+) : ULONG
