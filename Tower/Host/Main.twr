@@ -9,33 +9,33 @@ TwrInputFileHandle : ^VOID
 TwrOutputFileHandle : ^VOID
 
 FN main (
-    IN argc : _int,
-    IN argv : ^_char[],
+	IN argc : _int,
+	IN argv : ^_char[],
 ) : _int
 
-    // Parse the arguments and identify the input and output files.
+	// Parse the arguments and identify the input and output files.
 
-    TwrArgsParse ( argc, argv )
+	TwrArgsParse ( argc, argv )
 
-    // Open the input and output files.
+	// Open the input and output files.
 
-    status := TwrOpenSource (
-            &TwrInputFile, // filename
-            &TwrInputFileHandle, // OUT handle
-    )
+	status := TwrOpenSource (
+		&TwrInputFile, // filename
+		&TwrInputFileHandle, // OUT handle
+	)
 
-    IF status THEN
-        TwrUserError ( "Failed to open source file.", 0, 0, 0 )
-    END
+	IF status THEN
+		TwrUserError ( "Failed to open source file.", 0, 0, 0 )
+	END
 
-    status = TwrOpenDestination (
-            &TwrOutputFile, // filename
-            &TwrOutputFileHandle, // OUT handle
-    )
+	status = TwrOpenDestination (
+		&TwrOutputFile, // filename
+		&TwrOutputFileHandle, // OUT handle
+	)
 
-    IF status THEN
-        TwrUserError ( "Failed to open destination file.", 0, 0, 0 )
-    END
+	IF status THEN
+		TwrUserError ( "Failed to open destination file.", 0, 0, 0 )
+	END
 
-    RETURN 0
+	RETURN 0
 END

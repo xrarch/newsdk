@@ -7,8 +7,8 @@
 #INCLUDE "<inc>/Runtime.twh"
 
 EXTERN FN printf (
-    IN format : ^_char,
-    ...
+	IN format : ^_char,
+	...
 ) : _int
 
 EXTERN FN exit (
