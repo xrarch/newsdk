@@ -1,0 +1,115 @@
+//
+// Simple hash table implementation for faster symbol lookup.
+//
+
+#INCLUDE "<inc>/Runtime.twh"
+
+FN TwrHashTableInitialize (
+	IN hashtable : ^TwrHashTable,
+) : TwrStatus
+
+	TwrFillMemoryWithByte (
+		&hashtable^.BucketHeads, // ptr
+		SIZEOF ^TwrHashTableEntry * TWR_HASH_SIZE, // sz
+		0, // byte
+	)
+
+	RETURN TWR_SUCCESS
+END
+
+FN TwrHashTableInsert (
+	IN hashtable : ^TwrHashTable,
+	IN entry : ^TwrHashTableEntry,
+	IN key : ^UBYTE,
+)
+
+	// Caller needs to guarantee that the memory in which the key resides sticks
+	// around until such time as the entry is removed from the hash table.
+
+	hash := TwrHashString ( key )
+
+	head := hashtable^.BucketHeads[hash]
+
+	entry^.HashTable = hashtable
+	entry^.Key = key
+	entry^.Hash = hash
+
+	entry^.Prev = 0
+	entry^.Next = head
+
+	IF head THEN
+		head^.Prev = entry
+	END
+
+	hashtable^.BucketHeads[hash] = entry
+END
+
+FN TwrHashTableLookup (
+	IN hashtable : ^TwrHashTable,
+	IN key : ^UBYTE,
+) : ^TwrHashTableEntry
+
+	hash := TwrHashString ( key )
+
+	entry := hashtable^.BucketHeads[hash]
+
+	WHILE entry DO
+		IF TwrStringCompare ( key, entry^.Key ) THEN
+			RETURN entry
+		END
+
+		entry = entry^.Next
+	END
+
+	RETURN 0
+END
+
+FN TwrHashTableRemove (
+	IN entry : ^TwrHashTableEntry,
+)
+
+	hashtable := entry^.HashTable
+	hash := entry^.Hash
+
+	p := entry^.Prev
+
+	IF p THEN
+		p^.Next = entry^.Next
+	ELSE // no prev means we were the head
+		hashtable^.BucketHeads[hash] = entry^.Next
+	END
+
+	p = entry^.Next
+
+	IF p THEN
+		p^.Prev = entry^.Prev
+	END
+END
+
+FN TwrHashString (
+	IN str : ^UBYTE,
+) : ULONG
+
+	hash : ULONG = 0
+
+	WHILE str^ DO
+		hash += str^
+		hash += hash << 10
+		hash $= hash >> 6
+
+		str += 1
+	END
+
+	hash += hash << 3
+	hash $= hash >> 11
+	hash += hash << 15
+
+	hash $= hash >> 24 & 0xFF
+	hash $= hash >> 16 & 0xFF
+	hash $= hash >> 8 & 0xFF
+
+	hash %= TWR_HASH_SIZE
+
+	RETURN hash
+END
+

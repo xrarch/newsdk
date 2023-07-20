@@ -57,6 +57,25 @@ EXTERN FN fwrite (
 	IN stream : ^VOID,
 ) : ULONG
 
+EXTERN FN memset (
+	IN ptr : ^VOID,
+	IN c : _int,
+	IN len : ULONG,
+) : ^VOID
+
+FN TwrFillMemoryWithByte (
+	IN ptr : ^VOID,
+	IN sz : ULONG,
+	IN byte : UBYTE,
+)
+
+	memset (
+		ptr, // ptr
+		byte, // c
+		sz, // len
+	)
+END
+
 FN TwrPrintString (
 	IN str : ^UBYTE,
 )
@@ -216,6 +235,9 @@ FN TwrReadFile (
 	OUT buffer : ^VOID,
 ) : ULONG
 
+	// XXX make sure to check for errors on hosts where that is more
+	// applicable.
+
 	RETURN fread ( buffer, bytes, 1, handle )
 END
 
@@ -224,6 +246,9 @@ FN TwrWriteFile (
 	IN bytes : ULONG,
 	IN buffer : ^VOID,
 ) : ULONG
+
+	// XXX make sure to check for errors on hosts where that is more
+	// applicable.
 
 	RETURN fwrite ( buffer, bytes, 1, handle )
 END

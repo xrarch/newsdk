@@ -1,8 +1,34 @@
+CONST TOKEN_MAX_LENGTH : ULONG = 80
+CONST TOKEN_MAX_FILENAME : ULONG = 80
+
 ENUM TwrStatus : ULONG
 	TWR_SUCCESS,
 	TWR_NO_MEMORY,
 	TWR_COULDNT_OPEN,
 END
+
+CONST TWR_HASH_SIZE : ULONG = 97
+
+STRUCT TwrHashTable
+	BucketHeads : ^TwrHashTableEntry[TWR_HASH_SIZE],
+END
+
+STRUCT TwrHashTableEntry
+	Next : ^TwrHashTableEntry,
+	Prev : ^TwrHashTableEntry,
+
+	HashTable : ^TwrHashTable,
+
+	Key : ^UBYTE,
+
+	Hash : UBYTE,
+END
+
+EXTERN FN TwrFillMemoryWithByte (
+	IN ptr : ^VOID,
+	IN sz : ULONG,
+	IN byte : UBYTE,
+)
 
 EXTERN FN TwrPrintString (
 	IN str : ^UBYTE,

@@ -14,11 +14,45 @@
 
 CONST LEX_BUFFER_SIZE : ULONG = 8192
 
+ENUM LexCharBehavior : UBYTE
+	CHAR_NORMAL,
+	CHAR_SPLIT,
+	CHAR_COALESCE,
+END
+
+LexCharTreatment : LexCharBehavior[256] = {
+	['^'] = CHAR_SPLIT,
+	['('] = CHAR_SPLIT,
+	[')'] = CHAR_SPLIT,
+	['~'] = CHAR_SPLIT,
+	[','] = CHAR_SPLIT,
+	['['] = CHAR_SPLIT,
+	[']'] = CHAR_SPLIT,
+	[':'] = CHAR_SPLIT,
+	['{'] = CHAR_SPLIT,
+	['}'] = CHAR_SPLIT,
+
+	['='] = CHAR_COALESCE,
+	['&'] = CHAR_COALESCE,
+	['|'] = CHAR_COALESCE,
+	['!'] = CHAR_COALESCE,
+	['<'] = CHAR_COALESCE,
+	['>'] = CHAR_COALESCE,
+	['+'] = CHAR_COALESCE,
+	['-'] = CHAR_COALESCE,
+	['/'] = CHAR_COALESCE,
+	['%'] = CHAR_COALESCE,
+	['.'] = CHAR_COALESCE,
+	['@'] = CHAR_COALESCE,
+	['$'] = CHAR_COALESCE,
+}
+
 STRUCT LexStream
 	Previous : ^LexStream,
 
 	Buffer : ^UBYTE,
 	BufferSize : ULONG,
+	ValidLength : ULONG,
 
 	LineNumber : ULONG,
 	BufferPosition : ULONG,
@@ -50,6 +84,7 @@ FN LexStreamInitialize (
 
 	stream^.Buffer = 0
 	stream^.BufferSize = 0
+	stream^.ValidLength = 0
 
 	stream^.LineNumber = 1
 	stream^.BufferPosition = 0
@@ -66,9 +101,9 @@ FN LexStreamUninitialize (
 	// Generic uninitialization for any stream type.
 
 	IF NOT stream^.IsMacro THEN
-		// This is a file stream, free the buffer.
-		// Closing the file handle is the responsibility of the guy who opened
-		// it.
+		// This is a file stream, close the file handle and free the buffer.
+
+		TwrClose ( (CAST stream TO ^LexFileStream)^.FileHandle )
 
 		TwrFree ( stream^.Buffer )
 	END
@@ -180,4 +215,14 @@ FN LexInitialize () : TwrStatus
 	LexStreamPush ( CAST filestream TO ^LexStream )
 
 	RETURN TWR_SUCCESS
+END
+
+FN LexGetCharacter () : UBYTE
+
+	// Get a character from the stream at the top of the stream stack. If the
+	// stream ran dry, pop it off the stack. If it was the last one on the
+	// stack, EOF has been reached. Here we also must identify preprocessor
+	// directives.
+
+	RETURN 0
 END
