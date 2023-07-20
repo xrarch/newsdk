@@ -5,23 +5,21 @@
 #INCLUDE "<inc>/Frontend.twh"
 #INCLUDE "<inc>/Runtime.twh"
 
-TwrLibraryDirectory : UBYTE[TWRPATHLISTBUFFERSIZE]
-TwrIncludeDirectory : UBYTE[TWRPATHLISTBUFFERSIZE]
-TwrInputFile : UBYTE[TWRPATHLISTBUFFERSIZE]
-TwrOutputFile : UBYTE[TWRPATHLISTBUFFERSIZE]
+TwrLibraryDirectory : UBYTE[TWR_PATH_BUFFER_SIZE]
+TwrIncludeDirectory : UBYTE[TWR_PATH_BUFFER_SIZE]
+TwrInputFile : UBYTE[TWR_PATH_BUFFER_SIZE]
+TwrOutputFile : UBYTE[TWR_PATH_BUFFER_SIZE]
 
 FN TwrArgsParse (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],
 )
 
-	//
 	// Find the value of these arguments, if they exist:
 	//  libdir=
 	//  incdir=
 	//
 	// Identify the source and destination filenames.
-	//
 
 	TwrLibraryDirectory[0] = 0
 	TwrIncludeDirectory[0] = 0
@@ -36,13 +34,13 @@ FN TwrArgsParse (
 			TwrStringCopy (
 				&TwrLibraryDirectory, // dest
 				&argv[i][7], // src
-				TWRPATHLISTBUFFERSIZE, // bufsize
+				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
 		ELSEIF TwrStringCompareCount ( argv[i], "incdir=", 7 ) == 0 THEN
 			TwrStringCopy (
 				&TwrIncludeDirectory, // dest
 				&argv[i][7], // src
-				TWRPATHLISTBUFFERSIZE, // bufsize
+				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
 		ELSEIF foundinput THEN
 			IF foundoutput THEN
@@ -54,7 +52,7 @@ FN TwrArgsParse (
 			TwrStringCopy (
 				&TwrOutputFile, // dest
 				argv[i], // src
-				TWRPATHLISTBUFFERSIZE, // bufsize
+				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
 		ELSE
 			foundinput = TRUE
@@ -62,7 +60,7 @@ FN TwrArgsParse (
 			TwrStringCopy (
 				&TwrInputFile, // dest
 				argv[i], // src
-				TWRPATHLISTBUFFERSIZE, // bufsize
+				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
 		END
 

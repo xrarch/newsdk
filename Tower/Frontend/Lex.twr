@@ -1,0 +1,183 @@
+//
+// Lexer. Also performs inline preprocessing.
+//
+
+#INCLUDE "<inc>/Frontend.twh"
+#INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Lexer.twh"
+
+// The "engine" of the lexer, the bit that provides the character stream,
+// operates by stacking and unstacking source text streams. Each stream has a
+// filename and a current line number associated with it, which are ultimately
+// used to generate useful diagnostic messages. Streams are associated with
+// include files, and also with preprocessor macro expansion.
+
+CONST LEX_BUFFER_SIZE : ULONG = 8192
+
+STRUCT LexStream
+	Previous : ^LexStream,
+
+	Buffer : ^UBYTE,
+	BufferSize : ULONG,
+
+	LineNumber : ULONG,
+	BufferPosition : ULONG,
+
+	IsMacro : UBYTE,
+END
+
+STRUCT LexFileStream
+	Generic : LexStream, // must be at the beginning
+
+	FileHandle : ^VOID,
+	FileName : UBYTE[TOKEN_MAX_FILENAME],
+END
+
+STRUCT LexMacroStream
+	Generic : LexStream, // must be at the beginning
+END
+
+LexCurrentStream : ^LexStream = 0
+
+FN LexStreamInitialize (
+	IN stream : ^LexStream,
+	IN ismacro : UBYTE,
+) : TwrStatus
+
+	// Initialize a stream structure.
+
+	stream^.Previous = 0
+
+	stream^.Buffer = 0
+	stream^.BufferSize = 0
+
+	stream^.LineNumber = 1
+	stream^.BufferPosition = 0
+
+	stream^.IsMacro = ismacro
+
+	RETURN TWR_SUCCESS
+END
+
+FN LexStreamUninitialize (
+	IN stream : ^LexStream,
+)
+
+	// Generic uninitialization for any stream type.
+
+	IF NOT stream^.IsMacro THEN
+		// This is a file stream, free the buffer.
+		// Closing the file handle is the responsibility of the guy who opened
+		// it.
+
+		TwrFree ( stream^.Buffer )
+	END
+END
+
+FN LexStreamFree (
+	IN stream : ^LexStream,
+)
+
+	LexStreamUninitialize ( stream )
+	TwrFree ( stream )
+END
+
+FN LexStreamPush (
+	IN stream : ^LexStream,
+)
+
+	stream^.Previous = LexCurrentStream
+	LexCurrentStream = stream
+END
+
+FN LexStreamPop () : ^LexStream
+
+	oldstream := LexCurrentStream
+	LexCurrentStream = oldstream^.Previous
+
+	RETURN oldstream
+END
+
+FN LexFileStreamInitialize (
+	IN filestream : ^LexFileStream,
+	IN handle : ^VOID,
+	IN filename : ^UBYTE,
+) : TwrStatus
+
+	// Initialize a file stream.
+
+	status := LexStreamInitialize (
+		&filestream^.Generic, // stream
+		FALSE, // ismacro
+	)
+
+	IF status THEN
+		RETURN status
+	END
+
+	filestream^.FileHandle = handle
+
+	TwrStringCopy (
+		&filestream^.FileName, // dest
+		filename, // src
+		TOKEN_MAX_FILENAME, // bufsize
+	)
+
+	// Allocate the lex buffer.
+
+	filestream^.Generic.BufferSize = LEX_BUFFER_SIZE
+
+	status = TwrAlloc (
+		LEX_BUFFER_SIZE, // bytes
+		&filestream^.Generic.Buffer, // OUT ptr
+	)
+
+	RETURN status
+END
+
+FN LexFileStreamCreate (
+	IN handle : ^VOID,
+	IN filename : ^UBYTE,
+	OUT filestream : ^^LexFileStream,
+) : TwrStatus
+
+	status := TwrAlloc (
+		SIZEOF LexFileStream, // bytes
+		filestream, // OUT ptr
+	)
+
+	IF status THEN
+		RETURN status
+	END
+
+	status = LexFileStreamInitialize (
+		filestream^, // filestream
+		handle, // handle
+		filename, // filename
+	)
+
+	IF status THEN
+		TwrFree ( filestream^ )
+	END
+
+	RETURN status
+END
+
+FN LexInitialize () : TwrStatus
+
+	filestream : ^LexFileStream
+
+	status := LexFileStreamCreate (
+		TwrInputFileHandle, // handle
+		TwrInputFile, // filename
+		&filestream, // OUT filestream
+	)
+
+	IF status THEN
+		RETURN status
+	END
+
+	LexStreamPush ( CAST filestream TO ^LexStream )
+
+	RETURN TWR_SUCCESS
+END

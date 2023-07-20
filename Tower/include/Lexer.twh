@@ -1,0 +1,17 @@
+CONST TOKEN_MAX_LENGTH : ULONG = 80
+CONST TOKEN_MAX_FILENAME : ULONG = 80
+
+ENUM LexTokenType : UBYTE
+	TOKEN_IDENTIFIER,
+	TOKEN_IF,
+END
+
+STRUCT LexToken
+	Type : LexTokenType,
+	Identifier : UBYTE[TOKEN_MAX_LENGTH],
+
+	LineNumber : ULONG,
+	FileName : UBYTE[TOKEN_MAX_FILENAME],
+END
+
+EXTERN FN LexInitialize () : TwrStatus

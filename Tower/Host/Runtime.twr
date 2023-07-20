@@ -57,15 +57,23 @@ EXTERN FN fwrite (
 	IN stream : ^VOID,
 ) : ULONG
 
-
-
 FN TwrPrintString (
 	IN str : ^UBYTE,
 )
 
 	printf (
-		"%s\n", // format
+		"%s", // format
 		str, // ...
+	)
+END
+
+FN TwrPrintNumber (
+	IN num : ULONG,
+)
+
+	printf (
+		"%d", // format
+		num, // ...
 	)
 END
 
@@ -193,6 +201,13 @@ FN TwrOpenDestination (
 	END
 
 	RETURN TWR_SUCCESS
+END
+
+FN TwrClose (
+	IN handle : ^VOID,
+)
+
+	fclose ( handle )
 END
 
 FN TwrReadFile (

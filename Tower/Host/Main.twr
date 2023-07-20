@@ -4,6 +4,7 @@
 
 #INCLUDE "<inc>/Frontend.twh"
 #INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Lexer.twh"
 
 TwrInputFileHandle : ^VOID
 TwrOutputFileHandle : ^VOID
@@ -36,6 +37,16 @@ FN main (
 	IF status THEN
 		TwrUserError ( "Failed to open destination file.", 0, 0, 0 )
 	END
+
+	status = LexInitialize ()
+
+	IF status THEN
+		TwrInternalError ( "Failed to initialize lexer.", status, 0, 0 )
+	END
+
+	// Perform phase 1 of the compiler (lexing & parsing).
+
+	// TwrParseProgram ()
 
 	RETURN 0
 END
