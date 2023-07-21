@@ -144,3 +144,33 @@ STRUCT TwrSymbolTable
 	HashTable : TwrHashTable,
 	DeleteRoutine : TwrHashTableEnumF,
 END
+
+EXTERN FN TwrSymbolTableInitialize (
+	IN symboltable : ^TwrSymbolTable,
+	IN deletefunc : TwrHashTableEnumF,
+) : TwrStatus
+
+EXTERN FN TwrSymbolTableCreate (
+	IN outerscope : ^TwrSymbolTable,
+	IN deletefunc : TwrHashTableEnumF,
+	OUT symboltable : ^^TwrSymbolTable,
+) : TwrStatus
+
+EXTERN FN TwrSymbolTableDelete (
+	IN symboltable : ^TwrSymbolTable,
+) : ^TwrSymbolTable
+
+EXTERN FN TwrSymbolTableLookup (
+	IN symboltable : ^TwrSymbolTable,
+	IN name : ^UBYTE,
+) : ^TwrHashTableEntry
+
+EXTERN FN TwrSymbolTableInsert (
+	IN symboltable : ^TwrSymbolTable,
+	IN entry : ^TwrHashTableEntry,
+	IN name : ^UBYTE,
+)
+
+EXTERN FN TwrSymbolTableRemove (
+	IN entry : ^TwrHashTableEntry,
+)

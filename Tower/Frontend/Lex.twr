@@ -72,6 +72,7 @@ STRUCT LexMacroStream
 END
 
 LexCurrentStream : ^LexStream = 0
+LexCurrentMacroScope : ^TwrSymbolTable = 0
 
 FN LexStreamInitialize (
 	IN stream : ^LexStream,
@@ -200,6 +201,8 @@ END
 
 FN LexInitialize () : TwrStatus
 
+	// Create the root file stream.
+
 	filestream : ^LexFileStream
 
 	status := LexFileStreamCreate (
@@ -214,7 +217,26 @@ FN LexInitialize () : TwrStatus
 
 	LexStreamPush ( CAST filestream TO ^LexStream )
 
+	// Create the root macro scope.
+
+	status = TwrSymbolTableCreate (
+		0, // outerscope
+		&LexMacroDelete, // deletefunc
+		&LexCurrentMacroScope, // OUT symboltable
+	)
+
+	IF status THEN
+		RETURN status
+	END
+
 	RETURN TWR_SUCCESS
+END
+
+FN (TwrHashTableEnumF) LexMacroDelete (
+	IN entry : ^TwrHashTableEntry,
+)
+
+	TwrFree ( entry )
 END
 
 FN LexGetCharacter () : UBYTE
