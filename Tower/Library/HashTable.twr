@@ -56,7 +56,7 @@ FN TwrHashTableLookup (
 	entry := hashtable^.BucketHeads[hash]
 
 	WHILE entry DO
-		IF TwrStringCompare ( key, entry^.Key ) THEN
+		IF TwrStringCompare ( key, entry^.Key ) == 0 THEN
 			RETURN entry
 		END
 
