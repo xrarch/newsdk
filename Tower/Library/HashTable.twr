@@ -101,9 +101,14 @@ FN TwrHashTableEnumerate (
 		entry := hashtable^.BucketHeads[i]
 
 		WHILE entry DO
+			// Capture the next entry now since the enumeration function might
+			// destroy this entry.
+
+			nextentry := entry^.Next
+
 			enumfunc ( entry )
 
-			entry = entry^.Next
+			entry = nextentry
 		END
 
 		i += 1
