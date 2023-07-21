@@ -7,23 +7,6 @@ ENUM TwrStatus : ULONG
 	TWR_COULDNT_OPEN,
 END
 
-CONST TWR_HASH_SIZE : ULONG = 97
-
-STRUCT TwrHashTable
-	BucketHeads : ^TwrHashTableEntry[TWR_HASH_SIZE],
-END
-
-STRUCT TwrHashTableEntry
-	Next : ^TwrHashTableEntry,
-	Prev : ^TwrHashTableEntry,
-
-	HashTable : ^TwrHashTable,
-
-	Key : ^UBYTE,
-
-	Hash : UBYTE,
-END
-
 EXTERN FN TwrFillMemoryWithByte (
 	IN ptr : ^VOID,
 	IN sz : ULONG,
@@ -103,3 +86,61 @@ EXTERN FN TwrWriteFile (
 	IN bytes : ULONG,
 	IN buffer : ^VOID,
 ) : ULONG
+
+
+// hash table stuff
+
+
+CONST TWR_HASH_SIZE : ULONG = 97
+
+STRUCT TwrHashTable
+	BucketHeads : ^TwrHashTableEntry[TWR_HASH_SIZE],
+END
+
+STRUCT TwrHashTableEntry
+	Next : ^TwrHashTableEntry,
+	Prev : ^TwrHashTableEntry,
+
+	HashTable : ^TwrHashTable,
+
+	Key : ^UBYTE,
+
+	Hash : UBYTE,
+END
+
+EXTERN FN TwrHashTableInitialize (
+	IN hashtable : ^TwrHashTable,
+) : TwrStatus
+
+EXTERN FN TwrHashTableInsert (
+	IN hashtable : ^TwrHashTable,
+	IN entry : ^TwrHashTableEntry,
+	IN key : ^UBYTE,
+)
+
+EXTERN FN TwrHashTableLookup (
+	IN hashtable : ^TwrHashTable,
+	IN key : ^UBYTE,
+) : ^TwrHashTableEntry
+
+EXTERN FN TwrHashTableRemove (
+	IN entry : ^TwrHashTableEntry,
+)
+
+EXTERN FN TwrHashTableEnumerate (
+	IN hashtable : ^TwrHashTable,
+	IN enumfunc : TwrHashTableEnumF,
+)
+
+FNPTR TwrHashTableEnumF (
+	IN entry : ^TwrHashTableEntry,
+)
+
+// symbol table stuff
+
+
+STRUCT TwrSymbolTable
+	PrevScope : ^TwrSymbolTable, // previous in the scope stack
+	HashTable : TwrHashTable,
+	DeleteRoutine : TwrHashTableEnumF,
+END

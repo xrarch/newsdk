@@ -34,6 +34,8 @@ FN TwrHashTableInsert (
 	entry^.Key = key
 	entry^.Hash = hash
 
+	// Insert entry into doubly linked hash bucket list, at the head.
+
 	entry^.Prev = 0
 	entry^.Next = head
 
@@ -71,6 +73,8 @@ FN TwrHashTableRemove (
 	hashtable := entry^.HashTable
 	hash := entry^.Hash
 
+	// Remove entry from doubly linked hash bucket list.
+
 	p := entry^.Prev
 
 	IF p THEN
@@ -83,6 +87,26 @@ FN TwrHashTableRemove (
 
 	IF p THEN
 		p^.Prev = entry^.Prev
+	END
+END
+
+FN TwrHashTableEnumerate (
+	IN hashtable : ^TwrHashTable,
+	IN enumfunc : TwrHashTableEnumF,
+)
+
+	i := 0
+
+	WHILE i < TWR_HASH_SIZE DO
+		entry := hashtable^.BucketHeads[i]
+
+		WHILE entry DO
+			enumfunc ( entry )
+
+			entry = entry^.Next
+		END
+
+		i += 1
 	END
 END
 
@@ -112,4 +136,3 @@ FN TwrHashString (
 
 	RETURN hash
 END
-
