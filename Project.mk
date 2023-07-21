@@ -1,7 +1,8 @@
 INCLUDES := $(subst :, ,$(INCDIR))
 INCLUDEFILES := $(foreach incdir,$(INCLUDES),$(shell find $(incdir) -type f -name "*.twh"))
 
-TWRFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/*.twr))
+TWRFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/*.twr)) \
+			$(foreach component,$(COMPONENTS),$(wildcard $(component)/CHost/*.twr))
 
 COBJ := $(TWRFILES:.twr=.c)
 OBJ  := $(TWRFILES:.twr=.o)

@@ -1,5 +1,4 @@
-COMPONENTS := Host \
-			Library \
+COMPONENTS := Library \
 			Frontend
 
 OUTPUTFILE := twr

@@ -1,9 +1,12 @@
 Directory structure:
 
-  include/ - global header files
-  Host/ - runtime library for C transpilation host
-  Frontend/ - lexer and parser
-  Backend/ - optimizer and generic backend algorithms
-  xr17032/ - XR17032 target specific code
-  fox32/ - fox32 target specific code
-  i486/ - i386 target specific code
+  include/ - Global header files.
+
+  */CHost/ - Host-specific code for C transpilation host.
+
+  Frontend/ - Lexer and parser.
+  Backend/ - Optimizer and generic backend algorithms.
+
+  xr17032/ - XR/17032 target specific code.
+  fox32/ - Fox32 target specific code.
+  i486/ - i386 target specific code.
