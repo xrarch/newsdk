@@ -10,7 +10,7 @@ FN TwrHashTableInitialize (
 
 	TwrFillMemoryWithByte (
 		&hashtable^.BucketHeads, // ptr
-		SIZEOF ^TwrHashTableEntry * TWR_HASH_SIZE, // sz
+		SIZEOFVALUE hashtable^.BucketHeads, // sz
 		0, // byte
 	)
 
