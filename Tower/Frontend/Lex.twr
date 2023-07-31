@@ -225,11 +225,7 @@ FN LexInitialize () : TwrStatus
 		&LexCurrentMacroScope, // OUT symboltable
 	)
 
-	IF status THEN
-		RETURN status
-	END
-
-	RETURN TWR_SUCCESS
+	RETURN status
 END
 
 FN (TwrHashTableEnumF) LexMacroDelete (
@@ -245,6 +241,8 @@ FN LexGetCharacter () : UBYTE
 	// stream ran dry, pop it off the stack. If it was the last one on the
 	// stack, EOF has been reached. Here we also must identify preprocessor
 	// directives.
+
+
 
 	RETURN 0
 END

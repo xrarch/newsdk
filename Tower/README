@@ -10,4 +10,4 @@ Directory structure:
 
   xr17032/ - XR/17032 target specific code.
   fox32/ - Fox32 target specific code.
-  i486/ - i386 target specific code.
+  i486/ - i486 target specific code.
