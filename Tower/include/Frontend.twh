@@ -1,5 +1,10 @@
 CONST TWR_PATH_BUFFER_SIZE : ULONG = 256
 
+STRUCT TwrFileBlock
+	Name : UBYTE[TWR_PATH_BUFFER_SIZE],
+	Handle : ^VOID,
+END
+
 EXTERN FN TwrArgsParse (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],

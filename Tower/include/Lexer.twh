@@ -1,14 +1,14 @@
 ENUM LexTokenType : UBYTE
-	TOKEN_IDENTIFIER,
+	TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
 	TOKEN_IF,
 END
 
 STRUCT LexToken
 	Type : LexTokenType,
-	Identifier : UBYTE[TOKEN_MAX_LENGTH],
+	Payload : ^VOID,
 
 	LineNumber : ULONG,
-	FileName : UBYTE[TOKEN_MAX_FILENAME],
+	FileBlock : ^TwrFileBlock,
 END
 
 EXTERN FN LexInitialize () : TwrStatus

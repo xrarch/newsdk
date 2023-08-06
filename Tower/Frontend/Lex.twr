@@ -63,8 +63,7 @@ END
 STRUCT LexFileStream
 	Generic : LexStream, // must be at the beginning
 
-	FileHandle : ^VOID,
-	FileName : UBYTE[TOKEN_MAX_FILENAME],
+	FileBlock : ^TwrFileBlock,
 END
 
 STRUCT LexMacroStream
@@ -86,10 +85,8 @@ FN LexStreamInitialize (
 	stream^.Buffer = 0
 	stream^.BufferSize = 0
 	stream^.ValidLength = 0
-
 	stream^.LineNumber = 1
 	stream^.BufferPosition = 0
-
 	stream^.IsMacro = ismacro
 
 	RETURN TWR_SUCCESS
@@ -102,9 +99,11 @@ FN LexStreamUninitialize (
 	// Generic uninitialization for any stream type.
 
 	IF NOT stream^.IsMacro THEN
-		// This is a file stream, close the file handle and free the buffer.
+		// This is a file stream, free the buffer.
+		// We don't delete the file block since it's still referenced by
+		// tokens and such.
 
-		TwrClose ( (CAST stream TO ^LexFileStream)^.FileHandle )
+		TwrClose ( (CAST stream TO ^LexFileStream)^.FileBlock^.Handle )
 
 		TwrFree ( stream^.Buffer )
 	END
@@ -151,22 +150,47 @@ FN LexFileStreamInitialize (
 		RETURN status
 	END
 
-	filestream^.FileHandle = handle
+	// Allocate the file block and lex buffer.
 
-	TwrStringCopy (
-		&filestream^.FileName, // dest
-		filename, // src
-		TOKEN_MAX_FILENAME, // bufsize
+	fileblock : ^TwrFileBlock
+	buffer : ^UBYTE
+
+	status = TwrAlloc (
+		SIZEOF TwrFileBlock, // bytes
+		&fileblock, // OUT ptr
 	)
 
-	// Allocate the lex buffer.
-
-	filestream^.Generic.BufferSize = LEX_BUFFER_SIZE
+	IF status THEN
+		RETURN status
+	END
 
 	status = TwrAlloc (
 		LEX_BUFFER_SIZE, // bytes
-		&filestream^.Generic.Buffer, // OUT ptr
+		&buffer, // OUT ptr
 	)
+
+	IF status THEN
+		TwrFree ( fileblock )
+
+		RETURN status
+	END
+
+	// Initialize the file block.
+
+	fileblock^.Handle = handle
+
+	TwrStringCopy (
+		&fileblock^.Name, // dest
+		filename, // src
+		TWR_PATH_BUFFER_SIZE, // bufsize
+	)
+
+	filestream^.FileBlock = fileblock
+
+	// Set up the lex buffer.
+
+	filestream^.Generic.BufferSize = LEX_BUFFER_SIZE
+	filestream^.Generic.Buffer = buffer
 
 	RETURN status
 END
