@@ -9,6 +9,7 @@ endif
 
 export SDK
 export TBC := $(SDK)/tbc.sh
+export CC := gcc-10 -Wno-parentheses-equality
 
 PROJECTS := Tower
 

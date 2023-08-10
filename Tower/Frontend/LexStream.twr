@@ -221,7 +221,8 @@ FN LexStreamNextCharacter () : UBYTE
 				// The end of the file has been reached. If the final
 				// character wasn't a newline, then present a fake final
 				// newline to the upper layers of the lexer. This avoids some
-				// nasty edge cases.
+				// nasty edge cases, and guarantees a token will always be
+				// terminated by whitespace (never by EOF).
 
 				IF NOT stream^.LastWasNewline THEN
 					stream^.LastWasNewline = TRUE
