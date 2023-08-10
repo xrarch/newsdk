@@ -4,8 +4,10 @@ INCLUDEFILES := $(foreach incdir,$(INCLUDES),$(shell find $(incdir) -type f -nam
 TWRFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/*.twr)) \
 			$(foreach component,$(COMPONENTS),$(wildcard $(component)/CHost/*.twr))
 
+CFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/CHost/*.c))
+
 COBJ := $(TWRFILES:.twr=.c)
-OBJ  := $(TWRFILES:.twr=.o)
+OBJ  := $(TWRFILES:.twr=.o) $(CFILES:.c=.o)
 
 FULLOUTPUTFILE = $(BUILDROOT)/$(OUTPUTFILE)
 

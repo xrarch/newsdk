@@ -32,6 +32,15 @@ EXTERN FN TwrUserError (
 	IN err3 : ULONG,
 )
 
+EXTERN FN TwrStreamError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+EXTERN FN TwrErrorExit ()
+
 EXTERN FN TwrAlloc (
 	IN bytes : ULONG,
 	OUT ptr : ^^VOID,

@@ -5,8 +5,10 @@
 //
 
 #INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Lexer.twh"
 
-EXTERN FN printf (
+EXTERN FN fprintf (
+	IN stream : ^VOID,
 	IN format : ^_char,
 	...
 ) : _int
@@ -76,57 +78,37 @@ FN TwrFillMemoryWithByte (
 	)
 END
 
-FN TwrPrintString (
-	IN str : ^UBYTE,
-)
-
-	printf (
-		"%s", // format
-		str, // ...
-	)
-END
-
-FN TwrPrintNumber (
-	IN num : ULONG,
-)
-
-	printf (
-		"%d", // format
-		num, // ...
-	)
-END
-
-FN TwrInternalError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
-)
-
-	printf (
-		"Internal compiler error: %s (%d %d %d)\n", // format
-		str, // ...
-		err1,
-		err2,
-		err3,
-	)
+FN TwrErrorExit ()
 
 	exit ( 1 )
 END
 
-FN TwrUserError (
+EXTERN FN TwrStreamError_C (
+	IN filename : ^UBYTE,
+	IN linenumber : ULONG,
+	IN linepos : ULONG,
 	IN str : ^UBYTE,
 	IN err1 : ULONG,
 	IN err2 : ULONG,
 	IN err3 : ULONG,
 )
 
-	printf (
-		"User error: %s (%d %d %d)\n", // format
-		str, // ...
-		err1,
-		err2,
-		err3,
+FN TwrStreamError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+	filestream := LexStreamGetLastFileStream ()
+
+	TwrStreamError_C (
+		filestream^.FileBlock^.Name, // filename
+		filestream^.Generic.LineNumber, // linenumber
+		filestream^.Generic.LinePosition, // linepos
+		str, // str
+		err1, // err1
+		err2, // err2
+		err3, // err3
 	)
 
 	exit ( 1 )

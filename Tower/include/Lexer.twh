@@ -1,3 +1,6 @@
+#INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Frontend.twh"
+
 CONST LEX_PUTBACK_STACK_DEPTH := 4
 CONST LEX_BUFFER_SIZE := 8192
 
@@ -25,11 +28,13 @@ STRUCT LexStream
 	Buffer : ^UBYTE,
 	BufferSize : ULONG,
 	ValidLength : ULONG,
-
-	LineNumber : ULONG,
 	BufferPosition : ULONG,
 
+	LineNumber : ULONG,
+	LinePosition : ULONG,
+
 	IsMacro : UBYTE,
+	LastWasNewline : UBYTE,
 END
 
 STRUCT LexFileStream
@@ -83,5 +88,7 @@ EXTERN FN LexFileStreamCreate (
 	IN filename : ^UBYTE,
 	OUT filestream : ^^LexFileStream,
 ) : TwrStatus
+
+EXTERN FN LexStreamGetLastFileStream () : ^LexFileStream
 
 EXTERN FN LexStreamNextCharacter () : UBYTE

@@ -19,8 +19,10 @@ FN LexStreamInitialize (
 	stream^.BufferSize = 0
 	stream^.ValidLength = 0
 	stream^.LineNumber = 1
+	stream^.LinePosition = 1
 	stream^.BufferPosition = 0
 	stream^.IsMacro = ismacro
+	stream^.LastWasNewline = FALSE
 
 	RETURN TWR_SUCCESS
 END
@@ -156,6 +158,17 @@ FN LexFileStreamCreate (
 	RETURN status
 END
 
+FN LexStreamGetLastFileStream () : ^LexFileStream
+
+	stream := LexCurrentStream
+
+	WHILE stream^.IsMacro DO
+		stream = stream^.Previous
+	END
+
+	RETURN CAST stream TO ^LexFileStream
+END
+
 FN LexStreamNextCharacter () : UBYTE
 
 	// Return the next byte from the stream on top of the stream stack. If the
@@ -205,7 +218,16 @@ FN LexStreamNextCharacter () : UBYTE
 			)
 
 			IF NOT stream^.ValidLength THEN
-				// The end of the file has been reached.
+				// The end of the file has been reached. If the final
+				// character wasn't a newline, then present a fake final
+				// newline to the upper layers of the lexer. This avoids some
+				// nasty edge cases.
+
+				IF NOT stream^.LastWasNewline THEN
+					stream^.LastWasNewline = TRUE
+
+					RETURN 0x0A
+				END
 
 				LexStreamFree ( LexStreamPop () )
 
@@ -218,11 +240,16 @@ FN LexStreamNextCharacter () : UBYTE
 		END
 
 		IF byte == 0x00 THEN
-			TwrUserError ( "An invalid byte was found in the source file.", byte, 0, 0 )
+			TwrStreamError ( "An invalid byte was found in the source file.", byte, 0, 0 )
 		ELSEIF byte == 0x0D THEN
-			TwrUserError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
+			TwrStreamError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
 		ELSEIF byte == 0x0A THEN
 			stream^.LineNumber += 1
+			stream^.LinePosition = 1
+			stream^.LastWasNewline = TRUE
+		ELSE
+			stream^.LinePosition += 1
+			stream^.LastWasNewline = FALSE
 		END
 
 		RETURN byte
