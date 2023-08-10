@@ -1,77 +1,10 @@
 //
-// Lexer. Also performs inline preprocessing.
+// Implements stream objects for the lexer.
 //
 
 #INCLUDE "<inc>/Frontend.twh"
 #INCLUDE "<inc>/Runtime.twh"
 #INCLUDE "<inc>/Lexer.twh"
-
-// The "engine" of the lexer, the bit that provides the character stream,
-// operates by stacking and unstacking source text streams. Each stream has a
-// filename and a current line number associated with it, which are ultimately
-// used to generate useful diagnostic messages. Streams are associated with
-// include files, and also with preprocessor macro expansion.
-
-CONST LEX_BUFFER_SIZE : ULONG = 8192
-
-ENUM LexCharBehavior : UBYTE
-	CHAR_NORMAL,
-	CHAR_SPLIT,
-	CHAR_COALESCE,
-END
-
-LexCharTreatment : LexCharBehavior[256] = {
-	['^'] = CHAR_SPLIT,
-	['('] = CHAR_SPLIT,
-	[')'] = CHAR_SPLIT,
-	['~'] = CHAR_SPLIT,
-	[','] = CHAR_SPLIT,
-	['['] = CHAR_SPLIT,
-	[']'] = CHAR_SPLIT,
-	[':'] = CHAR_SPLIT,
-	['{'] = CHAR_SPLIT,
-	['}'] = CHAR_SPLIT,
-
-	['='] = CHAR_COALESCE,
-	['&'] = CHAR_COALESCE,
-	['|'] = CHAR_COALESCE,
-	['!'] = CHAR_COALESCE,
-	['<'] = CHAR_COALESCE,
-	['>'] = CHAR_COALESCE,
-	['+'] = CHAR_COALESCE,
-	['-'] = CHAR_COALESCE,
-	['/'] = CHAR_COALESCE,
-	['%'] = CHAR_COALESCE,
-	['.'] = CHAR_COALESCE,
-	['@'] = CHAR_COALESCE,
-	['$'] = CHAR_COALESCE,
-}
-
-STRUCT LexStream
-	Previous : ^LexStream,
-
-	Buffer : ^UBYTE,
-	BufferSize : ULONG,
-	ValidLength : ULONG,
-
-	LineNumber : ULONG,
-	BufferPosition : ULONG,
-
-	IsMacro : UBYTE,
-END
-
-STRUCT LexFileStream
-	Generic : LexStream, // must be at the beginning
-
-	FileBlock : ^TwrFileBlock,
-END
-
-STRUCT LexMacroStream
-	Generic : LexStream, // must be at the beginning
-END
-
-LexCurrentStream : ^LexStream = 0
-LexCurrentMacroScope : ^TwrSymbolTable = 0
 
 FN LexStreamInitialize (
 	IN stream : ^LexStream,
@@ -223,50 +156,65 @@ FN LexFileStreamCreate (
 	RETURN status
 END
 
-FN LexInitialize () : TwrStatus
+FN LexStreamNextCharacter (
+	IN stream : ^LexStream,
+) : UBYTE
 
-	// Create the root file stream.
+	// Return the next byte from the given stream. If the stream has been
+	// emptied, a null byte is returned instead. If an error is reached, a
+	// 0xFF byte is returned. If a file actually contains one of these bytes,
+	// this function will print a diagnostic and the compiler will terminate.
+	// This will also be done for a 0x0D byte, which usually appears in DOS
+	// line endings. We explicitly do not support DOS line endings, because
+	// the MINTIA OS does not use them.
+	//
+	// For macro streams, there is a buffer that we will return the character
+	// directly from. For file streams, there is a buffer that contains some
+	// file data. When this buffer runs dry, we have to read more data in.
+	// When there is no more data in the file, the stream is considered empty.
+	//
+	// In any case, we have to maintain the LineNumber field of the stream, by
+	// incrementing it each time we encounter a newline character.
 
-	filestream : ^LexFileStream
+	byte : UBYTE
 
-	status := LexFileStreamCreate (
-		TwrInputFileHandle, // handle
-		TwrInputFile, // filename
-		&filestream, // OUT filestream
-	)
+	IF stream^.BufferPosition < stream^.ValidLength THEN
+		// There is at least one character in the buffer, so return it.
 
-	IF status THEN
-		RETURN status
+		byte = stream^.Buffer[stream^.BufferPosition]
+
+		stream^.BufferPosition += 1
+	ELSEIF stream^.IsMacro THEN
+		// The macro stream has emptied.
+
+		RETURN 0
+	ELSE
+		// The remaining code deals with the file stream buffer refill case.
+
+		filestream := CAST stream TO ^LexFileStream
+
+		stream^.ValidLength = TwrReadFile (
+			filestream^.FileBlock^.Handle, // handle
+			stream^.BufferSize, // bytes
+			stream^.Buffer, // OUT buffer
+		)
+
+		IF NOT stream^.ValidLength THEN
+			RETURN 0
+		END
+
+		stream^.BufferPosition = 1
+
+		byte = stream^.Buffer[0]
 	END
 
-	LexStreamPush ( CAST filestream TO ^LexStream )
+	IF byte == 0x00 OR byte == 0xFF THEN
+		TwrUserError ( "An invalid byte was found in the source file.", byte, 0, 0 )
+	ELSEIF byte == 0x0D THEN
+		TwrUserError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
+	ELSEIF byte == 0x0A THEN
+		stream^.LineNumber += 1
+	END
 
-	// Create the root macro scope.
-
-	status = TwrSymbolTableCreate (
-		0, // outerscope
-		&LexMacroDelete, // deletefunc
-		&LexCurrentMacroScope, // OUT symboltable
-	)
-
-	RETURN status
-END
-
-FN (TwrHashTableEnumF) LexMacroDelete (
-	IN entry : ^TwrHashTableEntry,
-)
-
-	TwrFree ( entry )
-END
-
-FN LexGetCharacter () : UBYTE
-
-	// Get a character from the stream at the top of the stream stack. If the
-	// stream ran dry, pop it off the stack. If it was the last one on the
-	// stack, EOF has been reached. Here we also must identify preprocessor
-	// directives.
-
-
-
-	RETURN 0
+	RETURN byte
 END

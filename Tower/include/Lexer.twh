@@ -1,14 +1,89 @@
+CONST LEX_PUTBACK_STACK_DEPTH := 4
+CONST LEX_BUFFER_SIZE := 8192
+
 ENUM LexTokenType : UBYTE
 	TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
 	TOKEN_IF,
 END
 
+ENUM LexCharBehavior : UBYTE
+	CHAR_NORMAL,
+	CHAR_SPLIT,
+	CHAR_COALESCE,
+END
+
 STRUCT LexToken
-	Type : LexTokenType,
 	Payload : ^VOID,
+	LineNumber : ULONG,
+	FileBlock : ^TwrFileBlock,
+	Type : LexTokenType,
+END
+
+STRUCT LexStream
+	Previous : ^LexStream,
+
+	Buffer : ^UBYTE,
+	BufferSize : ULONG,
+	ValidLength : ULONG,
 
 	LineNumber : ULONG,
+	BufferPosition : ULONG,
+
+	IsMacro : UBYTE,
+END
+
+STRUCT LexFileStream
+	Generic : LexStream, // must be at the beginning
+
 	FileBlock : ^TwrFileBlock,
 END
 
+STRUCT LexMacroStream
+	Generic : LexStream, // must be at the beginning
+END
+
+EXTERN LexCharTreatment : LexCharBehavior[256]
+
+EXTERN LexCurrentStream : ^LexStream
+EXTERN LexCurrentMacroScope : ^TwrSymbolTable
+EXTERN LexFalseCount : ULONG
+
+EXTERN LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
+EXTERN LexPutbackStackPtr : ULONG 
+
 EXTERN FN LexInitialize () : TwrStatus
+
+EXTERN FN LexStreamInitialize (
+	IN stream : ^LexStream,
+	IN ismacro : UBYTE,
+) : TwrStatus
+
+EXTERN FN LexStreamUninitialize (
+	IN stream : ^LexStream,
+)
+
+EXTERN FN LexStreamFree (
+	IN stream : ^LexStream,
+)
+
+EXTERN FN LexStreamPush (
+	IN stream : ^LexStream,
+)
+
+EXTERN FN LexStreamPop () : ^LexStream
+
+EXTERN FN LexFileStreamInitialize (
+	IN filestream : ^LexFileStream,
+	IN handle : ^VOID,
+	IN filename : ^UBYTE,
+) : TwrStatus
+
+EXTERN FN LexFileStreamCreate (
+	IN handle : ^VOID,
+	IN filename : ^UBYTE,
+	OUT filestream : ^^LexFileStream,
+) : TwrStatus
+
+EXTERN FN LexStreamNextCharacter (
+	IN stream : ^LexStream,
+) : UBYTE

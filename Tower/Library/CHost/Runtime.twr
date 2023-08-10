@@ -238,7 +238,7 @@ FN TwrReadFile (
 	// XXX make sure to check for errors on hosts where that is more
 	// applicable.
 
-	RETURN fread ( buffer, bytes, 1, handle )
+	RETURN fread ( buffer, 1, bytes, handle )
 END
 
 FN TwrWriteFile (
@@ -250,5 +250,5 @@ FN TwrWriteFile (
 	// XXX make sure to check for errors on hosts where that is more
 	// applicable.
 
-	RETURN fwrite ( buffer, bytes, 1, handle )
+	RETURN fwrite ( buffer, 1, bytes, handle )
 END

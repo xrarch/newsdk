@@ -1,0 +1,111 @@
+//
+// Lexer. Also performs inline preprocessing.
+//
+
+#INCLUDE "<inc>/Frontend.twh"
+#INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Lexer.twh"
+
+// The "engine" of the lexer, the bit that provides the character stream,
+// operates by stacking and unstacking source text streams. Each stream has a
+// filename and a current line number associated with it, which are ultimately
+// used to generate useful diagnostic messages. Streams are associated with
+// include files, and also with preprocessor macro expansion.
+
+LexCharTreatment : LexCharBehavior[256] = {
+	['^'] = CHAR_SPLIT,
+	['('] = CHAR_SPLIT,
+	[')'] = CHAR_SPLIT,
+	['~'] = CHAR_SPLIT,
+	[','] = CHAR_SPLIT,
+	['['] = CHAR_SPLIT,
+	[']'] = CHAR_SPLIT,
+	[':'] = CHAR_SPLIT,
+	['{'] = CHAR_SPLIT,
+	['}'] = CHAR_SPLIT,
+
+	['='] = CHAR_COALESCE,
+	['&'] = CHAR_COALESCE,
+	['|'] = CHAR_COALESCE,
+	['!'] = CHAR_COALESCE,
+	['<'] = CHAR_COALESCE,
+	['>'] = CHAR_COALESCE,
+	['+'] = CHAR_COALESCE,
+	['-'] = CHAR_COALESCE,
+	['/'] = CHAR_COALESCE,
+	['%'] = CHAR_COALESCE,
+	['.'] = CHAR_COALESCE,
+	['@'] = CHAR_COALESCE,
+	['$'] = CHAR_COALESCE,
+}
+
+LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
+
+LexCurrentStream : ^LexStream = 0
+LexCurrentMacroScope : ^TwrSymbolTable = 0
+LexFalseCount : ULONG = 0
+LexPutbackStackPtr : ULONG = 0
+
+FN LexInitialize () : TwrStatus
+
+	// Create the root file stream.
+
+	filestream : ^LexFileStream
+
+	status := LexFileStreamCreate (
+		TwrInputFileHandle, // handle
+		TwrInputFile, // filename
+		&filestream, // OUT filestream
+	)
+
+	IF status THEN
+		RETURN status
+	END
+
+	LexStreamPush ( CAST filestream TO ^LexStream )
+
+	// Create the root macro scope.
+
+	status = TwrSymbolTableCreate (
+		0, // outerscope
+		&LexMacroDelete, // deletefunc
+		&LexCurrentMacroScope, // OUT symboltable
+	)
+
+	byte := LexStreamNextCharacter ( filestream )
+
+	WHILE byte DO
+		IF byte == 0xFF THEN
+			TwrInternalError ( "read error", 0, 0, 0 )
+		END
+
+		TwrPrintNumber ( byte )
+
+		TwrPrintString("\n")
+
+		byte = LexStreamNextCharacter ( filestream )
+	END
+
+	RETURN status
+END
+
+FN (TwrHashTableEnumF) LexMacroDelete (
+	IN entry : ^TwrHashTableEntry,
+)
+
+	TwrFree ( entry )
+END
+
+FN LexGetCharacter () : UBYTE
+
+	// Get a character from the stream at the top of the stream stack. If the
+	// stream ran dry, pop it off the stack. If it was the last one on the
+	// stack, EOF has been reached. Here we also must identify preprocessor
+	// directives.
+
+	WHILE TRUE DO
+
+	END
+
+	RETURN 0
+END
