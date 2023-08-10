@@ -84,6 +84,4 @@ EXTERN FN LexFileStreamCreate (
 	OUT filestream : ^^LexFileStream,
 ) : TwrStatus
 
-EXTERN FN LexStreamNextCharacter (
-	IN stream : ^LexStream,
-) : UBYTE
+EXTERN FN LexStreamNextCharacter () : UBYTE

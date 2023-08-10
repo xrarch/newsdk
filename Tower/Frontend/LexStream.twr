@@ -156,17 +156,17 @@ FN LexFileStreamCreate (
 	RETURN status
 END
 
-FN LexStreamNextCharacter (
-	IN stream : ^LexStream,
-) : UBYTE
+FN LexStreamNextCharacter () : UBYTE
 
-	// Return the next byte from the given stream. If the stream has been
-	// emptied, a null byte is returned instead. If an error is reached, a
-	// 0xFF byte is returned. If a file actually contains one of these bytes,
-	// this function will print a diagnostic and the compiler will terminate.
-	// This will also be done for a 0x0D byte, which usually appears in DOS
-	// line endings. We explicitly do not support DOS line endings, because
-	// the MINTIA OS does not use them.
+	// Return the next byte from the stream on top of the stream stack. If the
+	// stream has been emptied, it is popped from the stack and deleted, and
+	// the byte from the next stream is returned instead. If it was the last
+	// stream on the stack, then EOF has been reached and a null byte is
+	// returned. If a file actually contains a null byte, this function will
+	// print a diagnostic and the compiler will terminate. This will also be
+	// done for a 0x0D byte, which usually appears in DOS line endings. We
+	// explicitly do not support DOS line endings, because the MINTIA OS does
+	// not use them.
 	//
 	// For macro streams, there is a buffer that we will return the character
 	// directly from. For file streams, there is a buffer that contains some
@@ -176,45 +176,57 @@ FN LexStreamNextCharacter (
 	// In any case, we have to maintain the LineNumber field of the stream, by
 	// incrementing it each time we encounter a newline character.
 
-	byte : UBYTE
+	WHILE LexCurrentStream DO
+		stream := LexCurrentStream
 
-	IF stream^.BufferPosition < stream^.ValidLength THEN
-		// There is at least one character in the buffer, so return it.
+		byte : UBYTE
 
-		byte = stream^.Buffer[stream^.BufferPosition]
+		IF stream^.BufferPosition < stream^.ValidLength THEN
+			// There is at least one character in the buffer, so return it.
 
-		stream^.BufferPosition += 1
-	ELSEIF stream^.IsMacro THEN
-		// The macro stream has emptied.
+			byte = stream^.Buffer[stream^.BufferPosition]
 
-		RETURN 0
-	ELSE
-		// The remaining code deals with the file stream buffer refill case.
+			stream^.BufferPosition += 1
+		ELSEIF stream^.IsMacro THEN
+			// The macro stream has emptied.
 
-		filestream := CAST stream TO ^LexFileStream
+			LexStreamFree ( LexStreamPop () )
 
-		stream^.ValidLength = TwrReadFile (
-			filestream^.FileBlock^.Handle, // handle
-			stream^.BufferSize, // bytes
-			stream^.Buffer, // OUT buffer
-		)
+			CONTINUE
+		ELSE
+			// The remaining code deals with the file stream buffer refill case.
 
-		IF NOT stream^.ValidLength THEN
-			RETURN 0
+			filestream := CAST stream TO ^LexFileStream
+
+			stream^.ValidLength = TwrReadFile (
+				filestream^.FileBlock^.Handle, // handle
+				stream^.BufferSize, // bytes
+				stream^.Buffer, // OUT buffer
+			)
+
+			IF NOT stream^.ValidLength THEN
+				// The end of the file has been reached.
+
+				LexStreamFree ( LexStreamPop () )
+
+				CONTINUE
+			END
+
+			stream^.BufferPosition = 1
+
+			byte = stream^.Buffer[0]
 		END
 
-		stream^.BufferPosition = 1
+		IF byte == 0x00 THEN
+			TwrUserError ( "An invalid byte was found in the source file.", byte, 0, 0 )
+		ELSEIF byte == 0x0D THEN
+			TwrUserError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
+		ELSEIF byte == 0x0A THEN
+			stream^.LineNumber += 1
+		END
 
-		byte = stream^.Buffer[0]
+		RETURN byte
 	END
 
-	IF byte == 0x00 OR byte == 0xFF THEN
-		TwrUserError ( "An invalid byte was found in the source file.", byte, 0, 0 )
-	ELSEIF byte == 0x0D THEN
-		TwrUserError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
-	ELSEIF byte == 0x0A THEN
-		stream^.LineNumber += 1
-	END
-
-	RETURN byte
+	RETURN 0
 END
