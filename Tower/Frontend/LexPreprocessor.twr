@@ -1,0 +1,17 @@
+//
+// Inline preprocessor for the lexer.
+//
+
+#INCLUDE "<inc>/Frontend.twh"
+#INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Lexer.twh"
+
+FN LexParseDirective ()
+
+	// The lexer found a preprocessor directive and called us to handle it.
+	// Until we return, we are in full control of the source stream, and can
+	// consume it, tokenize it, etc to our hearts content. Thanks to the
+	// layered nature of the lexer, we don't have to worry about maintaining
+	// line numbers and so on.
+
+END

@@ -10,6 +10,10 @@ void TwrPrintNumber (uint32_t num) {
 	fprintf(stderr, "%d", num);
 }
 
+void TwrPrintCharacter (uint8_t byte) {
+	fprintf(stderr, "%c", byte);
+}
+
 void TwrInternalError (uint8_t* str, uint32_t err1, uint32_t err2, uint32_t err3) {
 	fprintf(stderr, "Internal compiler error: %s (%d %d %d)\n", str, err1, err2, err3);
 

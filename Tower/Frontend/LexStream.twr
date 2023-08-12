@@ -115,7 +115,7 @@ FN LexFileStreamInitialize (
 	fileblock^.Handle = handle
 
 	TwrStringCopy (
-		&fileblock^.Name, // dest
+		&fileblock^.Name[0], // dest
 		filename, // src
 		TWR_PATH_BUFFER_SIZE, // bufsize
 	)
@@ -161,6 +161,10 @@ END
 FN LexStreamGetLastFileStream () : ^LexFileStream
 
 	stream := LexCurrentStream
+
+	// This routine assumes that there will always be at least one file stream
+	// on the stream stack. If this assumption is violated, it will walk off
+	// into nowhere here.
 
 	WHILE stream^.IsMacro DO
 		stream = stream^.Previous
@@ -242,9 +246,9 @@ FN LexStreamNextCharacter () : UBYTE
 
 		IF byte == 0x00 THEN
 			TwrStreamError ( "An invalid byte was found in the source file.", byte, 0, 0 )
-		ELSEIF byte == 0x0D THEN
+		ELSEIF byte == '\r' THEN
 			TwrStreamError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
-		ELSEIF byte == 0x0A THEN
+		ELSEIF byte == '\n' THEN
 			stream^.LineNumber += 1
 			stream^.LinePosition = 1
 			stream^.LastWasNewline = TRUE

@@ -32,13 +32,13 @@ FN TwrArgsParse (
 	WHILE i < argc DO
 		IF TwrStringCompareCount ( argv[i], "libdir=", 7 ) == 0 THEN
 			TwrStringCopy (
-				&TwrLibraryDirectory, // dest
+				&TwrLibraryDirectory[0], // dest
 				&argv[i][7], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
 		ELSEIF TwrStringCompareCount ( argv[i], "incdir=", 7 ) == 0 THEN
 			TwrStringCopy (
-				&TwrIncludeDirectory, // dest
+				&TwrIncludeDirectory[0], // dest
 				&argv[i][7], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
@@ -50,7 +50,7 @@ FN TwrArgsParse (
 			foundoutput = TRUE
 
 			TwrStringCopy (
-				&TwrOutputFile, // dest
+				&TwrOutputFile[0], // dest
 				argv[i], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
@@ -58,7 +58,7 @@ FN TwrArgsParse (
 			foundinput = TRUE
 
 			TwrStringCopy (
-				&TwrInputFile, // dest
+				&TwrInputFile[0], // dest
 				argv[i], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)

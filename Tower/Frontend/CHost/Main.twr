@@ -21,7 +21,7 @@ FN main (
 	// Open the input and output files.
 
 	status := TwrOpenSource (
-		&TwrInputFile, // filename
+		&TwrInputFile[0], // filename
 		&TwrInputFileHandle, // OUT handle
 	)
 
@@ -30,7 +30,7 @@ FN main (
 	END
 
 	status = TwrOpenDestination (
-		&TwrOutputFile, // filename
+		&TwrOutputFile[0], // filename
 		&TwrOutputFileHandle, // OUT handle
 	)
 

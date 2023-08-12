@@ -17,8 +17,8 @@ END
 
 STRUCT LexToken
 	Payload : ^VOID,
-	LineNumber : ULONG,
 	FileBlock : ^TwrFileBlock,
+	LineNumber : ULONG,
 	Type : LexTokenType,
 END
 
@@ -92,3 +92,5 @@ EXTERN FN LexFileStreamCreate (
 EXTERN FN LexStreamGetLastFileStream () : ^LexFileStream
 
 EXTERN FN LexStreamNextCharacter () : UBYTE
+
+EXTERN FN LexParseDirective ()

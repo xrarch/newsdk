@@ -1,5 +1,5 @@
 //
-// Lexer. Also performs inline preprocessing.
+// Lexer.
 //
 
 #INCLUDE "<inc>/Frontend.twh"
@@ -72,14 +72,12 @@ FN LexInitialize () : TwrStatus
 		&LexCurrentMacroScope, // OUT symboltable
 	)
 
-	byte := LexStreamNextCharacter ( )
+	byte := LexGetCharacter ( )
 
 	WHILE byte DO
-		TwrPrintNumber ( byte )
+		TwrPrintCharacter ( byte )
 
-		TwrPrintString("\n")
-
-		byte = LexStreamNextCharacter ( )
+		byte = LexGetCharacter ( )
 	END
 
 	RETURN status
@@ -92,16 +90,109 @@ FN (TwrHashTableEnumF) LexMacroDelete (
 	TwrFree ( entry )
 END
 
+LexCharacterBackslash := FALSE
+LexCharacterInString := FALSE
+LexCharacterInLiteral := FALSE
+LexCharacterPutback : UBYTE = 0
+
+// LexCharacterNewlineSeen is initialized to TRUE so that the first character
+// of the stream is correctly identified as the beginning of a line.
+
+LexCharacterNewlineSeen := TRUE
+
 FN LexGetCharacter () : UBYTE
 
-	// Get a character from the stream at the top of the stream stack. If the
-	// stream ran dry, pop it off the stack. If it was the last one on the
-	// stack, EOF has been reached. Here we also must identify preprocessor
-	// directives.
+	// Return the next character in the source stream. Omits comments and text
+	// that is killed by the "preprocessor", and notices preprocessor
+	// directives, which it ships off to a special little interpreter.
+
+	byte : UBYTE
+
+	comment := FALSE
 
 	WHILE TRUE DO
+		IF LexCharacterPutback THEN
+			byte = LexCharacterPutback
+			LexCharacterPutback = 0
+		ELSE
+			byte = LexStreamNextCharacter ()
 
+			IF NOT byte THEN
+				// EOF has been reached.
+
+				BREAK
+			END
+		END
+
+		// We care about backslashes and about knowing whether we're in a
+		// string or not in this routine, because otherwise we will
+		// mis-identify things as comments or directives that aren't.
+
+		IF comment THEN
+			IF byte != '\n' THEN
+				CONTINUE
+			END
+
+			comment = FALSE
+
+			// Make sure this newline is seen by the higher level code,
+			// otherwise a token that is immediately followed by a comment
+			// with no interfering whitespace may not terminate properly.
+		ELSEIF LexCharacterInString THEN
+			LexCharacterInString = NOT (byte == '\"')
+		ELSEIF LexCharacterInLiteral THEN
+			LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
+		ELSEIF byte == '/' THEN
+			// We have to figure out if this is a comment or not. This
+			// requires looking at the next character and seeing if it is also
+			// a forward slash character. If it is, we set comment to true. If
+			// it isn't, we pass this forward slash along and set putback to
+			// the value of the character we peeked, causing it to be returned
+			// on the next call.
+
+			nextbyte := LexStreamNextCharacter ()
+
+			IF nextbyte == '/' THEN
+				comment = TRUE
+
+				CONTINUE
+			END
+
+			LexCharacterPutback = nextbyte
+		ELSEIF LexCharacterBackslash THEN
+			LexCharacterBackslash = FALSE
+		ELSEIF byte == '\\' THEN
+			LexCharacterBackslash = TRUE
+		ELSEIF byte == '\"' THEN
+			LexCharacterInString = TRUE
+		ELSEIF byte == 0x27 THEN // single-quote
+			LexCharacterInLiteral = TRUE
+		ELSEIF LexCharacterNewlineSeen AND byte == '#' THEN
+			// We found a preprocessor directive! We dispatch to
+			// the preprocessor regardless of the value of the false count.
+			// This gives it an opportunity to manipulate the false count, but
+			// it must be sure to ignore directives that aren't relevant.
+
+			LexParseDirective ()
+
+			// The preprocessor consumed the newline character terminating the
+			// directive, so we return one here for good measure.
+
+			byte = '\n'
+		END
+
+		LexCharacterNewlineSeen = byte == '\n'
+
+		IF LexFalseCount THEN
+			// A non-zero false count causes all characters to be ignored
+			// until this situation is resolved by a preprocessor directive.
+			// This is used for conditional compilation.
+
+			CONTINUE
+		END
+
+		BREAK
 	END
 
-	RETURN 0
+	RETURN byte
 END

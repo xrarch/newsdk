@@ -18,6 +18,10 @@ EXTERN FN TwrPrintNumber (
 	IN num : ULONG,
 )
 
+EXTERN FN TwrPrintCharacter (
+	IN byte : UBYTE,
+)
+
 EXTERN FN TwrInternalError (
 	IN str : ^UBYTE,
 	IN err1 : ULONG,
