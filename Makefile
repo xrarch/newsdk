@@ -17,9 +17,9 @@ ifndef PROJECT
 	PROJECT := $(PROJECTS)
 endif
 
-all: $(PROJECT) | $(BUILDROOT)
+all: $(PROJECT)
 
-$(PROJECTS): FORCE
+$(PROJECTS): FORCE | $(BUILDROOT)
 	make -C $@
 
 FORCE: ;
