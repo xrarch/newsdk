@@ -10,9 +10,10 @@ ENUM LexTokenType : UBYTE
 END
 
 ENUM LexCharBehavior : UBYTE
-	CHAR_NORMAL,
+	CHAR_NORMAL, // guaranteed to be zero
 	CHAR_SPLIT,
 	CHAR_COALESCE,
+	CHAR_WHITESPACE,
 END
 
 STRUCT LexToken

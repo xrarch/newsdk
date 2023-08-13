@@ -13,6 +13,10 @@
 // include files, and also with preprocessor macro expansion.
 
 LexCharTreatment : LexCharBehavior[256] = {
+	[' ']  = CHAR_WHITESPACE,
+	['\n'] = CHAR_WHITESPACE,
+	['\t'] = CHAR_WHITESPACE,
+
 	['^'] = CHAR_SPLIT,
 	['('] = CHAR_SPLIT,
 	[')'] = CHAR_SPLIT,
@@ -37,6 +41,11 @@ LexCharTreatment : LexCharBehavior[256] = {
 	['.'] = CHAR_COALESCE,
 	['@'] = CHAR_COALESCE,
 	['$'] = CHAR_COALESCE,
+
+	// Since CHAR_NORMAL is the first field in the enum, it is guaranteed to
+	// be zero in value, so we don't have to explicitly set all the other
+	// character behaviors to it, since any non-defined fields here will also
+	// be zero.
 }
 
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
