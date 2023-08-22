@@ -147,10 +147,13 @@ FN LexGetCharacter () : UBYTE
 			// Make sure this newline is seen by the higher level code,
 			// otherwise a token that is immediately followed by a comment
 			// with no interfering whitespace may not terminate properly.
+
 		ELSEIF LexCharacterInString THEN
 			LexCharacterInString = NOT (byte == '\"')
+
 		ELSEIF LexCharacterInLiteral THEN
 			LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
+
 		ELSEIF byte == '/' THEN
 			// We have to figure out if this is a comment or not. This
 			// requires looking at the next character and seeing if it is also
@@ -168,14 +171,19 @@ FN LexGetCharacter () : UBYTE
 			END
 
 			LexCharacterPutback = nextbyte
+
 		ELSEIF LexCharacterBackslash THEN
 			LexCharacterBackslash = FALSE
+
 		ELSEIF byte == '\\' THEN
 			LexCharacterBackslash = TRUE
+
 		ELSEIF byte == '\"' THEN
 			LexCharacterInString = TRUE
+
 		ELSEIF byte == 0x27 THEN // single-quote
 			LexCharacterInLiteral = TRUE
+
 		ELSEIF LexCharacterNewlineSeen AND byte == '#' THEN
 			// We found a preprocessor directive! We dispatch to
 			// the preprocessor regardless of the value of the false count.

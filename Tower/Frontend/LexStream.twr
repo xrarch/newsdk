@@ -204,12 +204,14 @@ FN LexStreamNextCharacter () : UBYTE
 			byte = stream^.Buffer[stream^.BufferPosition]
 
 			stream^.BufferPosition += 1
+
 		ELSEIF stream^.IsMacro THEN
 			// The macro stream has emptied.
 
 			LexStreamFree ( LexStreamPop () )
 
 			CONTINUE
+
 		ELSE
 			// The remaining code deals with the file stream buffer refill case.
 
@@ -246,12 +248,15 @@ FN LexStreamNextCharacter () : UBYTE
 
 		IF byte == 0x00 THEN
 			TwrStreamError ( "An invalid byte was found in the source file.", byte, 0, 0 )
+
 		ELSEIF byte == '\r' THEN
 			TwrStreamError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
+
 		ELSEIF byte == '\n' THEN
 			stream^.LineNumber += 1
 			stream^.LinePosition = 1
 			stream^.LastWasNewline = TRUE
+
 		ELSE
 			stream^.LinePosition += 1
 			stream^.LastWasNewline = FALSE

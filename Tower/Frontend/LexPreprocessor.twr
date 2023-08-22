@@ -6,6 +6,10 @@
 #INCLUDE "<inc>/Runtime.twh"
 #INCLUDE "<inc>/Lexer.twh"
 
+CONST LEX_DIRECTIVE_MAX := 64
+
+LexDirectiveBuffer : UBYTE[LEX_DIRECTIVE_MAX]
+
 FN LexParseDirective ()
 
 	// The lexer found a preprocessor directive and called us to handle it.
@@ -13,5 +17,19 @@ FN LexParseDirective ()
 	// consume it, tokenize it, etc to our hearts content. Thanks to the
 	// layered nature of the lexer, we don't have to worry about maintaining
 	// line numbers and so on.
+
+
+END
+
+FN LexCollectDirectiveToken (
+	IN buffer : ^UBYTE,
+) : UBYTE
+
+	// Skips whitespace until the next token, which it collects. Used for very
+	// simple directive parsing. Returns TRUE if there are tokens remaining in
+	// the directive, or FALSE otherwise (i.e. an un-escaped newline was
+	// encountered). If the token is terminated by a newline, the newline is
+	// put back in the stream so that we see it next time we're called and
+	// return the correct value.
 
 END

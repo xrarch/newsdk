@@ -36,12 +36,14 @@ FN TwrArgsParse (
 				&argv[i][7], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
+
 		ELSEIF TwrStringCompareCount ( argv[i], "incdir=", 7 ) == 0 THEN
 			TwrStringCopy (
 				&TwrIncludeDirectory[0], // dest
 				&argv[i][7], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
+
 		ELSEIF foundinput THEN
 			IF foundoutput THEN
 				TwrUserError ( "Too many arguments specified!", 0, 0, 0 )
@@ -54,6 +56,7 @@ FN TwrArgsParse (
 				argv[i], // src
 				TWR_PATH_BUFFER_SIZE, // bufsize
 			)
+
 		ELSE
 			foundinput = TRUE
 
