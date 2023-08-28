@@ -18,8 +18,23 @@ FN LexParseDirective ()
 	// layered nature of the lexer, we don't have to worry about maintaining
 	// line numbers and so on.
 
+	WHILE TRUE DO
+		rv := LexCollectDirectiveToken ( &LexDirectiveBuffer )
 
+		IF rv THEN
+			BREAK
+		END
+
+		TlPrintNumber ( rv )
+		TlPrintString ( "\n" )
+		TlPrintString ( &LexDirectiveBuffer )
+		TlPrintString ( "\n" )
+	END
+
+	TlStreamError ( "test test test", 0, 0, 0 )
 END
+
+LexPendingDirectiveNewline := FALSE
 
 FN LexCollectDirectiveToken (
 	IN buffer : ^UBYTE,
@@ -32,4 +47,45 @@ FN LexCollectDirectiveToken (
 	// put back in the stream so that we see it next time we're called and
 	// return the correct value.
 
+	IF LexPendingDirectiveNewline THEN
+		LexPendingDirectiveNewline = FALSE
+
+		RETURN TRUE
+	END
+
+	byte : UBYTE
+
+	// Skip any leading whitespace.
+
+	WHILE TRUE DO
+		byte = LexStreamNextCharacter ()
+
+		IF byte == '\n' THEN
+			RETURN TRUE
+		END
+
+		IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+			CONTINUE
+		END
+
+		BREAK
+	END
+
+	// We can now collect the token.
+
+	WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+		buffer^ = byte
+		buffer += 1
+
+		byte = LexStreamNextCharacter ()
+	END
+
+	IF byte == '\n' THEN
+		// The token was terminated by a newline, so we want the return value
+		// for the next call to be TRUE.
+
+		LexPendingDirectiveNewline = TRUE
+	END
+
+	RETURN FALSE
 END
