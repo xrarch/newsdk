@@ -2,14 +2,14 @@
 // Implements stream objects for the lexer.
 //
 
-#INCLUDE "<inc>/Frontend.twh"
-#INCLUDE "<inc>/Runtime.twh"
-#INCLUDE "<inc>/Lexer.twh"
+#INCLUDE "<inc>/Frontend.jh"
+#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Lexer.jh"
 
 FN LexStreamInitialize (
 	IN stream : ^LexStream,
 	IN ismacro : UBYTE,
-) : TwrStatus
+) : TlStatus
 
 	// Initialize a stream structure.
 
@@ -24,7 +24,7 @@ FN LexStreamInitialize (
 	stream^.IsMacro = ismacro
 	stream^.LastWasNewline = FALSE
 
-	RETURN TWR_SUCCESS
+	RETURN JKL_SUCCESS
 END
 
 FN LexStreamUninitialize (
@@ -38,9 +38,9 @@ FN LexStreamUninitialize (
 		// We don't delete the file block since it's still referenced by
 		// tokens and such.
 
-		TwrClose ( (CAST stream TO ^LexFileStream)^.FileBlock^.Handle )
+		TlClose ( (CAST stream TO ^LexFileStream)^.FileBlock^.Handle )
 
-		TwrFree ( stream^.Buffer )
+		TlFree ( stream^.Buffer )
 	END
 END
 
@@ -49,7 +49,7 @@ FN LexStreamFree (
 )
 
 	LexStreamUninitialize ( stream )
-	TwrFree ( stream )
+	TlFree ( stream )
 END
 
 FN LexStreamPush (
@@ -72,7 +72,7 @@ FN LexFileStreamInitialize (
 	IN filestream : ^LexFileStream,
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
-) : TwrStatus
+) : TlStatus
 
 	// Initialize a file stream.
 
@@ -87,11 +87,11 @@ FN LexFileStreamInitialize (
 
 	// Allocate the file block and lex buffer.
 
-	fileblock : ^TwrFileBlock
+	fileblock : ^FeFileBlock
 	buffer : ^UBYTE
 
-	status = TwrAlloc (
-		SIZEOF TwrFileBlock, // bytes
+	status = TlAlloc (
+		SIZEOF FeFileBlock, // bytes
 		&fileblock, // OUT ptr
 	)
 
@@ -99,13 +99,13 @@ FN LexFileStreamInitialize (
 		RETURN status
 	END
 
-	status = TwrAlloc (
+	status = TlAlloc (
 		LEX_BUFFER_SIZE, // bytes
 		&buffer, // OUT ptr
 	)
 
 	IF status THEN
-		TwrFree ( fileblock )
+		TlFree ( fileblock )
 
 		RETURN status
 	END
@@ -114,10 +114,10 @@ FN LexFileStreamInitialize (
 
 	fileblock^.Handle = handle
 
-	TwrStringCopy (
+	TlStringCopy (
 		&fileblock^.Name[0], // dest
 		filename, // src
-		TWR_PATH_BUFFER_SIZE, // bufsize
+		JKL_PATH_BUFFER_SIZE, // bufsize
 	)
 
 	filestream^.FileBlock = fileblock
@@ -134,9 +134,9 @@ FN LexFileStreamCreate (
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
 	OUT filestream : ^^LexFileStream,
-) : TwrStatus
+) : TlStatus
 
-	status := TwrAlloc (
+	status := TlAlloc (
 		SIZEOF LexFileStream, // bytes
 		filestream, // OUT ptr
 	)
@@ -152,7 +152,7 @@ FN LexFileStreamCreate (
 	)
 
 	IF status THEN
-		TwrFree ( filestream^ )
+		TlFree ( filestream^ )
 	END
 
 	RETURN status
@@ -217,7 +217,7 @@ FN LexStreamNextCharacter () : UBYTE
 
 			filestream := CAST stream TO ^LexFileStream
 
-			stream^.ValidLength = TwrReadFile (
+			stream^.ValidLength = TlReadFile (
 				filestream^.FileBlock^.Handle, // handle
 				stream^.BufferSize, // bytes
 				stream^.Buffer, // OUT buffer
@@ -247,10 +247,10 @@ FN LexStreamNextCharacter () : UBYTE
 		END
 
 		IF byte == 0x00 THEN
-			TwrStreamError ( "An invalid byte was found in the source file.", byte, 0, 0 )
+			TlStreamError ( "An invalid byte was found in the source file.", byte, 0, 0 )
 
 		ELSEIF byte == '\r' THEN
-			TwrStreamError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
+			TlStreamError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
 
 		ELSEIF byte == '\n' THEN
 			stream^.LineNumber += 1

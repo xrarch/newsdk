@@ -4,8 +4,8 @@
 // transpilation host, and around Rtl for the MINTIA host.
 //
 
-#INCLUDE "<inc>/Runtime.twh"
-#INCLUDE "<inc>/Lexer.twh"
+#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Lexer.jh"
 
 EXTERN FN exit (
 	IN status : _int,
@@ -59,7 +59,7 @@ EXTERN FN memset (
 	IN len : ULONG,
 ) : ^VOID
 
-FN TwrFillMemoryWithByte (
+FN TlFillMemoryWithByte (
 	IN ptr : ^VOID,
 	IN sz : ULONG,
 	IN byte : UBYTE,
@@ -72,12 +72,12 @@ FN TwrFillMemoryWithByte (
 	)
 END
 
-FN TwrErrorExit ()
+FN TlErrorExit ()
 
 	exit ( 1 )
 END
 
-EXTERN FN TwrStreamError_C (
+EXTERN FN TlStreamError_C (
 	IN filename : ^UBYTE,
 	IN linenumber : ULONG,
 	IN linepos : ULONG,
@@ -87,7 +87,7 @@ EXTERN FN TwrStreamError_C (
 	IN err3 : ULONG,
 )
 
-FN TwrStreamError (
+FN TlStreamError (
 	IN str : ^UBYTE,
 	IN err1 : ULONG,
 	IN err2 : ULONG,
@@ -95,7 +95,7 @@ FN TwrStreamError (
 )
 	filestream := LexStreamGetLastFileStream ()
 
-	TwrStreamError_C (
+	TlStreamError_C (
 		filestream^.FileBlock^.Name, // filename
 		filestream^.Generic.LineNumber, // linenumber
 		filestream^.Generic.LinePosition, // linepos
@@ -108,28 +108,28 @@ FN TwrStreamError (
 	exit ( 1 )
 END
 
-FN TwrAlloc (
+FN TlAlloc (
 	IN bytes : ULONG,
 	OUT ptr : ^^VOID,
-) : TwrStatus
+) : TlStatus
 
 	ptr^ = malloc ( bytes )
 
 	IF ptr^ == 0 THEN
-		RETURN TWR_NO_MEMORY
+		RETURN JKL_NO_MEMORY
 	END
 
-	RETURN TWR_SUCCESS
+	RETURN JKL_SUCCESS
 END
 
-FN TwrFree (
+FN TlFree (
 	IN ptr : ^VOID,
 )
 
 	free ( ptr )
 END
 
-FN TwrStringCompare (
+FN TlStringCompare (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,
 ) : ULONG
@@ -137,7 +137,7 @@ FN TwrStringCompare (
 	RETURN strcmp ( str1, str2 )
 END
 
-FN TwrStringCompareCount (
+FN TlStringCompareCount (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,
 	IN count : ULONG,
@@ -146,7 +146,7 @@ FN TwrStringCompareCount (
 	RETURN strncmp ( str1, str2, count )
 END
 
-FN TwrStringCopy (
+FN TlStringCopy (
 	IN dest : ^UBYTE,
 	IN src : ^UBYTE,
 	IN bufsize : ULONG,
@@ -170,42 +170,42 @@ FN TwrStringCopy (
 	dest^ = 0
 END
 
-FN TwrOpenSource (
+FN TlOpenSource (
 	IN filename : ^UBYTE,
 	OUT handle : ^^VOID,
-) : TwrStatus
+) : TlStatus
 
 	handle^ = fopen ( filename, "r" )
 
 	IF handle^ == 0 THEN
-		RETURN TWR_COULDNT_OPEN
+		RETURN JKL_COULDNT_OPEN
 	END
 
-	RETURN TWR_SUCCESS
+	RETURN JKL_SUCCESS
 END
 
-FN TwrOpenDestination (
+FN TlOpenDestination (
 	IN filename : ^UBYTE,
 	OUT handle : ^^VOID,
-) : TwrStatus
+) : TlStatus
 
 	handle^ = fopen ( filename, "w" )
 
 	IF handle^ == 0 THEN
-		RETURN TWR_COULDNT_OPEN
+		RETURN JKL_COULDNT_OPEN
 	END
 
-	RETURN TWR_SUCCESS
+	RETURN JKL_SUCCESS
 END
 
-FN TwrClose (
+FN TlClose (
 	IN handle : ^VOID,
 )
 
 	fclose ( handle )
 END
 
-FN TwrReadFile (
+FN TlReadFile (
 	IN handle : ^VOID,
 	IN bytes : ULONG,
 	OUT buffer : ^VOID,
@@ -217,7 +217,7 @@ FN TwrReadFile (
 	RETURN fread ( buffer, 1, bytes, handle )
 END
 
-FN TwrWriteFile (
+FN TlWriteFile (
 	IN handle : ^VOID,
 	IN bytes : ULONG,
 	IN buffer : ^VOID,

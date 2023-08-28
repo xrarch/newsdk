@@ -2,9 +2,9 @@
 // Inline preprocessor for the lexer.
 //
 
-#INCLUDE "<inc>/Frontend.twh"
-#INCLUDE "<inc>/Runtime.twh"
-#INCLUDE "<inc>/Lexer.twh"
+#INCLUDE "<inc>/Frontend.jh"
+#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Lexer.jh"
 
 CONST LEX_DIRECTIVE_MAX := 64
 

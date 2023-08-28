@@ -1,0 +1,20 @@
+CONST JKL_PATH_BUFFER_SIZE := 256
+
+STRUCT FeFileBlock
+	Name : UBYTE[JKL_PATH_BUFFER_SIZE],
+	Handle : ^VOID,
+END
+
+EXTERN FN FeArgsParse (
+	IN argc : ULONG,
+	IN argv : ^UBYTE[],
+)
+
+EXTERN FeLibraryDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
+EXTERN FeIncludeDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
+
+EXTERN FeInputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
+EXTERN FeOutputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
+
+EXTERN FeInputFileHandle : ^VOID
+EXTERN FeOutputFileHandle : ^VOID

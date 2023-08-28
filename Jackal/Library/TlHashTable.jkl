@@ -2,31 +2,31 @@
 // Simple hash table implementation for faster symbol lookup.
 //
 
-#INCLUDE "<inc>/Runtime.twh"
+#INCLUDE "<inc>/Runtime.jh"
 
-FN TwrHashTableInitialize (
-	IN hashtable : ^TwrHashTable,
-) : TwrStatus
+FN TlHashTableInitialize (
+	IN hashtable : ^TlHashTable,
+) : TlStatus
 
-	TwrFillMemoryWithByte (
+	TlFillMemoryWithByte (
 		&hashtable^.BucketHeads, // ptr
 		SIZEOFVALUE hashtable^.BucketHeads, // sz
 		0, // byte
 	)
 
-	RETURN TWR_SUCCESS
+	RETURN JKL_SUCCESS
 END
 
-FN TwrHashTableInsert (
-	IN hashtable : ^TwrHashTable,
-	IN entry : ^TwrHashTableEntry,
+FN TlHashTableInsert (
+	IN hashtable : ^TlHashTable,
+	IN entry : ^TlHashTableEntry,
 	IN key : ^UBYTE,
 )
 
 	// Caller needs to guarantee that the memory in which the key resides sticks
 	// around until such time as the entry is removed from the hash table.
 
-	hash := TwrHashString ( key )
+	hash := TlHashString ( key )
 
 	head := hashtable^.BucketHeads[hash]
 
@@ -46,17 +46,17 @@ FN TwrHashTableInsert (
 	hashtable^.BucketHeads[hash] = entry
 END
 
-FN TwrHashTableLookup (
-	IN hashtable : ^TwrHashTable,
+FN TlHashTableLookup (
+	IN hashtable : ^TlHashTable,
 	IN key : ^UBYTE,
-) : ^TwrHashTableEntry
+) : ^TlHashTableEntry
 
-	hash := TwrHashString ( key )
+	hash := TlHashString ( key )
 
 	entry := hashtable^.BucketHeads[hash]
 
 	WHILE entry DO
-		IF TwrStringCompare ( key, entry^.Key ) == 0 THEN
+		IF TlStringCompare ( key, entry^.Key ) == 0 THEN
 			RETURN entry
 		END
 
@@ -66,8 +66,8 @@ FN TwrHashTableLookup (
 	RETURN 0
 END
 
-FN TwrHashTableRemove (
-	IN entry : ^TwrHashTableEntry,
+FN TlHashTableRemove (
+	IN entry : ^TlHashTableEntry,
 )
 
 	hashtable := entry^.HashTable
@@ -90,14 +90,14 @@ FN TwrHashTableRemove (
 	END
 END
 
-FN TwrHashTableEnumerate (
-	IN hashtable : ^TwrHashTable,
-	IN enumfunc : TwrHashTableEnumF,
+FN TlHashTableEnumerate (
+	IN hashtable : ^TlHashTable,
+	IN enumfunc : TlHashTableEnumF,
 )
 
 	i := 0
 
-	WHILE i < TWR_HASH_SIZE DO
+	WHILE i < JKL_HASH_SIZE DO
 		entry := hashtable^.BucketHeads[i]
 
 		WHILE entry DO
@@ -115,7 +115,7 @@ FN TwrHashTableEnumerate (
 	END
 END
 
-FN TwrHashString (
+FN TlHashString (
 	IN str : ^UBYTE,
 ) : ULONG
 
@@ -137,7 +137,7 @@ FN TwrHashString (
 	hash $= hash >> 16 & 0xFF
 	hash $= hash >> 8 & 0xFF
 
-	hash %= TWR_HASH_SIZE
+	hash %= JKL_HASH_SIZE
 
 	RETURN hash
 END

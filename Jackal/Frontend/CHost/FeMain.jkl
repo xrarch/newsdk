@@ -1,0 +1,52 @@
+//
+// Host-specific entrypoint for the Jackal compiler program.
+//
+
+#INCLUDE "<inc>/Frontend.jh"
+#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Lexer.jh"
+
+FeInputFileHandle : ^VOID
+FeOutputFileHandle : ^VOID
+
+FN main (
+	IN argc : _int,
+	IN argv : ^_char[],
+) : _int
+
+	// Parse the arguments and identify the input and output files.
+
+	FeArgsParse ( argc, argv )
+
+	// Open the input and output files.
+
+	status := TlOpenSource (
+		&FeInputFile[0], // filename
+		&FeInputFileHandle, // OUT handle
+	)
+
+	IF status THEN
+		TlUserError ( "Failed to open source file.", 0, 0, 0 )
+	END
+
+	status = TlOpenDestination (
+		&FeOutputFile[0], // filename
+		&FeOutputFileHandle, // OUT handle
+	)
+
+	IF status THEN
+		TlUserError ( "Failed to open destination file.", 0, 0, 0 )
+	END
+
+	status = LexInitialize ()
+
+	IF status THEN
+		TlInternalError ( "Failed to initialize lexer.", status, 0, 0 )
+	END
+
+	// Perform phase 1 of the compiler (lexing & parsing).
+
+	// FeParseProgram ()
+
+	RETURN 0
+END

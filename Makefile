@@ -11,7 +11,7 @@ export SDK
 export TBC := $(SDK)/tbc.sh
 export CC := $(CC) -Wno-parentheses-equality
 
-PROJECTS := Tower
+PROJECTS := Jackal
 
 ifndef PROJECT
 	PROJECT := $(PROJECTS)

@@ -1,5 +1,5 @@
-#INCLUDE "<inc>/Runtime.twh"
-#INCLUDE "<inc>/Frontend.twh"
+#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Frontend.jh"
 
 CONST LEX_PUTBACK_STACK_DEPTH := 4
 CONST LEX_BUFFER_SIZE := 8192
@@ -18,7 +18,7 @@ END
 
 STRUCT LexToken
 	Payload : ^VOID,
-	FileBlock : ^TwrFileBlock,
+	FileBlock : ^FeFileBlock,
 	LineNumber : ULONG,
 	Type : LexTokenType,
 END
@@ -41,7 +41,7 @@ END
 STRUCT LexFileStream
 	Generic : LexStream, // must be at the beginning
 
-	FileBlock : ^TwrFileBlock,
+	FileBlock : ^FeFileBlock,
 END
 
 STRUCT LexMacroStream
@@ -51,18 +51,18 @@ END
 EXTERN LexCharTreatment : LexCharBehavior[256]
 
 EXTERN LexCurrentStream : ^LexStream
-EXTERN LexCurrentMacroScope : ^TwrSymbolTable
+EXTERN LexCurrentMacroScope : ^TlSymbolTable
 EXTERN LexFalseCount : ULONG
 
 EXTERN LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 EXTERN LexPutbackStackPtr : ULONG 
 
-EXTERN FN LexInitialize () : TwrStatus
+EXTERN FN LexInitialize () : TlStatus
 
 EXTERN FN LexStreamInitialize (
 	IN stream : ^LexStream,
 	IN ismacro : UBYTE,
-) : TwrStatus
+) : TlStatus
 
 EXTERN FN LexStreamUninitialize (
 	IN stream : ^LexStream,
@@ -82,13 +82,13 @@ EXTERN FN LexFileStreamInitialize (
 	IN filestream : ^LexFileStream,
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
-) : TwrStatus
+) : TlStatus
 
 EXTERN FN LexFileStreamCreate (
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
 	OUT filestream : ^^LexFileStream,
-) : TwrStatus
+) : TlStatus
 
 EXTERN FN LexStreamGetLastFileStream () : ^LexFileStream
 

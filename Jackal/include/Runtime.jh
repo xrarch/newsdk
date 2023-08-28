@@ -1,0 +1,186 @@
+ENUM TlStatus : ULONG
+	JKL_SUCCESS,
+	JKL_NO_MEMORY,
+	JKL_COULDNT_OPEN,
+END
+
+EXTERN FN TlFillMemoryWithByte (
+	IN ptr : ^VOID,
+	IN sz : ULONG,
+	IN byte : UBYTE,
+)
+
+EXTERN FN TlPrintString (
+	IN str : ^UBYTE,
+)
+
+EXTERN FN TlPrintNumber (
+	IN num : ULONG,
+)
+
+EXTERN FN TlPrintCharacter (
+	IN byte : UBYTE,
+)
+
+EXTERN FN TlInternalError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+EXTERN FN TlUserError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+EXTERN FN TlStreamError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+EXTERN FN TlErrorExit ()
+
+EXTERN FN TlAlloc (
+	IN bytes : ULONG,
+	OUT ptr : ^^VOID,
+) : TlStatus
+
+EXTERN FN TlFree (
+	IN ptr : ^VOID,
+)
+
+EXTERN FN TlStringCompare (
+	IN str1 : ^UBYTE,
+	IN str2 : ^UBYTE,
+) : ULONG
+
+EXTERN FN TlStringCompareCount (
+	IN str1 : ^UBYTE,
+	IN str2 : ^UBYTE,
+	IN count : ULONG,
+) : ULONG
+
+EXTERN FN TlStringCopy (
+	IN dest : ^UBYTE,
+	IN src : ^UBYTE,
+	IN bufsize : ULONG,
+)
+
+EXTERN FN TlOpenSource (
+	IN filename : ^UBYTE,
+	OUT handle : ^^VOID,
+) : TlStatus
+
+EXTERN FN TlOpenDestination (
+	IN filename : ^UBYTE,
+	OUT handle : ^^VOID,
+) : TlStatus
+
+EXTERN FN TlClose (
+	IN handle : ^VOID,
+)
+
+EXTERN FN TlReadFile (
+	IN handle : ^VOID,
+	IN bytes : ULONG,
+	OUT buffer : ^VOID,
+) : ULONG
+
+EXTERN FN TlWriteFile (
+	IN handle : ^VOID,
+	IN bytes : ULONG,
+	IN buffer : ^VOID,
+) : ULONG
+
+
+// hash table stuff
+
+
+CONST JKL_HASH_SIZE : ULONG = 97
+
+STRUCT TlHashTable
+	BucketHeads : ^TlHashTableEntry[JKL_HASH_SIZE],
+END
+
+STRUCT TlHashTableEntry
+	Next : ^TlHashTableEntry,
+	Prev : ^TlHashTableEntry,
+
+	HashTable : ^TlHashTable,
+
+	Key : ^UBYTE,
+
+	Hash : UBYTE,
+END
+
+EXTERN FN TlHashTableInitialize (
+	IN hashtable : ^TlHashTable,
+) : TlStatus
+
+EXTERN FN TlHashTableInsert (
+	IN hashtable : ^TlHashTable,
+	IN entry : ^TlHashTableEntry,
+	IN key : ^UBYTE,
+)
+
+EXTERN FN TlHashTableLookup (
+	IN hashtable : ^TlHashTable,
+	IN key : ^UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlHashTableRemove (
+	IN entry : ^TlHashTableEntry,
+)
+
+EXTERN FN TlHashTableEnumerate (
+	IN hashtable : ^TlHashTable,
+	IN enumfunc : TlHashTableEnumF,
+)
+
+FNPTR TlHashTableEnumF (
+	IN entry : ^TlHashTableEntry,
+)
+
+// symbol table stuff
+
+
+STRUCT TlSymbolTable
+	PrevScope : ^TlSymbolTable, // previous in the scope stack
+	HashTable : TlHashTable,
+	DeleteRoutine : TlHashTableEnumF,
+END
+
+EXTERN FN TlSymbolTableInitialize (
+	IN symboltable : ^TlSymbolTable,
+	IN deletefunc : TlHashTableEnumF,
+) : TlStatus
+
+EXTERN FN TlSymbolTableCreate (
+	IN outerscope : ^TlSymbolTable,
+	IN deletefunc : TlHashTableEnumF,
+	OUT symboltable : ^^TlSymbolTable,
+) : TlStatus
+
+EXTERN FN TlSymbolTableDelete (
+	IN symboltable : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN TlSymbolTableLookup (
+	IN symboltable : ^TlSymbolTable,
+	IN name : ^UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlSymbolTableInsert (
+	IN symboltable : ^TlSymbolTable,
+	IN entry : ^TlHashTableEntry,
+	IN name : ^UBYTE,
+)
+
+EXTERN FN TlSymbolTableRemove (
+	IN entry : ^TlHashTableEntry,
+)

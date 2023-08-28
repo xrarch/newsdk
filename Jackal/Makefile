@@ -1,7 +1,7 @@
 COMPONENTS := Library \
 			Frontend
 
-OUTPUTFILE := twr
+OUTPUTFILE := jkl
 
 INCDIR := ./include/
 

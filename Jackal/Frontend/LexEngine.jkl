@@ -2,9 +2,9 @@
 // Lexer.
 //
 
-#INCLUDE "<inc>/Frontend.twh"
-#INCLUDE "<inc>/Runtime.twh"
-#INCLUDE "<inc>/Lexer.twh"
+#INCLUDE "<inc>/Frontend.jh"
+#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Lexer.jh"
 
 // The "engine" of the lexer, the bit that provides the character stream,
 // operates by stacking and unstacking source text streams. Each stream has a
@@ -51,19 +51,19 @@ LexCharTreatment : LexCharBehavior[256] = {
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 
 LexCurrentStream : ^LexStream = 0
-LexCurrentMacroScope : ^TwrSymbolTable = 0
+LexCurrentMacroScope : ^TlSymbolTable = 0
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
 
-FN LexInitialize () : TwrStatus
+FN LexInitialize () : TlStatus
 
 	// Create the root file stream.
 
 	filestream : ^LexFileStream
 
 	status := LexFileStreamCreate (
-		TwrInputFileHandle, // handle
-		TwrInputFile, // filename
+		FeInputFileHandle, // handle
+		FeInputFile, // filename
 		&filestream, // OUT filestream
 	)
 
@@ -75,7 +75,7 @@ FN LexInitialize () : TwrStatus
 
 	// Create the root macro scope.
 
-	status = TwrSymbolTableCreate (
+	status = TlSymbolTableCreate (
 		0, // outerscope
 		&LexMacroDelete, // deletefunc
 		&LexCurrentMacroScope, // OUT symboltable
@@ -84,7 +84,7 @@ FN LexInitialize () : TwrStatus
 	byte := LexGetCharacter ( )
 
 	WHILE byte DO
-		TwrPrintCharacter ( byte )
+		TlPrintCharacter ( byte )
 
 		byte = LexGetCharacter ( )
 	END
@@ -92,11 +92,11 @@ FN LexInitialize () : TwrStatus
 	RETURN status
 END
 
-FN (TwrHashTableEnumF) LexMacroDelete (
-	IN entry : ^TwrHashTableEntry,
+FN (TlHashTableEnumF) LexMacroDelete (
+	IN entry : ^TlHashTableEntry,
 )
 
-	TwrFree ( entry )
+	TlFree ( entry )
 END
 
 LexCharacterBackslash := FALSE

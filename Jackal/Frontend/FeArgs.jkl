@@ -1,0 +1,80 @@
+//
+// Arguments parsing.
+//
+
+#INCLUDE "<inc>/Frontend.jh"
+#INCLUDE "<inc>/Runtime.jh"
+
+FeLibraryDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
+FeIncludeDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
+FeInputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
+FeOutputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
+
+FN FeArgsParse (
+	IN argc : ULONG,
+	IN argv : ^UBYTE[],
+)
+
+	// Find the value of these arguments, if they exist:
+	//  libdir=
+	//  incdir=
+	//
+	// Identify the source and destination filenames.
+
+	FeLibraryDirectory[0] = 0
+	FeIncludeDirectory[0] = 0
+
+	foundinput := FALSE
+	foundoutput := FALSE
+
+	i := 1
+
+	WHILE i < argc DO
+		IF TlStringCompareCount ( argv[i], "libdir=", 7 ) == 0 THEN
+			TlStringCopy (
+				&FeLibraryDirectory[0], // dest
+				&argv[i][7], // src
+				JKL_PATH_BUFFER_SIZE, // bufsize
+			)
+
+		ELSEIF TlStringCompareCount ( argv[i], "incdir=", 7 ) == 0 THEN
+			TlStringCopy (
+				&FeIncludeDirectory[0], // dest
+				&argv[i][7], // src
+				JKL_PATH_BUFFER_SIZE, // bufsize
+			)
+
+		ELSEIF foundinput THEN
+			IF foundoutput THEN
+				TlUserError ( "Too many arguments specified!", 0, 0, 0 )
+			END
+
+			foundoutput = TRUE
+
+			TlStringCopy (
+				&FeOutputFile[0], // dest
+				argv[i], // src
+				JKL_PATH_BUFFER_SIZE, // bufsize
+			)
+
+		ELSE
+			foundinput = TRUE
+
+			TlStringCopy (
+				&FeInputFile[0], // dest
+				argv[i], // src
+				JKL_PATH_BUFFER_SIZE, // bufsize
+			)
+		END
+
+		i += 1
+	END
+
+	IF NOT foundinput THEN
+		TlUserError ( "No input file specified.", 0, 0, 0 )
+	END
+
+	IF NOT foundoutput THEN
+		TlUserError ( "No output file specified.", 0, 0, 0 )
+	END
+END
