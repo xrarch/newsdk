@@ -116,10 +116,10 @@ FN TlAlloc (
 	ptr^ = malloc ( bytes )
 
 	IF ptr^ == 0 THEN
-		RETURN JKL_NO_MEMORY
+		RETURN TL_NO_MEMORY
 	END
 
-	RETURN JKL_SUCCESS
+	RETURN TL_SUCCESS
 END
 
 FN TlFree (
@@ -178,10 +178,10 @@ FN TlOpenSource (
 	handle^ = fopen ( filename, "r" )
 
 	IF handle^ == 0 THEN
-		RETURN JKL_COULDNT_OPEN
+		RETURN TL_COULDNT_OPEN
 	END
 
-	RETURN JKL_SUCCESS
+	RETURN TL_SUCCESS
 END
 
 FN TlOpenDestination (
@@ -192,10 +192,10 @@ FN TlOpenDestination (
 	handle^ = fopen ( filename, "w" )
 
 	IF handle^ == 0 THEN
-		RETURN JKL_COULDNT_OPEN
+		RETURN TL_COULDNT_OPEN
 	END
 
-	RETURN JKL_SUCCESS
+	RETURN TL_SUCCESS
 END
 
 FN TlClose (

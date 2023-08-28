@@ -14,7 +14,7 @@ FN TlHashTableInitialize (
 		0, // byte
 	)
 
-	RETURN JKL_SUCCESS
+	RETURN TL_SUCCESS
 END
 
 FN TlHashTableInsert (

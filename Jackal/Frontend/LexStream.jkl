@@ -24,7 +24,7 @@ FN LexStreamInitialize (
 	stream^.IsMacro = ismacro
 	stream^.LastWasNewline = FALSE
 
-	RETURN JKL_SUCCESS
+	RETURN TL_SUCCESS
 END
 
 FN LexStreamUninitialize (
