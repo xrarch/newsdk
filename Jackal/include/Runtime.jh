@@ -1,3 +1,9 @@
+//
+// Try to keep this not too tightly coupled with the rest of the Jackal
+// compiler because this runtime library will likely be extricated later in
+// order to reuse these things for the other self-hosted tools.
+//
+
 ENUM TlStatus : ULONG
 	TL_SUCCESS,
 	TL_NO_MEMORY,
@@ -101,10 +107,10 @@ EXTERN FN TlWriteFile (
 // hash table stuff
 
 
-CONST JKL_HASH_SIZE : ULONG = 97
+CONST TL_HASH_SIZE : ULONG = 97
 
 STRUCT TlHashTable
-	BucketHeads : ^TlHashTableEntry[JKL_HASH_SIZE],
+	BucketHeads : ^TlHashTableEntry[TL_HASH_SIZE],
 END
 
 STRUCT TlHashTableEntry

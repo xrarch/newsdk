@@ -97,7 +97,7 @@ FN TlHashTableEnumerate (
 
 	i := 0
 
-	WHILE i < JKL_HASH_SIZE DO
+	WHILE i < TL_HASH_SIZE DO
 		entry := hashtable^.BucketHeads[i]
 
 		WHILE entry DO
@@ -137,7 +137,7 @@ FN TlHashString (
 	hash $= hash >> 16 & 0xFF
 	hash $= hash >> 8 & 0xFF
 
-	hash %= JKL_HASH_SIZE
+	hash %= TL_HASH_SIZE
 
 	RETURN hash
 END
