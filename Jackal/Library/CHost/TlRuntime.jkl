@@ -40,7 +40,7 @@ EXTERN FN fclose (
 ) : ^_int
 
 EXTERN FN fread (
-	OUT ptr : ^VOID,
+	IN ptr : ^VOID,
 	IN size : ULONG,
 	IN nitems : ULONG,
 	IN stream : ^VOID,
@@ -208,7 +208,7 @@ END
 FN TlReadFile (
 	IN handle : ^VOID,
 	IN bytes : ULONG,
-	OUT buffer : ^VOID,
+	IN buffer : ^VOID,
 ) : ULONG
 
 	// XXX make sure to check for errors on hosts where that is more

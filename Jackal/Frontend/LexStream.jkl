@@ -220,7 +220,7 @@ FN LexStreamNextCharacter () : UBYTE
 			stream^.ValidLength = TlReadFile (
 				filestream^.FileBlock^.Handle, // handle
 				stream^.BufferSize, // bytes
-				stream^.Buffer, // OUT buffer
+				stream^.Buffer, // buffer
 			)
 
 			IF NOT stream^.ValidLength THEN

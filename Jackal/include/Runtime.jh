@@ -94,7 +94,7 @@ EXTERN FN TlClose (
 EXTERN FN TlReadFile (
 	IN handle : ^VOID,
 	IN bytes : ULONG,
-	OUT buffer : ^VOID,
+	IN buffer : ^VOID,
 ) : ULONG
 
 EXTERN FN TlWriteFile (
