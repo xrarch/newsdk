@@ -24,6 +24,17 @@ ENUM LexTokenType : UBYTE
 	TOKEN_RBRACE,
 
 	TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
+	TOKEN_STRING, // payload is a pointer to a LexStringContents structure
+
+	// If the token started with a CHAR_SPLIT or CHAR_COALESCE character but
+	// didn't hash to a keyword, this shouldn't match with anything, ever, and
+	// should just drop through to a syntax error. Same thing with a token that
+	// only contains uppercase A-Z characters -- these are reserved for language
+	// keywords. These are the only types of tokens that we actually look up in
+	// the keyword table, so if that lookup fails, we always give the token the
+	// type of TOKEN_NOTHING_GOOD.
+
+	TOKEN_NOTHING_GOOD,
 END
 
 ENUM LexTokenSubtype : UBYTE
@@ -110,6 +121,11 @@ ENUM LexCharBehavior : UBYTE
 	CHAR_SPLIT,
 	CHAR_COALESCE,
 	CHAR_WHITESPACE,
+END
+
+STRUCT LexStringContents
+	Length : ULONG,
+	Buffer : ^UBYTE, // typically allocated inline with this structure
 END
 
 STRUCT LexToken
