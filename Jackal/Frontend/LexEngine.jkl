@@ -36,6 +36,7 @@ LexCharTreatment : LexCharBehavior[256] = {
 	['>'] = CHAR_COALESCE,
 	['+'] = CHAR_COALESCE,
 	['-'] = CHAR_COALESCE,
+	['*'] = CHAR_COALESCE,
 	['/'] = CHAR_COALESCE,
 	['%'] = CHAR_COALESCE,
 	['.'] = CHAR_COALESCE,
@@ -63,7 +64,7 @@ END
 
 LexKeywordHashTable : TlHashTable
 
-LexKeywordBumpArray : LexKeyword[64]
+LexKeywordBumpArray : LexKeyword[128]
 LexKeywordBumpIndex := 0
 
 FN LexKeywordInsert (
@@ -171,6 +172,48 @@ FN LexInitialize () : TlStatus
 	LexKeywordInsert ( "UNION", TOKEN_DECL, TOKEN_UNION )
 	LexKeywordInsert ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
 	LexKeywordInsert ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
+
+	LexKeywordInsert ( "(", TOKEN_LPAREN, NULL )
+	LexKeywordInsert ( ")", TOKEN_RPAREN, NULL )
+	LexKeywordInsert ( "[", TOKEN_LBRACKET, NULL )
+	LexKeywordInsert ( "]", TOKEN_RBRACKET, NULL )
+	LexKeywordInsert ( "^", TOKEN_CARET, NULL )
+	LexKeywordInsert ( ":", TOKEN_COLON, NULL )
+	LexKeywordInsert ( "{", TOKEN_LBRACE, NULL )
+	LexKeywordInsert ( "}", TOKEN_RBRACE, NULL )
+
+	LexKeywordInsert ( "==", TOKEN_OPER, TOKEN_EQUIV )
+	LexKeywordInsert ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV )
+	LexKeywordInsert ( "&", TOKEN_OPER, TOKEN_BITAND )
+	LexKeywordInsert ( "|", TOKEN_OPER, TOKEN_BITOR )
+	LexKeywordInsert ( "<", TOKEN_OPER, TOKEN_LESSTHAN )
+	LexKeywordInsert ( ">", TOKEN_OPER, TOKEN_GREATERTHAN )
+	LexKeywordInsert ( "<=", TOKEN_OPER, TOKEN_LTEQ )
+	LexKeywordInsert ( ">=", TOKEN_OPER, TOKEN_GTEQ )
+	LexKeywordInsert ( "+", TOKEN_OPER, TOKEN_PLUS )
+	LexKeywordInsert ( "-", TOKEN_OPER, TOKEN_MINUS )
+	LexKeywordInsert ( "/", TOKEN_OPER, TOKEN_DIVIDE )
+	LexKeywordInsert ( "%", TOKEN_OPER, TOKEN_MODULO )
+	LexKeywordInsert ( ".", TOKEN_OPER, TOKEN_DOT )
+	LexKeywordInsert ( "@", TOKEN_STATEMENT, TOKEN_LABEL )
+	LexKeywordInsert ( "$", TOKEN_OPER, TOKEN_BITXOR )
+	LexKeywordInsert ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT )
+	LexKeywordInsert ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT )
+	LexKeywordInsert ( "~", TOKEN_OPER, TOKEN_BITNOT )
+
+	LexKeywordInsert ( "=", TOKEN_ASSIGN, TOKEN_EQUALS )
+	LexKeywordInsert ( "+=", TOKEN_ASSIGN, TOKEN_PLUSEQUALS )
+	LexKeywordInsert ( "-=", TOKEN_ASSIGN, TOKEN_MINUSEQUALS )
+	LexKeywordInsert ( "*=", TOKEN_ASSIGN, TOKEN_MULEQUALS )
+	LexKeywordInsert ( "/=", TOKEN_ASSIGN, TOKEN_DIVEQUALS )
+	LexKeywordInsert ( "%=", TOKEN_ASSIGN, TOKEN_MODEQUALS )
+	LexKeywordInsert ( "&=", TOKEN_ASSIGN, TOKEN_ANDEQUALS )
+	LexKeywordInsert ( "|=", TOKEN_ASSIGN, TOKEN_OREQUALS )
+	LexKeywordInsert ( "$=", TOKEN_ASSIGN, TOKEN_XOREQUALS )
+	LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
+	LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
+
+	TlHashTableSummarize ( &LexKeywordHashTable )
 
 	byte := LexGetCharacter ( )
 

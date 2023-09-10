@@ -12,6 +12,16 @@ ENUM LexTokenType : UBYTE
 	TOKEN_ARGSPEC, // argument specifier (IN, OUT)
 	TOKEN_DECL, // declarator
 	TOKEN_OTHER, // anything else (THEN, DO, )
+	TOKEN_ASSIGN, // assignment operators
+
+	TOKEN_LPAREN,
+	TOKEN_RPAREN,
+	TOKEN_LBRACKET,
+	TOKEN_RBRACKET,
+	TOKEN_CARET,
+	TOKEN_COLON,
+	TOKEN_LBRACE,
+	TOKEN_RBRACE,
 
 	TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
 END
@@ -62,6 +72,37 @@ ENUM LexTokenSubtype : UBYTE
 	TOKEN_UNION,       // declarator
 	TOKEN_VOID,        // type
 	TOKEN_WHILE,       // statement
+
+	TOKEN_EQUIV,       // operator
+	TOKEN_NOTEQUIV,    // operator
+	TOKEN_BITAND,      // operator
+	TOKEN_BITOR,       // operator
+	TOKEN_LESSTHAN,    // operator
+	TOKEN_GREATERTHAN, // operator
+	TOKEN_LTEQ,        // operator
+	TOKEN_GTEQ,        // operator
+	TOKEN_PLUS,        // operator
+	TOKEN_MINUS,       // operator
+	TOKEN_DIVIDE,      // operator
+	TOKEN_MODULO,      // operator
+	TOKEN_DOT,         // operator
+	TOKEN_LABEL,       // statement
+	TOKEN_BITXOR,      // operator
+	TOKEN_LEFTSHIFT,   // operator
+	TOKEN_RIGHTSHIFT,  // operator
+	TOKEN_BITNOT,      // operator
+
+	TOKEN_EQUALS,      // assign
+	TOKEN_PLUSEQUALS,  // assign
+	TOKEN_MINUSEQUALS, // assign
+	TOKEN_MULEQUALS,   // assign
+	TOKEN_DIVEQUALS,   // assign
+	TOKEN_MODEQUALS,   // assign
+	TOKEN_ANDEQUALS,   // assign
+	TOKEN_OREQUALS,    // assign
+	TOKEN_XOREQUALS,   // assign
+	TOKEN_LSHEQUALS,   // assign
+	TOKEN_RSHEQUALS,   // assign
 END
 
 ENUM LexCharBehavior : UBYTE

@@ -17,6 +17,37 @@ FN TlHashTableInitialize (
 	RETURN TL_SUCCESS
 END
 
+FN TlHashTableSummarize (
+	IN hashtable : ^TlHashTable,
+)
+
+	// Helpful debug function.
+	// Prints a summary of the hash table so that we can see the collisions.
+
+	i := 0
+
+	WHILE i < TL_HASH_SIZE DO
+		entries := 0
+
+		entry := hashtable^.BucketHeads[i]
+
+		WHILE entry DO
+			entries += 1
+
+			entry = entry^.Next
+		END
+
+		IF entries THEN
+			TlPrintNumber ( i )
+			TlPrintString ( ": " )
+			TlPrintNumber ( entries )
+			TlPrintString ( "\n" )
+		END
+
+		i += 1
+	END
+END
+
 FN TlHashTableInsert (
 	IN hashtable : ^TlHashTable,
 	IN entry : ^TlHashTableEntry,
@@ -36,10 +67,17 @@ FN TlHashTableInsert (
 
 	// Insert entry into doubly linked hash bucket list, at the head.
 
-	entry^.Prev = 0
+	entry^.Prev = NULLPTR
 	entry^.Next = head
 
 	IF head THEN
+//		TlPrintString ( head^.Key )
+//		TlPrintString ( ":" )
+//		TlPrintString ( key )
+//		TlPrintString ( " " )
+//		TlPrintNumber ( hash )
+//		TlPrintString ( " " )
+
 		head^.Prev = entry
 	END
 

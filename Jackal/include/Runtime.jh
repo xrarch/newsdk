@@ -128,6 +128,10 @@ EXTERN FN TlHashTableInitialize (
 	IN hashtable : ^TlHashTable,
 ) : TlStatus
 
+EXTERN FN TlHashTableSummarize (
+	IN hashtable : ^TlHashTable,
+)
+
 EXTERN FN TlHashTableInsert (
 	IN hashtable : ^TlHashTable,
 	IN entry : ^TlHashTableEntry,
