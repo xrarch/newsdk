@@ -72,6 +72,13 @@ FN LexKeywordInsert (
 	IN subtype : LexTokenSubtype,
 )
 
+	// Insert the keyword into the keyword hash table.
+	// This is done every time the compiler is invoked so it should be VERY
+	// fast. To this end we completely avoid dynamic allocation with this silly
+	// keyword structure bump allocator. The hash table package does no dynamic
+	// allocation, nor does it do any string copies (though it does iterate the
+	// string to calculate the hash), so this should all be quite speedy.
+
 	keyword := &LexKeywordBumpArray[LexKeywordBumpIndex]
 	LexKeywordBumpIndex += 1
 
@@ -110,6 +117,10 @@ FN LexInitialize () : TlStatus
 		&LexMacroDelete, // deletefunc
 		&LexCurrentMacroScope, // OUT symboltable
 	)
+
+	IF status THEN
+		RETURN status
+	END
 
 	// Initialize keyword hash table.
 
