@@ -139,6 +139,12 @@ EXTERN FN TlHashTableLookup (
 	IN key : ^UBYTE,
 ) : ^TlHashTableEntry
 
+EXTERN FN TlHashTableLookupWithHash (
+	IN hashtable : ^TlHashTable,
+	IN key : ^UBYTE,
+	IN hash : ULONG,
+) : ^TlHashTableEntry
+
 EXTERN FN TlHashTableRemove (
 	IN entry : ^TlHashTableEntry,
 )

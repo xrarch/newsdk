@@ -247,10 +247,14 @@ FN LexStreamNextCharacter () : UBYTE
 		END
 
 		IF byte == 0x00 THEN
-			TlStreamError ( "An invalid byte was found in the source file.", byte, 0, 0 )
+			TlStreamError (
+				"An invalid byte was found in the source file.",
+				byte, 0, 0 )
 
 		ELSEIF byte == '\r' THEN
-			TlStreamError ( "DOS line endings were detected in the source file.", byte, 0, 0 )
+			TlStreamError (
+				"DOS line endings were detected in the source file.",
+				0, 0, 0 )
 
 		ELSEIF byte == '\n' THEN
 			stream^.LineNumber += 1

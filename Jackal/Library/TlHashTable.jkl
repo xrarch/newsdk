@@ -63,7 +63,7 @@ FN TlHashTableLookup (
 		entry = entry^.Next
 	END
 
-	RETURN 0
+	RETURN NULLPTR
 END
 
 FN TlHashTableRemove (
@@ -132,10 +132,6 @@ FN TlHashString (
 	hash += hash << 3
 	hash $= hash >> 11
 	hash += hash << 15
-
-	hash $= hash >> 24 & 0xFF
-	hash $= hash >> 16 & 0xFF
-	hash $= hash >> 8 & 0xFF
 
 	hash %= TL_HASH_SIZE
 

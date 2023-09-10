@@ -55,6 +55,36 @@ LexCurrentMacroScope : ^TlSymbolTable = 0
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
 
+STRUCT LexKeyword
+	Entry : TlHashTableEntry,
+	Type : LexTokenType,
+	Subtype : LexTokenSubtype,
+END
+
+LexKeywordHashTable : TlHashTable
+
+LexKeywordBumpArray : LexKeyword[64]
+LexKeywordBumpIndex := 0
+
+FN LexKeywordInsert (
+	IN name : ^UBYTE,
+	IN type : LexTokenType,
+	IN subtype : LexTokenSubtype,
+)
+
+	keyword := &LexKeywordBumpArray[LexKeywordBumpIndex]
+	LexKeywordBumpIndex += 1
+
+	keyword^.Type = type
+	keyword^.Subtype = subtype
+
+	TlHashTableInsert (
+		&LexKeywordHashTable, // hashtable
+		&keyword^.Entry, // entry
+		name, // key
+	)
+END
+
 FN LexInitialize () : TlStatus
 
 	// Create the root file stream.
@@ -80,6 +110,56 @@ FN LexInitialize () : TlStatus
 		&LexMacroDelete, // deletefunc
 		&LexCurrentMacroScope, // OUT symboltable
 	)
+
+	// Initialize keyword hash table.
+
+	TlHashTableInitialize ( &LexKeywordHashTable )
+
+	LexKeywordInsert ( "AND", TOKEN_OPER, TOKEN_AND )
+	LexKeywordInsert ( "BEGIN", TOKEN_STATEMENT, TOKEN_BEGIN )
+	LexKeywordInsert ( "BREAK", TOKEN_STATEMENT, TOKEN_BREAK )
+	LexKeywordInsert ( "BYTE", TOKEN_PTYPE, TOKEN_BYTE )
+	LexKeywordInsert ( "CAST", TOKEN_OPER, TOKEN_CAST )
+	LexKeywordInsert ( "CONST", TOKEN_DECL, TOKEN_CONST )
+	LexKeywordInsert ( "CONTINUE", TOKEN_STATEMENT, TOKEN_CONTINUE )
+	LexKeywordInsert ( "DO", TOKEN_OTHER, TOKEN_DO )
+	LexKeywordInsert ( "ELSE", TOKEN_STATEMENT, TOKEN_ELSE )
+	LexKeywordInsert ( "ELSEIF", TOKEN_STATEMENT, TOKEN_ELSEIF )
+	LexKeywordInsert ( "END", TOKEN_STATEMENT, TOKEN_END )
+	LexKeywordInsert ( "ENUM", TOKEN_DECL, TOKEN_ENUM )
+	LexKeywordInsert ( "EXTERN", TOKEN_DECL, TOKEN_EXTERN )
+	LexKeywordInsert ( "FALSE", TOKEN_VALUE, TOKEN_FALSE )
+	LexKeywordInsert ( "FN", TOKEN_DECL, TOKEN_FN )
+	LexKeywordInsert ( "FNPTR", TOKEN_DECL, TOKEN_FNPTR )
+	LexKeywordInsert ( "FNSECTION", TOKEN_STATEMENT, TOKEN_FNSECTION )
+	LexKeywordInsert ( "GOTO", TOKEN_STATEMENT, TOKEN_GOTO )
+	LexKeywordInsert ( "IF", TOKEN_STATEMENT, TOKEN_IF )
+	LexKeywordInsert ( "IN", TOKEN_ARGSPEC, TOKEN_IN )
+	LexKeywordInsert ( "INT", TOKEN_PTYPE, TOKEN_INT )
+	LexKeywordInsert ( "LEAVE", TOKEN_STATEMENT, TOKEN_LEAVE )
+	LexKeywordInsert ( "LONG", TOKEN_PTYPE, TOKEN_LONG )
+	LexKeywordInsert ( "NOT", TOKEN_OPER, TOKEN_NOT )
+	LexKeywordInsert ( "NULL", TOKEN_VALUE, TOKEN_NULL )
+	LexKeywordInsert ( "NULLPTR", TOKEN_VALUE, TOKEN_NULLPTR )
+	LexKeywordInsert ( "OR", TOKEN_OPER, TOKEN_OR )
+	LexKeywordInsert ( "OUT", TOKEN_ARGSPEC, TOKEN_OUT )
+	LexKeywordInsert ( "PACKED", TOKEN_OTHER, TOKEN_PACKED )
+	LexKeywordInsert ( "PUBLIC", TOKEN_DECL, TOKEN_PUBLIC )
+	LexKeywordInsert ( "RETURN", TOKEN_STATEMENT, TOKEN_RETURN )
+	LexKeywordInsert ( "SECTION", TOKEN_DECL, TOKEN_SECTION )
+	LexKeywordInsert ( "SIZEOF", TOKEN_VALUE, TOKEN_SIZEOF )
+	LexKeywordInsert ( "SIZEOFVALUE", TOKEN_OPER, TOKEN_SIZEOFVALUE )
+	LexKeywordInsert ( "STRUCT", TOKEN_DECL, TOKEN_STRUCT )
+	LexKeywordInsert ( "THEN", TOKEN_OTHER, TOKEN_THEN )
+	LexKeywordInsert ( "TO", TOKEN_OTHER, TOKEN_TO )
+	LexKeywordInsert ( "TRUE", TOKEN_VALUE, TOKEN_TRUE )
+	LexKeywordInsert ( "TYPE", TOKEN_DECL, TOKEN_TYPE )
+	LexKeywordInsert ( "UBYTE", TOKEN_PTYPE, TOKEN_UBYTE )
+	LexKeywordInsert ( "UINT", TOKEN_PTYPE, TOKEN_UINT )
+	LexKeywordInsert ( "ULONG", TOKEN_PTYPE, TOKEN_ULONG )
+	LexKeywordInsert ( "UNION", TOKEN_DECL, TOKEN_UNION )
+	LexKeywordInsert ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
+	LexKeywordInsert ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
 
 	byte := LexGetCharacter ( )
 
@@ -212,4 +292,11 @@ FN LexGetCharacter () : UBYTE
 	END
 
 	RETURN byte
+END
+
+FN LexGetToken (
+	IN token : ^LexToken,
+)
+
+	
 END
