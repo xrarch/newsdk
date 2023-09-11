@@ -183,6 +183,7 @@ FN LexInitialize () : TlStatus
 	LexKeywordInsert ( ":", TOKEN_COLON, NULL )
 	LexKeywordInsert ( "{", TOKEN_LBRACE, NULL )
 	LexKeywordInsert ( "}", TOKEN_RBRACE, NULL )
+	LexKeywordInsert ( ",", TOKEN_COMMA, NULL )
 
 	LexKeywordInsert ( "==", TOKEN_OPER, TOKEN_EQUIV )
 	LexKeywordInsert ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV )
@@ -504,7 +505,7 @@ FN LexGetStringTokenInternal (
 	IN buffer : ^UBYTE,
 	IN terminator : UBYTE,
 	OUT length : ^ULONG,
-) : UBYTE
+)
 
 	len := 0
 	isbackslash := FALSE
