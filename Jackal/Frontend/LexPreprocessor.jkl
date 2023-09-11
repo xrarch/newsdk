@@ -25,13 +25,13 @@ FN LexParseDirective ()
 			BREAK
 		END
 
-		TlPrintNumber ( rv )
-		TlPrintString ( "\n" )
-		TlPrintString ( &LexDirectiveBuffer )
-		TlPrintString ( "\n" )
+//		TlPrintNumber ( rv )
+//		TlPrintString ( "\n" )
+//		TlPrintString ( &LexDirectiveBuffer )
+//		TlPrintString ( "\n" )
 	END
 
-	TlStreamError ( "test test test", 0, 0, 0 )
+//	TlStreamError ( "test test test", 0, 0, 0 )
 END
 
 LexPendingDirectiveNewline := FALSE

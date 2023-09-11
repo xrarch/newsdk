@@ -13,6 +13,8 @@
 // include files, and also with preprocessor macro expansion.
 
 LexCharTreatment : LexCharBehavior[256] = {
+	[0] = CHAR_EOF,
+
 	[' ']  = CHAR_WHITESPACE,
 	['\n'] = CHAR_WHITESPACE,
 	['\t'] = CHAR_WHITESPACE,
@@ -215,12 +217,24 @@ FN LexInitialize () : TlStatus
 
 	TlHashTableSummarize ( &LexKeywordHashTable )
 
-	byte := LexGetCharacter ( )
+	buf : UBYTE[LEX_TOKEN_STRING_SIZE]
+	len : ULONG
 
-	WHILE byte DO
-		TlPrintCharacter ( byte )
+	LexGetTokenInternal (
+		buf, // buffer
+		&len, // OUT length
+	)
 
-		byte = LexGetCharacter ( )
+	WHILE len DO
+		buf[len] = 0
+
+		TlPrintString ( buf )
+		TlPrintString ( "\n" )
+
+		LexGetTokenInternal (
+			buf, // buffer
+			&len, // OUT length
+		)
 	END
 
 	RETURN status
@@ -237,6 +251,7 @@ LexCharacterBackslash := FALSE
 LexCharacterInString := FALSE
 LexCharacterInLiteral := FALSE
 LexCharacterPutback : UBYTE = 0
+LexCharacterCoalescePutback : UBYTE = 0
 
 // LexCharacterNewlineSeen is initialized to TRUE so that the first character
 // of the stream is correctly identified as the beginning of a line.
@@ -254,7 +269,10 @@ FN LexGetCharacter () : UBYTE
 	comment := FALSE
 
 	WHILE TRUE DO
-		IF LexCharacterPutback THEN
+		IF LexCharacterCoalescePutback THEN
+			byte = LexCharacterCoalescePutback
+			LexCharacterCoalescePutback = 0
+		ELSEIF LexCharacterPutback THEN
 			byte = LexCharacterPutback
 			LexCharacterPutback = 0
 		ELSE
@@ -288,6 +306,9 @@ FN LexGetCharacter () : UBYTE
 		ELSEIF LexCharacterInLiteral THEN
 			LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
 
+		ELSEIF LexCharacterBackslash THEN
+			LexCharacterBackslash = FALSE
+
 		ELSEIF byte == '/' THEN
 			// We have to figure out if this is a comment or not. This
 			// requires looking at the next character and seeing if it is also
@@ -305,9 +326,6 @@ FN LexGetCharacter () : UBYTE
 			END
 
 			LexCharacterPutback = nextbyte
-
-		ELSEIF LexCharacterBackslash THEN
-			LexCharacterBackslash = FALSE
 
 		ELSEIF byte == '\\' THEN
 			LexCharacterBackslash = TRUE
@@ -346,6 +364,182 @@ FN LexGetCharacter () : UBYTE
 	END
 
 	RETURN byte
+END
+
+CONST TOKEN_FLAG_SPLIT    := 1
+CONST TOKEN_FLAG_COALESCE := 2
+CONST TOKEN_FLAG_STRING   := 4
+CONST TOKEN_FLAG_CHARLIT  := 8
+CONST TOKEN_FLAG_UPPER    := 16
+
+FN LexGetTokenInternal (
+	IN buffer : ^UBYTE,
+	OUT length : ^ULONG,
+) : UBYTE
+
+	// Reads the string of the next token into the provided buffer. Identifies
+	// macros and expands them. Returns a set of flags indicating things about
+	// the token; for instance, if EOF has been reached (i.e. there is no
+	// token), if the token is all uppercase, and if the token is a SPLIT or
+	// COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
+	// in length or greater.
+
+	length^ = 0
+
+	// Skip leading whitespace.
+
+	byte := LexGetCharacter ()
+
+	WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
+		byte = LexGetCharacter ()
+	END
+
+	IF NOT byte THEN
+		// EOF encountered.
+
+		RETURN 0
+	END
+
+	IF byte == '\"' THEN
+		// This is a string token.
+
+		LexGetStringTokenInternal (
+			buffer, // buffer
+			'\"', // terminator
+			length, // OUT length
+		)
+
+		RETURN TOKEN_FLAG_STRING
+	END
+
+	IF byte == 0x27 THEN // single-quote
+		// This is a character literal.
+
+		LexGetStringTokenInternal (
+			buffer, // buffer
+			0x27, // terminator
+			length, // OUT length
+		)
+
+		RETURN TOKEN_FLAG_CHARLIT
+	END
+
+	IF LexCharTreatment[byte] == CHAR_SPLIT THEN
+		// This is a split token. It consists of exactly this character and no
+		// more.
+
+		length^ = 1
+		buffer[0] = byte
+
+		RETURN TOKEN_FLAG_SPLIT
+	END
+
+	IF LexCharTreatment[byte] == CHAR_COALESCE THEN
+		// This is a coalesce token. It consists of this character and the
+		// following coalesce characters, and no more.
+
+		len := 0
+
+		WHILE LexCharTreatment[byte] == CHAR_COALESCE DO
+			IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+				TlStreamError ( "Token length exceeds maximum.", 0, 0, 0 )
+			END
+
+			buffer[len] = byte
+			len += 1
+
+			byte = LexGetCharacter ()
+		END
+
+		length^ = len
+
+		// Set the putback character to the last one we saw, since that is part
+		// of the next token.
+
+		LexCharacterCoalescePutback = byte
+
+		RETURN TOKEN_FLAG_COALESCE
+	END
+
+	// This is a normal token. All we have to track is whether it consists only
+	// of uppercase letters A-Z, in which case it must be a keyword. It could
+	// also turn out to be a macro, in which case we must add it to the stream
+	// stack and loop here.
+
+	uppercaseonly := byte >= 'A' AND byte <= 'Z'
+
+	len := 0
+
+	WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
+		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+			TlStreamError ( "Token length exceeds maximum.", 0, 0, 0 )
+		END
+
+		IF uppercaseonly THEN
+			uppercaseonly = byte >= 'A' AND byte <= 'Z'
+		END
+
+		buffer[len] = byte
+		len += 1
+
+		byte = LexGetCharacter ()
+	END
+
+	length^ = len
+
+	IF LexCharTreatment[byte] == CHAR_SPLIT OR
+		LexCharTreatment[byte] == CHAR_COALESCE THEN
+
+		LexCharacterCoalescePutback = byte
+	END
+
+	IF uppercaseonly THEN
+		RETURN TOKEN_FLAG_UPPER
+	END
+
+	RETURN 0
+END
+
+FN LexGetStringTokenInternal (
+	IN buffer : ^UBYTE,
+	IN terminator : UBYTE,
+	OUT length : ^ULONG,
+) : UBYTE
+
+	len := 0
+	isbackslash := FALSE
+
+	WHILE TRUE DO
+		byte := LexGetCharacter ()
+
+		IF NOT byte THEN
+			TlStreamError ( "String token terminated by EOF!", 0, 0, 0 )
+		END
+
+		IF NOT isbackslash THEN
+			IF byte == terminator THEN
+				// String is done.
+
+				BREAK
+			ELSEIF byte == '\\' THEN
+				isbackslash = TRUE
+
+				CONTINUE
+			END
+		END
+
+		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+			TlStreamError ( "Token length exceeds maximum.", 0, 0, 0 )
+		END
+
+		isbackslash = FALSE
+
+		buffer[len] = byte
+
+		len += 1
+	END
+
+	length^ = len
 END
 
 FN LexGetToken (
