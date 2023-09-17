@@ -91,7 +91,7 @@ FN LexFileStreamInitialize (
 	fileblock : ^FeFileBlock
 	buffer : ^UBYTE
 
-	status = TlAlloc (
+	status = TlBumpAlloc (
 		SIZEOF FeFileBlock, // bytes
 		&fileblock, // OUT ptr
 	)

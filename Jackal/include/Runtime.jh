@@ -50,6 +50,11 @@ EXTERN FN TlUserError (
 
 EXTERN FN TlErrorExit ()
 
+EXTERN FN TlBumpAlloc (
+	IN bytes : ULONG,
+	OUT ptr : ^^VOID,
+) : TlStatus
+
 EXTERN FN TlAlloc (
 	IN bytes : ULONG,
 	OUT ptr : ^^VOID,

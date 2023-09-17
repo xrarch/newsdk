@@ -116,6 +116,25 @@ FN TlFree (
 	free ( ptr )
 END
 
+FN TlBumpAlloc (
+	IN bytes : ULONG,
+	OUT ptr : ^^VOID,
+) : TlStatus
+
+	// For now this just calls the normal malloc, and it probably always will
+	// in the C transpiler host, but this gives an opportunity to use a bump
+	// allocator (the fastest possible!) for some eternal allocations, which
+	// may be helpful when we're trying to run this compiler on a 25MHz RISC.
+
+	ptr^ = malloc ( bytes )
+
+	IF ptr^ == 0 THEN
+		RETURN TL_NO_MEMORY
+	END
+
+	RETURN TL_SUCCESS
+END
+
 FN TlStringCompare (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,

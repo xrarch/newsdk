@@ -234,7 +234,13 @@ FN LexInitialize () : TlStatus
 		IF tok.Type == TOKEN_STRING THEN
 			str := CAST tok.Payload TO ^LexStringContents
 
-			TlPrintString(str^.Buffer)
+			TlPrintString ( str^.Buffer )
+			TlPrintString ( "\n" )
+		END
+
+		IF tok.Type == TOKEN_NUMBER THEN
+			TlPrintString ( "num: " )
+			TlPrintNumber ( tok.Payload )
 			TlPrintString ( "\n" )
 		END
 
@@ -561,13 +567,25 @@ FN LexGetStringTokenInternal (
 
 				CONTINUE
 			END
+		ELSE
+			isbackslash = FALSE
+
+			IF byte == 'n' THEN
+				byte = '\n'
+			ELSEIF byte == 't' THEN
+				byte = '\t'
+			ELSEIF byte == 'r' THEN
+				byte = '\r'
+			ELSEIF byte == 'b' THEN
+				byte = '\b'
+			ELSEIF byte == '[' THEN
+				byte = '\['
+			END
 		END
 
 		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
 			LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
 		END
-
-		isbackslash = FALSE
 
 		buffer[len] = byte
 
@@ -633,17 +651,18 @@ FN LexGetToken (
 
 		str : ^LexStringContents
 
-		status := TlAlloc (
-			SIZEOF LexStringContents + length, // bytes
+		status := TlBumpAlloc (
+			SIZEOF LexStringContents + length + 1, // bytes
 			&str, // OUT ptr
 		)
 
+		str^.Length = length
 		str^.Buffer = &(CAST str TO ^LexStringContentsContainer)^.Buffer
 
 		TlCopyMemory (
 			str^.Buffer, // dest
 			&buffer, // src
-			length, // sz
+			length + 1, // sz (plus one for null terminator)
 		)
 
 		token^.Type = TOKEN_STRING
@@ -652,5 +671,132 @@ FN LexGetToken (
 		LEAVE
 	END
 
+	IF tokenflag & TOKEN_FLAG_CHARLIT THEN
+		// This is a character literal token. We turn those into numerical
+		// tokens.
+
+		num := LexCrunchCharacterLiteral ( &buffer )
+
+		token^.Type = TOKEN_NUMBER
+		token^.Payload = num
+
+		LEAVE
+	END
+
+	IF buffer[0] >= '0' AND buffer[0] <= '9' THEN
+		// This is a numerical token.
+
+		num := LexCrunchNumber (
+			token, // token
+			&buffer, // buffer
+		)
+
+		token^.Type = TOKEN_NUMBER
+		token^.Payload = num
+
+		LEAVE
+	END
+
+	// This is an identifier. We have to create an entry in the symbol table
+	// for the current scope, if one does not exist.
+
+	// TODO
+
 	token^.Type = 0
+END
+
+FN LexCrunchCharacterLiteral (
+	IN buffer : ^UBYTE,
+) : ULONG
+
+	num : ULONG = 0
+	i := 0
+
+	WHILE buffer[i] DO
+		num *= 256
+		num += buffer[i]
+
+		i += 1
+	END
+
+	RETURN num
+END
+
+FN LexCrunchNumber (
+	IN token : ^LexToken,
+	IN buffer : ^UBYTE,
+) : ULONG
+
+	num : ULONG = 0
+	i := 0
+
+	IF buffer[0] == '0' THEN
+		// This number is either a literal zero, octal, or hexadecimal.
+
+		IF NOT buffer[1] THEN
+			// Literal zero.
+
+			RETURN 0
+		END
+
+		IF buffer[1] == 'x' THEN
+			// Hexadecimal.
+
+			IF NOT buffer[2] THEN
+				LexTokenError ( token, "Unfinished hex number.", 0, 0, 0 )
+			END
+
+			i = 2
+
+			WHILE buffer[i] DO
+				num *= 16
+
+				IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
+					num += buffer[i] - '0'
+				ELSEIF buffer[i] >= 'A' AND buffer[i] <= 'F' THEN
+					num += buffer[i] - 'A'
+				ELSEIF buffer[i] >= 'a' AND buffer[i] <= 'f' THEN
+					num += buffer[i] - 'a'
+				ELSE
+					LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
+				END
+
+				i += 1
+			END
+
+			RETURN num
+		END
+
+		// Octal.
+
+		i = 1
+
+		WHILE buffer[i] DO
+			IF NOT (buffer[i] >= '0' AND buffer[i] <= '7') THEN
+				LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
+			END
+
+			num *= 8
+			num += buffer[i] - '0'
+
+			i += 1
+		END
+
+		RETURN num
+	END
+
+	// Decimal.
+
+	WHILE buffer[i] DO
+		IF NOT (buffer[i] >= '0' AND buffer[i] <= '9') THEN
+			LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
+		END
+
+		num *= 10
+		num += buffer[i] - '0'
+
+		i += 1
+	END
+
+	RETURN num
 END
