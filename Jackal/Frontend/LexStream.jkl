@@ -14,6 +14,7 @@ FN LexStreamInitialize (
 	// Initialize a stream structure.
 
 	stream^.Previous = 0
+	stream^.FileBlock = NULLPTR
 
 	stream^.Buffer = 0
 	stream^.BufferSize = 0
@@ -38,7 +39,7 @@ FN LexStreamUninitialize (
 		// We don't delete the file block since it's still referenced by
 		// tokens and such.
 
-		TlClose ( (CAST stream TO ^LexFileStream)^.FileBlock^.Handle )
+		TlClose ( stream^.FileBlock^.Handle )
 
 		TlFree ( stream^.Buffer )
 	END
@@ -69,7 +70,7 @@ FN LexStreamPop () : ^LexStream
 END
 
 FN LexFileStreamInitialize (
-	IN filestream : ^LexFileStream,
+	IN stream : ^LexStream,
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
 ) : TlStatus
@@ -77,7 +78,7 @@ FN LexFileStreamInitialize (
 	// Initialize a file stream.
 
 	status := LexStreamInitialize (
-		&filestream^.Generic, // stream
+		stream, // stream
 		FALSE, // ismacro
 	)
 
@@ -120,12 +121,12 @@ FN LexFileStreamInitialize (
 		JKL_PATH_BUFFER_SIZE, // bufsize
 	)
 
-	filestream^.FileBlock = fileblock
+	stream^.FileBlock = fileblock
 
 	// Set up the lex buffer.
 
-	filestream^.Generic.BufferSize = LEX_BUFFER_SIZE
-	filestream^.Generic.Buffer = buffer
+	stream^.BufferSize = LEX_BUFFER_SIZE
+	stream^.Buffer = buffer
 
 	RETURN status
 END
@@ -133,12 +134,12 @@ END
 FN LexFileStreamCreate (
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
-	OUT filestream : ^^LexFileStream,
+	OUT stream : ^^LexStream,
 ) : TlStatus
 
 	status := TlAlloc (
-		SIZEOF LexFileStream, // bytes
-		filestream, // OUT ptr
+		SIZEOF LexStream, // bytes
+		stream, // OUT ptr
 	)
 
 	IF status THEN
@@ -146,31 +147,16 @@ FN LexFileStreamCreate (
 	END
 
 	status = LexFileStreamInitialize (
-		filestream^, // filestream
+		stream^, // stream
 		handle, // handle
 		filename, // filename
 	)
 
 	IF status THEN
-		TlFree ( filestream^ )
+		TlFree ( stream^ )
 	END
 
 	RETURN status
-END
-
-FN LexStreamGetLastFileStream () : ^LexFileStream
-
-	stream := LexCurrentStream
-
-	// This routine assumes that there will always be at least one file stream
-	// on the stream stack. If this assumption is violated, it will walk off
-	// into nowhere here.
-
-	WHILE stream^.IsMacro DO
-		stream = stream^.Previous
-	END
-
-	RETURN CAST stream TO ^LexFileStream
 END
 
 FN LexStreamNextCharacter () : UBYTE
@@ -215,10 +201,8 @@ FN LexStreamNextCharacter () : UBYTE
 		ELSE
 			// The remaining code deals with the file stream buffer refill case.
 
-			filestream := CAST stream TO ^LexFileStream
-
 			stream^.ValidLength = TlReadFile (
-				filestream^.FileBlock^.Handle, // handle
+				stream^.FileBlock^.Handle, // handle
 				stream^.BufferSize, // bytes
 				stream^.Buffer, // buffer
 			)
@@ -247,12 +231,12 @@ FN LexStreamNextCharacter () : UBYTE
 		END
 
 		IF byte == 0x00 THEN
-			TlStreamError (
+			LexStreamError (
 				"An invalid byte was found in the source file.",
 				byte, 0, 0 )
 
 		ELSEIF byte == '\r' THEN
-			TlStreamError (
+			LexStreamError (
 				"DOS line endings were detected in the source file.",
 				0, 0, 0 )
 

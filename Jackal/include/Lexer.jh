@@ -28,15 +28,7 @@ ENUM LexTokenType : UBYTE
 	TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
 	TOKEN_STRING, // payload is a pointer to a LexStringContents structure
 
-	// If the token started with a CHAR_SPLIT or CHAR_COALESCE character but
-	// didn't hash to a keyword, this shouldn't match with anything, ever, and
-	// should just drop through to a syntax error. Same thing with a token that
-	// only contains uppercase A-Z characters -- these are reserved for language
-	// keywords. These are the only types of tokens that we actually look up in
-	// the keyword table, so if that lookup fails, we always give the token the
-	// type of TOKEN_NOTHING_GOOD.
-
-	TOKEN_NOTHING_GOOD,
+	TOKEN_EOF,
 END
 
 ENUM LexTokenSubtype : UBYTE
@@ -131,16 +123,29 @@ STRUCT LexStringContents
 	Buffer : ^UBYTE, // typically allocated inline with this structure
 END
 
+// This is only here in order to copy to the buffer without doing pointer
+// arithmetic, which sort of non-trivially works differently between the C
+// transpiler and the actual language.
+
+STRUCT LexStringContentsContainer
+	Generic : LexStringContents,
+	Buffer : UBYTE,
+END
+
 STRUCT LexToken
 	Payload : ^VOID,
 	FileBlock : ^FeFileBlock,
+
 	LineNumber : ULONG,
+	LinePosition : ULONG,
+
 	Type : LexTokenType,
 	Subtype : LexTokenSubtype,
 END
 
 STRUCT LexStream
 	Previous : ^LexStream,
+	FileBlock : ^FeFileBlock,
 
 	Buffer : ^UBYTE,
 	BufferSize : ULONG,
@@ -152,16 +157,6 @@ STRUCT LexStream
 
 	IsMacro : UBYTE,
 	LastWasNewline : UBYTE,
-END
-
-STRUCT LexFileStream
-	Generic : LexStream, // must be at the beginning
-
-	FileBlock : ^FeFileBlock,
-END
-
-STRUCT LexMacroStream
-	Generic : LexStream, // must be at the beginning
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
@@ -195,7 +190,7 @@ EXTERN FN LexStreamPush (
 EXTERN FN LexStreamPop () : ^LexStream
 
 EXTERN FN LexFileStreamInitialize (
-	IN filestream : ^LexFileStream,
+	IN stream : ^LexStream,
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
 ) : TlStatus
@@ -203,11 +198,24 @@ EXTERN FN LexFileStreamInitialize (
 EXTERN FN LexFileStreamCreate (
 	IN handle : ^VOID,
 	IN filename : ^UBYTE,
-	OUT filestream : ^^LexFileStream,
+	OUT stream : ^^LexStream,
 ) : TlStatus
-
-EXTERN FN LexStreamGetLastFileStream () : ^LexFileStream
 
 EXTERN FN LexStreamNextCharacter () : UBYTE
 
 EXTERN FN LexParseDirective ()
+
+EXTERN FN LexStreamError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+EXTERN FN LexTokenError (
+	IN token : ^LexToken,
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)

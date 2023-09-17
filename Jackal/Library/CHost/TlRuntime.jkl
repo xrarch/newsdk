@@ -5,7 +5,6 @@
 //
 
 #INCLUDE "<inc>/Runtime.jh"
-#INCLUDE "<inc>/Lexer.jh"
 
 EXTERN FN exit (
 	IN status : _int,
@@ -59,6 +58,12 @@ EXTERN FN memset (
 	IN len : ULONG,
 ) : ^VOID
 
+EXTERN FN memcpy (
+	IN dest : ^VOID,
+	IN src : ^VOID,
+	IN sz : ULONG,
+) : ^VOID
+
 FN TlFillMemoryWithByte (
 	IN ptr : ^VOID,
 	IN sz : ULONG,
@@ -72,38 +77,20 @@ FN TlFillMemoryWithByte (
 	)
 END
 
-FN TlErrorExit ()
+FN TlCopyMemory (
+	IN dest : ^VOID,
+	IN src : ^VOID,
+	IN sz : ULONG,
+)
 
-	exit ( 1 )
+	memcpy (
+		dest, // dst
+		src, // src
+		sz, // sz
+	)
 END
 
-EXTERN FN TlStreamError_C (
-	IN filename : ^UBYTE,
-	IN linenumber : ULONG,
-	IN linepos : ULONG,
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
-)
-
-FN TlStreamError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
-)
-	filestream := LexStreamGetLastFileStream ()
-
-	TlStreamError_C (
-		filestream^.FileBlock^.Name, // filename
-		filestream^.Generic.LineNumber, // linenumber
-		filestream^.Generic.LinePosition, // linepos
-		str, // str
-		err1, // err1
-		err2, // err2
-		err3, // err3
-	)
+FN TlErrorExit ()
 
 	exit ( 1 )
 END

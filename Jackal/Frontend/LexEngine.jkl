@@ -59,7 +59,7 @@ LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
 
 STRUCT LexKeyword
-	Entry : TlHashTableEntry,
+	Entry : TlHashTableEntry, // MUST be at the beginning
 	Type : LexTokenType,
 	Subtype : LexTokenSubtype,
 END
@@ -99,7 +99,7 @@ FN LexInitialize () : TlStatus
 
 	// Create the root file stream.
 
-	filestream : ^LexFileStream
+	filestream : ^LexStream
 
 	status := LexFileStreamCreate (
 		FeInputFileHandle, // handle
@@ -111,7 +111,7 @@ FN LexInitialize () : TlStatus
 		RETURN status
 	END
 
-	LexStreamPush ( CAST filestream TO ^LexStream )
+	LexStreamPush ( filestream )
 
 	// Create the root macro scope.
 
@@ -216,25 +216,30 @@ FN LexInitialize () : TlStatus
 	LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
 	LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
 
-	TlHashTableSummarize ( &LexKeywordHashTable )
+	//TlHashTableSummarize ( &LexKeywordHashTable )
 
 	buf : UBYTE[LEX_TOKEN_STRING_SIZE]
 	len : ULONG
 
-	LexGetTokenInternal (
-		buf, // buffer
-		&len, // OUT length
+	tok : LexToken
+
+	LexGetToken (
+		&tok, // token
 	)
 
-	WHILE len DO
-		buf[len] = 0
+	WHILE tok.Type != TOKEN_EOF DO
+		//TlPrintNumber ( tok.Type )
+		//TlPrintString ( "\n" )
 
-		TlPrintString ( buf )
-		TlPrintString ( "\n" )
+		IF tok.Type == TOKEN_STRING THEN
+			str := CAST tok.Payload TO ^LexStringContents
 
-		LexGetTokenInternal (
-			buf, // buffer
-			&len, // OUT length
+			TlPrintString(str^.Buffer)
+			TlPrintString ( "\n" )
+		END
+
+		LexGetToken (
+			&tok, // token
 		)
 	END
 
@@ -374,6 +379,7 @@ CONST TOKEN_FLAG_CHARLIT  := 8
 CONST TOKEN_FLAG_UPPER    := 16
 
 FN LexGetTokenInternal (
+	IN token : ^LexToken,
 	IN buffer : ^UBYTE,
 	OUT length : ^ULONG,
 ) : UBYTE
@@ -389,9 +395,28 @@ FN LexGetTokenInternal (
 
 	// Skip leading whitespace.
 
+	stream := LexCurrentStream
+
+	IF stream THEN
+		token^.FileBlock = stream^.FileBlock
+		token^.LineNumber = stream^.LineNumber
+		token^.LinePosition = stream^.LinePosition
+	END
+
 	byte := LexGetCharacter ()
 
 	WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
+		// Re-capture the stream location information for each character of
+		// whitespace consumed, until we get the real thing.
+
+		stream = LexCurrentStream
+
+		IF stream THEN
+			token^.FileBlock = stream^.FileBlock
+			token^.LineNumber = stream^.LineNumber
+			token^.LinePosition = stream^.LinePosition
+		END
+
 		byte = LexGetCharacter ()
 	END
 
@@ -405,6 +430,7 @@ FN LexGetTokenInternal (
 		// This is a string token.
 
 		LexGetStringTokenInternal (
+			token, // token
 			buffer, // buffer
 			'\"', // terminator
 			length, // OUT length
@@ -417,6 +443,7 @@ FN LexGetTokenInternal (
 		// This is a character literal.
 
 		LexGetStringTokenInternal (
+			token, // token
 			buffer, // buffer
 			0x27, // terminator
 			length, // OUT length
@@ -443,7 +470,8 @@ FN LexGetTokenInternal (
 
 		WHILE LexCharTreatment[byte] == CHAR_COALESCE DO
 			IF len == LEX_TOKEN_STRING_SIZE-1 THEN
-				TlStreamError ( "Token length exceeds maximum.", 0, 0, 0 )
+				LexTokenError ( token,
+					"Token length exceeds maximum.", 0, 0, 0 )
 			END
 
 			buffer[len] = byte
@@ -462,6 +490,11 @@ FN LexGetTokenInternal (
 		RETURN TOKEN_FLAG_COALESCE
 	END
 
+	// Check if this is a defined macro name. If so, place that macro on the top
+	// of the stream stack and loop to the beginning of this procedure.
+
+	// TODO
+
 	// This is a normal token. All we have to track is whether it consists only
 	// of uppercase letters A-Z, in which case it must be a keyword. It could
 	// also turn out to be a macro, in which case we must add it to the stream
@@ -473,7 +506,7 @@ FN LexGetTokenInternal (
 
 	WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
 		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
-			TlStreamError ( "Token length exceeds maximum.", 0, 0, 0 )
+			LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
 		END
 
 		IF uppercaseonly THEN
@@ -494,7 +527,7 @@ FN LexGetTokenInternal (
 		LexCharacterCoalescePutback = byte
 	END
 
-	IF uppercaseonly THEN
+	IF uppercaseonly AND len > 1 THEN
 		RETURN TOKEN_FLAG_UPPER
 	END
 
@@ -502,6 +535,7 @@ FN LexGetTokenInternal (
 END
 
 FN LexGetStringTokenInternal (
+	IN token : ^LexToken,
 	IN buffer : ^UBYTE,
 	IN terminator : UBYTE,
 	OUT length : ^ULONG,
@@ -514,7 +548,7 @@ FN LexGetStringTokenInternal (
 		byte := LexGetCharacter ()
 
 		IF NOT byte THEN
-			TlStreamError ( "String token terminated by EOF!", 0, 0, 0 )
+			LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
 		END
 
 		IF NOT isbackslash THEN
@@ -530,7 +564,7 @@ FN LexGetStringTokenInternal (
 		END
 
 		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
-			TlStreamError ( "Token length exceeds maximum.", 0, 0, 0 )
+			LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
 		END
 
 		isbackslash = FALSE
@@ -547,5 +581,76 @@ FN LexGetToken (
 	IN token : ^LexToken,
 )
 
-	
+	buffer : UBYTE[LEX_TOKEN_STRING_SIZE]
+	length : ULONG
+
+	tokenflag := LexGetTokenInternal (
+		token, // token
+		&buffer, // buffer
+		&length, // OUT length
+	)
+
+	// Add a null terminator, since this isn't done earlier.
+
+	buffer[length] = 0
+
+	IF NOT length THEN
+		// EOF has been reached.
+
+		token^.Type = TOKEN_EOF
+
+		LEAVE
+	END
+
+	IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
+		TOKEN_FLAG_UPPER ) THEN
+
+		// This must be a keyword token. If it doesn't hash to a keyword,
+		// there's a syntax error. Technically, for SPLIT and COALESCE tokens,
+		// it should always match a keyword, so we just assume it was an
+		// incorrect usage of an uppercase token (which are reserved).
+
+		keyword := CAST TlHashTableLookup (
+			&LexKeywordHashTable, // hashtable
+			&buffer, // key
+		) TO ^LexKeyword
+
+		IF NOT keyword THEN
+			LexTokenError ( token,
+				"Bad use of uppercase alphabetic token (must be keyword).",
+				0, 0, 0 )
+		END
+
+		token^.Type = keyword^.Type
+		token^.Subtype = keyword^.Subtype
+
+		LEAVE
+	END
+
+	IF tokenflag & TOKEN_FLAG_STRING THEN
+		// This is a string token. We have to allocate a LexStringContents large
+		// enough to contain the length, and copy it there.
+
+		str : ^LexStringContents
+
+		status := TlAlloc (
+			SIZEOF LexStringContents + length, // bytes
+			&str, // OUT ptr
+		)
+
+		str^.Buffer = &(CAST str TO ^LexStringContentsContainer)^.Buffer
+
+		TlCopyMemory (
+			str^.Buffer, // dest
+			&buffer, // src
+			length, // sz
+		)
+
+		token^.Type = TOKEN_STRING
+		token^.Payload = str
+
+		LEAVE
+	END
+
+	token^.Type = 0
 END

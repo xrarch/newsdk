@@ -50,3 +50,55 @@ FN main (
 
 	RETURN 0
 END
+
+EXTERN FN LexStreamError_C (
+	IN filename : ^UBYTE,
+	IN linenumber : ULONG,
+	IN linepos : ULONG,
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+FN LexStreamError (
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+	stream := LexCurrentStream
+
+	LexStreamError_C (
+		stream^.FileBlock^.Name, // filename
+		stream^.LineNumber, // linenumber
+		stream^.LinePosition, // linepos
+		str, // str
+		err1, // err1
+		err2, // err2
+		err3, // err3
+	)
+
+	TlErrorExit ()
+END
+
+FN LexTokenError (
+	IN token : ^LexToken,
+	IN str : ^UBYTE,
+	IN err1 : ULONG,
+	IN err2 : ULONG,
+	IN err3 : ULONG,
+)
+
+	LexStreamError_C (
+		token^.FileBlock^.Name, // filename
+		token^.LineNumber, // linenumber
+		token^.LinePosition, // linepos
+		str, // str
+		err1, // err1
+		err2, // err2
+		err3, // err3
+	)
+
+	TlErrorExit ()
+END

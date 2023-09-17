@@ -16,6 +16,12 @@ EXTERN FN TlFillMemoryWithByte (
 	IN byte : UBYTE,
 )
 
+EXTERN FN TlCopyMemory (
+	IN dest : ^VOID,
+	IN src : ^VOID,
+	IN sz : ULONG,
+)
+
 EXTERN FN TlPrintString (
 	IN str : ^UBYTE,
 )
@@ -36,13 +42,6 @@ EXTERN FN TlInternalError (
 )
 
 EXTERN FN TlUserError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
-)
-
-EXTERN FN TlStreamError (
 	IN str : ^UBYTE,
 	IN err1 : ULONG,
 	IN err2 : ULONG,
