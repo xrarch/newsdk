@@ -442,8 +442,6 @@ FN LexGetTokenInternal (
 			length, // OUT length
 		)
 
-		buffer[length^] = 0
-
 		RETURN TOKEN_FLAG_STRING
 	END
 
@@ -456,8 +454,6 @@ FN LexGetTokenInternal (
 			0x27, // terminator
 			length, // OUT length
 		)
-
-		buffer[length^] = 0
 
 		RETURN TOKEN_FLAG_CHARLIT
 	END
@@ -492,7 +488,6 @@ FN LexGetTokenInternal (
 		END
 
 		buffer[len] = 0
-
 		length^ = len
 
 		IF LexCharTreatment[byte] != CHAR_WHITESPACE THEN
@@ -530,7 +525,6 @@ FN LexGetTokenInternal (
 	END
 
 	buffer[len] = 0
-
 	length^ = len
 
 	IF LexCharTreatment[byte] == CHAR_SPLIT OR
@@ -603,6 +597,7 @@ FN LexGetStringTokenInternal (
 		len += 1
 	END
 
+	buffer[len] = 0
 	length^ = len
 END
 
