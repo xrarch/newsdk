@@ -502,9 +502,7 @@ FN LexGetTokenInternal (
 	// TODO
 
 	// This is a normal token. All we have to track is whether it consists only
-	// of uppercase letters A-Z, in which case it must be a keyword. It could
-	// also turn out to be a macro, in which case we must add it to the stream
-	// stack and loop here.
+	// of uppercase letters A-Z, in which case it must be a keyword.
 
 	uppercaseonly := byte >= 'A' AND byte <= 'Z'
 
