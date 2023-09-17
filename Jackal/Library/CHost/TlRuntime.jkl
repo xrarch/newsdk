@@ -116,21 +116,47 @@ FN TlFree (
 	free ( ptr )
 END
 
+TlBumpPtr := NULLPTR
+TlBumpBytesLeft : ULONG = 0
+
+CONST TL_BUMP_EXTEND : ULONG = 65536
+
 FN TlBumpAlloc (
 	IN bytes : ULONG,
 	OUT ptr : ^^VOID,
 ) : TlStatus
 
-	// For now this just calls the normal malloc, and it probably always will
-	// in the C transpiler host, but this gives an opportunity to use a bump
-	// allocator (the fastest possible!) for some eternal allocations, which
-	// may be helpful when we're trying to run this compiler on a 25MHz RISC.
+	// Eternal bump allocator for accelerating some stuff.
 
-	ptr^ = malloc ( bytes )
+	IF bytes <= TlBumpBytesLeft THEN
+		ptr^ = TlBumpPtr
 
-	IF ptr^ == 0 THEN
+		TlBumpPtr += bytes
+		TlBumpBytesLeft -= bytes
+
+		RETURN TL_SUCCESS
+	END
+
+	IF bytes >= TL_BUMP_EXTEND THEN
+		ptr^ = malloc ( bytes )
+
+		IF ptr^ == 0 THEN
+			RETURN TL_NO_MEMORY
+		END
+
+		RETURN TL_SUCCESS
+	END
+
+	TlBumpPtr = malloc ( TL_BUMP_EXTEND )
+
+	IF NOT TlBumpPtr THEN
 		RETURN TL_NO_MEMORY
 	END
+
+	ptr ^= TlBumpPtr
+
+	TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
+	TlBumpPtr += bytes
 
 	RETURN TL_SUCCESS
 END
