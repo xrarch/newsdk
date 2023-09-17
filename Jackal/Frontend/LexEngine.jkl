@@ -234,14 +234,14 @@ FN LexInitialize () : TlStatus
 		IF tok.Type == TOKEN_STRING THEN
 			str := CAST tok.Payload TO ^LexStringContents
 
-			TlPrintString ( str^.Buffer )
-			TlPrintString ( "\n" )
+//			TlPrintString ( str^.Buffer )
+//			TlPrintString ( "\n" )
 		END
 
 		IF tok.Type == TOKEN_NUMBER THEN
-			TlPrintString ( "num: " )
-			TlPrintNumber ( tok.Payload )
-			TlPrintString ( "\n" )
+//			TlPrintString ( "num: " )
+//			TlPrintNumber ( tok.Payload )
+//			TlPrintString ( "\n" )
 		END
 
 		LexGetToken (
@@ -442,6 +442,8 @@ FN LexGetTokenInternal (
 			length, // OUT length
 		)
 
+		buffer[length^] = 0
+
 		RETURN TOKEN_FLAG_STRING
 	END
 
@@ -455,6 +457,8 @@ FN LexGetTokenInternal (
 			length, // OUT length
 		)
 
+		buffer[length^] = 0
+
 		RETURN TOKEN_FLAG_CHARLIT
 	END
 
@@ -464,6 +468,7 @@ FN LexGetTokenInternal (
 
 		length^ = 1
 		buffer[0] = byte
+		buffer[1] = 0
 
 		RETURN TOKEN_FLAG_SPLIT
 	END
@@ -486,6 +491,8 @@ FN LexGetTokenInternal (
 			byte = LexGetCharacter ()
 		END
 
+		buffer[len] = 0
+
 		length^ = len
 
 		// Set the putback character to the last one we saw, since that is part
@@ -496,13 +503,10 @@ FN LexGetTokenInternal (
 		RETURN TOKEN_FLAG_COALESCE
 	END
 
-	// Check if this is a defined macro name. If so, place that macro on the top
-	// of the stream stack and loop to the beginning of this procedure.
-
-	// TODO
-
 	// This is a normal token. All we have to track is whether it consists only
-	// of uppercase letters A-Z, in which case it must be a keyword.
+	// of uppercase letters A-Z, in which case it must be a keyword. It could
+	// also turn out to be a macro, in which case we must add it to the stream
+	// stack and loop here.
 
 	uppercaseonly := byte >= 'A' AND byte <= 'Z'
 
@@ -523,6 +527,8 @@ FN LexGetTokenInternal (
 		byte = LexGetCharacter ()
 	END
 
+	buffer[len] = 0
+
 	length^ = len
 
 	IF LexCharTreatment[byte] == CHAR_SPLIT OR
@@ -534,6 +540,11 @@ FN LexGetTokenInternal (
 	IF uppercaseonly AND len > 1 THEN
 		RETURN TOKEN_FLAG_UPPER
 	END
+
+	// Check if this is a defined macro name. If so, place that macro on the top
+	// of the stream stack and loop to the beginning of this procedure.
+
+	// TODO
 
 	RETURN 0
 END
@@ -605,10 +616,6 @@ FN LexGetToken (
 		&buffer, // buffer
 		&length, // OUT length
 	)
-
-	// Add a null terminator, since this isn't done earlier.
-
-	buffer[length] = 0
 
 	IF NOT length THEN
 		// EOF has been reached.
