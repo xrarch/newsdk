@@ -495,10 +495,12 @@ FN LexGetTokenInternal (
 
 		length^ = len
 
-		// Set the putback character to the last one we saw, since that is part
-		// of the next token.
+		IF LexCharTreatment[byte] != CHAR_WHITESPACE THEN
+			// Set the putback character to the last one we saw, since that is part
+			// of the next token.
 
-		LexCharacterCoalescePutback = byte
+			LexCharacterCoalescePutback = byte
+		END
 
 		RETURN TOKEN_FLAG_COALESCE
 	END
