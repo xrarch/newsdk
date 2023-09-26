@@ -53,10 +53,12 @@ LexCharTreatment : LexCharBehavior[256] = {
 
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 
-LexCurrentStream : ^LexStream = 0
-LexCurrentMacroScope : ^TlSymbolTable = 0
+LexCurrentStream : ^LexStream = NULLPTR
+LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
+
+LexCurrentScope : ^TlSymbolTable = NULLPTR
 
 STRUCT LexKeyword
 	Entry : TlHashTableEntry, // MUST be at the beginning
@@ -119,6 +121,18 @@ FN LexInitialize () : TlStatus
 		0, // outerscope
 		&LexMacroDelete, // deletefunc
 		&LexCurrentMacroScope, // OUT symboltable
+	)
+
+	IF status THEN
+		RETURN status
+	END
+
+	// Create the global symbol table scope.
+
+	status = TlSymbolTableCreate (
+		0, // outerscope
+		&LexSymbolDelete, // deletefunc
+		&LexCurrentScope, // OUT symboltable
 	)
 
 	IF status THEN
@@ -256,7 +270,20 @@ FN (TlHashTableEnumF) LexMacroDelete (
 	IN entry : ^TlHashTableEntry,
 )
 
-	TlFree ( entry )
+	// TODO: free buffer
+
+	// Macros are bump-allocated.
+	// TlFree ( entry )
+END
+
+FN (TlHashTableEnumF) LexSymbolDelete (
+	IN entry : ^TlHashTableEntry,
+)
+
+	// TODO: free whatever context symbols have
+
+	// Symbols are bump-allocated.
+	// TlFree ( entry )
 END
 
 LexCharacterBackslash := FALSE
@@ -658,6 +685,10 @@ FN LexGetToken (
 			&str, // OUT ptr
 		)
 
+		IF NOT str THEN
+			TlInternalError ( "Couldn't allocate string buffer", 0, 0, 0 )
+		END
+
 		str^.Length = length
 		str^.Buffer = &(CAST str TO ^LexStringContentsContainer)^.Buffer
 
@@ -702,9 +733,44 @@ FN LexGetToken (
 	// This is an identifier. We have to create an entry in the symbol table
 	// for the current scope, if one does not exist.
 
-	// TODO
+	token^.Type = TOKEN_IDENTIFIER
+	token^.Subtype = TOKEN_IDENTIFIER_FOUND
 
-	token^.Type = 0
+	symbol := CAST TlSymbolTableLookup (
+		LexCurrentScope, // symboltable
+		&buffer, // name
+	) TO ^LexSymbol
+
+	IF NOT symbol THEN
+		// Create new symbol.
+
+		status := TlBumpAlloc (
+			SIZEOF LexSymbol + length + 1, // bytes
+			&symbol, // OUT ptr
+		)
+
+		IF NOT symbol THEN
+			TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
+		END
+
+		symbol^.Name = &(CAST symbol TO ^LexSymbolContainer)^.Buffer
+
+		TlCopyMemory (
+			symbol^.Name, // dest
+			&buffer, // src
+			length + 1, // sz (plus one for null terminator)
+		)
+
+		TlSymbolTableInsert (
+			LexCurrentScope, // symboltable
+			CAST symbol TO ^TlHashTableEntry, // entry
+			symbol^.Name, // name
+		)
+
+		token^.Subtype = TOKEN_IDENTIFIER_NEW
+	END
+
+	token^.Payload = symbol
 END
 
 FN LexCrunchCharacterLiteral (

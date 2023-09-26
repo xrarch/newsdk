@@ -13,7 +13,7 @@ FN TlSymbolTableInitialize (
 	IN deletefunc : TlHashTableEnumF,
 ) : TlStatus
 
-	symboltable^.PrevScope = 0
+	symboltable^.PrevScope = NULLPTR
 	symboltable^.DeleteRoutine = deletefunc
 
 	RETURN TlHashTableInitialize ( &symboltable^.HashTable )

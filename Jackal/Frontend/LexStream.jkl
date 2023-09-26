@@ -13,10 +13,10 @@ FN LexStreamInitialize (
 
 	// Initialize a stream structure.
 
-	stream^.Previous = 0
+	stream^.Previous = NULLPTR
 	stream^.FileBlock = NULLPTR
 
-	stream^.Buffer = 0
+	stream^.Buffer = NULLPTR
 	stream^.BufferSize = 0
 	stream^.ValidLength = 0
 	stream^.LineNumber = 1

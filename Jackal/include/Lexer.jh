@@ -109,6 +109,9 @@ ENUM LexTokenSubtype : UBYTE
 	TOKEN_XOREQUALS,   // assign
 	TOKEN_LSHEQUALS,   // assign
 	TOKEN_RSHEQUALS,   // assign
+
+	TOKEN_IDENTIFIER_NEW,
+	TOKEN_IDENTIFIER_FOUND,
 END
 
 ENUM LexCharBehavior : UBYTE
@@ -158,6 +161,16 @@ STRUCT LexStream
 
 	IsMacro : UBYTE,
 	LastWasNewline : UBYTE,
+END
+
+STRUCT LexSymbol
+	Entry : TlHashTableEntry, // MUST be at the beginning
+	Name : ^UBYTE,
+END
+
+STRUCT LexSymbolContainer
+	Generic : LexSymbol,
+	Buffer : UBYTE,
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
