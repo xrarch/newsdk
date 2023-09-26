@@ -685,7 +685,7 @@ FN LexGetToken (
 			&str, // OUT ptr
 		)
 
-		IF NOT str THEN
+		IF status THEN
 			TlInternalError ( "Couldn't allocate string buffer", 0, 0, 0 )
 		END
 
@@ -749,7 +749,7 @@ FN LexGetToken (
 			&symbol, // OUT ptr
 		)
 
-		IF NOT symbol THEN
+		IF status THEN
 			TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
 		END
 
