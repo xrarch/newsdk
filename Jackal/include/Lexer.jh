@@ -127,15 +127,6 @@ STRUCT LexStringContents
 	Buffer : ^UBYTE, // typically allocated inline with this structure
 END
 
-// This is only here in order to copy to the buffer without doing pointer
-// arithmetic, which sort of non-trivially works differently between the C
-// transpiler and the actual language.
-
-STRUCT LexStringContentsContainer
-	Generic : LexStringContents,
-	Buffer : UBYTE,
-END
-
 STRUCT LexToken
 	Payload : ^VOID,
 	FileBlock : ^FeFileBlock,
@@ -166,11 +157,6 @@ END
 STRUCT LexSymbol
 	Entry : TlHashTableEntry, // MUST be at the beginning
 	Name : ^UBYTE,
-END
-
-STRUCT LexSymbolContainer
-	Generic : LexSymbol,
-	Buffer : UBYTE,
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]

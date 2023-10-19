@@ -242,20 +242,20 @@ FN LexInitialize () : TlStatus
 	)
 
 	WHILE tok.Type != TOKEN_EOF DO
-		//TlPrintNumber ( tok.Type )
-		//TlPrintString ( "\n" )
+		TlPrintNumber ( tok.Type )
+		TlPrintString ( "\n" )
 
 		IF tok.Type == TOKEN_STRING THEN
 			str := CAST tok.Payload TO ^LexStringContents
 
-//			TlPrintString ( str^.Buffer )
-//			TlPrintString ( "\n" )
+			TlPrintString ( str^.Buffer )
+			TlPrintString ( "\n" )
 		END
 
 		IF tok.Type == TOKEN_NUMBER THEN
-//			TlPrintString ( "num: " )
-//			TlPrintNumber ( tok.Payload )
-//			TlPrintString ( "\n" )
+			TlPrintString ( "num: " )
+			TlPrintNumber ( tok.Payload )
+			TlPrintString ( "\n" )
 		END
 
 		LexGetToken (
@@ -690,7 +690,7 @@ FN LexGetToken (
 		END
 
 		str^.Length = length
-		str^.Buffer = &(CAST str TO ^LexStringContentsContainer)^.Buffer
+		str^.Buffer = str + SIZEOF LexStringContents
 
 		TlCopyMemory (
 			str^.Buffer, // dest
@@ -753,7 +753,7 @@ FN LexGetToken (
 			TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
 		END
 
-		symbol^.Name = &(CAST symbol TO ^LexSymbolContainer)^.Buffer
+		symbol^.Name = symbol + SIZEOF LexSymbol
 
 		TlCopyMemory (
 			symbol^.Name, // dest
