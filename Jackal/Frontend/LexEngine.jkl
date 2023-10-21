@@ -90,7 +90,7 @@ FN LexKeywordInsert (
 	keyword^.Type = type
 	keyword^.Subtype = subtype
 
-	TlHashTableInsert (
+	TlInsertHashTable (
 		&LexKeywordHashTable, // hashtable
 		&keyword^.Entry, // entry
 		name, // key
@@ -117,7 +117,7 @@ FN LexInitialize () : TlStatus
 
 	// Create the root macro scope.
 
-	status = TlSymbolTableCreate (
+	status = TlCreateSymbolTable (
 		0, // outerscope
 		&LexMacroDelete, // deletefunc
 		&LexCurrentMacroScope, // OUT symboltable
@@ -129,7 +129,7 @@ FN LexInitialize () : TlStatus
 
 	// Create the global symbol table scope.
 
-	status = TlSymbolTableCreate (
+	status = TlCreateSymbolTable (
 		0, // outerscope
 		&LexSymbolDelete, // deletefunc
 		&LexCurrentScope, // OUT symboltable
@@ -141,7 +141,7 @@ FN LexInitialize () : TlStatus
 
 	// Initialize keyword hash table.
 
-	TlHashTableInitialize ( &LexKeywordHashTable )
+	TlInitializeHashTable ( &LexKeywordHashTable )
 
 	LexKeywordInsert ( "AND", TOKEN_OPER, TOKEN_AND )
 	LexKeywordInsert ( "BEGIN", TOKEN_STATEMENT, TOKEN_BEGIN )
@@ -230,7 +230,7 @@ FN LexInitialize () : TlStatus
 	LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
 	LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
 
-	//TlHashTableSummarize ( &LexKeywordHashTable )
+	//TlSummarizeHashTable ( &LexKeywordHashTable )
 
 	buf : UBYTE[LEX_TOKEN_STRING_SIZE]
 	len : ULONG
@@ -266,23 +266,23 @@ FN LexInitialize () : TlStatus
 	RETURN status
 END
 
-FN (TlHashTableEnumF) LexMacroDelete (
+FN (TlHashTableEnumeratorF) LexMacroDelete (
 	IN entry : ^TlHashTableEntry,
 )
 
 	// TODO: free buffer
 
-	// Macros are bump-allocated.
+	// Macros are bump-allocated, so it's meaningless to free one.
 	// TlFree ( entry )
 END
 
-FN (TlHashTableEnumF) LexSymbolDelete (
+FN (TlHashTableEnumeratorF) LexSymbolDelete (
 	IN entry : ^TlHashTableEntry,
 )
 
 	// TODO: free whatever context symbols have
 
-	// Symbols are bump-allocated.
+	// Symbols are bump-allocated, so it's meaningless to free one.
 	// TlFree ( entry )
 END
 
@@ -653,19 +653,23 @@ FN LexGetToken (
 		TOKEN_FLAG_UPPER ) THEN
 
 		// This must be a keyword token. If it doesn't hash to a keyword,
-		// there's a syntax error. Technically, for SPLIT and COALESCE tokens,
-		// it should always match a keyword, so we just assume it was an
-		// incorrect usage of an uppercase token (which are reserved).
+		// there's a syntax error.
 
-		keyword := CAST TlHashTableLookup (
+		keyword := CAST TlLookupHashTable (
 			&LexKeywordHashTable, // hashtable
 			&buffer, // key
 		) TO ^LexKeyword
 
 		IF NOT keyword THEN
+			IF tokenflag & TOKEN_FLAG_UPPER THEN
+				LexTokenError ( token,
+					"Bad use of uppercase alphabetic token (must be keyword).",
+					0, 0, 0 )
+			END
+
 			LexTokenError ( token,
-				"Bad use of uppercase alphabetic token (must be keyword).",
-				0, 0, 0 )
+					"Unknown keyword.",
+					0, 0, 0 )
 		END
 
 		token^.Type = keyword^.Type
@@ -688,6 +692,9 @@ FN LexGetToken (
 		IF status THEN
 			TlInternalError ( "Couldn't allocate string buffer", 0, 0, 0 )
 		END
+
+		// Place the string contents directly after the string structure in
+		// memory.
 
 		str^.Length = length
 		str^.Buffer = str + SIZEOF LexStringContents
@@ -736,7 +743,7 @@ FN LexGetToken (
 	token^.Type = TOKEN_IDENTIFIER
 	token^.Subtype = TOKEN_IDENTIFIER_FOUND
 
-	symbol := CAST TlSymbolTableLookup (
+	symbol := CAST TlLookupSymbolTable (
 		LexCurrentScope, // symboltable
 		&buffer, // name
 	) TO ^LexSymbol
@@ -753,6 +760,8 @@ FN LexGetToken (
 			TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
 		END
 
+		// Place the symbol name directly after the symbol structure in memory.
+
 		symbol^.Name = symbol + SIZEOF LexSymbol
 
 		TlCopyMemory (
@@ -761,7 +770,7 @@ FN LexGetToken (
 			length + 1, // sz (plus one for null terminator)
 		)
 
-		TlSymbolTableInsert (
+		TlInsertSymbolTable (
 			LexCurrentScope, // symboltable
 			CAST symbol TO ^TlHashTableEntry, // entry
 			symbol^.Name, // name

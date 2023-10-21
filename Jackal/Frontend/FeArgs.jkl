@@ -10,7 +10,7 @@ FeIncludeDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
 FeInputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
 FeOutputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
 
-FN FeArgsParse (
+FN FeParseArgs (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],
 )

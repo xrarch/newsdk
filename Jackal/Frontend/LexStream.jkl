@@ -246,7 +246,21 @@ FN LexStreamNextCharacter () : UBYTE
 			stream^.LastWasNewline = TRUE
 
 		ELSE
-			stream^.LinePosition += 1
+			IF byte == '\t' THEN
+				// Bump line position to next multiple of four.
+				// Assumes 4-wide tabs, which is the only correct tab width,
+				// as everybody knows.
+
+				// Line position is incremented only by 3 because it is already
+				// biased by 1.
+
+				stream^.LinePosition += 3
+				stream^.LinePosition &= ~3
+				stream^.LinePosition += 1
+			ELSE
+				stream^.LinePosition += 1
+			END
+
 			stream^.LastWasNewline = FALSE
 		END
 

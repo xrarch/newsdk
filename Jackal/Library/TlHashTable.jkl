@@ -4,7 +4,7 @@
 
 #INCLUDE "<inc>/Runtime.jh"
 
-FN TlHashTableInitialize (
+FN TlInitializeHashTable (
 	IN hashtable : ^TlHashTable,
 ) : TlStatus
 
@@ -17,7 +17,7 @@ FN TlHashTableInitialize (
 	RETURN TL_SUCCESS
 END
 
-FN TlHashTableSummarize (
+FN TlSummarizeHashTable (
 	IN hashtable : ^TlHashTable,
 )
 
@@ -48,7 +48,7 @@ FN TlHashTableSummarize (
 	END
 END
 
-FN TlHashTableInsert (
+FN TlInsertHashTable (
 	IN hashtable : ^TlHashTable,
 	IN entry : ^TlHashTableEntry,
 	IN key : ^UBYTE,
@@ -84,7 +84,7 @@ FN TlHashTableInsert (
 	hashtable^.BucketHeads[hash] = entry
 END
 
-FN TlHashTableLookup (
+FN TlLookupHashTable (
 	IN hashtable : ^TlHashTable,
 	IN key : ^UBYTE,
 ) : ^TlHashTableEntry
@@ -104,7 +104,7 @@ FN TlHashTableLookup (
 	RETURN NULLPTR
 END
 
-FN TlHashTableRemove (
+FN TlRemoveHashTable (
 	IN entry : ^TlHashTableEntry,
 )
 
@@ -128,9 +128,9 @@ FN TlHashTableRemove (
 	END
 END
 
-FN TlHashTableEnumerate (
+FN TlEnumerateHashTable (
 	IN hashtable : ^TlHashTable,
-	IN enumfunc : TlHashTableEnumF,
+	IN enumfunc : TlHashTableEnumeratorF,
 )
 
 	i := 0

@@ -1,0 +1,12 @@
+//
+// Resizing array implementation for building byte buffers.
+//
+
+#INCLUDE "<inc>/Runtime.jh"
+
+FN TlInitializeDynamicBuffer (
+	IN array : ^TlDynamicBuffer,
+)
+
+	
+END

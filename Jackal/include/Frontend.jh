@@ -5,7 +5,7 @@ STRUCT FeFileBlock
 	Handle : ^VOID,
 END
 
-EXTERN FN FeArgsParse (
+EXTERN FN FeParseArgs (
 	IN argc : ULONG,
 	IN argv : ^UBYTE[],
 )

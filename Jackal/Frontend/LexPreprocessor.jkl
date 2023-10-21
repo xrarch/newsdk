@@ -89,3 +89,10 @@ FN LexCollectDirectiveToken (
 
 	RETURN FALSE
 END
+
+FN LexCollectContents (
+	OUT buffer : ^UBYTE,
+	OUT length : ^UBYTE,
+)
+
+END

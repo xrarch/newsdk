@@ -16,7 +16,7 @@ FN main (
 
 	// Parse the arguments and identify the input and output files.
 
-	FeArgsParse ( argc, argv )
+	FeParseArgs ( argc, argv )
 
 	// Open the input and output files.
 

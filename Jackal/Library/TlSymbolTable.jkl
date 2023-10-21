@@ -8,20 +8,20 @@
 
 #INCLUDE "<inc>/Runtime.jh"
 
-FN TlSymbolTableInitialize (
+FN TlInitializeSymbolTable (
 	IN symboltable : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumF,
+	IN deletefunc : TlHashTableEnumeratorF,
 ) : TlStatus
 
 	symboltable^.PrevScope = NULLPTR
 	symboltable^.DeleteRoutine = deletefunc
 
-	RETURN TlHashTableInitialize ( &symboltable^.HashTable )
+	RETURN TlInitializeHashTable ( &symboltable^.HashTable )
 END
 
-FN TlSymbolTableCreate (
+FN TlCreateSymbolTable (
 	IN outerscope : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumF,
+	IN deletefunc : TlHashTableEnumeratorF,
 	OUT symboltable : ^^TlSymbolTable,
 ) : TlStatus
 
@@ -34,7 +34,7 @@ FN TlSymbolTableCreate (
 		RETURN status
 	END
 
-	status = TlSymbolTableInitialize (
+	status = TlInitializeSymbolTable (
 		symboltable^, // symboltable
 		deletefunc, // deletefunc
 	)
@@ -46,13 +46,13 @@ FN TlSymbolTableCreate (
 	RETURN status
 END
 
-FN TlSymbolTableDelete (
+FN TlDeleteSymbolTable (
 	IN symboltable : ^TlSymbolTable,
 ) : ^TlSymbolTable
 
 	outerscope := symboltable^.PrevScope
 
-	TlHashTableEnumerate (
+	TlEnumerateHashTable (
 		&symboltable^.HashTable, // hashtable
 		symboltable^.DeleteRoutine, // deletefunc
 	)
@@ -62,13 +62,13 @@ FN TlSymbolTableDelete (
 	RETURN outerscope
 END
 
-FN TlSymbolTableLookup (
+FN TlLookupSymbolTable (
 	IN symboltable : ^TlSymbolTable,
 	IN name : ^UBYTE,
 ) : ^TlHashTableEntry
 
 	WHILE symboltable DO
-		entry := TlHashTableLookup (
+		entry := TlLookupHashTable (
 			&symboltable^.HashTable, // hashtable
 			name, // key
 		)
@@ -83,22 +83,22 @@ FN TlSymbolTableLookup (
 	RETURN 0
 END
 
-FN TlSymbolTableInsert (
+FN TlInsertSymbolTable (
 	IN symboltable : ^TlSymbolTable,
 	IN entry : ^TlHashTableEntry,
 	IN name : ^UBYTE,
 )
 
-	TlHashTableInsert (
+	TlInsertHashTable (
 		&symboltable^.HashTable, // hashtable
 		entry, // entry
 		name, // key
 	)
 END
 
-FN TlSymbolTableRemove (
+FN TlRemoveSymbolTable (
 	IN entry : ^TlHashTableEntry,
 )
 
-	TlHashTableRemove ( entry )
+	TlRemoveHashTable ( entry )
 END

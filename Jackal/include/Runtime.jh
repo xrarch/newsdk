@@ -128,43 +128,38 @@ STRUCT TlHashTableEntry
 	Hash : UBYTE,
 END
 
-EXTERN FN TlHashTableInitialize (
+EXTERN FN TlInitializeHashTable (
 	IN hashtable : ^TlHashTable,
 ) : TlStatus
 
-EXTERN FN TlHashTableSummarize (
+EXTERN FN TlSummarizeHashTable (
 	IN hashtable : ^TlHashTable,
 )
 
-EXTERN FN TlHashTableInsert (
+EXTERN FN TlInsertHashTable (
 	IN hashtable : ^TlHashTable,
 	IN entry : ^TlHashTableEntry,
 	IN key : ^UBYTE,
 )
 
-EXTERN FN TlHashTableLookup (
+EXTERN FN TlLookupHashTable (
 	IN hashtable : ^TlHashTable,
 	IN key : ^UBYTE,
 ) : ^TlHashTableEntry
 
-EXTERN FN TlHashTableLookupWithHash (
-	IN hashtable : ^TlHashTable,
-	IN key : ^UBYTE,
-	IN hash : ULONG,
-) : ^TlHashTableEntry
-
-EXTERN FN TlHashTableRemove (
+EXTERN FN TlRemoveHashTable (
 	IN entry : ^TlHashTableEntry,
 )
 
-EXTERN FN TlHashTableEnumerate (
+EXTERN FN TlEnumerateHashTable (
 	IN hashtable : ^TlHashTable,
-	IN enumfunc : TlHashTableEnumF,
+	IN enumfunc : TlHashTableEnumeratorF,
 )
 
-FNPTR TlHashTableEnumF (
+FNPTR TlHashTableEnumeratorF (
 	IN entry : ^TlHashTableEntry,
 )
+
 
 // symbol table stuff
 
@@ -172,35 +167,44 @@ FNPTR TlHashTableEnumF (
 STRUCT TlSymbolTable
 	PrevScope : ^TlSymbolTable, // previous in the scope stack
 	HashTable : TlHashTable,
-	DeleteRoutine : TlHashTableEnumF,
+	DeleteRoutine : TlHashTableEnumeratorF,
 END
 
-EXTERN FN TlSymbolTableInitialize (
+EXTERN FN TlInitializeSymbolTable (
 	IN symboltable : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumF,
+	IN deletefunc : TlHashTableEnumeratorF,
 ) : TlStatus
 
-EXTERN FN TlSymbolTableCreate (
+EXTERN FN TlCreateSymbolTable (
 	IN outerscope : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumF,
+	IN deletefunc : TlHashTableEnumeratorF,
 	OUT symboltable : ^^TlSymbolTable,
 ) : TlStatus
 
-EXTERN FN TlSymbolTableDelete (
+EXTERN FN TlDeleteSymbolTable (
 	IN symboltable : ^TlSymbolTable,
 ) : ^TlSymbolTable
 
-EXTERN FN TlSymbolTableLookup (
+EXTERN FN TlLookupSymbolTable (
 	IN symboltable : ^TlSymbolTable,
 	IN name : ^UBYTE,
 ) : ^TlHashTableEntry
 
-EXTERN FN TlSymbolTableInsert (
+EXTERN FN TlInsertSymbolTable (
 	IN symboltable : ^TlSymbolTable,
 	IN entry : ^TlHashTableEntry,
 	IN name : ^UBYTE,
 )
 
-EXTERN FN TlSymbolTableRemove (
+EXTERN FN TlRemoveSymbolTable (
 	IN entry : ^TlHashTableEntry,
 )
+
+
+// dynamic buffer stuff
+
+
+STRUCT TlDynamicBuffer
+	Length : ULONG,
+	Buffer : ^UBYTE,
+END
