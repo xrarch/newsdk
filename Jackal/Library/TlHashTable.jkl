@@ -94,7 +94,7 @@ FN TlLookupHashTable (
 	entry := hashtable^.BucketHeads[hash]
 
 	WHILE entry DO
-		IF TlStringCompare ( key, entry^.Key ) == 0 THEN
+		IF TlCompareString ( key, entry^.Key ) == 0 THEN
 			RETURN entry
 		END
 

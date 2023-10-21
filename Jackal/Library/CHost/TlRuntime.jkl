@@ -161,7 +161,7 @@ FN TlBumpAlloc (
 	RETURN TL_SUCCESS
 END
 
-FN TlStringCompare (
+FN TlCompareString (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,
 ) : ULONG
@@ -169,7 +169,7 @@ FN TlStringCompare (
 	RETURN strcmp ( str1, str2 )
 END
 
-FN TlStringCompareCount (
+FN TlCompareStringWithMax (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,
 	IN count : ULONG,
@@ -178,7 +178,7 @@ FN TlStringCompareCount (
 	RETURN strncmp ( str1, str2, count )
 END
 
-FN TlStringCopy (
+FN TlCopyString (
 	IN dest : ^UBYTE,
 	IN src : ^UBYTE,
 	IN bufsize : ULONG,

@@ -115,7 +115,7 @@ FN LexFileStreamInitialize (
 
 	fileblock^.Handle = handle
 
-	TlStringCopy (
+	TlCopyString (
 		&fileblock^.Name[0], // dest
 		filename, // src
 		JKL_PATH_BUFFER_SIZE, // bufsize

@@ -64,18 +64,18 @@ EXTERN FN TlFree (
 	IN ptr : ^VOID,
 )
 
-EXTERN FN TlStringCompare (
+EXTERN FN TlCompareString (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,
 ) : ULONG
 
-EXTERN FN TlStringCompareCount (
+EXTERN FN TlCompareStringWithMax (
 	IN str1 : ^UBYTE,
 	IN str2 : ^UBYTE,
 	IN count : ULONG,
 ) : ULONG
 
-EXTERN FN TlStringCopy (
+EXTERN FN TlCopyString (
 	IN dest : ^UBYTE,
 	IN src : ^UBYTE,
 	IN bufsize : ULONG,
