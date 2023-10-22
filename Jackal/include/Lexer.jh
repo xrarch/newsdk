@@ -121,9 +121,15 @@ ENUM LexCharBehavior : UBYTE
 	CHAR_EOF,
 END
 
-STRUCT LexStringContents
-	Length : ULONG,
-	Buffer : ^UBYTE, // typically allocated inline with this structure
+STRUCT LexInternedString
+	Entry : TlHashTableEntry, // MUST be at the beginning
+	DynamicBuffer : TlDynamicBuffer,
+
+	// Include a context word for the code generator.
+	// The code generator will probably fill this in with a label name, for its
+	// own convenience in reusing the string.
+
+	CodeGenContext : ^VOID,
 END
 
 STRUCT LexToken

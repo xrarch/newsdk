@@ -127,6 +127,10 @@ FN TlBumpAlloc (
 ) : TlStatus
 
 	// Eternal bump allocator for accelerating some stuff.
+	// First align to 8 bytes, assuming a 64-bit C host.
+
+	bytes += 7
+	bytes &= ~7
 
 	IF bytes <= TlBumpBytesLeft THEN
 		ptr^ = TlBumpPtr

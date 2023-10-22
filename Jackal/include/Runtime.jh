@@ -204,7 +204,7 @@ EXTERN FN TlRemoveSymbolTable (
 // dynamic buffer stuff
 
 
-CONST TL_DYNAMIC_BUFFER_INITIAL := 128
+CONST TL_DYNAMIC_BUFFER_INITIAL := 64
 
 STRUCT TlDynamicBuffer
 	Count : ULONG,

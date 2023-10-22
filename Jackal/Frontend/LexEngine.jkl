@@ -69,6 +69,7 @@ STRUCT LexKeyword
 END
 
 LexKeywordHashTable : TlHashTable
+LexInternedStringHashTable : TlHashTable
 
 LexKeywordBumpArray : LexKeyword[128]
 LexKeywordBumpIndex := 0
@@ -140,6 +141,10 @@ FN LexInitialize () : TlStatus
 	IF status THEN
 		RETURN status
 	END
+
+	// Initialize interned string hash table.
+
+	TlInitializeHashTable ( &LexInternedStringHashTable )
 
 	// Initialize keyword hash table.
 
@@ -250,10 +255,9 @@ FN LexInitialize () : TlStatus
 		TlPrintString ( "\n" )
 
 		IF tok.Type == TOKEN_STRING THEN
-			str := CAST tok.Payload TO ^TlDynamicBuffer
-			str^.Buffer[str^.BufferSize - 1] = 0
+			str := CAST tok.Payload TO ^LexInternedString
 
-			TlPrintString ( str^.Buffer )
+			TlPrintString ( str^.DynamicBuffer.Buffer )
 			TlPrintString ( "\n" )
 		END
 
@@ -449,7 +453,7 @@ FN LexGetTokenInternal (
 	IN token : ^LexToken,
 	IN buffer : ^UBYTE,
 	OUT length : ^ULONG,
-	OUT dynamicbuffer : ^^TlDynamicBuffer,
+	OUT internedstring : ^^LexInternedString,
 ) : UBYTE
 
 	// Reads the string of the next token into the provided buffer. Identifies
@@ -496,26 +500,55 @@ FN LexGetTokenInternal (
 
 	IF byte == '\"' THEN
 		// This is a string token.
-		// Bump-allocate a TlDynamicBuffer.
+		// Bump-allocate a LexInternedString.
 
 		status := TlBumpAlloc (
-			SIZEOF TlDynamicBuffer, // bytes
-			dynamicbuffer, // OUT ptr
+			SIZEOF LexInternedString, // bytes
+			internedstring, // OUT ptr
 		)
 
 		IF status THEN
-			TlInternalError ( "Failed to allocate string buffer", 0, 0, 0 )
+			TlInternalError ( "Failed to allocate interned string", 0, 0, 0 )
 		END
 
-		TlInitializeDynamicBuffer ( dynamicbuffer^ )
+		dynamicbuffer := &internedstring^^.DynamicBuffer
+
+		TlInitializeDynamicBuffer ( dynamicbuffer )
 
 		LexGetStringTokenInternal (
 			token, // token
 			'\"', // terminator
-			dynamicbuffer^, // dynamicbuffer
+			dynamicbuffer, // dynamicbuffer
 			NULLPTR, // buffer
 			NULLPTR, // OUT length
 		)
+
+		// Check if the string is already interned.
+
+		str := CAST TlLookupHashTable (
+			&LexInternedStringHashTable, // hashtable
+			dynamicbuffer^.Buffer, // key
+		) TO ^LexInternedString
+
+		IF str THEN
+			// Release our dynamic buffer and return the one we found.
+			// I wish we could free the dynamic buffer structure itself, but
+			// we already bump allocated it. This is done under the assumption
+			// that the most common case is a unique string, and that we aren't
+			// likely to find anything in the hash table.
+
+			TlUninitializeDynamicBuffer ( dynamicbuffer )
+
+			internedstring^ = str
+		ELSE
+			// Insert our interned string into the hash table.
+
+			TlInsertHashTable (
+				&LexInternedStringHashTable, // hashtable
+				CAST internedstring^ TO ^TlHashTableEntry, // entry
+				dynamicbuffer^.Buffer, // key
+			)
+		END
 
 		RETURN TOKEN_FLAG_STRING
 	END
@@ -675,7 +708,9 @@ FN LexGetStringTokenInternal (
 		END
 	END
 
-	IF NOT dynamicbuffer THEN
+	IF dynamicbuffer THEN
+		TlInsertDynamicBuffer ( dynamicbuffer, 0 )
+	ELSE
 		buffer[len] = 0
 		length^ = len
 	END
@@ -685,11 +720,9 @@ FN LexGetToken (
 	IN token : ^LexToken,
 )
 
-	// We supply a TlDynamicBuffer for if we encounter a string or an ASM
-	// directive. We don't use it in every case because that would be too much
-	// overhead; an extra function call per character!
+	// LexGetTokenInternal might need to allocate an interned string structure.
 
-	dynamicbuffer : ^TlDynamicBuffer
+	internedstring : ^LexInternedString
 
 	buffer : UBYTE[LEX_TOKEN_STRING_SIZE]
 	length : ULONG
@@ -698,7 +731,7 @@ FN LexGetToken (
 		token, // token
 		&buffer, // buffer
 		&length, // OUT length
-		&dynamicbuffer, // OUT dynamicbuffer
+		&internedstring, // OUT internedstring
 	)
 
 	IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
@@ -743,10 +776,10 @@ FN LexGetToken (
 	END
 
 	IF tokenflag & TOKEN_FLAG_STRING THEN
-		// This is a string token. Record the dynamic buffer.
+		// This is a string token. Record the interned string.
 
 		token^.Type = TOKEN_STRING
-		token^.Payload = dynamicbuffer
+		token^.Payload = internedstring
 
 		LEAVE
 	END
