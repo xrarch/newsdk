@@ -205,6 +205,16 @@ EXTERN FN TlRemoveSymbolTable (
 
 
 STRUCT TlDynamicBuffer
-	Length : ULONG,
+	Count : ULONG,
+	BufferSize : ULONG,
 	Buffer : ^UBYTE,
 END
+
+EXTERN FN TlInitializeDynamicBuffer (
+	IN array : ^TlDynamicBuffer,
+)
+
+EXTERN FN TlInsertDynamicBuffer (
+	IN array : ^TlDynamicBuffer,
+	IN byte : UBYTE,
+)

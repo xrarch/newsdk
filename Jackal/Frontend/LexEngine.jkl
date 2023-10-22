@@ -230,6 +230,8 @@ FN LexInitialize () : TlStatus
 	LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
 	LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
 
+	// Test some stuff (TEMPORARY)
+
 	//TlSummarizeHashTable ( &LexKeywordHashTable )
 
 	buf : UBYTE[LEX_TOKEN_STRING_SIZE]
@@ -262,6 +264,35 @@ FN LexInitialize () : TlStatus
 			&tok, // token
 		)
 	END
+
+//	dynamicbuf : TlDynamicBuffer
+//
+//	TlInitializeDynamicBuffer ( &dynamicbuf )
+//
+//	i := 0
+//	c := '0'
+//
+//	WHILE i < 1024 DO
+//		IF c > '9' THEN
+//			c = '0'
+//		END
+//
+//		TlInsertDynamicBuffer (
+//			&dynamicbuf, // array
+//			c, // byte
+//		)
+//
+//		c += 1
+//		i += 1
+//	END
+//
+//	i = 0
+//
+//	WHILE i < dynamicbuf.Count DO
+//		TlPrintCharacter ( dynamicbuf.Buffer[i] )
+//
+//		i += 1
+//	END
 
 	RETURN status
 END

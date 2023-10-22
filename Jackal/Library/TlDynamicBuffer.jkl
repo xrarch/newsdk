@@ -4,9 +4,79 @@
 
 #INCLUDE "<inc>/Runtime.jh"
 
+CONST INITIAL_LENGTH := 128
+
 FN TlInitializeDynamicBuffer (
 	IN array : ^TlDynamicBuffer,
 )
 
-	
+	array^.Count = 0
+	array^.BufferSize = 0
+	array^.Buffer = NULLPTR
+END
+
+FN TlInsertDynamicBuffer (
+	IN array : ^TlDynamicBuffer,
+	IN byte : UBYTE,
+)
+
+	IF array^.Count + 1 < array^.BufferSize THEN
+		// There's enough space in the buffer already.
+
+		array^.Buffer[array^.Count] = byte
+		array^.Count += 1
+
+		LEAVE
+	END 
+
+	// There's not enough space. We have to either create or grow the buffer.
+
+	IF array^.BufferSize == 0 THEN
+		// Create the buffer. We initially optimistically grab it from the bump
+		// allocator in the hope that we won't need to hit the actual system
+		// heap.
+
+		status := TlBumpAlloc (
+			INITIAL_LENGTH, // bytes
+			&array^.Buffer, // OUT ptr
+		)
+
+		IF status THEN
+			TlInternalError ( "Failed to allocate dynamic buffer", 0, 0, 0 )
+		END
+
+		array^.BufferSize = INITIAL_LENGTH
+	ELSE
+		// Grow the buffer by allocating a new one of double the length,
+		// copying everything into it, and then freeing the old one.
+
+		newbuffer : ^UBYTE
+
+		status := TlAlloc (
+			array^.BufferSize * 2, // bytes
+			&newbuffer, // OUT ptr
+		)
+
+		IF status THEN
+			TlInternalError ( "Failed to grow dynamic buffer", 0, 0, 0 )
+		END
+
+		TlCopyMemory (
+			newbuffer, // dest
+			array^.Buffer, // src
+			array^.BufferSize, // sz
+		)
+
+		// Free the old buffer if it wasn't the initial bump-allocated one.
+
+		IF array^.BufferSize != INITIAL_LENGTH THEN
+			TlFree ( array^.Buffer )
+		END
+
+		array^.Buffer = newbuffer
+		array^.BufferSize *= 2
+	END
+
+	array^.Buffer[array^.Count] = byte
+	array^.Count += 1
 END
