@@ -51,6 +51,8 @@ LexCharTreatment : LexCharBehavior[256] = {
 	// be zero.
 }
 
+CONST LEX_TOKEN_STRING_SIZE := 2048
+
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 
 LexCurrentStream : ^LexStream = NULLPTR
@@ -248,7 +250,8 @@ FN LexInitialize () : TlStatus
 		TlPrintString ( "\n" )
 
 		IF tok.Type == TOKEN_STRING THEN
-			str := CAST tok.Payload TO ^LexStringContents
+			str := CAST tok.Payload TO ^TlDynamicBuffer
+			str^.Buffer[str^.BufferSize - 1] = 0
 
 			TlPrintString ( str^.Buffer )
 			TlPrintString ( "\n" )
@@ -370,14 +373,17 @@ FN LexGetCharacter () : UBYTE
 			// otherwise a token that is immediately followed by a comment
 			// with no interfering whitespace may not terminate properly.
 
+		ELSEIF LexCharacterBackslash THEN
+			LexCharacterBackslash = FALSE
+
+		ELSEIF byte == '\\' THEN
+			LexCharacterBackslash = TRUE
+
 		ELSEIF LexCharacterInString THEN
 			LexCharacterInString = NOT (byte == '\"')
 
 		ELSEIF LexCharacterInLiteral THEN
 			LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
-
-		ELSEIF LexCharacterBackslash THEN
-			LexCharacterBackslash = FALSE
 
 		ELSEIF byte == '/' THEN
 			// We have to figure out if this is a comment or not. This
@@ -396,9 +402,6 @@ FN LexGetCharacter () : UBYTE
 			END
 
 			LexCharacterPutback = nextbyte
-
-		ELSEIF byte == '\\' THEN
-			LexCharacterBackslash = TRUE
 
 		ELSEIF byte == '\"' THEN
 			LexCharacterInString = TRUE
@@ -446,6 +449,7 @@ FN LexGetTokenInternal (
 	IN token : ^LexToken,
 	IN buffer : ^UBYTE,
 	OUT length : ^ULONG,
+	OUT dynamicbuffer : ^^TlDynamicBuffer,
 ) : UBYTE
 
 	// Reads the string of the next token into the provided buffer. Identifies
@@ -492,12 +496,25 @@ FN LexGetTokenInternal (
 
 	IF byte == '\"' THEN
 		// This is a string token.
+		// Bump-allocate a TlDynamicBuffer.
+
+		status := TlBumpAlloc (
+			SIZEOF TlDynamicBuffer, // bytes
+			dynamicbuffer, // OUT ptr
+		)
+
+		IF status THEN
+			TlInternalError ( "Failed to allocate string buffer", 0, 0, 0 )
+		END
+
+		TlInitializeDynamicBuffer ( dynamicbuffer^ )
 
 		LexGetStringTokenInternal (
 			token, // token
-			buffer, // buffer
 			'\"', // terminator
-			length, // OUT length
+			dynamicbuffer^, // dynamicbuffer
+			NULLPTR, // buffer
+			NULLPTR, // OUT length
 		)
 
 		RETURN TOKEN_FLAG_STRING
@@ -508,8 +525,9 @@ FN LexGetTokenInternal (
 
 		LexGetStringTokenInternal (
 			token, // token
-			buffer, // buffer
 			0x27, // terminator
+			NULLPTR, // dynamicbuffer
+			buffer, // buffer
 			length, // OUT length
 		)
 
@@ -605,8 +623,9 @@ END
 
 FN LexGetStringTokenInternal (
 	IN token : ^LexToken,
-	IN buffer : ^UBYTE,
 	IN terminator : UBYTE,
+	IN dynamicbuffer : ^TlDynamicBuffer,
+	IN buffer : ^UBYTE,
 	OUT length : ^ULONG,
 )
 
@@ -646,22 +665,31 @@ FN LexGetStringTokenInternal (
 			END
 		END
 
-		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+		IF dynamicbuffer THEN
+			TlInsertDynamicBuffer ( dynamicbuffer, byte )
+		ELSEIF len == LEX_TOKEN_STRING_SIZE-1 THEN
 			LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
+		ELSE
+			buffer[len] = byte
+			len += 1
 		END
-
-		buffer[len] = byte
-
-		len += 1
 	END
 
-	buffer[len] = 0
-	length^ = len
+	IF NOT dynamicbuffer THEN
+		buffer[len] = 0
+		length^ = len
+	END
 END
 
 FN LexGetToken (
 	IN token : ^LexToken,
 )
+
+	// We supply a TlDynamicBuffer for if we encounter a string or an ASM
+	// directive. We don't use it in every case because that would be too much
+	// overhead; an extra function call per character!
+
+	dynamicbuffer : ^TlDynamicBuffer
 
 	buffer : UBYTE[LEX_TOKEN_STRING_SIZE]
 	length : ULONG
@@ -670,15 +698,8 @@ FN LexGetToken (
 		token, // token
 		&buffer, // buffer
 		&length, // OUT length
+		&dynamicbuffer, // OUT dynamicbuffer
 	)
-
-	IF NOT length THEN
-		// EOF has been reached.
-
-		token^.Type = TOKEN_EOF
-
-		LEAVE
-	END
 
 	IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
 		TOKEN_FLAG_UPPER ) THEN
@@ -709,39 +730,6 @@ FN LexGetToken (
 		LEAVE
 	END
 
-	IF tokenflag & TOKEN_FLAG_STRING THEN
-		// This is a string token. We have to allocate a LexStringContents large
-		// enough to contain the length, and copy it there.
-
-		str : ^LexStringContents
-
-		status := TlBumpAlloc (
-			SIZEOF LexStringContents + length + 1, // bytes
-			&str, // OUT ptr
-		)
-
-		IF status THEN
-			TlInternalError ( "Couldn't allocate string buffer", 0, 0, 0 )
-		END
-
-		// Place the string contents directly after the string structure in
-		// memory.
-
-		str^.Length = length
-		str^.Buffer = str + SIZEOF LexStringContents
-
-		TlCopyMemory (
-			str^.Buffer, // dest
-			&buffer, // src
-			length + 1, // sz (plus one for null terminator)
-		)
-
-		token^.Type = TOKEN_STRING
-		token^.Payload = str
-
-		LEAVE
-	END
-
 	IF tokenflag & TOKEN_FLAG_CHARLIT THEN
 		// This is a character literal token. We turn those into numerical
 		// tokens.
@@ -750,6 +738,23 @@ FN LexGetToken (
 
 		token^.Type = TOKEN_NUMBER
 		token^.Payload = num
+
+		LEAVE
+	END
+
+	IF tokenflag & TOKEN_FLAG_STRING THEN
+		// This is a string token. Record the dynamic buffer.
+
+		token^.Type = TOKEN_STRING
+		token^.Payload = dynamicbuffer
+
+		LEAVE
+	END
+
+	IF NOT length THEN
+		// EOF has been reached.
+
+		token^.Type = TOKEN_EOF
 
 		LEAVE
 	END
