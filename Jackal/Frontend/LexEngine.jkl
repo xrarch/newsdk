@@ -654,6 +654,12 @@ FN LexGetTokenInternal (
     // macros that restore the parent scope during their expansion. This might
     // require associating scopes with streams, so that we know what to restore
     // when we pop a stream off the stream stack.
+    //
+    // NOTE, also, that we might have consumed the whitespace character after
+    // the macro, so if the macro's contents don't conclude with a newline, we
+    // might not tokenize that correctly. See if the same trick we use to avoid
+    // this case with file streams in LexStreamNextCharacter is applicable to
+    // macro streams as well.
 
     // TODO
 
