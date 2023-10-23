@@ -85,49 +85,6 @@ FN LexParseDirective ()
     LexStreamError ( "test test test", 0, 0, 0 )
 END
 
-FN LexCollectDirectiveToken (
-    IN buffer : ^UBYTE,
-)
-
-    // Skips whitespace until the next token, which it collects. Used for very
-    // simple directive parsing.
-
-    byte : UBYTE
-    len := 0
-
-    // Skip any leading whitespace.
-
-    WHILE TRUE DO
-        byte = LexStreamNextCharacter ()
-
-        IF byte == 0 THEN
-            LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
-        END
-
-        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
-            CONTINUE
-        END
-
-        BREAK
-    END
-
-    // We can now collect the token.
-
-    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
-        IF len == LEX_DIRECTIVE_MAX-1 THEN
-            LexStreamError ( "Directive length exceeds maximum.", 0, 0, 0 )
-        END
-
-        buffer^ = byte
-        buffer += 1
-        len += 1
-
-        byte = LexStreamNextCharacter ()
-    END
-
-    buffer^ = 0
-END
-
 FN LexNextNonWhitespaceCharacter () : UBYTE
 
     byte : UBYTE
@@ -149,6 +106,30 @@ FN LexNextNonWhitespaceCharacter () : UBYTE
     END
 
     RETURN byte
+END
+
+FN LexCollectDirectiveToken (
+    IN buffer : ^UBYTE,
+)
+
+    // Collect a simple token, terminated by whitespace.
+
+    byte := LexNextNonWhitespaceCharacter ()
+    len := 0
+
+    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+        IF len == LEX_DIRECTIVE_MAX-1 THEN
+            LexStreamError ( "Directive length exceeds maximum.", 0, 0, 0 )
+        END
+
+        buffer^ = byte
+        buffer += 1
+        len += 1
+
+        byte = LexStreamNextCharacter ()
+    END
+
+    buffer^ = 0
 END
 
 FN LexCollectString (
@@ -209,7 +190,6 @@ FN LexParseInclude ()
     // Then we create a file stream based on this file block, and add it to the
     // top of the stream stack, causing the rest of the lexer to consume tokens
     // from that file until it reaches EOF.
-
 
 END
 
