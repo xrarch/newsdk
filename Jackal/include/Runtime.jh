@@ -5,106 +5,106 @@
 //
 
 ENUM TlStatus : ULONG
-	TL_SUCCESS,
-	TL_NO_MEMORY,
-	TL_COULDNT_OPEN,
+    TL_SUCCESS,
+    TL_NO_MEMORY,
+    TL_COULDNT_OPEN,
 END
 
 EXTERN FN TlFillMemoryWithByte (
-	IN ptr : ^VOID,
-	IN sz : ULONG,
-	IN byte : UBYTE,
+    IN ptr : ^VOID,
+    IN sz : ULONG,
+    IN byte : UBYTE,
 )
 
 EXTERN FN TlCopyMemory (
-	IN dest : ^VOID,
-	IN src : ^VOID,
-	IN sz : ULONG,
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN sz : ULONG,
 )
 
 EXTERN FN TlPrintString (
-	IN str : ^UBYTE,
+    IN str : ^UBYTE,
 )
 
 EXTERN FN TlPrintNumber (
-	IN num : ULONG,
+    IN num : ULONG,
 )
 
 EXTERN FN TlPrintCharacter (
-	IN byte : UBYTE,
+    IN byte : UBYTE,
 )
 
 EXTERN FN TlInternalError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )
 
 EXTERN FN TlUserError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )
 
 EXTERN FN TlErrorExit ()
 
 EXTERN FN TlBumpAlloc (
-	IN bytes : ULONG,
-	OUT ptr : ^^VOID,
+    IN bytes : ULONG,
+    OUT ptr : ^^VOID,
 ) : TlStatus
 
 EXTERN FN TlAlloc (
-	IN bytes : ULONG,
-	OUT ptr : ^^VOID,
+    IN bytes : ULONG,
+    OUT ptr : ^^VOID,
 ) : TlStatus
 
 EXTERN FN TlFree (
-	IN ptr : ^VOID,
+    IN ptr : ^VOID,
 )
 
 EXTERN FN TlCompareString (
-	IN str1 : ^UBYTE,
-	IN str2 : ^UBYTE,
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
 ) : ULONG
 
 EXTERN FN TlCompareStringWithMax (
-	IN str1 : ^UBYTE,
-	IN str2 : ^UBYTE,
-	IN count : ULONG,
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : ULONG,
 ) : ULONG
 
 EXTERN FN TlCopyString (
-	IN dest : ^UBYTE,
-	IN src : ^UBYTE,
-	IN bufsize : ULONG,
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : ULONG,
 )
 
 EXTERN FN TlOpenSource (
-	IN filename : ^UBYTE,
-	OUT handle : ^^VOID,
+    IN filename : ^UBYTE,
+    OUT handle : ^^VOID,
 ) : TlStatus
 
 EXTERN FN TlOpenDestination (
-	IN filename : ^UBYTE,
-	OUT handle : ^^VOID,
+    IN filename : ^UBYTE,
+    OUT handle : ^^VOID,
 ) : TlStatus
 
 EXTERN FN TlClose (
-	IN handle : ^VOID,
+    IN handle : ^VOID,
 )
 
 EXTERN FN TlReadFile (
-	IN handle : ^VOID,
-	IN bytes : ULONG,
-	IN buffer : ^VOID,
+    IN handle : ^VOID,
+    IN bytes : ULONG,
+    IN buffer : ^VOID,
 ) : ULONG
 
 EXTERN FN TlWriteFile (
-	IN handle : ^VOID,
-	IN bytes : ULONG,
-	IN buffer : ^VOID,
+    IN handle : ^VOID,
+    IN bytes : ULONG,
+    IN buffer : ^VOID,
 ) : ULONG
 
 
@@ -114,50 +114,50 @@ EXTERN FN TlWriteFile (
 CONST TL_HASH_SIZE : ULONG = 97
 
 STRUCT TlHashTable
-	BucketHeads : ^TlHashTableEntry[TL_HASH_SIZE],
+    BucketHeads : ^TlHashTableEntry[TL_HASH_SIZE],
 END
 
 STRUCT TlHashTableEntry
-	Next : ^TlHashTableEntry,
-	Prev : ^TlHashTableEntry,
+    Next : ^TlHashTableEntry,
+    Prev : ^TlHashTableEntry,
 
-	HashTable : ^TlHashTable,
+    HashTable : ^TlHashTable,
 
-	Key : ^UBYTE,
+    Key : ^UBYTE,
 
-	Hash : UBYTE,
+    Hash : UBYTE,
 END
 
 EXTERN FN TlInitializeHashTable (
-	IN hashtable : ^TlHashTable,
+    IN hashtable : ^TlHashTable,
 ) : TlStatus
 
 EXTERN FN TlSummarizeHashTable (
-	IN hashtable : ^TlHashTable,
+    IN hashtable : ^TlHashTable,
 )
 
 EXTERN FN TlInsertHashTable (
-	IN hashtable : ^TlHashTable,
-	IN entry : ^TlHashTableEntry,
-	IN key : ^UBYTE,
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
 )
 
 EXTERN FN TlLookupHashTable (
-	IN hashtable : ^TlHashTable,
-	IN key : ^UBYTE,
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
 ) : ^TlHashTableEntry
 
 EXTERN FN TlRemoveHashTable (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
 EXTERN FN TlEnumerateHashTable (
-	IN hashtable : ^TlHashTable,
-	IN enumfunc : TlHashTableEnumeratorF,
+    IN hashtable : ^TlHashTable,
+    IN enumfunc : TlHashTableEnumeratorF,
 )
 
 FNPTR TlHashTableEnumeratorF (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
 
@@ -165,39 +165,39 @@ FNPTR TlHashTableEnumeratorF (
 
 
 STRUCT TlSymbolTable
-	PrevScope : ^TlSymbolTable, // previous in the scope stack
-	HashTable : TlHashTable,
-	DeleteRoutine : TlHashTableEnumeratorF,
+    PrevScope : ^TlSymbolTable, // previous in the scope stack
+    HashTable : TlHashTable,
+    DeleteRoutine : TlHashTableEnumeratorF,
 END
 
 EXTERN FN TlInitializeSymbolTable (
-	IN symboltable : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumeratorF,
+    IN symboltable : ^TlSymbolTable,
+    IN deletefunc : TlHashTableEnumeratorF,
 ) : TlStatus
 
 EXTERN FN TlCreateSymbolTable (
-	IN outerscope : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumeratorF,
-	OUT symboltable : ^^TlSymbolTable,
+    IN outerscope : ^TlSymbolTable,
+    IN deletefunc : TlHashTableEnumeratorF,
+    OUT symboltable : ^^TlSymbolTable,
 ) : TlStatus
 
 EXTERN FN TlDeleteSymbolTable (
-	IN symboltable : ^TlSymbolTable,
+    IN symboltable : ^TlSymbolTable,
 ) : ^TlSymbolTable
 
 EXTERN FN TlLookupSymbolTable (
-	IN symboltable : ^TlSymbolTable,
-	IN name : ^UBYTE,
+    IN symboltable : ^TlSymbolTable,
+    IN name : ^UBYTE,
 ) : ^TlHashTableEntry
 
 EXTERN FN TlInsertSymbolTable (
-	IN symboltable : ^TlSymbolTable,
-	IN entry : ^TlHashTableEntry,
-	IN name : ^UBYTE,
+    IN symboltable : ^TlSymbolTable,
+    IN entry : ^TlHashTableEntry,
+    IN name : ^UBYTE,
 )
 
 EXTERN FN TlRemoveSymbolTable (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
 
@@ -207,22 +207,22 @@ EXTERN FN TlRemoveSymbolTable (
 CONST TL_DYNAMIC_BUFFER_INITIAL := 64
 
 STRUCT TlDynamicBuffer
-	Count : ULONG,
-	BufferSize : ULONG,
-	Buffer : ^UBYTE,
+    Count : ULONG,
+    BufferSize : ULONG,
+    Buffer : ^UBYTE,
 
-	InitialBuffer : UBYTE[TL_DYNAMIC_BUFFER_INITIAL]
+    InitialBuffer : UBYTE[TL_DYNAMIC_BUFFER_INITIAL]
 END
 
 EXTERN FN TlInitializeDynamicBuffer (
-	IN array : ^TlDynamicBuffer,
+    IN array : ^TlDynamicBuffer,
 )
 
 EXTERN FN TlUninitializeDynamicBuffer (
-	IN array : ^TlDynamicBuffer,
+    IN array : ^TlDynamicBuffer,
 )
 
 EXTERN FN TlInsertDynamicBuffer (
-	IN array : ^TlDynamicBuffer,
-	IN byte : UBYTE,
+    IN array : ^TlDynamicBuffer,
+    IN byte : UBYTE,
 )

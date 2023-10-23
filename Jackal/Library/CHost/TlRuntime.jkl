@@ -7,113 +7,113 @@
 #INCLUDE "<inc>/Runtime.jh"
 
 EXTERN FN exit (
-	IN status : _int,
+    IN status : _int,
 )
 
 EXTERN FN malloc (
-	IN size : ULONG,
+    IN size : ULONG,
 ) : ^VOID
 
 EXTERN FN free (
-	IN ptr : ^VOID,
+    IN ptr : ^VOID,
 )
 
 EXTERN FN strcmp (
-	IN s1 : ^_char,
-	IN s2 : ^_char,
+    IN s1 : ^_char,
+    IN s2 : ^_char,
 ) : _int
 
 EXTERN FN strncmp (
-	IN s1 : ^_char,
-	IN s2 : ^_char,
-	IN n : ULONG,
+    IN s1 : ^_char,
+    IN s2 : ^_char,
+    IN n : ULONG,
 ) : _int
 
 EXTERN FN fopen (
-	IN path : ^_char,
-	IN mode : ^_char,
+    IN path : ^_char,
+    IN mode : ^_char,
 ) : ^VOID
 
 EXTERN FN fclose (
-	IN stream : ^VOID,
+    IN stream : ^VOID,
 ) : ^_int
 
 EXTERN FN fread (
-	IN ptr : ^VOID,
-	IN size : ULONG,
-	IN nitems : ULONG,
-	IN stream : ^VOID,
+    IN ptr : ^VOID,
+    IN size : ULONG,
+    IN nitems : ULONG,
+    IN stream : ^VOID,
 ) : ULONG
 
 EXTERN FN fwrite (
-	IN ptr : ^VOID,
-	IN size : ULONG,
-	IN nitems : ULONG,
-	IN stream : ^VOID,
+    IN ptr : ^VOID,
+    IN size : ULONG,
+    IN nitems : ULONG,
+    IN stream : ^VOID,
 ) : ULONG
 
 EXTERN FN memset (
-	IN ptr : ^VOID,
-	IN c : _int,
-	IN len : ULONG,
+    IN ptr : ^VOID,
+    IN c : _int,
+    IN len : ULONG,
 ) : ^VOID
 
 EXTERN FN memcpy (
-	IN dest : ^VOID,
-	IN src : ^VOID,
-	IN sz : ULONG,
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN sz : ULONG,
 ) : ^VOID
 
 FN TlFillMemoryWithByte (
-	IN ptr : ^VOID,
-	IN sz : ULONG,
-	IN byte : UBYTE,
+    IN ptr : ^VOID,
+    IN sz : ULONG,
+    IN byte : UBYTE,
 )
 
-	memset (
-		ptr, // ptr
-		byte, // c
-		sz, // len
-	)
+    memset (
+        ptr, // ptr
+        byte, // c
+        sz, // len
+    )
 END
 
 FN TlCopyMemory (
-	IN dest : ^VOID,
-	IN src : ^VOID,
-	IN sz : ULONG,
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN sz : ULONG,
 )
 
-	memcpy (
-		dest, // dst
-		src, // src
-		sz, // sz
-	)
+    memcpy (
+        dest, // dst
+        src, // src
+        sz, // sz
+    )
 END
 
 FN TlErrorExit ()
 
-	exit ( 1 )
+    exit ( 1 )
 END
 
 FN TlAlloc (
-	IN bytes : ULONG,
-	OUT ptr : ^^VOID,
+    IN bytes : ULONG,
+    OUT ptr : ^^VOID,
 ) : TlStatus
 
-	ptr^ = malloc ( bytes )
+    ptr^ = malloc ( bytes )
 
-	IF ptr^ == 0 THEN
-		RETURN TL_NO_MEMORY
-	END
+    IF ptr^ == 0 THEN
+        RETURN TL_NO_MEMORY
+    END
 
-	RETURN TL_SUCCESS
+    RETURN TL_SUCCESS
 END
 
 FN TlFree (
-	IN ptr : ^VOID,
+    IN ptr : ^VOID,
 )
 
-	free ( ptr )
+    free ( ptr )
 END
 
 TlBumpPtr := NULLPTR
@@ -122,145 +122,145 @@ TlBumpBytesLeft : ULONG = 0
 CONST TL_BUMP_EXTEND : ULONG = 65536
 
 FN TlBumpAlloc (
-	IN bytes : ULONG,
-	OUT ptr : ^^VOID,
+    IN bytes : ULONG,
+    OUT ptr : ^^VOID,
 ) : TlStatus
 
-	// Eternal bump allocator for accelerating some stuff.
-	// First align to 8 bytes, assuming a 64-bit C host.
+    // Eternal bump allocator for accelerating some stuff.
+    // First align to 8 bytes, assuming a 64-bit C host.
 
-	bytes += 7
-	bytes &= ~7
+    bytes += 7
+    bytes &= ~7
 
-	IF bytes <= TlBumpBytesLeft THEN
-		ptr^ = TlBumpPtr
+    IF bytes <= TlBumpBytesLeft THEN
+        ptr^ = TlBumpPtr
 
-		TlBumpPtr += bytes
-		TlBumpBytesLeft -= bytes
+        TlBumpPtr += bytes
+        TlBumpBytesLeft -= bytes
 
-		RETURN TL_SUCCESS
-	END
+        RETURN TL_SUCCESS
+    END
 
-	IF bytes >= TL_BUMP_EXTEND THEN
-		ptr^ = malloc ( bytes )
+    IF bytes >= TL_BUMP_EXTEND THEN
+        ptr^ = malloc ( bytes )
 
-		IF ptr^ == 0 THEN
-			RETURN TL_NO_MEMORY
-		END
+        IF ptr^ == 0 THEN
+            RETURN TL_NO_MEMORY
+        END
 
-		RETURN TL_SUCCESS
-	END
+        RETURN TL_SUCCESS
+    END
 
-	TlBumpPtr = malloc ( TL_BUMP_EXTEND )
+    TlBumpPtr = malloc ( TL_BUMP_EXTEND )
 
-	IF NOT TlBumpPtr THEN
-		RETURN TL_NO_MEMORY
-	END
+    IF NOT TlBumpPtr THEN
+        RETURN TL_NO_MEMORY
+    END
 
-	ptr ^= TlBumpPtr
+    ptr ^= TlBumpPtr
 
-	TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
-	TlBumpPtr += bytes
+    TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
+    TlBumpPtr += bytes
 
-	RETURN TL_SUCCESS
+    RETURN TL_SUCCESS
 END
 
 FN TlCompareString (
-	IN str1 : ^UBYTE,
-	IN str2 : ^UBYTE,
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
 ) : ULONG
 
-	RETURN strcmp ( str1, str2 )
+    RETURN strcmp ( str1, str2 )
 END
 
 FN TlCompareStringWithMax (
-	IN str1 : ^UBYTE,
-	IN str2 : ^UBYTE,
-	IN count : ULONG,
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : ULONG,
 ) : ULONG
 
-	RETURN strncmp ( str1, str2, count )
+    RETURN strncmp ( str1, str2, count )
 END
 
 FN TlCopyString (
-	IN dest : ^UBYTE,
-	IN src : ^UBYTE,
-	IN bufsize : ULONG,
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : ULONG,
 )
-	IF NOT bufsize THEN
-		LEAVE
-	END
+    IF NOT bufsize THEN
+        LEAVE
+    END
 
-	WHILE bufsize - 1 DO
-		dest^ = src^
+    WHILE bufsize - 1 DO
+        dest^ = src^
 
-		dest += 1
-		src += 1
-		bufsize -= 1
+        dest += 1
+        src += 1
+        bufsize -= 1
 
-		IF src^ == 0 THEN
-			BREAK
-		END
-	END
+        IF src^ == 0 THEN
+            BREAK
+        END
+    END
 
-	dest^ = 0
+    dest^ = 0
 END
 
 FN TlOpenSource (
-	IN filename : ^UBYTE,
-	OUT handle : ^^VOID,
+    IN filename : ^UBYTE,
+    OUT handle : ^^VOID,
 ) : TlStatus
 
-	handle^ = fopen ( filename, "r" )
+    handle^ = fopen ( filename, "r" )
 
-	IF handle^ == 0 THEN
-		RETURN TL_COULDNT_OPEN
-	END
+    IF handle^ == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
 
-	RETURN TL_SUCCESS
+    RETURN TL_SUCCESS
 END
 
 FN TlOpenDestination (
-	IN filename : ^UBYTE,
-	OUT handle : ^^VOID,
+    IN filename : ^UBYTE,
+    OUT handle : ^^VOID,
 ) : TlStatus
 
-	handle^ = fopen ( filename, "w" )
+    handle^ = fopen ( filename, "w" )
 
-	IF handle^ == 0 THEN
-		RETURN TL_COULDNT_OPEN
-	END
+    IF handle^ == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
 
-	RETURN TL_SUCCESS
+    RETURN TL_SUCCESS
 END
 
 FN TlClose (
-	IN handle : ^VOID,
+    IN handle : ^VOID,
 )
 
-	fclose ( handle )
+    fclose ( handle )
 END
 
 FN TlReadFile (
-	IN handle : ^VOID,
-	IN bytes : ULONG,
-	IN buffer : ^VOID,
+    IN handle : ^VOID,
+    IN bytes : ULONG,
+    IN buffer : ^VOID,
 ) : ULONG
 
-	// XXX make sure to check for errors on hosts where that is more
-	// applicable.
+    // XXX make sure to check for errors on hosts where that is more
+    // applicable.
 
-	RETURN fread ( buffer, 1, bytes, handle )
+    RETURN fread ( buffer, 1, bytes, handle )
 END
 
 FN TlWriteFile (
-	IN handle : ^VOID,
-	IN bytes : ULONG,
-	IN buffer : ^VOID,
+    IN handle : ^VOID,
+    IN bytes : ULONG,
+    IN buffer : ^VOID,
 ) : ULONG
 
-	// XXX make sure to check for errors on hosts where that is more
-	// applicable.
+    // XXX make sure to check for errors on hosts where that is more
+    // applicable.
 
-	RETURN fwrite ( buffer, 1, bytes, handle )
+    RETURN fwrite ( buffer, 1, bytes, handle )
 END

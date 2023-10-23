@@ -5,163 +5,163 @@ CONST LEX_PUTBACK_STACK_DEPTH := 4
 CONST LEX_BUFFER_SIZE := 16384
 
 ENUM LexTokenType : UBYTE
-	TOKEN_STATEMENT, // subtype is a statement type
-	TOKEN_PTYPE, // subtype is a primitive type
-	TOKEN_OPER, // subtype is operator type
-	TOKEN_VALUE, // some kind of primitive value (NULL, NULLPTR, TRUE, FALSE)
-	TOKEN_ARGSPEC, // argument specifier (IN, OUT)
-	TOKEN_DECL, // declarator
-	TOKEN_OTHER, // anything else (THEN, DO, )
-	TOKEN_ASSIGN, // assignment operators
+    TOKEN_STATEMENT, // subtype is a statement type
+    TOKEN_PTYPE, // subtype is a primitive type
+    TOKEN_OPER, // subtype is operator type
+    TOKEN_VALUE, // some kind of primitive value (NULL, NULLPTR, TRUE, FALSE)
+    TOKEN_ARGSPEC, // argument specifier (IN, OUT)
+    TOKEN_DECL, // declarator
+    TOKEN_OTHER, // anything else (THEN, DO, )
+    TOKEN_ASSIGN, // assignment operators
 
-	TOKEN_LPAREN,
-	TOKEN_RPAREN,
-	TOKEN_LBRACKET,
-	TOKEN_RBRACKET,
-	TOKEN_CARET,
-	TOKEN_COLON,
-	TOKEN_LBRACE,
-	TOKEN_RBRACE,
-	TOKEN_COMMA,
+    TOKEN_LPAREN,
+    TOKEN_RPAREN,
+    TOKEN_LBRACKET,
+    TOKEN_RBRACKET,
+    TOKEN_CARET,
+    TOKEN_COLON,
+    TOKEN_LBRACE,
+    TOKEN_RBRACE,
+    TOKEN_COMMA,
 
-	TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
-	TOKEN_STRING, // payload is a pointer to a LexStringContents structure
-	TOKEN_NUMBER, // payload is the number value
+    TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
+    TOKEN_STRING, // payload is a pointer to a LexStringContents structure
+    TOKEN_NUMBER, // payload is the number value
 
-	TOKEN_EOF,
+    TOKEN_EOF,
 END
 
 ENUM LexTokenSubtype : UBYTE
-	TOKEN_AND,         // operator
-	TOKEN_BEGIN,       // statement
-	TOKEN_BREAK,       // statement
-	TOKEN_BYTE,        // type
-	TOKEN_CAST,        // operator
-	TOKEN_CONST,       // declarator
-	TOKEN_CONTINUE,    // statement
-	TOKEN_DO,          // other
-	TOKEN_ELSE,        // statement
-	TOKEN_ELSEIF,      // statement
-	TOKEN_END,         // statement
-	TOKEN_ENUM,        // declarator
-	TOKEN_EXTERN,      // declarator
-	TOKEN_FALSE,       // value
-	TOKEN_FN,          // declarator
-	TOKEN_FNPTR,       // declarator
-	TOKEN_FNSECTION,   // statement
-	TOKEN_GOTO,        // statement
-	TOKEN_IF,          // statement
-	TOKEN_IN,          // argspec
-	TOKEN_INT,         // type
-	TOKEN_LEAVE,       // statement
-	TOKEN_LONG,        // type
-	TOKEN_NOT,         // operator
-	TOKEN_NULL,        // value
-	TOKEN_NULLPTR,     // value
-	TOKEN_OR,          // operator
-	TOKEN_OUT,         // argspec
-	TOKEN_PACKED,      // other
-	TOKEN_PUBLIC,      // declarator
-	TOKEN_RETURN,      // statement
-	TOKEN_SECTION,     // declarator
-	TOKEN_SIZEOF,      // value
-	TOKEN_SIZEOFVALUE, // operator
-	TOKEN_STRUCT,      // declarator
-	TOKEN_THEN,        // other
-	TOKEN_TO,          // other
-	TOKEN_TRUE,        // value
-	TOKEN_TYPE,        // declarator
-	TOKEN_UBYTE,       // type
-	TOKEN_UINT,        // type
-	TOKEN_ULONG,       // type
-	TOKEN_UNION,       // declarator
-	TOKEN_VOID,        // type
-	TOKEN_WHILE,       // statement
+    TOKEN_AND,         // operator
+    TOKEN_BEGIN,       // statement
+    TOKEN_BREAK,       // statement
+    TOKEN_BYTE,        // type
+    TOKEN_CAST,        // operator
+    TOKEN_CONST,       // declarator
+    TOKEN_CONTINUE,    // statement
+    TOKEN_DO,          // other
+    TOKEN_ELSE,        // statement
+    TOKEN_ELSEIF,      // statement
+    TOKEN_END,         // statement
+    TOKEN_ENUM,        // declarator
+    TOKEN_EXTERN,      // declarator
+    TOKEN_FALSE,       // value
+    TOKEN_FN,          // declarator
+    TOKEN_FNPTR,       // declarator
+    TOKEN_FNSECTION,   // statement
+    TOKEN_GOTO,        // statement
+    TOKEN_IF,          // statement
+    TOKEN_IN,          // argspec
+    TOKEN_INT,         // type
+    TOKEN_LEAVE,       // statement
+    TOKEN_LONG,        // type
+    TOKEN_NOT,         // operator
+    TOKEN_NULL,        // value
+    TOKEN_NULLPTR,     // value
+    TOKEN_OR,          // operator
+    TOKEN_OUT,         // argspec
+    TOKEN_PACKED,      // other
+    TOKEN_PUBLIC,      // declarator
+    TOKEN_RETURN,      // statement
+    TOKEN_SECTION,     // declarator
+    TOKEN_SIZEOF,      // value
+    TOKEN_SIZEOFVALUE, // operator
+    TOKEN_STRUCT,      // declarator
+    TOKEN_THEN,        // other
+    TOKEN_TO,          // other
+    TOKEN_TRUE,        // value
+    TOKEN_TYPE,        // declarator
+    TOKEN_UBYTE,       // type
+    TOKEN_UINT,        // type
+    TOKEN_ULONG,       // type
+    TOKEN_UNION,       // declarator
+    TOKEN_VOID,        // type
+    TOKEN_WHILE,       // statement
 
-	TOKEN_EQUIV,       // operator
-	TOKEN_NOTEQUIV,    // operator
-	TOKEN_BITAND,      // operator
-	TOKEN_BITOR,       // operator
-	TOKEN_LESSTHAN,    // operator
-	TOKEN_GREATERTHAN, // operator
-	TOKEN_LTEQ,        // operator
-	TOKEN_GTEQ,        // operator
-	TOKEN_PLUS,        // operator
-	TOKEN_MINUS,       // operator
-	TOKEN_DIVIDE,      // operator
-	TOKEN_MODULO,      // operator
-	TOKEN_DOT,         // operator
-	TOKEN_LABEL,       // statement
-	TOKEN_BITXOR,      // operator
-	TOKEN_LEFTSHIFT,   // operator
-	TOKEN_RIGHTSHIFT,  // operator
-	TOKEN_BITNOT,      // operator
+    TOKEN_EQUIV,       // operator
+    TOKEN_NOTEQUIV,    // operator
+    TOKEN_BITAND,      // operator
+    TOKEN_BITOR,       // operator
+    TOKEN_LESSTHAN,    // operator
+    TOKEN_GREATERTHAN, // operator
+    TOKEN_LTEQ,        // operator
+    TOKEN_GTEQ,        // operator
+    TOKEN_PLUS,        // operator
+    TOKEN_MINUS,       // operator
+    TOKEN_DIVIDE,      // operator
+    TOKEN_MODULO,      // operator
+    TOKEN_DOT,         // operator
+    TOKEN_LABEL,       // statement
+    TOKEN_BITXOR,      // operator
+    TOKEN_LEFTSHIFT,   // operator
+    TOKEN_RIGHTSHIFT,  // operator
+    TOKEN_BITNOT,      // operator
 
-	TOKEN_EQUALS,      // assign
-	TOKEN_PLUSEQUALS,  // assign
-	TOKEN_MINUSEQUALS, // assign
-	TOKEN_MULEQUALS,   // assign
-	TOKEN_DIVEQUALS,   // assign
-	TOKEN_MODEQUALS,   // assign
-	TOKEN_ANDEQUALS,   // assign
-	TOKEN_OREQUALS,    // assign
-	TOKEN_XOREQUALS,   // assign
-	TOKEN_LSHEQUALS,   // assign
-	TOKEN_RSHEQUALS,   // assign
+    TOKEN_EQUALS,      // assign
+    TOKEN_PLUSEQUALS,  // assign
+    TOKEN_MINUSEQUALS, // assign
+    TOKEN_MULEQUALS,   // assign
+    TOKEN_DIVEQUALS,   // assign
+    TOKEN_MODEQUALS,   // assign
+    TOKEN_ANDEQUALS,   // assign
+    TOKEN_OREQUALS,    // assign
+    TOKEN_XOREQUALS,   // assign
+    TOKEN_LSHEQUALS,   // assign
+    TOKEN_RSHEQUALS,   // assign
 
-	TOKEN_IDENTIFIER_NEW,
-	TOKEN_IDENTIFIER_FOUND,
+    TOKEN_IDENTIFIER_NEW,
+    TOKEN_IDENTIFIER_FOUND,
 END
 
 ENUM LexCharBehavior : UBYTE
-	CHAR_NORMAL, // guaranteed to be zero
-	CHAR_SPLIT,
-	CHAR_COALESCE,
-	CHAR_WHITESPACE,
-	CHAR_EOF,
+    CHAR_NORMAL, // guaranteed to be zero
+    CHAR_SPLIT,
+    CHAR_COALESCE,
+    CHAR_WHITESPACE,
+    CHAR_EOF,
 END
 
 STRUCT LexInternedString
-	Entry : TlHashTableEntry, // MUST be at the beginning
-	DynamicBuffer : TlDynamicBuffer,
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    DynamicBuffer : TlDynamicBuffer,
 
-	// Include a context word for the code generator.
-	// The code generator will probably fill this in with a label name, for its
-	// own convenience in reusing the string.
+    // Include a context word for the code generator.
+    // The code generator will probably fill this in with a label name, for its
+    // own convenience in reusing the string.
 
-	CodeGenContext : ^VOID,
+    CodeGenContext : ^VOID,
 END
 
 STRUCT LexToken
-	Payload : ^VOID,
-	FileBlock : ^FeFileBlock,
+    Payload : ^VOID,
+    FileBlock : ^FeFileBlock,
 
-	LineNumber : ULONG,
-	LinePosition : ULONG,
+    LineNumber : ULONG,
+    LinePosition : ULONG,
 
-	Type : LexTokenType,
-	Subtype : LexTokenSubtype,
+    Type : LexTokenType,
+    Subtype : LexTokenSubtype,
 END
 
 STRUCT LexStream
-	Previous : ^LexStream,
-	FileBlock : ^FeFileBlock,
+    Previous : ^LexStream,
+    FileBlock : ^FeFileBlock,
 
-	Buffer : ^UBYTE,
-	BufferSize : ULONG,
-	ValidLength : ULONG,
-	BufferPosition : ULONG,
+    Buffer : ^UBYTE,
+    BufferSize : ULONG,
+    ValidLength : ULONG,
+    BufferPosition : ULONG,
 
-	LineNumber : ULONG,
-	LinePosition : ULONG,
+    LineNumber : ULONG,
+    LinePosition : ULONG,
 
-	IsMacro : UBYTE,
-	LastWasNewline : UBYTE,
+    IsMacro : UBYTE,
+    LastWasNewline : UBYTE,
 END
 
 STRUCT LexSymbol
-	Entry : TlHashTableEntry, // MUST be at the beginning
-	Name : ^UBYTE,
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Name : ^UBYTE,
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
@@ -176,34 +176,34 @@ EXTERN LexPutbackStackPtr : ULONG
 EXTERN FN LexInitialize () : TlStatus
 
 EXTERN FN LexStreamInitialize (
-	IN stream : ^LexStream,
-	IN ismacro : UBYTE,
+    IN stream : ^LexStream,
+    IN ismacro : UBYTE,
 ) : TlStatus
 
 EXTERN FN LexStreamUninitialize (
-	IN stream : ^LexStream,
+    IN stream : ^LexStream,
 )
 
 EXTERN FN LexStreamFree (
-	IN stream : ^LexStream,
+    IN stream : ^LexStream,
 )
 
 EXTERN FN LexStreamPush (
-	IN stream : ^LexStream,
+    IN stream : ^LexStream,
 )
 
 EXTERN FN LexStreamPop () : ^LexStream
 
 EXTERN FN LexFileStreamInitialize (
-	IN stream : ^LexStream,
-	IN handle : ^VOID,
-	IN filename : ^UBYTE,
+    IN stream : ^LexStream,
+    IN handle : ^VOID,
+    IN filename : ^UBYTE,
 ) : TlStatus
 
 EXTERN FN LexFileStreamCreate (
-	IN handle : ^VOID,
-	IN filename : ^UBYTE,
-	OUT stream : ^^LexStream,
+    IN handle : ^VOID,
+    IN filename : ^UBYTE,
+    OUT stream : ^^LexStream,
 ) : TlStatus
 
 EXTERN FN LexStreamNextCharacter () : UBYTE
@@ -211,16 +211,16 @@ EXTERN FN LexStreamNextCharacter () : UBYTE
 EXTERN FN LexParseDirective ()
 
 EXTERN FN LexStreamError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )
 
 EXTERN FN LexTokenError (
-	IN token : ^LexToken,
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN token : ^LexToken,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )

@@ -9,96 +9,96 @@
 #INCLUDE "<inc>/Runtime.jh"
 
 FN TlInitializeSymbolTable (
-	IN symboltable : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumeratorF,
+    IN symboltable : ^TlSymbolTable,
+    IN deletefunc : TlHashTableEnumeratorF,
 ) : TlStatus
 
-	symboltable^.PrevScope = NULLPTR
-	symboltable^.DeleteRoutine = deletefunc
+    symboltable^.PrevScope = NULLPTR
+    symboltable^.DeleteRoutine = deletefunc
 
-	RETURN TlInitializeHashTable ( &symboltable^.HashTable )
+    RETURN TlInitializeHashTable ( &symboltable^.HashTable )
 END
 
 FN TlCreateSymbolTable (
-	IN outerscope : ^TlSymbolTable,
-	IN deletefunc : TlHashTableEnumeratorF,
-	OUT symboltable : ^^TlSymbolTable,
+    IN outerscope : ^TlSymbolTable,
+    IN deletefunc : TlHashTableEnumeratorF,
+    OUT symboltable : ^^TlSymbolTable,
 ) : TlStatus
 
-	status := TlAlloc (
-		SIZEOF TlSymbolTable, // bytes
-		symboltable, // OUT ptr
-	)
+    status := TlAlloc (
+        SIZEOF TlSymbolTable, // bytes
+        symboltable, // OUT ptr
+    )
 
-	IF status THEN
-		RETURN status
-	END
+    IF status THEN
+        RETURN status
+    END
 
-	status = TlInitializeSymbolTable (
-		symboltable^, // symboltable
-		deletefunc, // deletefunc
-	)
+    status = TlInitializeSymbolTable (
+        symboltable^, // symboltable
+        deletefunc, // deletefunc
+    )
 
-	IF status THEN
-		TlFree ( symboltable^ )
-	END
+    IF status THEN
+        TlFree ( symboltable^ )
+    END
 
-	RETURN status
+    RETURN status
 END
 
 FN TlDeleteSymbolTable (
-	IN symboltable : ^TlSymbolTable,
+    IN symboltable : ^TlSymbolTable,
 ) : ^TlSymbolTable
 
-	outerscope := symboltable^.PrevScope
+    outerscope := symboltable^.PrevScope
 
-	TlEnumerateHashTable (
-		&symboltable^.HashTable, // hashtable
-		symboltable^.DeleteRoutine, // deletefunc
-	)
+    TlEnumerateHashTable (
+        &symboltable^.HashTable, // hashtable
+        symboltable^.DeleteRoutine, // deletefunc
+    )
 
-	TlFree ( symboltable )
+    TlFree ( symboltable )
 
-	RETURN outerscope
+    RETURN outerscope
 END
 
 FN TlLookupSymbolTable (
-	IN symboltable : ^TlSymbolTable,
-	IN name : ^UBYTE,
+    IN symboltable : ^TlSymbolTable,
+    IN name : ^UBYTE,
 ) : ^TlHashTableEntry
 
-	WHILE symboltable DO
-		entry := TlLookupHashTable (
-			&symboltable^.HashTable, // hashtable
-			name, // key
-		)
+    WHILE symboltable DO
+        entry := TlLookupHashTable (
+            &symboltable^.HashTable, // hashtable
+            name, // key
+        )
 
-		IF entry THEN
-			RETURN entry
-		END
+        IF entry THEN
+            RETURN entry
+        END
 
-		symboltable = symboltable^.PrevScope
-	END
+        symboltable = symboltable^.PrevScope
+    END
 
-	RETURN 0
+    RETURN 0
 END
 
 FN TlInsertSymbolTable (
-	IN symboltable : ^TlSymbolTable,
-	IN entry : ^TlHashTableEntry,
-	IN name : ^UBYTE,
+    IN symboltable : ^TlSymbolTable,
+    IN entry : ^TlHashTableEntry,
+    IN name : ^UBYTE,
 )
 
-	TlInsertHashTable (
-		&symboltable^.HashTable, // hashtable
-		entry, // entry
-		name, // key
-	)
+    TlInsertHashTable (
+        &symboltable^.HashTable, // hashtable
+        entry, // entry
+        name, // key
+    )
 END
 
 FN TlRemoveSymbolTable (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
-	TlRemoveHashTable ( entry )
+    TlRemoveHashTable ( entry )
 END

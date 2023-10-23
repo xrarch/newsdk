@@ -10,95 +10,95 @@ FeInputFileHandle : ^VOID
 FeOutputFileHandle : ^VOID
 
 FN main (
-	IN argc : _int,
-	IN argv : ^_char[],
+    IN argc : _int,
+    IN argv : ^_char[],
 ) : _int
 
-	// Parse the arguments and identify the input and output files.
+    // Parse the arguments and identify the input and output files.
 
-	FeParseArgs ( argc, argv )
+    FeParseArgs ( argc, argv )
 
-	// Open the input and output files.
+    // Open the input and output files.
 
-	status := TlOpenSource (
-		&FeInputFile[0], // filename
-		&FeInputFileHandle, // OUT handle
-	)
+    status := TlOpenSource (
+        &FeInputFile[0], // filename
+        &FeInputFileHandle, // OUT handle
+    )
 
-	IF status THEN
-		TlUserError ( "Failed to open source file.", 0, 0, 0 )
-	END
+    IF status THEN
+        TlUserError ( "Failed to open source file.", 0, 0, 0 )
+    END
 
-	status = TlOpenDestination (
-		&FeOutputFile[0], // filename
-		&FeOutputFileHandle, // OUT handle
-	)
+    status = TlOpenDestination (
+        &FeOutputFile[0], // filename
+        &FeOutputFileHandle, // OUT handle
+    )
 
-	IF status THEN
-		TlUserError ( "Failed to open destination file.", 0, 0, 0 )
-	END
+    IF status THEN
+        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
+    END
 
-	status = LexInitialize ()
+    status = LexInitialize ()
 
-	IF status THEN
-		TlInternalError ( "Failed to initialize lexer.", status, 0, 0 )
-	END
+    IF status THEN
+        TlInternalError ( "Failed to initialize lexer.", status, 0, 0 )
+    END
 
-	// Perform phase 1 of the compiler (lexing & parsing).
+    // Perform phase 1 of the compiler (lexing & parsing).
 
-	// FeParseProgram ()
+    // FeParseProgram ()
 
-	RETURN 0
+    RETURN 0
 END
 
 EXTERN FN LexStreamError_C (
-	IN filename : ^UBYTE,
-	IN linenumber : ULONG,
-	IN linepos : ULONG,
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN filename : ^UBYTE,
+    IN linenumber : ULONG,
+    IN linepos : ULONG,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )
 
 FN LexStreamError (
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )
-	stream := LexCurrentStream
+    stream := LexCurrentStream
 
-	LexStreamError_C (
-		stream^.FileBlock^.Name, // filename
-		stream^.LineNumber, // linenumber
-		stream^.LinePosition, // linepos
-		str, // str
-		err1, // err1
-		err2, // err2
-		err3, // err3
-	)
+    LexStreamError_C (
+        stream^.FileBlock^.Name, // filename
+        stream^.LineNumber, // linenumber
+        stream^.LinePosition, // linepos
+        str, // str
+        err1, // err1
+        err2, // err2
+        err3, // err3
+    )
 
-	TlErrorExit ()
+    TlErrorExit ()
 END
 
 FN LexTokenError (
-	IN token : ^LexToken,
-	IN str : ^UBYTE,
-	IN err1 : ULONG,
-	IN err2 : ULONG,
-	IN err3 : ULONG,
+    IN token : ^LexToken,
+    IN str : ^UBYTE,
+    IN err1 : ULONG,
+    IN err2 : ULONG,
+    IN err3 : ULONG,
 )
 
-	LexStreamError_C (
-		token^.FileBlock^.Name, // filename
-		token^.LineNumber, // linenumber
-		token^.LinePosition, // linepos
-		str, // str
-		err1, // err1
-		err2, // err2
-		err3, // err3
-	)
+    LexStreamError_C (
+        token^.FileBlock^.Name, // filename
+        token^.LineNumber, // linenumber
+        token^.LinePosition, // linepos
+        str, // str
+        err1, // err1
+        err2, // err2
+        err3, // err3
+    )
 
-	TlErrorExit ()
+    TlErrorExit ()
 END

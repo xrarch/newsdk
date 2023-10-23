@@ -5,69 +5,69 @@
 #INCLUDE "<inc>/Runtime.jh"
 
 FN TlInitializeDynamicBuffer (
-	IN array : ^TlDynamicBuffer,
+    IN array : ^TlDynamicBuffer,
 )
 
-	array^.Count = 0
-	array^.BufferSize = TL_DYNAMIC_BUFFER_INITIAL
-	array^.Buffer = &array^.InitialBuffer
+    array^.Count = 0
+    array^.BufferSize = TL_DYNAMIC_BUFFER_INITIAL
+    array^.Buffer = &array^.InitialBuffer
 END
 
 FN TlUninitializeDynamicBuffer (
-	IN array : ^TlDynamicBuffer,
+    IN array : ^TlDynamicBuffer,
 )
 
-	// Free the old buffer if it wasn't the initial inlined one.
+    // Free the old buffer if it wasn't the initial inlined one.
 
-	IF array^.BufferSize != TL_DYNAMIC_BUFFER_INITIAL THEN
-		TlFree ( array^.Buffer )
-	END
+    IF array^.BufferSize != TL_DYNAMIC_BUFFER_INITIAL THEN
+        TlFree ( array^.Buffer )
+    END
 END
 
 FN TlInsertDynamicBuffer (
-	IN array : ^TlDynamicBuffer,
-	IN byte : UBYTE,
+    IN array : ^TlDynamicBuffer,
+    IN byte : UBYTE,
 )
 
-	IF array^.Count + 1 < array^.BufferSize THEN
-		// There's enough space in the buffer already.
+    IF array^.Count + 1 < array^.BufferSize THEN
+        // There's enough space in the buffer already.
 
-		array^.Buffer[array^.Count] = byte
-		array^.Count += 1
+        array^.Buffer[array^.Count] = byte
+        array^.Count += 1
 
-		LEAVE
-	END 
+        LEAVE
+    END 
 
-	// There's not enough space. We have to grow the buffer.
-	// Grow the buffer by allocating a new one of double the length,
-	// copying everything into it, and then freeing the old one.
+    // There's not enough space. We have to grow the buffer.
+    // Grow the buffer by allocating a new one of double the length,
+    // copying everything into it, and then freeing the old one.
 
-	newbuffer : ^UBYTE
+    newbuffer : ^UBYTE
 
-	status := TlAlloc (
-		array^.BufferSize * 2, // bytes
-		&newbuffer, // OUT ptr
-	)
+    status := TlAlloc (
+        array^.BufferSize * 2, // bytes
+        &newbuffer, // OUT ptr
+    )
 
-	IF status THEN
-		TlInternalError ( "Failed to grow dynamic buffer", 0, 0, 0 )
-	END
+    IF status THEN
+        TlInternalError ( "Failed to grow dynamic buffer", 0, 0, 0 )
+    END
 
-	TlCopyMemory (
-		newbuffer, // dest
-		array^.Buffer, // src
-		array^.BufferSize, // sz
-	)
+    TlCopyMemory (
+        newbuffer, // dest
+        array^.Buffer, // src
+        array^.BufferSize, // sz
+    )
 
-	// Free the old buffer if it wasn't the initial inlined one.
+    // Free the old buffer if it wasn't the initial inlined one.
 
-	IF array^.BufferSize != TL_DYNAMIC_BUFFER_INITIAL THEN
-		TlFree ( array^.Buffer )
-	END
+    IF array^.BufferSize != TL_DYNAMIC_BUFFER_INITIAL THEN
+        TlFree ( array^.Buffer )
+    END
 
-	array^.Buffer = newbuffer
-	array^.BufferSize *= 2
+    array^.Buffer = newbuffer
+    array^.BufferSize *= 2
 
-	array^.Buffer[array^.Count] = byte
-	array^.Count += 1
+    array^.Buffer[array^.Count] = byte
+    array^.Count += 1
 END

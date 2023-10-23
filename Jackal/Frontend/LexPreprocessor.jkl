@@ -12,87 +12,87 @@ LexDirectiveBuffer : UBYTE[LEX_DIRECTIVE_MAX]
 
 FN LexParseDirective ()
 
-	// The lexer found a preprocessor directive and called us to handle it.
-	// Until we return, we are in full control of the source stream, and can
-	// consume it, tokenize it, etc to our hearts content. Thanks to the
-	// layered nature of the lexer, we don't have to worry about maintaining
-	// line numbers and so on.
+    // The lexer found a preprocessor directive and called us to handle it.
+    // Until we return, we are in full control of the source stream, and can
+    // consume it, tokenize it, etc to our hearts content. Thanks to the
+    // layered nature of the lexer, we don't have to worry about maintaining
+    // line numbers and so on.
 
-	WHILE TRUE DO
-		rv := LexCollectDirectiveToken ( &LexDirectiveBuffer )
+    WHILE TRUE DO
+        rv := LexCollectDirectiveToken ( &LexDirectiveBuffer )
 
-		IF rv THEN
-			BREAK
-		END
+        IF rv THEN
+            BREAK
+        END
 
-//		TlPrintNumber ( rv )
-//		TlPrintString ( "\n" )
-//		TlPrintString ( &LexDirectiveBuffer )
-//		TlPrintString ( "\n" )
-	END
+//      TlPrintNumber ( rv )
+//      TlPrintString ( "\n" )
+//      TlPrintString ( &LexDirectiveBuffer )
+//      TlPrintString ( "\n" )
+    END
 
-//	TlStreamError ( "test test test", 0, 0, 0 )
+//  TlStreamError ( "test test test", 0, 0, 0 )
 END
 
 LexPendingDirectiveNewline := FALSE
 
 FN LexCollectDirectiveToken (
-	IN buffer : ^UBYTE,
+    IN buffer : ^UBYTE,
 ) : UBYTE
 
-	// Skips whitespace until the next token, which it collects. Used for very
-	// simple directive parsing. Returns TRUE if there are tokens remaining in
-	// the directive, or FALSE otherwise (i.e. an un-escaped newline was
-	// encountered). If the token is terminated by a newline, the newline is
-	// put back in the stream so that we see it next time we're called and
-	// return the correct value.
+    // Skips whitespace until the next token, which it collects. Used for very
+    // simple directive parsing. Returns TRUE if there are tokens remaining in
+    // the directive, or FALSE otherwise (i.e. an un-escaped newline was
+    // encountered). If the token is terminated by a newline, the newline is
+    // put back in the stream so that we see it next time we're called and
+    // return the correct value.
 
-	IF LexPendingDirectiveNewline THEN
-		LexPendingDirectiveNewline = FALSE
+    IF LexPendingDirectiveNewline THEN
+        LexPendingDirectiveNewline = FALSE
 
-		RETURN TRUE
-	END
+        RETURN TRUE
+    END
 
-	byte : UBYTE
+    byte : UBYTE
 
-	// Skip any leading whitespace.
+    // Skip any leading whitespace.
 
-	WHILE TRUE DO
-		byte = LexStreamNextCharacter ()
+    WHILE TRUE DO
+        byte = LexStreamNextCharacter ()
 
-		IF byte == '\n' THEN
-			RETURN TRUE
-		END
+        IF byte == '\n' THEN
+            RETURN TRUE
+        END
 
-		IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
-			CONTINUE
-		END
+        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+            CONTINUE
+        END
 
-		BREAK
-	END
+        BREAK
+    END
 
-	// We can now collect the token.
+    // We can now collect the token.
 
-	WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
-		buffer^ = byte
-		buffer += 1
+    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+        buffer^ = byte
+        buffer += 1
 
-		byte = LexStreamNextCharacter ()
-	END
+        byte = LexStreamNextCharacter ()
+    END
 
-	IF byte == '\n' THEN
-		// The token was terminated by a newline, so we want the return value
-		// for the next call to be TRUE.
+    IF byte == '\n' THEN
+        // The token was terminated by a newline, so we want the return value
+        // for the next call to be TRUE.
 
-		LexPendingDirectiveNewline = TRUE
-	END
+        LexPendingDirectiveNewline = TRUE
+    END
 
-	RETURN FALSE
+    RETURN FALSE
 END
 
 FN LexCollectContents (
-	OUT buffer : ^UBYTE,
-	OUT length : ^UBYTE,
+    OUT buffer : ^UBYTE,
+    OUT length : ^UBYTE,
 )
 
 END

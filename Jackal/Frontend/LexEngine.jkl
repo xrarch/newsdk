@@ -13,42 +13,42 @@
 // include files, and also with preprocessor macro expansion.
 
 LexCharTreatment : LexCharBehavior[256] = {
-	[0] = CHAR_EOF,
+    [0] = CHAR_EOF,
 
-	[' ']  = CHAR_WHITESPACE,
-	['\n'] = CHAR_WHITESPACE,
-	['\t'] = CHAR_WHITESPACE,
+    [' ']  = CHAR_WHITESPACE,
+    ['\n'] = CHAR_WHITESPACE,
+    ['\t'] = CHAR_WHITESPACE,
 
-	['^'] = CHAR_SPLIT,
-	['('] = CHAR_SPLIT,
-	[')'] = CHAR_SPLIT,
-	['~'] = CHAR_SPLIT,
-	[','] = CHAR_SPLIT,
-	['['] = CHAR_SPLIT,
-	[']'] = CHAR_SPLIT,
-	[':'] = CHAR_SPLIT,
-	['{'] = CHAR_SPLIT,
-	['}'] = CHAR_SPLIT,
+    ['^'] = CHAR_SPLIT,
+    ['('] = CHAR_SPLIT,
+    [')'] = CHAR_SPLIT,
+    ['~'] = CHAR_SPLIT,
+    [','] = CHAR_SPLIT,
+    ['['] = CHAR_SPLIT,
+    [']'] = CHAR_SPLIT,
+    [':'] = CHAR_SPLIT,
+    ['{'] = CHAR_SPLIT,
+    ['}'] = CHAR_SPLIT,
 
-	['='] = CHAR_COALESCE,
-	['&'] = CHAR_COALESCE,
-	['|'] = CHAR_COALESCE,
-	['!'] = CHAR_COALESCE,
-	['<'] = CHAR_COALESCE,
-	['>'] = CHAR_COALESCE,
-	['+'] = CHAR_COALESCE,
-	['-'] = CHAR_COALESCE,
-	['*'] = CHAR_COALESCE,
-	['/'] = CHAR_COALESCE,
-	['%'] = CHAR_COALESCE,
-	['.'] = CHAR_COALESCE,
-	['@'] = CHAR_COALESCE,
-	['$'] = CHAR_COALESCE,
+    ['='] = CHAR_COALESCE,
+    ['&'] = CHAR_COALESCE,
+    ['|'] = CHAR_COALESCE,
+    ['!'] = CHAR_COALESCE,
+    ['<'] = CHAR_COALESCE,
+    ['>'] = CHAR_COALESCE,
+    ['+'] = CHAR_COALESCE,
+    ['-'] = CHAR_COALESCE,
+    ['*'] = CHAR_COALESCE,
+    ['/'] = CHAR_COALESCE,
+    ['%'] = CHAR_COALESCE,
+    ['.'] = CHAR_COALESCE,
+    ['@'] = CHAR_COALESCE,
+    ['$'] = CHAR_COALESCE,
 
-	// Since CHAR_NORMAL is the first field in the enum, it is guaranteed to
-	// be zero in value, so we don't have to explicitly set all the other
-	// character behaviors to it, since any non-defined fields here will also
-	// be zero.
+    // Since CHAR_NORMAL is the first field in the enum, it is guaranteed to
+    // be zero in value, so we don't have to explicitly set all the other
+    // character behaviors to it, since any non-defined fields here will also
+    // be zero.
 }
 
 CONST LEX_TOKEN_STRING_SIZE := 2048
@@ -63,9 +63,9 @@ LexPutbackStackPtr : ULONG = 0
 LexCurrentScope : ^TlSymbolTable = NULLPTR
 
 STRUCT LexKeyword
-	Entry : TlHashTableEntry, // MUST be at the beginning
-	Type : LexTokenType,
-	Subtype : LexTokenSubtype,
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Type : LexTokenType,
+    Subtype : LexTokenSubtype,
 END
 
 LexKeywordHashTable : TlHashTable
@@ -75,253 +75,253 @@ LexKeywordBumpArray : LexKeyword[128]
 LexKeywordBumpIndex := 0
 
 FN LexKeywordInsert (
-	IN name : ^UBYTE,
-	IN type : LexTokenType,
-	IN subtype : LexTokenSubtype,
+    IN name : ^UBYTE,
+    IN type : LexTokenType,
+    IN subtype : LexTokenSubtype,
 )
 
-	// Insert the keyword into the keyword hash table.
-	// This is done every time the compiler is invoked so it should be VERY
-	// fast. To this end we completely avoid dynamic allocation with this silly
-	// keyword structure bump allocator. The hash table package does no dynamic
-	// allocation, nor does it do any string copies (though it does iterate the
-	// string to calculate the hash), so this should all be quite speedy.
+    // Insert the keyword into the keyword hash table.
+    // This is done every time the compiler is invoked so it should be VERY
+    // fast. To this end we completely avoid dynamic allocation with this silly
+    // keyword structure bump allocator. The hash table package does no dynamic
+    // allocation, nor does it do any string copies (though it does iterate the
+    // string to calculate the hash), so this should all be quite speedy.
 
-	keyword := &LexKeywordBumpArray[LexKeywordBumpIndex]
-	LexKeywordBumpIndex += 1
+    keyword := &LexKeywordBumpArray[LexKeywordBumpIndex]
+    LexKeywordBumpIndex += 1
 
-	keyword^.Type = type
-	keyword^.Subtype = subtype
+    keyword^.Type = type
+    keyword^.Subtype = subtype
 
-	TlInsertHashTable (
-		&LexKeywordHashTable, // hashtable
-		&keyword^.Entry, // entry
-		name, // key
-	)
+    TlInsertHashTable (
+        &LexKeywordHashTable, // hashtable
+        &keyword^.Entry, // entry
+        name, // key
+    )
 END
 
 FN LexInitialize () : TlStatus
 
-	// Create the root file stream.
+    // Create the root file stream.
 
-	filestream : ^LexStream
+    filestream : ^LexStream
 
-	status := LexFileStreamCreate (
-		FeInputFileHandle, // handle
-		FeInputFile, // filename
-		&filestream, // OUT filestream
-	)
+    status := LexFileStreamCreate (
+        FeInputFileHandle, // handle
+        FeInputFile, // filename
+        &filestream, // OUT filestream
+    )
 
-	IF status THEN
-		RETURN status
-	END
+    IF status THEN
+        RETURN status
+    END
 
-	LexStreamPush ( filestream )
+    LexStreamPush ( filestream )
 
-	// Create the root macro scope.
+    // Create the root macro scope.
 
-	status = TlCreateSymbolTable (
-		0, // outerscope
-		&LexMacroDelete, // deletefunc
-		&LexCurrentMacroScope, // OUT symboltable
-	)
+    status = TlCreateSymbolTable (
+        0, // outerscope
+        &LexMacroDelete, // deletefunc
+        &LexCurrentMacroScope, // OUT symboltable
+    )
 
-	IF status THEN
-		RETURN status
-	END
+    IF status THEN
+        RETURN status
+    END
 
-	// Create the global symbol table scope.
+    // Create the global symbol table scope.
 
-	status = TlCreateSymbolTable (
-		0, // outerscope
-		&LexSymbolDelete, // deletefunc
-		&LexCurrentScope, // OUT symboltable
-	)
+    status = TlCreateSymbolTable (
+        0, // outerscope
+        &LexSymbolDelete, // deletefunc
+        &LexCurrentScope, // OUT symboltable
+    )
 
-	IF status THEN
-		RETURN status
-	END
+    IF status THEN
+        RETURN status
+    END
 
-	// Initialize interned string hash table.
+    // Initialize interned string hash table.
 
-	TlInitializeHashTable ( &LexInternedStringHashTable )
+    TlInitializeHashTable ( &LexInternedStringHashTable )
 
-	// Initialize keyword hash table.
+    // Initialize keyword hash table.
 
-	TlInitializeHashTable ( &LexKeywordHashTable )
+    TlInitializeHashTable ( &LexKeywordHashTable )
 
-	LexKeywordInsert ( "AND", TOKEN_OPER, TOKEN_AND )
-	LexKeywordInsert ( "BEGIN", TOKEN_STATEMENT, TOKEN_BEGIN )
-	LexKeywordInsert ( "BREAK", TOKEN_STATEMENT, TOKEN_BREAK )
-	LexKeywordInsert ( "BYTE", TOKEN_PTYPE, TOKEN_BYTE )
-	LexKeywordInsert ( "CAST", TOKEN_OPER, TOKEN_CAST )
-	LexKeywordInsert ( "CONST", TOKEN_DECL, TOKEN_CONST )
-	LexKeywordInsert ( "CONTINUE", TOKEN_STATEMENT, TOKEN_CONTINUE )
-	LexKeywordInsert ( "DO", TOKEN_OTHER, TOKEN_DO )
-	LexKeywordInsert ( "ELSE", TOKEN_STATEMENT, TOKEN_ELSE )
-	LexKeywordInsert ( "ELSEIF", TOKEN_STATEMENT, TOKEN_ELSEIF )
-	LexKeywordInsert ( "END", TOKEN_STATEMENT, TOKEN_END )
-	LexKeywordInsert ( "ENUM", TOKEN_DECL, TOKEN_ENUM )
-	LexKeywordInsert ( "EXTERN", TOKEN_DECL, TOKEN_EXTERN )
-	LexKeywordInsert ( "FALSE", TOKEN_VALUE, TOKEN_FALSE )
-	LexKeywordInsert ( "FN", TOKEN_DECL, TOKEN_FN )
-	LexKeywordInsert ( "FNPTR", TOKEN_DECL, TOKEN_FNPTR )
-	LexKeywordInsert ( "FNSECTION", TOKEN_STATEMENT, TOKEN_FNSECTION )
-	LexKeywordInsert ( "GOTO", TOKEN_STATEMENT, TOKEN_GOTO )
-	LexKeywordInsert ( "IF", TOKEN_STATEMENT, TOKEN_IF )
-	LexKeywordInsert ( "IN", TOKEN_ARGSPEC, TOKEN_IN )
-	LexKeywordInsert ( "INT", TOKEN_PTYPE, TOKEN_INT )
-	LexKeywordInsert ( "LEAVE", TOKEN_STATEMENT, TOKEN_LEAVE )
-	LexKeywordInsert ( "LONG", TOKEN_PTYPE, TOKEN_LONG )
-	LexKeywordInsert ( "NOT", TOKEN_OPER, TOKEN_NOT )
-	LexKeywordInsert ( "NULL", TOKEN_VALUE, TOKEN_NULL )
-	LexKeywordInsert ( "NULLPTR", TOKEN_VALUE, TOKEN_NULLPTR )
-	LexKeywordInsert ( "OR", TOKEN_OPER, TOKEN_OR )
-	LexKeywordInsert ( "OUT", TOKEN_ARGSPEC, TOKEN_OUT )
-	LexKeywordInsert ( "PACKED", TOKEN_OTHER, TOKEN_PACKED )
-	LexKeywordInsert ( "PUBLIC", TOKEN_DECL, TOKEN_PUBLIC )
-	LexKeywordInsert ( "RETURN", TOKEN_STATEMENT, TOKEN_RETURN )
-	LexKeywordInsert ( "SECTION", TOKEN_DECL, TOKEN_SECTION )
-	LexKeywordInsert ( "SIZEOF", TOKEN_VALUE, TOKEN_SIZEOF )
-	LexKeywordInsert ( "SIZEOFVALUE", TOKEN_OPER, TOKEN_SIZEOFVALUE )
-	LexKeywordInsert ( "STRUCT", TOKEN_DECL, TOKEN_STRUCT )
-	LexKeywordInsert ( "THEN", TOKEN_OTHER, TOKEN_THEN )
-	LexKeywordInsert ( "TO", TOKEN_OTHER, TOKEN_TO )
-	LexKeywordInsert ( "TRUE", TOKEN_VALUE, TOKEN_TRUE )
-	LexKeywordInsert ( "TYPE", TOKEN_DECL, TOKEN_TYPE )
-	LexKeywordInsert ( "UBYTE", TOKEN_PTYPE, TOKEN_UBYTE )
-	LexKeywordInsert ( "UINT", TOKEN_PTYPE, TOKEN_UINT )
-	LexKeywordInsert ( "ULONG", TOKEN_PTYPE, TOKEN_ULONG )
-	LexKeywordInsert ( "UNION", TOKEN_DECL, TOKEN_UNION )
-	LexKeywordInsert ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
-	LexKeywordInsert ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
+    LexKeywordInsert ( "AND", TOKEN_OPER, TOKEN_AND )
+    LexKeywordInsert ( "BEGIN", TOKEN_STATEMENT, TOKEN_BEGIN )
+    LexKeywordInsert ( "BREAK", TOKEN_STATEMENT, TOKEN_BREAK )
+    LexKeywordInsert ( "BYTE", TOKEN_PTYPE, TOKEN_BYTE )
+    LexKeywordInsert ( "CAST", TOKEN_OPER, TOKEN_CAST )
+    LexKeywordInsert ( "CONST", TOKEN_DECL, TOKEN_CONST )
+    LexKeywordInsert ( "CONTINUE", TOKEN_STATEMENT, TOKEN_CONTINUE )
+    LexKeywordInsert ( "DO", TOKEN_OTHER, TOKEN_DO )
+    LexKeywordInsert ( "ELSE", TOKEN_STATEMENT, TOKEN_ELSE )
+    LexKeywordInsert ( "ELSEIF", TOKEN_STATEMENT, TOKEN_ELSEIF )
+    LexKeywordInsert ( "END", TOKEN_STATEMENT, TOKEN_END )
+    LexKeywordInsert ( "ENUM", TOKEN_DECL, TOKEN_ENUM )
+    LexKeywordInsert ( "EXTERN", TOKEN_DECL, TOKEN_EXTERN )
+    LexKeywordInsert ( "FALSE", TOKEN_VALUE, TOKEN_FALSE )
+    LexKeywordInsert ( "FN", TOKEN_DECL, TOKEN_FN )
+    LexKeywordInsert ( "FNPTR", TOKEN_DECL, TOKEN_FNPTR )
+    LexKeywordInsert ( "FNSECTION", TOKEN_STATEMENT, TOKEN_FNSECTION )
+    LexKeywordInsert ( "GOTO", TOKEN_STATEMENT, TOKEN_GOTO )
+    LexKeywordInsert ( "IF", TOKEN_STATEMENT, TOKEN_IF )
+    LexKeywordInsert ( "IN", TOKEN_ARGSPEC, TOKEN_IN )
+    LexKeywordInsert ( "INT", TOKEN_PTYPE, TOKEN_INT )
+    LexKeywordInsert ( "LEAVE", TOKEN_STATEMENT, TOKEN_LEAVE )
+    LexKeywordInsert ( "LONG", TOKEN_PTYPE, TOKEN_LONG )
+    LexKeywordInsert ( "NOT", TOKEN_OPER, TOKEN_NOT )
+    LexKeywordInsert ( "NULL", TOKEN_VALUE, TOKEN_NULL )
+    LexKeywordInsert ( "NULLPTR", TOKEN_VALUE, TOKEN_NULLPTR )
+    LexKeywordInsert ( "OR", TOKEN_OPER, TOKEN_OR )
+    LexKeywordInsert ( "OUT", TOKEN_ARGSPEC, TOKEN_OUT )
+    LexKeywordInsert ( "PACKED", TOKEN_OTHER, TOKEN_PACKED )
+    LexKeywordInsert ( "PUBLIC", TOKEN_DECL, TOKEN_PUBLIC )
+    LexKeywordInsert ( "RETURN", TOKEN_STATEMENT, TOKEN_RETURN )
+    LexKeywordInsert ( "SECTION", TOKEN_DECL, TOKEN_SECTION )
+    LexKeywordInsert ( "SIZEOF", TOKEN_VALUE, TOKEN_SIZEOF )
+    LexKeywordInsert ( "SIZEOFVALUE", TOKEN_OPER, TOKEN_SIZEOFVALUE )
+    LexKeywordInsert ( "STRUCT", TOKEN_DECL, TOKEN_STRUCT )
+    LexKeywordInsert ( "THEN", TOKEN_OTHER, TOKEN_THEN )
+    LexKeywordInsert ( "TO", TOKEN_OTHER, TOKEN_TO )
+    LexKeywordInsert ( "TRUE", TOKEN_VALUE, TOKEN_TRUE )
+    LexKeywordInsert ( "TYPE", TOKEN_DECL, TOKEN_TYPE )
+    LexKeywordInsert ( "UBYTE", TOKEN_PTYPE, TOKEN_UBYTE )
+    LexKeywordInsert ( "UINT", TOKEN_PTYPE, TOKEN_UINT )
+    LexKeywordInsert ( "ULONG", TOKEN_PTYPE, TOKEN_ULONG )
+    LexKeywordInsert ( "UNION", TOKEN_DECL, TOKEN_UNION )
+    LexKeywordInsert ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
+    LexKeywordInsert ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
 
-	LexKeywordInsert ( "(", TOKEN_LPAREN, NULL )
-	LexKeywordInsert ( ")", TOKEN_RPAREN, NULL )
-	LexKeywordInsert ( "[", TOKEN_LBRACKET, NULL )
-	LexKeywordInsert ( "]", TOKEN_RBRACKET, NULL )
-	LexKeywordInsert ( "^", TOKEN_CARET, NULL )
-	LexKeywordInsert ( ":", TOKEN_COLON, NULL )
-	LexKeywordInsert ( "{", TOKEN_LBRACE, NULL )
-	LexKeywordInsert ( "}", TOKEN_RBRACE, NULL )
-	LexKeywordInsert ( ",", TOKEN_COMMA, NULL )
+    LexKeywordInsert ( "(", TOKEN_LPAREN, NULL )
+    LexKeywordInsert ( ")", TOKEN_RPAREN, NULL )
+    LexKeywordInsert ( "[", TOKEN_LBRACKET, NULL )
+    LexKeywordInsert ( "]", TOKEN_RBRACKET, NULL )
+    LexKeywordInsert ( "^", TOKEN_CARET, NULL )
+    LexKeywordInsert ( ":", TOKEN_COLON, NULL )
+    LexKeywordInsert ( "{", TOKEN_LBRACE, NULL )
+    LexKeywordInsert ( "}", TOKEN_RBRACE, NULL )
+    LexKeywordInsert ( ",", TOKEN_COMMA, NULL )
 
-	LexKeywordInsert ( "==", TOKEN_OPER, TOKEN_EQUIV )
-	LexKeywordInsert ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV )
-	LexKeywordInsert ( "&", TOKEN_OPER, TOKEN_BITAND )
-	LexKeywordInsert ( "|", TOKEN_OPER, TOKEN_BITOR )
-	LexKeywordInsert ( "<", TOKEN_OPER, TOKEN_LESSTHAN )
-	LexKeywordInsert ( ">", TOKEN_OPER, TOKEN_GREATERTHAN )
-	LexKeywordInsert ( "<=", TOKEN_OPER, TOKEN_LTEQ )
-	LexKeywordInsert ( ">=", TOKEN_OPER, TOKEN_GTEQ )
-	LexKeywordInsert ( "+", TOKEN_OPER, TOKEN_PLUS )
-	LexKeywordInsert ( "-", TOKEN_OPER, TOKEN_MINUS )
-	LexKeywordInsert ( "/", TOKEN_OPER, TOKEN_DIVIDE )
-	LexKeywordInsert ( "%", TOKEN_OPER, TOKEN_MODULO )
-	LexKeywordInsert ( ".", TOKEN_OPER, TOKEN_DOT )
-	LexKeywordInsert ( "@", TOKEN_STATEMENT, TOKEN_LABEL )
-	LexKeywordInsert ( "$", TOKEN_OPER, TOKEN_BITXOR )
-	LexKeywordInsert ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT )
-	LexKeywordInsert ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT )
-	LexKeywordInsert ( "~", TOKEN_OPER, TOKEN_BITNOT )
+    LexKeywordInsert ( "==", TOKEN_OPER, TOKEN_EQUIV )
+    LexKeywordInsert ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV )
+    LexKeywordInsert ( "&", TOKEN_OPER, TOKEN_BITAND )
+    LexKeywordInsert ( "|", TOKEN_OPER, TOKEN_BITOR )
+    LexKeywordInsert ( "<", TOKEN_OPER, TOKEN_LESSTHAN )
+    LexKeywordInsert ( ">", TOKEN_OPER, TOKEN_GREATERTHAN )
+    LexKeywordInsert ( "<=", TOKEN_OPER, TOKEN_LTEQ )
+    LexKeywordInsert ( ">=", TOKEN_OPER, TOKEN_GTEQ )
+    LexKeywordInsert ( "+", TOKEN_OPER, TOKEN_PLUS )
+    LexKeywordInsert ( "-", TOKEN_OPER, TOKEN_MINUS )
+    LexKeywordInsert ( "/", TOKEN_OPER, TOKEN_DIVIDE )
+    LexKeywordInsert ( "%", TOKEN_OPER, TOKEN_MODULO )
+    LexKeywordInsert ( ".", TOKEN_OPER, TOKEN_DOT )
+    LexKeywordInsert ( "@", TOKEN_STATEMENT, TOKEN_LABEL )
+    LexKeywordInsert ( "$", TOKEN_OPER, TOKEN_BITXOR )
+    LexKeywordInsert ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT )
+    LexKeywordInsert ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT )
+    LexKeywordInsert ( "~", TOKEN_OPER, TOKEN_BITNOT )
 
-	LexKeywordInsert ( "=", TOKEN_ASSIGN, TOKEN_EQUALS )
-	LexKeywordInsert ( "+=", TOKEN_ASSIGN, TOKEN_PLUSEQUALS )
-	LexKeywordInsert ( "-=", TOKEN_ASSIGN, TOKEN_MINUSEQUALS )
-	LexKeywordInsert ( "*=", TOKEN_ASSIGN, TOKEN_MULEQUALS )
-	LexKeywordInsert ( "/=", TOKEN_ASSIGN, TOKEN_DIVEQUALS )
-	LexKeywordInsert ( "%=", TOKEN_ASSIGN, TOKEN_MODEQUALS )
-	LexKeywordInsert ( "&=", TOKEN_ASSIGN, TOKEN_ANDEQUALS )
-	LexKeywordInsert ( "|=", TOKEN_ASSIGN, TOKEN_OREQUALS )
-	LexKeywordInsert ( "$=", TOKEN_ASSIGN, TOKEN_XOREQUALS )
-	LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
-	LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
+    LexKeywordInsert ( "=", TOKEN_ASSIGN, TOKEN_EQUALS )
+    LexKeywordInsert ( "+=", TOKEN_ASSIGN, TOKEN_PLUSEQUALS )
+    LexKeywordInsert ( "-=", TOKEN_ASSIGN, TOKEN_MINUSEQUALS )
+    LexKeywordInsert ( "*=", TOKEN_ASSIGN, TOKEN_MULEQUALS )
+    LexKeywordInsert ( "/=", TOKEN_ASSIGN, TOKEN_DIVEQUALS )
+    LexKeywordInsert ( "%=", TOKEN_ASSIGN, TOKEN_MODEQUALS )
+    LexKeywordInsert ( "&=", TOKEN_ASSIGN, TOKEN_ANDEQUALS )
+    LexKeywordInsert ( "|=", TOKEN_ASSIGN, TOKEN_OREQUALS )
+    LexKeywordInsert ( "$=", TOKEN_ASSIGN, TOKEN_XOREQUALS )
+    LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
+    LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
 
-	// Test some stuff (TEMPORARY)
+    // Test some stuff (TEMPORARY)
 
-	//TlSummarizeHashTable ( &LexKeywordHashTable )
+    //TlSummarizeHashTable ( &LexKeywordHashTable )
 
-	buf : UBYTE[LEX_TOKEN_STRING_SIZE]
-	len : ULONG
+    buf : UBYTE[LEX_TOKEN_STRING_SIZE]
+    len : ULONG
 
-	tok : LexToken
+    tok : LexToken
 
-	LexGetToken (
-		&tok, // token
-	)
+    LexGetToken (
+        &tok, // token
+    )
 
-	WHILE tok.Type != TOKEN_EOF DO
-		TlPrintNumber ( tok.Type )
-		TlPrintString ( "\n" )
+    WHILE tok.Type != TOKEN_EOF DO
+        TlPrintNumber ( tok.Type )
+        TlPrintString ( "\n" )
 
-		IF tok.Type == TOKEN_STRING THEN
-			str := CAST tok.Payload TO ^LexInternedString
+        IF tok.Type == TOKEN_STRING THEN
+            str := CAST tok.Payload TO ^LexInternedString
 
-			TlPrintString ( str^.DynamicBuffer.Buffer )
-			TlPrintString ( "\n" )
-		END
+            TlPrintString ( str^.DynamicBuffer.Buffer )
+            TlPrintString ( "\n" )
+        END
 
-		IF tok.Type == TOKEN_NUMBER THEN
-			TlPrintString ( "num: " )
-			TlPrintNumber ( tok.Payload )
-			TlPrintString ( "\n" )
-		END
+        IF tok.Type == TOKEN_NUMBER THEN
+            TlPrintString ( "num: " )
+            TlPrintNumber ( tok.Payload )
+            TlPrintString ( "\n" )
+        END
 
-		LexGetToken (
-			&tok, // token
-		)
-	END
+        LexGetToken (
+            &tok, // token
+        )
+    END
 
-//	dynamicbuf : TlDynamicBuffer
+//  dynamicbuf : TlDynamicBuffer
 //
-//	TlInitializeDynamicBuffer ( &dynamicbuf )
+//  TlInitializeDynamicBuffer ( &dynamicbuf )
 //
-//	i := 0
-//	c := '0'
+//  i := 0
+//  c := '0'
 //
-//	WHILE i < 1024 DO
-//		IF c > '9' THEN
-//			c = '0'
-//		END
+//  WHILE i < 1024 DO
+//      IF c > '9' THEN
+//          c = '0'
+//      END
 //
-//		TlInsertDynamicBuffer (
-//			&dynamicbuf, // array
-//			c, // byte
-//		)
+//      TlInsertDynamicBuffer (
+//          &dynamicbuf, // array
+//          c, // byte
+//      )
 //
-//		c += 1
-//		i += 1
-//	END
+//      c += 1
+//      i += 1
+//  END
 //
-//	i = 0
+//  i = 0
 //
-//	WHILE i < dynamicbuf.Count DO
-//		TlPrintCharacter ( dynamicbuf.Buffer[i] )
+//  WHILE i < dynamicbuf.Count DO
+//      TlPrintCharacter ( dynamicbuf.Buffer[i] )
 //
-//		i += 1
-//	END
+//      i += 1
+//  END
 
-	RETURN status
+    RETURN status
 END
 
 FN (TlHashTableEnumeratorF) LexMacroDelete (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
-	// TODO: free buffer
+    // TODO: free buffer
 
-	// Macros are bump-allocated, so it's meaningless to free one.
-	// TlFree ( entry )
+    // Macros are bump-allocated, so it's meaningless to free one.
+    // TlFree ( entry )
 END
 
 FN (TlHashTableEnumeratorF) LexSymbolDelete (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
-	// TODO: free whatever context symbols have
+    // TODO: free whatever context symbols have
 
-	// Symbols are bump-allocated, so it's meaningless to free one.
-	// TlFree ( entry )
+    // Symbols are bump-allocated, so it's meaningless to free one.
+    // TlFree ( entry )
 END
 
 LexCharacterBackslash := FALSE
@@ -337,110 +337,110 @@ LexCharacterNewlineSeen := TRUE
 
 FN LexGetCharacter () : UBYTE
 
-	// Return the next character in the source stream. Omits comments and text
-	// that is killed by the "preprocessor", and notices preprocessor
-	// directives, which it ships off to a special little interpreter.
+    // Return the next character in the source stream. Omits comments and text
+    // that is killed by the "preprocessor", and notices preprocessor
+    // directives, which it ships off to a special little interpreter.
 
-	byte : UBYTE
+    byte : UBYTE
 
-	comment := FALSE
+    comment := FALSE
 
-	WHILE TRUE DO
-		IF LexCharacterCoalescePutback THEN
-			byte = LexCharacterCoalescePutback
-			LexCharacterCoalescePutback = 0
-		ELSEIF LexCharacterPutback THEN
-			byte = LexCharacterPutback
-			LexCharacterPutback = 0
-		ELSE
-			byte = LexStreamNextCharacter ()
+    WHILE TRUE DO
+        IF LexCharacterCoalescePutback THEN
+            byte = LexCharacterCoalescePutback
+            LexCharacterCoalescePutback = 0
+        ELSEIF LexCharacterPutback THEN
+            byte = LexCharacterPutback
+            LexCharacterPutback = 0
+        ELSE
+            byte = LexStreamNextCharacter ()
 
-			IF NOT byte THEN
-				// EOF has been reached.
+            IF NOT byte THEN
+                // EOF has been reached.
 
-				BREAK
-			END
-		END
+                BREAK
+            END
+        END
 
-		// We care about backslashes and about knowing whether we're in a
-		// string or not in this routine, because otherwise we will
-		// mis-identify things as comments or directives that aren't.
+        // We care about backslashes and about knowing whether we're in a
+        // string or not in this routine, because otherwise we will
+        // mis-identify things as comments or directives that aren't.
 
-		IF comment THEN
-			IF byte != '\n' THEN
-				CONTINUE
-			END
+        IF comment THEN
+            IF byte != '\n' THEN
+                CONTINUE
+            END
 
-			comment = FALSE
+            comment = FALSE
 
-			// Make sure this newline is seen by the higher level code,
-			// otherwise a token that is immediately followed by a comment
-			// with no interfering whitespace may not terminate properly.
+            // Make sure this newline is seen by the higher level code,
+            // otherwise a token that is immediately followed by a comment
+            // with no interfering whitespace may not terminate properly.
 
-		ELSEIF LexCharacterBackslash THEN
-			LexCharacterBackslash = FALSE
+        ELSEIF LexCharacterBackslash THEN
+            LexCharacterBackslash = FALSE
 
-		ELSEIF byte == '\\' THEN
-			LexCharacterBackslash = TRUE
+        ELSEIF byte == '\\' THEN
+            LexCharacterBackslash = TRUE
 
-		ELSEIF LexCharacterInString THEN
-			LexCharacterInString = NOT (byte == '\"')
+        ELSEIF LexCharacterInString THEN
+            LexCharacterInString = NOT (byte == '\"')
 
-		ELSEIF LexCharacterInLiteral THEN
-			LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
+        ELSEIF LexCharacterInLiteral THEN
+            LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
 
-		ELSEIF byte == '/' THEN
-			// We have to figure out if this is a comment or not. This
-			// requires looking at the next character and seeing if it is also
-			// a forward slash character. If it is, we set comment to true. If
-			// it isn't, we pass this forward slash along and set putback to
-			// the value of the character we peeked, causing it to be returned
-			// on the next call.
+        ELSEIF byte == '/' THEN
+            // We have to figure out if this is a comment or not. This
+            // requires looking at the next character and seeing if it is also
+            // a forward slash character. If it is, we set comment to true. If
+            // it isn't, we pass this forward slash along and set putback to
+            // the value of the character we peeked, causing it to be returned
+            // on the next call.
 
-			nextbyte := LexStreamNextCharacter ()
+            nextbyte := LexStreamNextCharacter ()
 
-			IF nextbyte == '/' THEN
-				comment = TRUE
+            IF nextbyte == '/' THEN
+                comment = TRUE
 
-				CONTINUE
-			END
+                CONTINUE
+            END
 
-			LexCharacterPutback = nextbyte
+            LexCharacterPutback = nextbyte
 
-		ELSEIF byte == '\"' THEN
-			LexCharacterInString = TRUE
+        ELSEIF byte == '\"' THEN
+            LexCharacterInString = TRUE
 
-		ELSEIF byte == 0x27 THEN // single-quote
-			LexCharacterInLiteral = TRUE
+        ELSEIF byte == 0x27 THEN // single-quote
+            LexCharacterInLiteral = TRUE
 
-		ELSEIF LexCharacterNewlineSeen AND byte == '#' THEN
-			// We found a preprocessor directive! We dispatch to
-			// the preprocessor regardless of the value of the false count.
-			// This gives it an opportunity to manipulate the false count, but
-			// it must be sure to ignore directives that aren't relevant.
+        ELSEIF LexCharacterNewlineSeen AND byte == '#' THEN
+            // We found a preprocessor directive! We dispatch to
+            // the preprocessor regardless of the value of the false count.
+            // This gives it an opportunity to manipulate the false count, but
+            // it must be sure to ignore directives that aren't relevant.
 
-			LexParseDirective ()
+            LexParseDirective ()
 
-			// The preprocessor consumed the newline character terminating the
-			// directive, so we return one here for good measure.
+            // The preprocessor consumed the newline character terminating the
+            // directive, so we return one here for good measure.
 
-			byte = '\n'
-		END
+            byte = '\n'
+        END
 
-		LexCharacterNewlineSeen = byte == '\n'
+        LexCharacterNewlineSeen = byte == '\n'
 
-		IF LexFalseCount THEN
-			// A non-zero false count causes all characters to be ignored
-			// until this situation is resolved by a preprocessor directive.
-			// This is used for conditional compilation.
+        IF LexFalseCount THEN
+            // A non-zero false count causes all characters to be ignored
+            // until this situation is resolved by a preprocessor directive.
+            // This is used for conditional compilation.
 
-			CONTINUE
-		END
+            CONTINUE
+        END
 
-		BREAK
-	END
+        BREAK
+    END
 
-	RETURN byte
+    RETURN byte
 END
 
 CONST TOKEN_FLAG_SPLIT    := 1
@@ -450,499 +450,508 @@ CONST TOKEN_FLAG_CHARLIT  := 8
 CONST TOKEN_FLAG_UPPER    := 16
 
 FN LexGetTokenInternal (
-	IN token : ^LexToken,
-	IN buffer : ^UBYTE,
-	OUT length : ^ULONG,
-	OUT internedstring : ^^LexInternedString,
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+    OUT length : ^ULONG,
+    OUT internedstring : ^^LexInternedString,
 ) : UBYTE
 
-	// Reads the string of the next token into the provided buffer. Identifies
-	// macros and expands them. Returns a set of flags indicating things about
-	// the token; for instance, if EOF has been reached (i.e. there is no
-	// token), if the token is all uppercase, and if the token is a SPLIT or
-	// COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
-	// in length or greater.
+    // Reads the string of the next token into the provided buffer. Identifies
+    // macros and expands them. Returns a set of flags indicating things about
+    // the token; for instance, if EOF has been reached (i.e. there is no
+    // token), if the token is all uppercase, and if the token is a SPLIT or
+    // COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
+    // in length or greater.
 
-	length^ = 0
+    length^ = 0
 
-	// Skip leading whitespace.
+    // Skip leading whitespace.
 
-	stream := LexCurrentStream
+    stream := LexCurrentStream
 
-	IF stream THEN
-		token^.FileBlock = stream^.FileBlock
-		token^.LineNumber = stream^.LineNumber
-		token^.LinePosition = stream^.LinePosition
-	END
+    IF stream THEN
+        token^.FileBlock = stream^.FileBlock
+        token^.LineNumber = stream^.LineNumber
+        token^.LinePosition = stream^.LinePosition
+    END
 
-	byte := LexGetCharacter ()
+    byte := LexGetCharacter ()
 
-	WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
-		// Re-capture the stream location information for each character of
-		// whitespace consumed, until we get the real thing.
+    WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
+        // Re-capture the stream location information for each character of
+        // whitespace consumed, until we get the real thing.
 
-		stream = LexCurrentStream
+        stream = LexCurrentStream
 
-		IF stream THEN
-			token^.FileBlock = stream^.FileBlock
-			token^.LineNumber = stream^.LineNumber
-			token^.LinePosition = stream^.LinePosition
-		END
+        IF stream THEN
+            token^.FileBlock = stream^.FileBlock
+            token^.LineNumber = stream^.LineNumber
+            token^.LinePosition = stream^.LinePosition
+        END
 
-		byte = LexGetCharacter ()
-	END
+        byte = LexGetCharacter ()
+    END
 
-	IF NOT byte THEN
-		// EOF encountered.
+    IF NOT byte THEN
+        // EOF encountered.
 
-		RETURN 0
-	END
+        RETURN 0
+    END
 
-	IF byte == '\"' THEN
-		// This is a string token.
-		// Bump-allocate a LexInternedString.
+    IF byte == '\"' THEN
+        // This is a string token.
+        // Bump-allocate a LexInternedString.
 
-		status := TlBumpAlloc (
-			SIZEOF LexInternedString, // bytes
-			internedstring, // OUT ptr
-		)
+        status := TlBumpAlloc (
+            SIZEOF LexInternedString, // bytes
+            internedstring, // OUT ptr
+        )
 
-		IF status THEN
-			TlInternalError ( "Failed to allocate interned string", 0, 0, 0 )
-		END
+        IF status THEN
+            TlInternalError ( "Failed to allocate interned string", 0, 0, 0 )
+        END
 
-		dynamicbuffer := &internedstring^^.DynamicBuffer
+        dynamicbuffer := &internedstring^^.DynamicBuffer
 
-		TlInitializeDynamicBuffer ( dynamicbuffer )
+        TlInitializeDynamicBuffer ( dynamicbuffer )
 
-		LexGetStringTokenInternal (
-			token, // token
-			'\"', // terminator
-			dynamicbuffer, // dynamicbuffer
-			NULLPTR, // buffer
-			NULLPTR, // OUT length
-		)
+        LexGetStringTokenInternal (
+            token, // token
+            '\"', // terminator
+            dynamicbuffer, // dynamicbuffer
+            NULLPTR, // buffer
+            NULLPTR, // OUT length
+        )
 
-		// Check if the string is already interned.
+        // Check if the string is already interned.
 
-		str := CAST TlLookupHashTable (
-			&LexInternedStringHashTable, // hashtable
-			dynamicbuffer^.Buffer, // key
-		) TO ^LexInternedString
+        str := CAST TlLookupHashTable (
+            &LexInternedStringHashTable, // hashtable
+            dynamicbuffer^.Buffer, // key
+        ) TO ^LexInternedString
 
-		IF str THEN
-			// Release our dynamic buffer and return the one we found.
-			// I wish we could free the dynamic buffer structure itself, but
-			// we already bump allocated it. This is done under the assumption
-			// that the most common case is a unique string, and that we aren't
-			// likely to find anything in the hash table.
+        IF str THEN
+            // Release our dynamic buffer and return the one we found.
+            // I wish we could free the dynamic buffer structure itself, but
+            // we already bump allocated it. This is done under the assumption
+            // that the most common case is a unique string, and that we aren't
+            // likely to find anything in the hash table.
 
-			TlUninitializeDynamicBuffer ( dynamicbuffer )
+            TlUninitializeDynamicBuffer ( dynamicbuffer )
 
-			internedstring^ = str
-		ELSE
-			// Insert our interned string into the hash table.
+            internedstring^ = str
+        ELSE
+            // Insert our interned string into the hash table.
 
-			TlInsertHashTable (
-				&LexInternedStringHashTable, // hashtable
-				CAST internedstring^ TO ^TlHashTableEntry, // entry
-				dynamicbuffer^.Buffer, // key
-			)
-		END
+            TlInsertHashTable (
+                &LexInternedStringHashTable, // hashtable
+                CAST internedstring^ TO ^TlHashTableEntry, // entry
+                dynamicbuffer^.Buffer, // key
+            )
+        END
 
-		RETURN TOKEN_FLAG_STRING
-	END
+        RETURN TOKEN_FLAG_STRING
+    END
 
-	IF byte == 0x27 THEN // single-quote
-		// This is a character literal.
+    IF byte == 0x27 THEN // single-quote
+        // This is a character literal.
 
-		LexGetStringTokenInternal (
-			token, // token
-			0x27, // terminator
-			NULLPTR, // dynamicbuffer
-			buffer, // buffer
-			length, // OUT length
-		)
+        LexGetStringTokenInternal (
+            token, // token
+            0x27, // terminator
+            NULLPTR, // dynamicbuffer
+            buffer, // buffer
+            length, // OUT length
+        )
 
-		RETURN TOKEN_FLAG_CHARLIT
-	END
+        RETURN TOKEN_FLAG_CHARLIT
+    END
 
-	IF LexCharTreatment[byte] == CHAR_SPLIT THEN
-		// This is a split token. It consists of exactly this character and no
-		// more.
+    IF LexCharTreatment[byte] == CHAR_SPLIT THEN
+        // This is a split token. It consists of exactly this character and no
+        // more.
 
-		length^ = 1
-		buffer[0] = byte
-		buffer[1] = 0
+        length^ = 1
+        buffer[0] = byte
+        buffer[1] = 0
 
-		RETURN TOKEN_FLAG_SPLIT
-	END
+        RETURN TOKEN_FLAG_SPLIT
+    END
 
-	IF LexCharTreatment[byte] == CHAR_COALESCE THEN
-		// This is a coalesce token. It consists of this character and the
-		// following coalesce characters, and no more.
+    IF LexCharTreatment[byte] == CHAR_COALESCE THEN
+        // This is a coalesce token. It consists of this character and the
+        // following coalesce characters, and no more.
 
-		len := 0
+        len := 0
 
-		WHILE LexCharTreatment[byte] == CHAR_COALESCE DO
-			IF len == LEX_TOKEN_STRING_SIZE-1 THEN
-				LexTokenError ( token,
-					"Token length exceeds maximum.", 0, 0, 0 )
-			END
+        WHILE LexCharTreatment[byte] == CHAR_COALESCE DO
+            IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+                LexTokenError ( token,
+                    "Token length exceeds maximum.", 0, 0, 0 )
+            END
 
-			buffer[len] = byte
-			len += 1
+            buffer[len] = byte
+            len += 1
 
-			byte = LexGetCharacter ()
-		END
+            byte = LexGetCharacter ()
+        END
 
-		buffer[len] = 0
-		length^ = len
+        buffer[len] = 0
+        length^ = len
 
-		IF LexCharTreatment[byte] != CHAR_WHITESPACE THEN
-			// Set the putback character to the last one we saw, since that is part
-			// of the next token.
+        IF LexCharTreatment[byte] != CHAR_WHITESPACE THEN
+            // Set the putback character to the last one we saw, since that is part
+            // of the next token.
 
-			LexCharacterCoalescePutback = byte
-		END
+            LexCharacterCoalescePutback = byte
+        END
 
-		RETURN TOKEN_FLAG_COALESCE
-	END
+        RETURN TOKEN_FLAG_COALESCE
+    END
 
-	// This is a normal token. All we have to track is whether it consists only
-	// of uppercase letters A-Z, in which case it must be a keyword. It could
-	// also turn out to be a macro, in which case we must add it to the stream
-	// stack and loop here.
+    // This is a normal token. All we have to track is whether it consists only
+    // of uppercase letters A-Z, in which case it must be a keyword. It could
+    // also turn out to be a macro, in which case we must add it to the stream
+    // stack and loop here.
 
-	uppercaseonly := byte >= 'A' AND byte <= 'Z'
+    uppercaseonly := byte >= 'A' AND byte <= 'Z'
 
-	len := 0
+    len := 0
 
-	WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
-		IF len == LEX_TOKEN_STRING_SIZE-1 THEN
-			LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
-		END
+    WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
+        IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+            LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
+        END
 
-		IF uppercaseonly THEN
-			uppercaseonly = byte >= 'A' AND byte <= 'Z'
-		END
+        IF uppercaseonly THEN
+            uppercaseonly = byte >= 'A' AND byte <= 'Z'
+        END
 
-		buffer[len] = byte
-		len += 1
+        buffer[len] = byte
+        len += 1
 
-		byte = LexGetCharacter ()
-	END
+        byte = LexGetCharacter ()
+    END
 
-	buffer[len] = 0
-	length^ = len
+    buffer[len] = 0
+    length^ = len
 
-	IF LexCharTreatment[byte] == CHAR_SPLIT OR
-		LexCharTreatment[byte] == CHAR_COALESCE THEN
+    IF LexCharTreatment[byte] == CHAR_SPLIT OR
+        LexCharTreatment[byte] == CHAR_COALESCE THEN
 
-		LexCharacterCoalescePutback = byte
-	END
+        LexCharacterCoalescePutback = byte
+    END
 
-	IF uppercaseonly AND len > 1 THEN
-		RETURN TOKEN_FLAG_UPPER
-	END
+    IF uppercaseonly AND len > 1 THEN
+        RETURN TOKEN_FLAG_UPPER
+    END
 
-	// Check if this is a defined macro name. If so, place that macro on the top
-	// of the stream stack and loop to the beginning of this procedure.
+    // Check if this is a defined macro name. If so, place that macro on the top
+    // of the stream stack and loop to the beginning of this procedure.
 
-	// TODO
+    // TODO
 
-	RETURN 0
+    RETURN 0
 END
 
 FN LexGetStringTokenInternal (
-	IN token : ^LexToken,
-	IN terminator : UBYTE,
-	IN dynamicbuffer : ^TlDynamicBuffer,
-	IN buffer : ^UBYTE,
-	OUT length : ^ULONG,
+    IN token : ^LexToken,
+    IN terminator : UBYTE,
+    IN dynamicbuffer : ^TlDynamicBuffer,
+    IN buffer : ^UBYTE,
+    OUT length : ^ULONG,
 )
 
-	len := 0
-	isbackslash := FALSE
+    len := 0
+    isbackslash := FALSE
 
-	WHILE TRUE DO
-		byte := LexGetCharacter ()
+    WHILE TRUE DO
+        byte := LexGetCharacter ()
 
-		IF NOT byte THEN
-			LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
-		END
+        IF NOT byte THEN
+            LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
+        END
 
-		IF NOT isbackslash THEN
-			IF byte == terminator THEN
-				// String is done.
+        IF NOT isbackslash THEN
+            IF byte == terminator THEN
+                // String is done.
 
-				BREAK
-			ELSEIF byte == '\\' THEN
-				isbackslash = TRUE
+                BREAK
+            ELSEIF byte == '\\' THEN
+                isbackslash = TRUE
 
-				CONTINUE
-			END
-		ELSE
-			isbackslash = FALSE
+                CONTINUE
+            END
+        ELSE
+            isbackslash = FALSE
 
-			IF byte == 'n' THEN
-				byte = '\n'
-			ELSEIF byte == 't' THEN
-				byte = '\t'
-			ELSEIF byte == 'r' THEN
-				byte = '\r'
-			ELSEIF byte == 'b' THEN
-				byte = '\b'
-			ELSEIF byte == '[' THEN
-				byte = '\['
-			END
-		END
+            IF byte == 'n' THEN
+                byte = '\n'
+            
+            ELSEIF byte == 't' THEN
+                byte = '\t'
+            
+            ELSEIF byte == 'r' THEN
+                byte = '\r'
+            
+            ELSEIF byte == 'b' THEN
+                byte = '\b'
+            
+            ELSEIF byte == '[' THEN
+                byte = '\['
+            END
+        END
 
-		IF dynamicbuffer THEN
-			TlInsertDynamicBuffer ( dynamicbuffer, byte )
-		ELSEIF len == LEX_TOKEN_STRING_SIZE-1 THEN
-			LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
-		ELSE
-			buffer[len] = byte
-			len += 1
-		END
-	END
+        IF dynamicbuffer THEN
+            TlInsertDynamicBuffer ( dynamicbuffer, byte )
+        
+        ELSEIF len == LEX_TOKEN_STRING_SIZE-1 THEN
+            LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
+        
+        ELSE
+            buffer[len] = byte
+            len += 1
+        END
+    END
 
-	IF dynamicbuffer THEN
-		TlInsertDynamicBuffer ( dynamicbuffer, 0 )
-	ELSE
-		buffer[len] = 0
-		length^ = len
-	END
+    IF dynamicbuffer THEN
+        TlInsertDynamicBuffer ( dynamicbuffer, 0 )
+    ELSE
+        buffer[len] = 0
+        length^ = len
+    END
 END
 
 FN LexGetToken (
-	IN token : ^LexToken,
+    IN token : ^LexToken,
 )
 
-	// LexGetTokenInternal might need to allocate an interned string structure.
+    // LexGetTokenInternal might need to allocate an interned string structure.
 
-	internedstring : ^LexInternedString
+    internedstring : ^LexInternedString
 
-	buffer : UBYTE[LEX_TOKEN_STRING_SIZE]
-	length : ULONG
+    buffer : UBYTE[LEX_TOKEN_STRING_SIZE]
+    length : ULONG
 
-	tokenflag := LexGetTokenInternal (
-		token, // token
-		&buffer, // buffer
-		&length, // OUT length
-		&internedstring, // OUT internedstring
-	)
+    tokenflag := LexGetTokenInternal (
+        token, // token
+        &buffer, // buffer
+        &length, // OUT length
+        &internedstring, // OUT internedstring
+    )
 
-	IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
-		TOKEN_FLAG_UPPER ) THEN
+    IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
+       TOKEN_FLAG_UPPER ) THEN
 
-		// This must be a keyword token. If it doesn't hash to a keyword,
-		// there's a syntax error.
+        // This must be a keyword token. If it doesn't hash to a keyword,
+        // there's a syntax error.
 
-		keyword := CAST TlLookupHashTable (
-			&LexKeywordHashTable, // hashtable
-			&buffer, // key
-		) TO ^LexKeyword
+        keyword := CAST TlLookupHashTable (
+            &LexKeywordHashTable, // hashtable
+            &buffer, // key
+        ) TO ^LexKeyword
 
-		IF NOT keyword THEN
-			IF tokenflag & TOKEN_FLAG_UPPER THEN
-				LexTokenError ( token,
-					"Bad use of uppercase alphabetic token (must be keyword).",
-					0, 0, 0 )
-			END
+        IF NOT keyword THEN
+            IF tokenflag & TOKEN_FLAG_UPPER THEN
+                LexTokenError ( token,
+                    "Bad use of uppercase alphabetic token (must be keyword).",
+                    0, 0, 0 )
+            END
 
-			LexTokenError ( token,
-					"Unknown keyword.",
-					0, 0, 0 )
-		END
+            LexTokenError ( token,
+                    "Unknown keyword.",
+                    0, 0, 0 )
+        END
 
-		token^.Type = keyword^.Type
-		token^.Subtype = keyword^.Subtype
+        token^.Type = keyword^.Type
+        token^.Subtype = keyword^.Subtype
 
-		LEAVE
-	END
+        LEAVE
+    END
 
-	IF tokenflag & TOKEN_FLAG_CHARLIT THEN
-		// This is a character literal token. We turn those into numerical
-		// tokens.
+    IF tokenflag & TOKEN_FLAG_CHARLIT THEN
+        // This is a character literal token. We turn those into numerical
+        // tokens.
 
-		num := LexCrunchCharacterLiteral ( &buffer )
+        num := LexCrunchCharacterLiteral ( &buffer )
 
-		token^.Type = TOKEN_NUMBER
-		token^.Payload = num
+        token^.Type = TOKEN_NUMBER
+        token^.Payload = num
 
-		LEAVE
-	END
+        LEAVE
+    END
 
-	IF tokenflag & TOKEN_FLAG_STRING THEN
-		// This is a string token. Record the interned string.
+    IF tokenflag & TOKEN_FLAG_STRING THEN
+        // This is a string token. Record the interned string.
 
-		token^.Type = TOKEN_STRING
-		token^.Payload = internedstring
+        token^.Type = TOKEN_STRING
+        token^.Payload = internedstring
 
-		LEAVE
-	END
+        LEAVE
+    END
 
-	IF NOT length THEN
-		// EOF has been reached.
+    IF NOT length THEN
+        // EOF has been reached.
 
-		token^.Type = TOKEN_EOF
+        token^.Type = TOKEN_EOF
 
-		LEAVE
-	END
+        LEAVE
+    END
 
-	IF buffer[0] >= '0' AND buffer[0] <= '9' THEN
-		// This is a numerical token.
+    IF buffer[0] >= '0' AND buffer[0] <= '9' THEN
+        // This is a numerical token.
 
-		num := LexCrunchNumber (
-			token, // token
-			&buffer, // buffer
-		)
+        num := LexCrunchNumber (
+            token, // token
+            &buffer, // buffer
+        )
 
-		token^.Type = TOKEN_NUMBER
-		token^.Payload = num
+        token^.Type = TOKEN_NUMBER
+        token^.Payload = num
 
-		LEAVE
-	END
+        LEAVE
+    END
 
-	// This is an identifier. We have to create an entry in the symbol table
-	// for the current scope, if one does not exist.
+    // This is an identifier. We have to create an entry in the symbol table
+    // for the current scope, if one does not exist.
 
-	token^.Type = TOKEN_IDENTIFIER
-	token^.Subtype = TOKEN_IDENTIFIER_FOUND
+    token^.Type = TOKEN_IDENTIFIER
+    token^.Subtype = TOKEN_IDENTIFIER_FOUND
 
-	symbol := CAST TlLookupSymbolTable (
-		LexCurrentScope, // symboltable
-		&buffer, // name
-	) TO ^LexSymbol
+    symbol := CAST TlLookupSymbolTable (
+        LexCurrentScope, // symboltable
+        &buffer, // name
+    ) TO ^LexSymbol
 
-	IF NOT symbol THEN
-		// Create new symbol.
+    IF NOT symbol THEN
+        // Create new symbol.
 
-		status := TlBumpAlloc (
-			SIZEOF LexSymbol + length + 1, // bytes
-			&symbol, // OUT ptr
-		)
+        status := TlBumpAlloc (
+            SIZEOF LexSymbol + length + 1, // bytes
+            &symbol, // OUT ptr
+        )
 
-		IF status THEN
-			TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
-		END
+        IF status THEN
+            TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
+        END
 
-		// Place the symbol name directly after the symbol structure in memory.
+        // Place the symbol name directly after the symbol structure in memory.
 
-		symbol^.Name = symbol + SIZEOF LexSymbol
+        symbol^.Name = symbol + SIZEOF LexSymbol
 
-		TlCopyMemory (
-			symbol^.Name, // dest
-			&buffer, // src
-			length + 1, // sz (plus one for null terminator)
-		)
+        TlCopyMemory (
+            symbol^.Name, // dest
+            &buffer, // src
+            length + 1, // sz (plus one for null terminator)
+        )
 
-		TlInsertSymbolTable (
-			LexCurrentScope, // symboltable
-			CAST symbol TO ^TlHashTableEntry, // entry
-			symbol^.Name, // name
-		)
+        TlInsertSymbolTable (
+            LexCurrentScope, // symboltable
+            CAST symbol TO ^TlHashTableEntry, // entry
+            symbol^.Name, // name
+        )
 
-		token^.Subtype = TOKEN_IDENTIFIER_NEW
-	END
+        token^.Subtype = TOKEN_IDENTIFIER_NEW
+    END
 
-	token^.Payload = symbol
+    token^.Payload = symbol
 END
 
 FN LexCrunchCharacterLiteral (
-	IN buffer : ^UBYTE,
+    IN buffer : ^UBYTE,
 ) : ULONG
 
-	num : ULONG = 0
-	i := 0
+    num : ULONG = 0
+    i := 0
 
-	WHILE buffer[i] DO
-		num *= 256
-		num += buffer[i]
+    WHILE buffer[i] DO
+        num *= 256
+        num += buffer[i]
 
-		i += 1
-	END
+        i += 1
+    END
 
-	RETURN num
+    RETURN num
 END
 
 FN LexCrunchNumber (
-	IN token : ^LexToken,
-	IN buffer : ^UBYTE,
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
 ) : ULONG
 
-	num : ULONG = 0
-	i := 0
+    num : ULONG = 0
+    i := 0
 
-	IF buffer[0] == '0' THEN
-		// This number is either a literal zero, octal, or hexadecimal.
+    IF buffer[0] == '0' THEN
+        // This number is either a literal zero, octal, or hexadecimal.
 
-		IF NOT buffer[1] THEN
-			// Literal zero.
+        IF NOT buffer[1] THEN
+            // Literal zero.
 
-			RETURN 0
-		END
+            RETURN 0
+        END
 
-		IF buffer[1] == 'x' THEN
-			// Hexadecimal.
+        IF buffer[1] == 'x' THEN
+            // Hexadecimal.
 
-			IF NOT buffer[2] THEN
-				LexTokenError ( token, "Unfinished hex number.", 0, 0, 0 )
-			END
+            IF NOT buffer[2] THEN
+                LexTokenError ( token, "Unfinished hex number.", 0, 0, 0 )
+            END
 
-			i = 2
+            i = 2
 
-			WHILE buffer[i] DO
-				num *= 16
+            WHILE buffer[i] DO
+                num *= 16
 
-				IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
-					num += buffer[i] - '0'
-				ELSEIF buffer[i] >= 'A' AND buffer[i] <= 'F' THEN
-					num += buffer[i] - 'A'
-				ELSEIF buffer[i] >= 'a' AND buffer[i] <= 'f' THEN
-					num += buffer[i] - 'a'
-				ELSE
-					LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
-				END
+                IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
+                    num += buffer[i] - '0'
+                
+                ELSEIF buffer[i] >= 'A' AND buffer[i] <= 'F' THEN
+                    num += buffer[i] - 'A'
+                
+                ELSEIF buffer[i] >= 'a' AND buffer[i] <= 'f' THEN
+                    num += buffer[i] - 'a'
 
-				i += 1
-			END
+                ELSE
+                    LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
+                END
 
-			RETURN num
-		END
+                i += 1
+            END
 
-		// Octal.
+            RETURN num
+        END
 
-		i = 1
+        // Octal.
 
-		WHILE buffer[i] DO
-			IF NOT (buffer[i] >= '0' AND buffer[i] <= '7') THEN
-				LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
-			END
+        i = 1
 
-			num *= 8
-			num += buffer[i] - '0'
+        WHILE buffer[i] DO
+            IF NOT (buffer[i] >= '0' AND buffer[i] <= '7') THEN
+                LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
+            END
 
-			i += 1
-		END
+            num *= 8
+            num += buffer[i] - '0'
 
-		RETURN num
-	END
+            i += 1
+        END
 
-	// Decimal.
+        RETURN num
+    END
 
-	WHILE buffer[i] DO
-		IF NOT (buffer[i] >= '0' AND buffer[i] <= '9') THEN
-			LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
-		END
+    // Decimal.
 
-		num *= 10
-		num += buffer[i] - '0'
+    WHILE buffer[i] DO
+        IF NOT (buffer[i] >= '0' AND buffer[i] <= '9') THEN
+            LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
+        END
 
-		i += 1
-	END
+        num *= 10
+        num += buffer[i] - '0'
 
-	RETURN num
+        i += 1
+    END
+
+    RETURN num
 END

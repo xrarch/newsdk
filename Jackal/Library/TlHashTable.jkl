@@ -5,173 +5,173 @@
 #INCLUDE "<inc>/Runtime.jh"
 
 FN TlInitializeHashTable (
-	IN hashtable : ^TlHashTable,
+    IN hashtable : ^TlHashTable,
 ) : TlStatus
 
-	TlFillMemoryWithByte (
-		&hashtable^.BucketHeads, // ptr
-		SIZEOFVALUE hashtable^.BucketHeads, // sz
-		0, // byte
-	)
+    TlFillMemoryWithByte (
+        &hashtable^.BucketHeads, // ptr
+        SIZEOFVALUE hashtable^.BucketHeads, // sz
+        0, // byte
+    )
 
-	RETURN TL_SUCCESS
+    RETURN TL_SUCCESS
 END
 
 FN TlSummarizeHashTable (
-	IN hashtable : ^TlHashTable,
+    IN hashtable : ^TlHashTable,
 )
 
-	// Helpful debug function.
-	// Prints a summary of the hash table so that we can see the collisions.
+    // Helpful debug function.
+    // Prints a summary of the hash table so that we can see the collisions.
 
-	i := 0
+    i := 0
 
-	WHILE i < TL_HASH_SIZE DO
-		entries := 0
+    WHILE i < TL_HASH_SIZE DO
+        entries := 0
 
-		entry := hashtable^.BucketHeads[i]
+        entry := hashtable^.BucketHeads[i]
 
-		WHILE entry DO
-			entries += 1
+        WHILE entry DO
+            entries += 1
 
-			entry = entry^.Next
-		END
+            entry = entry^.Next
+        END
 
-		IF entries THEN
-			TlPrintNumber ( i )
-			TlPrintString ( ": " )
-			TlPrintNumber ( entries )
-			TlPrintString ( "\n" )
-		END
+        IF entries THEN
+            TlPrintNumber ( i )
+            TlPrintString ( ": " )
+            TlPrintNumber ( entries )
+            TlPrintString ( "\n" )
+        END
 
-		i += 1
-	END
+        i += 1
+    END
 END
 
 FN TlInsertHashTable (
-	IN hashtable : ^TlHashTable,
-	IN entry : ^TlHashTableEntry,
-	IN key : ^UBYTE,
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
 )
 
-	// Caller needs to guarantee that the memory in which the key resides sticks
-	// around until such time as the entry is removed from the hash table.
+    // Caller needs to guarantee that the memory in which the key resides sticks
+    // around until such time as the entry is removed from the hash table.
 
-	hash := TlHashString ( key )
+    hash := TlHashString ( key )
 
-	head := hashtable^.BucketHeads[hash]
+    head := hashtable^.BucketHeads[hash]
 
-	entry^.HashTable = hashtable
-	entry^.Key = key
-	entry^.Hash = hash
+    entry^.HashTable = hashtable
+    entry^.Key = key
+    entry^.Hash = hash
 
-	// Insert entry into doubly linked hash bucket list, at the head.
+    // Insert entry into doubly linked hash bucket list, at the head.
 
-	entry^.Prev = NULLPTR
-	entry^.Next = head
+    entry^.Prev = NULLPTR
+    entry^.Next = head
 
-	IF head THEN
-//		TlPrintString ( head^.Key )
-//		TlPrintString ( ":" )
-//		TlPrintString ( key )
-//		TlPrintString ( " " )
-//		TlPrintNumber ( hash )
-//		TlPrintString ( " " )
+    IF head THEN
+//      TlPrintString ( head^.Key )
+//      TlPrintString ( ":" )
+//      TlPrintString ( key )
+//      TlPrintString ( " " )
+//      TlPrintNumber ( hash )
+//      TlPrintString ( " " )
 
-		head^.Prev = entry
-	END
+        head^.Prev = entry
+    END
 
-	hashtable^.BucketHeads[hash] = entry
+    hashtable^.BucketHeads[hash] = entry
 END
 
 FN TlLookupHashTable (
-	IN hashtable : ^TlHashTable,
-	IN key : ^UBYTE,
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
 ) : ^TlHashTableEntry
 
-	hash := TlHashString ( key )
+    hash := TlHashString ( key )
 
-	entry := hashtable^.BucketHeads[hash]
+    entry := hashtable^.BucketHeads[hash]
 
-	WHILE entry DO
-		IF TlCompareString ( key, entry^.Key ) == 0 THEN
-			RETURN entry
-		END
+    WHILE entry DO
+        IF TlCompareString ( key, entry^.Key ) == 0 THEN
+            RETURN entry
+        END
 
-		entry = entry^.Next
-	END
+        entry = entry^.Next
+    END
 
-	RETURN NULLPTR
+    RETURN NULLPTR
 END
 
 FN TlRemoveHashTable (
-	IN entry : ^TlHashTableEntry,
+    IN entry : ^TlHashTableEntry,
 )
 
-	hashtable := entry^.HashTable
-	hash := entry^.Hash
+    hashtable := entry^.HashTable
+    hash := entry^.Hash
 
-	// Remove entry from doubly linked hash bucket list.
+    // Remove entry from doubly linked hash bucket list.
 
-	p := entry^.Prev
+    p := entry^.Prev
 
-	IF p THEN
-		p^.Next = entry^.Next
-	ELSE // no prev means we were the head
-		hashtable^.BucketHeads[hash] = entry^.Next
-	END
+    IF p THEN
+        p^.Next = entry^.Next
+    ELSE // no prev means we were the head
+        hashtable^.BucketHeads[hash] = entry^.Next
+    END
 
-	p = entry^.Next
+    p = entry^.Next
 
-	IF p THEN
-		p^.Prev = entry^.Prev
-	END
+    IF p THEN
+        p^.Prev = entry^.Prev
+    END
 END
 
 FN TlEnumerateHashTable (
-	IN hashtable : ^TlHashTable,
-	IN enumfunc : TlHashTableEnumeratorF,
+    IN hashtable : ^TlHashTable,
+    IN enumfunc : TlHashTableEnumeratorF,
 )
 
-	i := 0
+    i := 0
 
-	WHILE i < TL_HASH_SIZE DO
-		entry := hashtable^.BucketHeads[i]
+    WHILE i < TL_HASH_SIZE DO
+        entry := hashtable^.BucketHeads[i]
 
-		WHILE entry DO
-			// Capture the next entry now since the enumeration function might
-			// destroy this entry.
+        WHILE entry DO
+            // Capture the next entry now since the enumeration function might
+            // destroy this entry.
 
-			nextentry := entry^.Next
+            nextentry := entry^.Next
 
-			enumfunc ( entry )
+            enumfunc ( entry )
 
-			entry = nextentry
-		END
+            entry = nextentry
+        END
 
-		i += 1
-	END
+        i += 1
+    END
 END
 
 FN TlHashString (
-	IN str : ^UBYTE,
+    IN str : ^UBYTE,
 ) : ULONG
 
-	hash : ULONG = 0
+    hash : ULONG = 0
 
-	WHILE str^ DO
-		hash += str^
-		hash += hash << 10
-		hash $= hash >> 6
+    WHILE str^ DO
+        hash += str^
+        hash += hash << 10
+        hash $= hash >> 6
 
-		str += 1
-	END
+        str += 1
+    END
 
-	hash += hash << 3
-	hash $= hash >> 11
-	hash += hash << 15
+    hash += hash << 3
+    hash $= hash >> 11
+    hash += hash << 15
 
-	hash %= TL_HASH_SIZE
+    hash %= TL_HASH_SIZE
 
-	RETURN hash
+    RETURN hash
 END
