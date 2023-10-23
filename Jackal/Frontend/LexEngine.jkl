@@ -29,6 +29,7 @@ LexCharTreatment : LexCharBehavior[256] = {
     [':'] = CHAR_SPLIT,
     ['{'] = CHAR_SPLIT,
     ['}'] = CHAR_SPLIT,
+    ['#'] = CHAR_SPLIT,
 
     ['='] = CHAR_COALESCE,
     ['&'] = CHAR_COALESCE,
@@ -647,6 +648,12 @@ FN LexGetTokenInternal (
 
     // Check if this is a defined macro name. If so, place that macro on the top
     // of the stream stack and loop to the beginning of this procedure.
+    //
+    // N.B. Jackal macros are "hygienic", meaning that they have no access to
+    // the "parent scope", except via their arguments, which become special
+    // macros that restore the parent scope during their expansion. This might
+    // require associating scopes with streams, so that we know what to restore
+    // when we pop a stream off the stream stack.
 
     // TODO
 
