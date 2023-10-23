@@ -159,7 +159,7 @@ FN LexFileStreamCreate (
     RETURN status
 END
 
-FN LexStreamNextCharacter () : UBYTE
+FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
     // Return the next byte from the stream on top of the stream stack. If the
     // stream has been emptied, it is popped from the stack and deleted, and

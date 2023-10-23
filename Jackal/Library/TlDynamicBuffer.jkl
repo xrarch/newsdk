@@ -10,7 +10,7 @@ FN TlInitializeDynamicBuffer (
 
     array^.Count = 0
     array^.BufferSize = TL_DYNAMIC_BUFFER_INITIAL
-    array^.Buffer = &array^.InitialBuffer
+    array^.Buffer = &array^.InitialBuffer[0]
 END
 
 FN TlUninitializeDynamicBuffer (

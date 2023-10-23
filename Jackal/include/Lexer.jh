@@ -121,6 +121,8 @@ ENUM LexCharBehavior : UBYTE
     CHAR_EOF,
 END
 
+FNPTR LexGetCharacterF () : UBYTE
+
 STRUCT LexInternedString
     Entry : TlHashTableEntry, // MUST be at the beginning
     DynamicBuffer : TlDynamicBuffer,
@@ -175,6 +177,8 @@ EXTERN LexPutbackStackPtr : ULONG
 
 EXTERN FN LexInitialize () : TlStatus
 
+EXTERN FN LexPreprocessorInit ()
+
 EXTERN FN LexStreamInitialize (
     IN stream : ^LexStream,
     IN ismacro : UBYTE,
@@ -206,7 +210,16 @@ EXTERN FN LexFileStreamCreate (
     OUT stream : ^^LexStream,
 ) : TlStatus
 
-EXTERN FN LexStreamNextCharacter () : UBYTE
+EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
+
+EXTERN FN LexGetStringTokenInternal (
+    IN getbytefunc : LexGetCharacterF,
+    IN token : ^LexToken,
+    IN terminator : UBYTE,
+    IN dynamicbuffer : ^TlDynamicBuffer,
+    IN buffer : ^UBYTE,
+    OUT length : ^ULONG,
+)
 
 EXTERN FN LexParseDirective ()
 

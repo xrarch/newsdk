@@ -237,6 +237,10 @@ FN LexInitialize () : TlStatus
     LexKeywordInsert ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
     LexKeywordInsert ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
 
+    // Initialize preprocessor.
+
+    LexPreprocessorInit ()
+
     // Test some stuff (TEMPORARY)
 
     //TlSummarizeHashTable ( &LexKeywordHashTable )
@@ -330,12 +334,7 @@ LexCharacterInLiteral := FALSE
 LexCharacterPutback : UBYTE = 0
 LexCharacterCoalescePutback : UBYTE = 0
 
-// LexCharacterNewlineSeen is initialized to TRUE so that the first character
-// of the stream is correctly identified as the beginning of a line.
-
-LexCharacterNewlineSeen := TRUE
-
-FN LexGetCharacter () : UBYTE
+FN (LexGetCharacterF) LexGetCharacter () : UBYTE
 
     // Return the next character in the source stream. Omits comments and text
     // that is killed by the "preprocessor", and notices preprocessor
@@ -413,7 +412,7 @@ FN LexGetCharacter () : UBYTE
         ELSEIF byte == 0x27 THEN // single-quote
             LexCharacterInLiteral = TRUE
 
-        ELSEIF LexCharacterNewlineSeen AND byte == '#' THEN
+        ELSEIF byte == '#' THEN
             // We found a preprocessor directive! We dispatch to
             // the preprocessor regardless of the value of the false count.
             // This gives it an opportunity to manipulate the false count, but
@@ -426,8 +425,6 @@ FN LexGetCharacter () : UBYTE
 
             byte = '\n'
         END
-
-        LexCharacterNewlineSeen = byte == '\n'
 
         IF LexFalseCount THEN
             // A non-zero false count causes all characters to be ignored
@@ -516,6 +513,7 @@ FN LexGetTokenInternal (
         TlInitializeDynamicBuffer ( dynamicbuffer )
 
         LexGetStringTokenInternal (
+            &LexGetCharacter, // getbytefunc
             token, // token
             '\"', // terminator
             dynamicbuffer, // dynamicbuffer
@@ -557,6 +555,7 @@ FN LexGetTokenInternal (
         // This is a character literal.
 
         LexGetStringTokenInternal (
+            &LexGetCharacter, // getbytefunc
             token, // token
             0x27, // terminator
             NULLPTR, // dynamicbuffer
@@ -655,6 +654,7 @@ FN LexGetTokenInternal (
 END
 
 FN LexGetStringTokenInternal (
+    IN getbytefunc : LexGetCharacterF,
     IN token : ^LexToken,
     IN terminator : UBYTE,
     IN dynamicbuffer : ^TlDynamicBuffer,
@@ -666,7 +666,7 @@ FN LexGetStringTokenInternal (
     isbackslash := FALSE
 
     WHILE TRUE DO
-        byte := LexGetCharacter ()
+        byte := getbytefunc ()
 
         IF NOT byte THEN
             LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
@@ -735,7 +735,7 @@ FN LexGetToken (
 
     tokenflag := LexGetTokenInternal (
         token, // token
-        &buffer, // buffer
+        &buffer[0], // buffer
         &length, // OUT length
         &internedstring, // OUT internedstring
     )
@@ -748,7 +748,7 @@ FN LexGetToken (
 
         keyword := CAST TlLookupHashTable (
             &LexKeywordHashTable, // hashtable
-            &buffer, // key
+            &buffer[0], // key
         ) TO ^LexKeyword
 
         IF NOT keyword THEN
@@ -758,9 +758,7 @@ FN LexGetToken (
                     0, 0, 0 )
             END
 
-            LexTokenError ( token,
-                    "Unknown keyword.",
-                    0, 0, 0 )
+            LexTokenError ( token, "Unknown keyword", 0, 0, 0 )
         END
 
         token^.Type = keyword^.Type
@@ -773,7 +771,7 @@ FN LexGetToken (
         // This is a character literal token. We turn those into numerical
         // tokens.
 
-        num := LexCrunchCharacterLiteral ( &buffer )
+        num := LexCrunchCharacterLiteral ( &buffer[0] )
 
         token^.Type = TOKEN_NUMBER
         token^.Payload = num
@@ -803,7 +801,7 @@ FN LexGetToken (
 
         num := LexCrunchNumber (
             token, // token
-            &buffer, // buffer
+            &buffer[0], // buffer
         )
 
         token^.Type = TOKEN_NUMBER
@@ -820,7 +818,7 @@ FN LexGetToken (
 
     symbol := CAST TlLookupSymbolTable (
         LexCurrentScope, // symboltable
-        &buffer, // name
+        &buffer[0], // name
     ) TO ^LexSymbol
 
     IF NOT symbol THEN
@@ -841,7 +839,7 @@ FN LexGetToken (
 
         TlCopyMemory (
             symbol^.Name, // dest
-            &buffer, // src
+            &buffer[0], // src
             length + 1, // sz (plus one for null terminator)
         )
 

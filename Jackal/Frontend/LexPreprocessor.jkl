@@ -6,9 +6,60 @@
 #INCLUDE "<inc>/Runtime.jh"
 #INCLUDE "<inc>/Lexer.jh"
 
-CONST LEX_DIRECTIVE_MAX := 64
+CONST LEX_DIRECTIVE_MAX := 32
 
 LexDirectiveBuffer : UBYTE[LEX_DIRECTIVE_MAX]
+
+LexDirectiveHashTable : TlHashTable
+
+FNPTR LexDirectiveParseF ()
+
+STRUCT LexDirective
+    Entry : TlHashTableEntry, // MUST be at the start
+
+    ParseRoutine : LexDirectiveParseF,
+END
+
+LexDirectiveBumpArray : LexDirective[16]
+LexDirectiveBumpIndex := 0
+
+FN LexDirectiveInsert (
+    IN name : ^UBYTE,
+    IN parsefunc : LexDirectiveParseF,
+)
+
+    // Insert the directive into the directive hash table.
+    // This is done every time the compiler is invoked so it should be VERY
+    // fast. To this end we completely avoid dynamic allocation with this silly
+    // directive structure bump allocator. The hash table package does no
+    // dynamic allocation, nor does it do any string copies (though it does
+    // iterate the string to calculate the hash), so this should all be quite
+    // speedy.
+
+    directive := &LexDirectiveBumpArray[LexDirectiveBumpIndex]
+    LexDirectiveBumpIndex += 1
+
+    directive^.ParseRoutine = parsefunc
+
+    TlInsertHashTable (
+        &LexDirectiveHashTable, // hashtable
+        &directive^.Entry, // entry
+        name, // key
+    )
+END
+
+FN LexPreprocessorInit ()
+
+    TlInitializeHashTable ( &LexDirectiveHashTable )
+
+    LexDirectiveInsert ( "INCLUDE", &LexParseInclude )
+    LexDirectiveInsert ( "DEFINE", &LexParseDefine )
+    LexDirectiveInsert ( "MACRO", &LexParseMacro )
+    LexDirectiveInsert ( "IF", &LexParseIf )
+    LexDirectiveInsert ( "ELSE", &LexParseElse )
+    LexDirectiveInsert ( "ELSEIF", &LexParseElseif )
+    LexDirectiveInsert ( "END", &LexParseEnd )
+END
 
 FN LexParseDirective ()
 
@@ -18,50 +69,39 @@ FN LexParseDirective ()
     // layered nature of the lexer, we don't have to worry about maintaining
     // line numbers and so on.
 
-    WHILE TRUE DO
-        rv := LexCollectDirectiveToken ( &LexDirectiveBuffer )
+    LexCollectDirectiveToken ( &LexDirectiveBuffer[0] )
 
-        IF rv THEN
-            BREAK
-        END
+    directive := CAST TlLookupHashTable (
+        &LexDirectiveHashTable, // hashtable
+        &LexDirectiveBuffer[0], // key
+    ) TO ^LexDirective
 
-//      TlPrintNumber ( rv )
-//      TlPrintString ( "\n" )
-//      TlPrintString ( &LexDirectiveBuffer )
-//      TlPrintString ( "\n" )
+    IF NOT directive THEN
+        LexStreamError ( "Unknown directive", 0, 0, 0 )
     END
 
-//  TlStreamError ( "test test test", 0, 0, 0 )
-END
+    directive^.ParseRoutine ()
 
-LexPendingDirectiveNewline := FALSE
+    LexStreamError ( "test test test", 0, 0, 0 )
+END
 
 FN LexCollectDirectiveToken (
     IN buffer : ^UBYTE,
-) : UBYTE
+)
 
     // Skips whitespace until the next token, which it collects. Used for very
-    // simple directive parsing. Returns TRUE if there are tokens remaining in
-    // the directive, or FALSE otherwise (i.e. an un-escaped newline was
-    // encountered). If the token is terminated by a newline, the newline is
-    // put back in the stream so that we see it next time we're called and
-    // return the correct value.
-
-    IF LexPendingDirectiveNewline THEN
-        LexPendingDirectiveNewline = FALSE
-
-        RETURN TRUE
-    END
+    // simple directive parsing.
 
     byte : UBYTE
+    len := 0
 
     // Skip any leading whitespace.
 
     WHILE TRUE DO
         byte = LexStreamNextCharacter ()
 
-        IF byte == '\n' THEN
-            RETURN TRUE
+        IF byte == 0 THEN
+            LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
         END
 
         IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
@@ -74,25 +114,125 @@ FN LexCollectDirectiveToken (
     // We can now collect the token.
 
     WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+        IF len == LEX_DIRECTIVE_MAX-1 THEN
+            LexStreamError ( "Directive length exceeds maximum.", 0, 0, 0 )
+        END
+
         buffer^ = byte
         buffer += 1
+        len += 1
 
         byte = LexStreamNextCharacter ()
     END
 
-    IF byte == '\n' THEN
-        // The token was terminated by a newline, so we want the return value
-        // for the next call to be TRUE.
-
-        LexPendingDirectiveNewline = TRUE
-    END
-
-    RETURN FALSE
+    buffer^ = 0
 END
 
-FN LexCollectContents (
-    OUT buffer : ^UBYTE,
-    OUT length : ^UBYTE,
+FN LexNextNonWhitespaceCharacter () : UBYTE
+
+    byte : UBYTE
+
+    // Skip any leading whitespace.
+
+    WHILE TRUE DO
+        byte = LexStreamNextCharacter ()
+
+        IF byte == 0 THEN
+            LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
+        END
+
+        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+            CONTINUE
+        END
+
+        BREAK
+    END
+
+    RETURN byte
+END
+
+FN LexCollectString (
+    IN array : ^TlDynamicBuffer,
 )
+
+    byte := LexNextNonWhitespaceCharacter ()
+
+    IF byte == '\"' THEN
+        LexGetStringTokenInternal (
+            &LexStreamNextCharacter, // getbytefunc
+            NULLPTR, // token
+            '\"', // terminator
+            array, // dynamicbuffer
+            NULLPTR, // buffer
+            NULLPTR, // OUT length
+        )
+
+        LEAVE
+    END
+
+    IF byte != '[' THEN
+        LexStreamError (
+            "Expected a string opened by a double quote or open bracket",
+            0, 0, 0 )
+    END
+
+    // Collect a complex string into the provided dynamic buffer, which will be
+    // terminated by a close bracket. Our job is complicated by the following
+    // factors:
+    //
+    //  o We have to make sure that we count the number of open brackets that we
+    //    encounter, otherwise we will mistakenly terminate this complex string
+    //    if we come across, for instance, an array index.
+    //
+    //  o We have to track whether we're in a string, or a character literal,
+    //    so that a close bracket character within the string doesn't cause us
+    //    to mistakenly exit.
+    //
+    //  o We have to track whether we're in a comment, for the same reason.
+
+    TlInternalError ( "TODO parse complex string", 0, 0, 0 )
+END
+
+FN LexParseInclude ()
+
+    // Parse the include statement. We just have to consume a string. Then we
+    // construct a path depending on what the prefix is, if any. Prefixes are:
+    //
+    //  [none]  Relative to the directory containing the source file.
+    //  <inc>/  Relative to the set of incdirs provided in the command line.
+    //  <ll>/   Relative to the set of libdirs provided, which may include
+    //          a system library as appended by the host specific part of the
+    //          compiler.
+    //
+    // After we find and open a matching file, we bump-allocate a file block,
+    // and initialize it to contain the path string, and the opened handle.
+    // Then we create a file stream based on this file block, and add it to the
+    // top of the stream stack, causing the rest of the lexer to consume tokens
+    // from that file until it reaches EOF.
+
+
+END
+
+FN LexParseDefine ()
+
+END
+
+FN LexParseMacro ()
+
+END
+
+FN LexParseIf ()
+
+END
+
+FN LexParseElse ()
+
+END
+
+FN LexParseElseif ()
+
+END
+
+FN LexParseEnd ()
 
 END
