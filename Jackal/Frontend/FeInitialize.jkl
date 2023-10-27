@@ -1,0 +1,152 @@
+//
+// Frontend initialization.
+//
+
+#INCLUDE "<inc>/Lexer.jh"
+
+FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+
+FeInputFileHandle : ^VOID
+FeOutputFileHandle : ^VOID
+
+FeFileBlockHashTable : TlHashTable
+
+FN FeInitialize (
+    IN argc : ULONG,
+    IN argv : ^UBYTE[],
+)
+    
+    // Initialize the file block hash table.
+
+    TlInitializeHashTable ( &FeFileBlockHashTable )
+
+    // Parse the arguments.
+
+    FeParseArguments ( argc, argv )
+
+    // Open the input and output files.
+
+    status := TlOpenSource (
+        &FeInputFile[0], // filename
+        &FeInputFileHandle, // OUT handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open source file.", 0, 0, 0 )
+    END
+
+    status = TlOpenDestination (
+        &FeOutputFile[0], // filename
+        &FeOutputFileHandle, // OUT handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
+    END
+
+    LexInitialize ()
+END
+
+FN FeParseArguments (
+    IN argc : ULONG,
+    IN argv : ^UBYTE[],
+)
+
+    // Find the value of these arguments, if they exist:
+    //  libdir=
+    //  incdir=
+    //
+    // Identify the source and destination filenames.
+
+    FeLibraryDirectory[0] = 0
+    FeIncludeDirectory[0] = 0
+
+    foundinput := FALSE
+    foundoutput := FALSE
+
+    i := 1
+
+    WHILE i < argc DO
+        IF TlCompareStringWithMax ( argv[i], "libdir=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeLibraryDirectory[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+        ELSEIF TlCompareStringWithMax ( argv[i], "incdir=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeIncludeDirectory[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+        ELSEIF foundinput THEN
+            IF foundoutput THEN
+                TlUserError ( "Too many arguments specified!", 0, 0, 0 )
+            END
+
+            foundoutput = TRUE
+
+            TlCopyString (
+                &FeOutputFile[0], // dest
+                argv[i], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+        ELSE
+            foundinput = TRUE
+
+            TlCopyString (
+                &FeInputFile[0], // dest
+                argv[i], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+        END
+
+        i += 1
+    END
+
+    IF NOT foundinput THEN
+        TlUserError ( "No input file specified.", 0, 0, 0 )
+    END
+
+    IF NOT foundoutput THEN
+        TlUserError ( "No output file specified.", 0, 0, 0 )
+    END
+END
+
+FN FeCreateFileBlock (
+    IN filepath : ^UBYTE,
+    IN includename : ^UBYTE,
+    OUT created : ^UBYTE,
+) : ^FeFileBlock
+
+    fileblock := CAST TlLookupOrAllocateEntryHashTable (
+        &FeFileBlockHashTable, // hashtable
+        SIZEOF FeFileBlock, // entrysize
+        includename, // key
+        created, // OUT created
+    ) TO ^FeFileBlock
+
+    IF created^ THEN
+        // Initialize the file block, since it didn't already exist.
+
+        TlCopyString (
+            &fileblock^.FilePath[0], // dest
+            filepath, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+
+        TlCopyString (
+            &fileblock^.IncludeName[0], // dest
+            includename, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+    END
+
+    RETURN fileblock
+END

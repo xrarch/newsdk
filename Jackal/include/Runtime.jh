@@ -130,7 +130,7 @@ END
 
 EXTERN FN TlInitializeHashTable (
     IN hashtable : ^TlHashTable,
-) : TlStatus
+)
 
 EXTERN FN TlSummarizeHashTable (
     IN hashtable : ^TlHashTable,
@@ -141,6 +141,19 @@ EXTERN FN TlInsertHashTable (
     IN entry : ^TlHashTableEntry,
     IN key : ^UBYTE,
 )
+
+EXTERN FN TlLookupOrInsertHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlLookupOrAllocateEntryHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entrysize : ULONG,
+    IN key : ^UBYTE,
+    OUT created : ^UBYTE,
+) : ^TlHashTableEntry
 
 EXTERN FN TlLookupHashTable (
     IN hashtable : ^TlHashTable,
@@ -173,13 +186,12 @@ END
 EXTERN FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,
     IN deletefunc : TlHashTableEnumeratorF,
-) : TlStatus
+)
 
 EXTERN FN TlCreateSymbolTable (
     IN outerscope : ^TlSymbolTable,
     IN deletefunc : TlHashTableEnumeratorF,
-    OUT symboltable : ^^TlSymbolTable,
-) : TlStatus
+) : ^TlSymbolTable
 
 EXTERN FN TlDeleteSymbolTable (
     IN symboltable : ^TlSymbolTable,

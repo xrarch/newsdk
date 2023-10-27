@@ -2,8 +2,6 @@
 // Inline preprocessor for the lexer.
 //
 
-#INCLUDE "<inc>/Frontend.jh"
-#INCLUDE "<inc>/Runtime.jh"
 #INCLUDE "<inc>/Lexer.jh"
 
 CONST LEX_DIRECTIVE_MAX := 32
@@ -184,6 +182,9 @@ FN LexParseInclude ()
     //  <ll>/   Relative to the set of libdirs provided, which may include
     //          a system library as appended by the host specific part of the
     //          compiler.
+    //
+    // If we find the exact file path string in the hash set of included files,
+    // then ignore this directive.
     //
     // After we find and open a matching file, we bump-allocate a file block,
     // and initialize it to contain the path string, and the opened handle.

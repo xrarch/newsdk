@@ -11,39 +11,36 @@
 FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,
     IN deletefunc : TlHashTableEnumeratorF,
-) : TlStatus
+)
 
     symboltable^.PrevScope = NULLPTR
     symboltable^.DeleteRoutine = deletefunc
 
-    RETURN TlInitializeHashTable ( &symboltable^.HashTable )
+    TlInitializeHashTable ( &symboltable^.HashTable )
 END
 
 FN TlCreateSymbolTable (
     IN outerscope : ^TlSymbolTable,
     IN deletefunc : TlHashTableEnumeratorF,
-    OUT symboltable : ^^TlSymbolTable,
-) : TlStatus
+) : ^TlSymbolTable
+
+    symboltable : ^TlSymbolTable
 
     status := TlAlloc (
         SIZEOF TlSymbolTable, // bytes
-        symboltable, // OUT ptr
+        &symboltable, // OUT ptr
     )
 
     IF status THEN
-        RETURN status
+        TlInternalError ( "Failed to allocate symbol table", 0, 0, 0 )
     END
 
-    status = TlInitializeSymbolTable (
-        symboltable^, // symboltable
+    TlInitializeSymbolTable (
+        symboltable, // symboltable
         deletefunc, // deletefunc
     )
 
-    IF status THEN
-        TlFree ( symboltable^ )
-    END
-
-    RETURN status
+    RETURN symboltable
 END
 
 FN TlDeleteSymbolTable (

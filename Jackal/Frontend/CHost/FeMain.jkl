@@ -6,43 +6,12 @@
 #INCLUDE "<inc>/Runtime.jh"
 #INCLUDE "<inc>/Lexer.jh"
 
-FeInputFileHandle : ^VOID
-FeOutputFileHandle : ^VOID
-
 FN main (
     IN argc : _int,
     IN argv : ^_char[],
 ) : _int
 
-    // Parse the arguments and identify the input and output files.
-
-    FeParseArgs ( argc, argv )
-
-    // Open the input and output files.
-
-    status := TlOpenSource (
-        &FeInputFile[0], // filename
-        &FeInputFileHandle, // OUT handle
-    )
-
-    IF status THEN
-        TlUserError ( "Failed to open source file.", 0, 0, 0 )
-    END
-
-    status = TlOpenDestination (
-        &FeOutputFile[0], // filename
-        &FeOutputFileHandle, // OUT handle
-    )
-
-    IF status THEN
-        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
-    END
-
-    status = LexInitialize ()
-
-    IF status THEN
-        TlInternalError ( "Failed to initialize lexer.", status, 0, 0 )
-    END
+    FeInitialize ( argc, argv )
 
     // Perform phase 1 of the compiler (lexing & parsing).
 
@@ -70,7 +39,7 @@ FN LexStreamError (
     stream := LexCurrentStream
 
     LexStreamError_C (
-        stream^.FileBlock^.Name, // filename
+        stream^.FileBlock^.FilePath, // filename
         stream^.LineNumber, // linenumber
         stream^.LinePosition, // linepos
         str, // str
@@ -91,7 +60,7 @@ FN LexTokenError (
 )
 
     LexStreamError_C (
-        token^.FileBlock^.Name, // filename
+        token^.FileBlock^.FilePath, // filename
         token^.LineNumber, // linenumber
         token^.LinePosition, // linepos
         str, // str

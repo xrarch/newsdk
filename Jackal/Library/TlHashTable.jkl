@@ -6,15 +6,13 @@
 
 FN TlInitializeHashTable (
     IN hashtable : ^TlHashTable,
-) : TlStatus
+)
 
     TlFillMemoryWithByte (
         &hashtable^.BucketHeads, // ptr
         SIZEOFVALUE hashtable^.BucketHeads, // sz
         0, // byte
     )
-
-    RETURN TL_SUCCESS
 END
 
 FN TlSummarizeHashTable (
@@ -82,6 +80,106 @@ FN TlInsertHashTable (
     END
 
     hashtable^.BucketHeads[hash] = entry
+END
+
+FN TlLookupOrAllocateEntryHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entrysize : ULONG,
+    IN key : ^UBYTE,
+    OUT created : ^UBYTE,
+) : ^TlHashTableEntry
+
+    // Look up the key in the hash table. If it's present, return it. Otherwise,
+    // insert a new entry. This may seem redundant, but this avoids the cost of
+    // a second hash and an extra function call in the insertion case.
+
+    hash := TlHashString ( key )
+
+    head := hashtable^.BucketHeads[hash]
+    entry := head
+
+    WHILE entry DO
+        IF TlCompareString ( key, entry^.Key ) == 0 THEN
+            created^ = FALSE
+
+            RETURN entry
+        END
+
+        entry = entry^.Next
+    END
+
+    // Not found! Allocate one.
+
+    status := TlBumpAlloc (
+        entrysize, // bytes
+        &entry, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate entry", 0, 0, 0 )
+    END
+
+    entry^.HashTable = hashtable
+    entry^.Key = key
+    entry^.Hash = hash
+
+    // Insert entry into doubly linked hash bucket list, at the head.
+
+    entry^.Prev = NULLPTR
+    entry^.Next = head
+
+    IF head THEN
+        head^.Prev = entry
+    END
+
+    hashtable^.BucketHeads[hash] = entry
+
+    created^ = TRUE
+
+    RETURN entry
+END
+
+FN TlLookupOrInsertHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
+) : ^TlHashTableEntry
+
+    // Look up the key in the hash table. If it's present, return it. Otherwise,
+    // insert the provided entry. This may seem redundant, but this avoids the
+    // cost of a second hash and an extra function call in the insertion case.
+
+    hash := TlHashString ( key )
+
+    head := hashtable^.BucketHeads[hash]
+    oldentry := head
+
+    WHILE oldentry DO
+        IF TlCompareString ( key, oldentry^.Key ) == 0 THEN
+            RETURN oldentry
+        END
+
+        oldentry = oldentry^.Next
+    END
+
+    // Not found!
+
+    entry^.HashTable = hashtable
+    entry^.Key = key
+    entry^.Hash = hash
+
+    // Insert entry into doubly linked hash bucket list, at the head.
+
+    entry^.Prev = NULLPTR
+    entry^.Next = head
+
+    IF head THEN
+        head^.Prev = entry
+    END
+
+    hashtable^.BucketHeads[hash] = entry
+
+    RETURN entry
 END
 
 FN TlLookupHashTable (

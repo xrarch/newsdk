@@ -2,19 +2,18 @@
 // Implements stream objects for the lexer.
 //
 
-#INCLUDE "<inc>/Frontend.jh"
-#INCLUDE "<inc>/Runtime.jh"
 #INCLUDE "<inc>/Lexer.jh"
 
-FN LexStreamInitialize (
+FN LexInitializeStream (
     IN stream : ^LexStream,
     IN ismacro : UBYTE,
-) : TlStatus
+)
 
     // Initialize a stream structure.
 
     stream^.Previous = NULLPTR
     stream^.FileBlock = NULLPTR
+    stream^.FileHandle = NULLPTR
 
     stream^.Buffer = NULLPTR
     stream^.BufferSize = 0
@@ -24,11 +23,9 @@ FN LexStreamInitialize (
     stream^.BufferPosition = 0
     stream^.IsMacro = ismacro
     stream^.LastWasNewline = FALSE
-
-    RETURN TL_SUCCESS
 END
 
-FN LexStreamUninitialize (
+FN LexUninitializeStream (
     IN stream : ^LexStream,
 )
 
@@ -37,23 +34,22 @@ FN LexStreamUninitialize (
     IF NOT stream^.IsMacro THEN
         // This is a file stream, free the buffer.
         // We don't delete the file block since it's still referenced by
-        // tokens and such.
+        // tokens and in a hash table and whatnot.
 
-        TlClose ( stream^.FileBlock^.Handle )
-
+        TlClose ( stream^.FileHandle )
         TlFree ( stream^.Buffer )
     END
 END
 
-FN LexStreamFree (
+FN LexFreeStream (
     IN stream : ^LexStream,
 )
 
-    LexStreamUninitialize ( stream )
+    LexUninitializeStream ( stream )
     TlFree ( stream )
 END
 
-FN LexStreamPush (
+FN LexPushStream (
     IN stream : ^LexStream,
 )
 
@@ -61,7 +57,7 @@ FN LexStreamPush (
     LexCurrentStream = stream
 END
 
-FN LexStreamPop () : ^LexStream
+FN LexPopStream () : ^LexStream
 
     oldstream := LexCurrentStream
     LexCurrentStream = oldstream^.Previous
@@ -69,94 +65,64 @@ FN LexStreamPop () : ^LexStream
     RETURN oldstream
 END
 
-FN LexFileStreamInitialize (
+FN LexInitializeFileStream (
     IN stream : ^LexStream,
+    IN fileblock : ^FeFileBlock,
     IN handle : ^VOID,
-    IN filename : ^UBYTE,
-) : TlStatus
+)
 
     // Initialize a file stream.
 
-    status := LexStreamInitialize (
+    LexInitializeStream (
         stream, // stream
         FALSE, // ismacro
     )
 
-    IF status THEN
-        RETURN status
-    END
+    // Allocate the lex buffer.
 
-    // Allocate the file block and lex buffer.
-
-    fileblock : ^FeFileBlock
     buffer : ^UBYTE
 
-    status = TlBumpAlloc (
-        SIZEOF FeFileBlock, // bytes
-        &fileblock, // OUT ptr
-    )
-
-    IF status THEN
-        RETURN status
-    END
-
-    status = TlAlloc (
+    status := TlAlloc (
         LEX_BUFFER_SIZE, // bytes
         &buffer, // OUT ptr
     )
 
     IF status THEN
-        TlFree ( fileblock )
-
-        RETURN status
+        TlInternalError ( "Failed to allocate lex buffer", 0, 0, 0 )
     END
 
-    // Initialize the file block.
-
-    fileblock^.Handle = handle
-
-    TlCopyString (
-        &fileblock^.Name[0], // dest
-        filename, // src
-        JKL_PATH_BUFFER_SIZE, // bufsize
-    )
-
     stream^.FileBlock = fileblock
+    stream^.FileHandle = handle
 
     // Set up the lex buffer.
 
     stream^.BufferSize = LEX_BUFFER_SIZE
     stream^.Buffer = buffer
-
-    RETURN status
 END
 
-FN LexFileStreamCreate (
+FN LexCreateFileStream (
+    IN fileblock : ^FeFileBlock,
     IN handle : ^VOID,
-    IN filename : ^UBYTE,
-    OUT stream : ^^LexStream,
-) : TlStatus
+) : ^LexStream
+
+    stream : ^LexStream
 
     status := TlAlloc (
         SIZEOF LexStream, // bytes
-        stream, // OUT ptr
+        &stream, // OUT ptr
     )
 
     IF status THEN
-        RETURN status
+        TlInternalError ( "Failed to allocate stream", 0, 0, 0 )
     END
 
-    status = LexFileStreamInitialize (
-        stream^, // stream
+    LexInitializeFileStream (
+        stream, // stream
+        fileblock, // fileblock
         handle, // handle
-        filename, // filename
     )
 
-    IF status THEN
-        TlFree ( stream^ )
-    END
-
-    RETURN status
+    RETURN stream
 END
 
 FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
@@ -194,7 +160,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
         ELSEIF stream^.IsMacro THEN
             // The macro stream has emptied.
 
-            LexStreamFree ( LexStreamPop () )
+            LexFreeStream ( LexPopStream () )
 
             CONTINUE
 
@@ -202,7 +168,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
             // The remaining code deals with the file stream buffer refill case.
 
             stream^.ValidLength = TlReadFile (
-                stream^.FileBlock^.Handle, // handle
+                stream^.FileHandle, // handle
                 stream^.BufferSize, // bytes
                 stream^.Buffer, // buffer
             )
@@ -220,7 +186,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
                     RETURN 0x0A
                 END
 
-                LexStreamFree ( LexStreamPop () )
+                LexFreeStream ( LexPopStream () )
 
                 CONTINUE
             END

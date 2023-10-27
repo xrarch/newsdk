@@ -2,8 +2,6 @@
 // Lexer.
 //
 
-#INCLUDE "<inc>/Frontend.jh"
-#INCLUDE "<inc>/Runtime.jh"
 #INCLUDE "<inc>/Lexer.jh"
 
 // The "engine" of the lexer, the bit that provides the character stream,
@@ -101,47 +99,40 @@ FN LexKeywordInsert (
     )
 END
 
-FN LexInitialize () : TlStatus
+FN LexInitialize ()
+
+    dumpster : UBYTE
+
+    // Create the file block for the source file.
+
+    fileblock := FeCreateFileBlock (
+        &FeInputFile[0], // filepath
+        "__SRC__", // includename
+        &dumpster, // OUT created
+    )
 
     // Create the root file stream.
 
-    filestream : ^LexStream
-
-    status := LexFileStreamCreate (
+    filestream := LexCreateFileStream (
+        fileblock, // fileblock
         FeInputFileHandle, // handle
-        FeInputFile, // filename
-        &filestream, // OUT filestream
     )
 
-    IF status THEN
-        RETURN status
-    END
-
-    LexStreamPush ( filestream )
+    LexPushStream ( filestream )
 
     // Create the root macro scope.
 
-    status = TlCreateSymbolTable (
+    LexCurrentMacroScope = TlCreateSymbolTable (
         0, // outerscope
         &LexMacroDelete, // deletefunc
-        &LexCurrentMacroScope, // OUT symboltable
     )
-
-    IF status THEN
-        RETURN status
-    END
 
     // Create the global symbol table scope.
 
-    status = TlCreateSymbolTable (
+    LexCurrentScope = TlCreateSymbolTable (
         0, // outerscope
         &LexSymbolDelete, // deletefunc
-        &LexCurrentScope, // OUT symboltable
     )
-
-    IF status THEN
-        RETURN status
-    END
 
     // Initialize interned string hash table.
 
@@ -305,8 +296,6 @@ FN LexInitialize () : TlStatus
 //
 //      i += 1
 //  END
-
-    RETURN status
 END
 
 FN (TlHashTableEnumeratorF) LexMacroDelete (
@@ -522,14 +511,15 @@ FN LexGetTokenInternal (
             NULLPTR, // OUT length
         )
 
-        // Check if the string is already interned.
+        // Lookup or insert the string in the interned string hash table.
 
-        str := CAST TlLookupHashTable (
+        str := CAST TlLookupOrInsertHashTable (
             &LexInternedStringHashTable, // hashtable
+            CAST internedstring^ TO ^TlHashTableEntry, // entry
             dynamicbuffer^.Buffer, // key
         ) TO ^LexInternedString
 
-        IF str THEN
+        IF str != internedstring^ THEN
             // Release our dynamic buffer and return the one we found.
             // I wish we could free the dynamic buffer structure itself, but
             // we already bump allocated it. This is done under the assumption
@@ -539,14 +529,6 @@ FN LexGetTokenInternal (
             TlUninitializeDynamicBuffer ( dynamicbuffer )
 
             internedstring^ = str
-        ELSE
-            // Insert our interned string into the hash table.
-
-            TlInsertHashTable (
-                &LexInternedStringHashTable, // hashtable
-                CAST internedstring^ TO ^TlHashTableEntry, // entry
-                dynamicbuffer^.Buffer, // key
-            )
         END
 
         RETURN TOKEN_FLAG_STRING

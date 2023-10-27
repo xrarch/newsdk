@@ -1,4 +1,3 @@
-#INCLUDE "<inc>/Runtime.jh"
 #INCLUDE "<inc>/Frontend.jh"
 
 CONST LEX_PUTBACK_STACK_DEPTH := 4
@@ -148,6 +147,7 @@ END
 STRUCT LexStream
     Previous : ^LexStream,
     FileBlock : ^FeFileBlock,
+    FileHandle : ^VOID,
 
     Buffer : ^UBYTE,
     BufferSize : ULONG,
@@ -175,40 +175,39 @@ EXTERN LexFalseCount : ULONG
 EXTERN LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 EXTERN LexPutbackStackPtr : ULONG 
 
-EXTERN FN LexInitialize () : TlStatus
+EXTERN FN LexInitialize ()
 
 EXTERN FN LexPreprocessorInit ()
 
-EXTERN FN LexStreamInitialize (
+EXTERN FN LexInitializeStream (
     IN stream : ^LexStream,
     IN ismacro : UBYTE,
-) : TlStatus
+)
 
-EXTERN FN LexStreamUninitialize (
+EXTERN FN LexUninitializeStream (
     IN stream : ^LexStream,
 )
 
-EXTERN FN LexStreamFree (
+EXTERN FN LexFreeStream (
     IN stream : ^LexStream,
 )
 
-EXTERN FN LexStreamPush (
+EXTERN FN LexPushStream (
     IN stream : ^LexStream,
 )
 
-EXTERN FN LexStreamPop () : ^LexStream
+EXTERN FN LexPopStream () : ^LexStream
 
-EXTERN FN LexFileStreamInitialize (
+EXTERN FN LexInitializeFileStream (
     IN stream : ^LexStream,
+    IN fileblock : ^FeFileBlock,
     IN handle : ^VOID,
-    IN filename : ^UBYTE,
-) : TlStatus
+)
 
-EXTERN FN LexFileStreamCreate (
+EXTERN FN LexCreateFileStream (
+    IN fileblock : ^FeFileBlock,
     IN handle : ^VOID,
-    IN filename : ^UBYTE,
-    OUT stream : ^^LexStream,
-) : TlStatus
+) : ^LexStream
 
 EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 

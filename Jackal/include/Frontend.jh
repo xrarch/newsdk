@@ -1,20 +1,33 @@
-CONST JKL_PATH_BUFFER_SIZE := 256
+#INCLUDE "<inc>/Runtime.jh"
 
-STRUCT FeFileBlock
-    Name : UBYTE[JKL_PATH_BUFFER_SIZE],
-    Handle : ^VOID,
-END
+CONST FE_PATH_BUFFER_SIZE := 256
 
-EXTERN FN FeParseArgs (
+EXTERN FN FeInitialize (
     IN argc : ULONG,
     IN argv : ^UBYTE[],
 )
 
-EXTERN FeLibraryDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
-EXTERN FeIncludeDirectory : UBYTE[JKL_PATH_BUFFER_SIZE]
+EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 
-EXTERN FeInputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
-EXTERN FeOutputFile : UBYTE[JKL_PATH_BUFFER_SIZE]
+EXTERN FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 
 EXTERN FeInputFileHandle : ^VOID
 EXTERN FeOutputFileHandle : ^VOID
+
+
+// fileblock stuff
+
+STRUCT FeFileBlock
+    Entry : ^TlHashTableEntry, // must be at the start
+
+    FilePath : UBYTE[FE_PATH_BUFFER_SIZE],
+    IncludeName : UBYTE[FE_PATH_BUFFER_SIZE],
+END
+
+EXTERN FN FeCreateFileBlock (
+    IN filepath : ^UBYTE,
+    IN includename : ^UBYTE,
+    OUT created : ^UBYTE,
+) : ^FeFileBlock
