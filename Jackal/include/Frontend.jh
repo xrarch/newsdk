@@ -20,7 +20,7 @@ EXTERN FeOutputFileHandle : ^VOID
 // fileblock stuff
 
 STRUCT FeFileBlock
-    Entry : ^TlHashTableEntry, // must be at the start
+    Entry : TlHashTableEntry, // must be at the start
 
     FilePath : UBYTE[FE_PATH_BUFFER_SIZE],
     IncludeName : UBYTE[FE_PATH_BUFFER_SIZE],
