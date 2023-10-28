@@ -16,7 +16,6 @@ EXTERN FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN FeInputFileHandle : ^VOID
 EXTERN FeOutputFileHandle : ^VOID
 
-
 // fileblock stuff
 
 STRUCT FeFileBlock
@@ -27,7 +26,11 @@ STRUCT FeFileBlock
 END
 
 EXTERN FN FeCreateFileBlock (
-    IN filepath : ^UBYTE,
     IN includename : ^UBYTE,
     OUT created : ^UBYTE,
 ) : ^FeFileBlock
+
+EXTERN FN FeCopyPathFileBlock (
+    IN fileblock : ^FeFileBlock,
+    IN filepath : ^UBYTE,
+)

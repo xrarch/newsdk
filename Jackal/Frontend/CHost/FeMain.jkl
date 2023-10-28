@@ -39,7 +39,7 @@ FN LexStreamError (
     stream := LexCurrentStream
 
     LexStreamError_C (
-        stream^.FileBlock^.FilePath, // filename
+        stream^.FileBlock^.IncludeName, // filename
         stream^.LineNumber, // linenumber
         stream^.LinePosition, // linepos
         str, // str
@@ -60,7 +60,7 @@ FN LexTokenError (
 )
 
     LexStreamError_C (
-        token^.FileBlock^.FilePath, // filename
+        token^.FileBlock^.IncludeName, // filename
         token^.LineNumber, // linenumber
         token^.LinePosition, // linepos
         str, // str

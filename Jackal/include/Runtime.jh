@@ -10,6 +10,10 @@ ENUM TlStatus : ULONG
     TL_COULDNT_OPEN,
 END
 
+EXTERN FN TlMeasureString (
+    IN str : ^UBYTE,
+) : ULONG
+
 EXTERN FN TlFillMemoryWithByte (
     IN ptr : ^VOID,
     IN sz : ULONG,
@@ -237,4 +241,26 @@ EXTERN FN TlUninitializeDynamicBuffer (
 EXTERN FN TlInsertDynamicBuffer (
     IN array : ^TlDynamicBuffer,
     IN byte : UBYTE,
+)
+
+EXTERN FN TlCopyIntoDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN srcbuf : ^UBYTE,
+    IN length : ULONG,
+)
+
+
+// path stuff
+
+
+EXTERN FN TlMatchPath (
+    IN path : ^UBYTE,
+    IN pathset : ^UBYTE,
+    IN resultingpath : ^TlDynamicBuffer,
+    OUT handle : ^^VOID,
+) : UBYTE
+
+EXTERN FN TlCopyParentPath (
+    IN srcpath : ^UBYTE,
+    IN destpath : ^TlDynamicBuffer,
 )

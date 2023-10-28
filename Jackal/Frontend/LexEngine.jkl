@@ -106,9 +106,13 @@ FN LexInitialize ()
     // Create the file block for the source file.
 
     fileblock := FeCreateFileBlock (
-        &FeInputFile[0], // filepath
-        "__SRC__", // includename
+        &FeInputFile[0], // includename
         &dumpster, // OUT created
+    )
+
+    FeCopyPathFileBlock (
+        fileblock, // fileblock
+        &FeInputFile[0], // filepath
     )
 
     // Create the root file stream.
@@ -766,10 +770,8 @@ FN LexGetToken (
         // This is a character literal token. We turn those into numerical
         // tokens.
 
-        num := LexCrunchCharacterLiteral ( &buffer[0] )
-
         token^.Type = TOKEN_NUMBER
-        token^.Payload = num
+        token^.Payload = LexCrunchCharacterLiteral ( &buffer[0] )
 
         LEAVE
     END
@@ -794,13 +796,11 @@ FN LexGetToken (
     IF buffer[0] >= '0' AND buffer[0] <= '9' THEN
         // This is a numerical token.
 
-        num := LexCrunchNumber (
+        token^.Type = TOKEN_NUMBER
+        token^.Payload = LexCrunchNumber (
             token, // token
             &buffer[0], // buffer
         )
-
-        token^.Type = TOKEN_NUMBER
-        token^.Payload = num
 
         LEAVE
     END

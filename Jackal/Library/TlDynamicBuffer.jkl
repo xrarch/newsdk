@@ -71,3 +71,72 @@ FN TlInsertDynamicBuffer (
     array^.Buffer[array^.Count] = byte
     array^.Count += 1
 END
+
+FN TlCopyIntoDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN srcbuf : ^UBYTE,
+    IN length : ULONG,
+)
+
+    // Copy from the source buffer into the dynamic buffer.
+
+    IF array^.Count + length < array^.BufferSize THEN
+        // There's enough space in the buffer already. Do the copy directly.
+
+        TlCopyMemory (
+            &array^.Buffer[array^.Count], // dest
+            srcbuf, // src
+            length, // sz
+        )
+
+        array^.Count += length
+
+        LEAVE
+    END
+
+    // There's not enough space. We have to grow the buffer.
+    // Grow the buffer by allocating a new one of double the length,
+    // copying everything into it, and then freeing the old one.
+
+    newlength := array^.BufferSize * 2
+
+    WHILE array^.Count + length > newlength DO
+        // Double until the new length is great enough to contain the string.
+
+        newlength *= 2
+    END
+
+    newbuffer : ^UBYTE
+
+    status := TlAlloc (
+        newlength, // bytes
+        &newbuffer, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to grow dynamic buffer", 0, 0, 0 )
+    END
+
+    TlCopyMemory (
+        newbuffer, // dest
+        array^.Buffer, // src
+        array^.Count, // sz
+    )
+
+    // Free the old buffer if it wasn't the initial inlined one.
+
+    IF array^.BufferSize != TL_DYNAMIC_BUFFER_INITIAL THEN
+        TlFree ( array^.Buffer )
+    END
+
+    array^.Buffer = newbuffer
+    array^.BufferSize = newlength
+
+    TlCopyMemory (
+        &newbuffer[array^.Count], // dest
+        srcbuf, // src
+        length, // sz
+    )
+
+    array^.Count += length
+END

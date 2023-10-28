@@ -79,28 +79,20 @@ FN LexParseDirective ()
     END
 
     directive^.ParseRoutine ()
-
-    LexStreamError ( "test test test", 0, 0, 0 )
 END
 
 FN LexNextNonWhitespaceCharacter () : UBYTE
 
-    byte : UBYTE
+    byte := LexStreamNextCharacter ()
 
     // Skip any leading whitespace.
 
-    WHILE TRUE DO
+    WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
         byte = LexStreamNextCharacter ()
+    END
 
-        IF byte == 0 THEN
-            LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
-        END
-
-        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
-            CONTINUE
-        END
-
-        BREAK
+    IF byte == 0 THEN
+        LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
     END
 
     RETURN byte
@@ -183,8 +175,8 @@ FN LexParseInclude ()
     //          a system library as appended by the host specific part of the
     //          compiler.
     //
-    // If we find the exact file path string in the hash set of included files,
-    // then ignore this directive.
+    // If we find the exact include path string in the hash set of included
+    // files, then ignore this directive.
     //
     // After we find and open a matching file, we bump-allocate a file block,
     // and initialize it to contain the path string, and the opened handle.
@@ -192,28 +184,146 @@ FN LexParseInclude ()
     // top of the stream stack, causing the rest of the lexer to consume tokens
     // from that file until it reaches EOF.
 
+    str : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &str )
+
+    LexCollectString ( &str )
+
+    IF LexFalseCount THEN
+        // We're in a region that is being conditionally compiled out, so
+        // do nothing.
+
+        TlUninitializeDynamicBuffer ( &str )
+
+        LEAVE
+    END
+
+    // Get a file block for the include string. We'll fill it in with the file
+    // path in a second.
+
+    created : UBYTE
+
+    fileblock := FeCreateFileBlock (
+        str.Buffer, // includename
+        &created, // OUT created
+    )
+
+    IF NOT created THEN
+        // This file has already been included!
+
+        TlUninitializeDynamicBuffer ( &str )
+
+        LEAVE
+    END
+
+    // Figure out the file path.
+
+    filepath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &filepath )
+
+    handle : ^VOID
+    found := FALSE
+
+    IF TlCompareStringWithMax ( str.Buffer, "<inc>/", 6 ) == 0 THEN
+        // Relative to the first matching include directory.
+
+        found = TlMatchPath (
+            &str.Buffer[6], // path
+            &FeIncludeDirectory, // pathset
+            &filepath, // resultingpath
+            &handle, // OUT handle
+        )
+
+    ELSEIF TlCompareStringWithMax ( str.Buffer, "<ll>/", 5 ) == 0 THEN
+        // Relative to the first matching library directory.
+
+        found = TlMatchPath (
+            &str.Buffer[5], // path
+            &FeLibraryDirectory, // pathset
+            &filepath, // resultingpath
+            &handle, // OUT handle
+        )
+
+    ELSE
+        // Relative to the current source file's parent directory.
+
+        TlCopyParentPath (
+            &LexCurrentStream^.FileBlock^.FilePath, // srcpath
+            &filepath, // destpath
+        )
+
+        IF filepath.Buffer[filepath.Count - 1] != '/' THEN
+            TlInsertDynamicBuffer ( &filepath, '/' )
+        END
+
+        TlCopyIntoDynamicBuffer (
+            &filepath, // array
+            str.Buffer, // srcbuf
+            str.Count, // length
+        )
+
+        TlInsertDynamicBuffer ( &filepath, 0 )
+
+        status := TlOpenSource (
+            filepath.Buffer, // filename
+            &handle, // OUT handle
+        )
+
+        IF NOT status THEN
+            found = TRUE
+        END
+    END
+
+    IF NOT found THEN
+        TlPrintString ( str.Buffer )
+        TlPrintString ( "\n" )
+        LexStreamError ( "Failed to include the specified file.", 0, 0, 0 )
+    END
+
+    // Copy the file path into the fileblock.
+
+    FeCopyPathFileBlock (
+        fileblock, // fileblock
+        filepath.Buffer, // filepath
+    )
+
+    // Create a new file stream.
+
+    stream := LexCreateFileStream (
+        fileblock, // fileblock
+        handle, // handle
+    )
+
+    // Add it to the stream stack.
+
+    LexPushStream ( stream )
+
+    TlUninitializeDynamicBuffer ( &filepath )
+    TlUninitializeDynamicBuffer ( &str )
 END
 
 FN LexParseDefine ()
-
+    LexStreamError ( "TODO define", 0, 0, 0 )
 END
 
 FN LexParseMacro ()
-
+    LexStreamError ( "TODO macro", 0, 0, 0 )
 END
 
 FN LexParseIf ()
-
+    LexStreamError ( "TODO if", 0, 0, 0 )
 END
 
 FN LexParseElse ()
-
+    LexStreamError ( "TODO else", 0, 0, 0 )
 END
 
 FN LexParseElseif ()
-
+    LexStreamError ( "TODO elseif", 0, 0, 0 )
 END
 
 FN LexParseEnd ()
-
+    LexStreamError ( "TODO end", 0, 0, 0 )
 END

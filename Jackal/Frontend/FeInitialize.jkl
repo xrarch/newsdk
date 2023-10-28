@@ -120,7 +120,6 @@ FN FeParseArguments (
 END
 
 FN FeCreateFileBlock (
-    IN filepath : ^UBYTE,
     IN includename : ^UBYTE,
     OUT created : ^UBYTE,
 ) : ^FeFileBlock
@@ -136,12 +135,6 @@ FN FeCreateFileBlock (
         // Initialize the file block, since it didn't already exist.
 
         TlCopyString (
-            &fileblock^.FilePath[0], // dest
-            filepath, // src
-            FE_PATH_BUFFER_SIZE, // bufsize
-        )
-
-        TlCopyString (
             &fileblock^.IncludeName[0], // dest
             includename, // src
             FE_PATH_BUFFER_SIZE, // bufsize
@@ -155,4 +148,16 @@ FN FeCreateFileBlock (
     END
 
     RETURN fileblock
+END
+
+FN FeCopyPathFileBlock (
+    IN fileblock : ^FeFileBlock,
+    IN filepath : ^UBYTE,
+)
+
+    TlCopyString (
+        &fileblock^.FilePath[0], // dest
+        filepath, // src
+        FE_PATH_BUFFER_SIZE, // bufsize
+    )
 END

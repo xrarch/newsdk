@@ -1,0 +1,111 @@
+//
+// Path helper routines.
+//
+
+#INCLUDE "<inc>/Runtime.jh"
+
+FN TlCopyParentPath (
+    IN srcpath : ^UBYTE,
+    IN destpath : ^TlDynamicBuffer,
+)
+
+    // Copy the given path up to and including the final slash.
+    // If there are no slashes, an empty path is returned. A null terminator is
+    // not inserted.
+
+    i := 0
+    lastoff := 0
+
+    WHILE srcpath[i] DO
+        IF srcpath[i] == '/' THEN
+            TlCopyIntoDynamicBuffer (
+                destpath, // array
+                &srcpath[lastoff], // srcbuf
+                i - lastoff + 1, // length
+            )
+
+            lastoff = i + 1
+        END
+
+        i += 1
+    END
+END
+
+FN TlMatchPath (
+    IN path : ^UBYTE,
+    IN pathset : ^UBYTE,
+    IN resultingpath : ^TlDynamicBuffer,
+    OUT handle : ^^VOID,
+) : UBYTE
+
+    // Match the given path with a file in one of the directories specified by
+    // the colon-separated path set. The resulting path is returned in the
+    // dynamic buffer passed in to this routine. It need not be initialized.
+
+    pathlen := TlMeasureString ( path )
+
+    initialized := FALSE
+    i := 0
+    lastoff := 0
+    length := 0
+
+    WHILE TRUE DO
+        IF (pathset[i] == ':' OR pathset[i] == 0) AND length THEN
+            // Try to match the file into this member of the path set.
+
+            IF initialized THEN
+                TlUninitializeDynamicBuffer ( resultingpath )
+            END
+
+            TlInitializeDynamicBuffer ( resultingpath )
+            initialized = TRUE
+
+            TlCopyIntoDynamicBuffer (
+                resultingpath, // array
+                &pathset[lastoff], // srcbuf
+                i - lastoff, // length
+            )
+
+            IF resultingpath^.Buffer[resultingpath^.Count - 1] != '/' THEN
+                TlInsertDynamicBuffer ( resultingpath, '/' )
+            END
+
+            TlCopyIntoDynamicBuffer (
+                resultingpath, // array
+                path, // srcbuf
+                pathlen, // length
+            )
+
+            TlInsertDynamicBuffer ( resultingpath, 0 )
+
+            status := TlOpenSource (
+                resultingpath^.Buffer, // filename
+                handle, // OUT handle
+            )
+
+            IF NOT status THEN
+                // Opened successfully!
+
+                RETURN TRUE
+            END
+
+            lastoff = i + 1
+            length = 0
+        ELSEIF pathset[i] == ':' THEN
+            lastoff = i + 1
+            length = 0
+        ELSEIF pathset[i] == 0 THEN
+            BREAK
+        ELSE
+            length += 1
+        END
+
+        i += 1
+    END
+
+    IF initialized THEN
+        TlUninitializeDynamicBuffer ( resultingpath )
+    END
+
+    RETURN FALSE
+END

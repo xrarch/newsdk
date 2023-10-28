@@ -64,6 +64,10 @@ EXTERN FN memcpy (
     IN sz : ULONG,
 ) : ^VOID
 
+EXTERN FN strlen (
+    IN s : ^_char
+) : ULONG
+
 FN TlFillMemoryWithByte (
     IN ptr : ^VOID,
     IN sz : ULONG,
@@ -180,6 +184,13 @@ FN TlCompareStringWithMax (
 ) : ULONG
 
     RETURN strncmp ( str1, str2, count )
+END
+
+FN TlMeasureString (
+    IN str : ^UBYTE,
+) : ULONG
+
+    RETURN strlen ( str )
 END
 
 FN TlCopyString (
