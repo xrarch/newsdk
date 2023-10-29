@@ -111,6 +111,10 @@ EXTERN FN TlWriteFile (
     IN buffer : ^VOID,
 ) : ULONG
 
+EXTERN TlHeapHits : ULONG
+EXTERN TlBumpBytesUsed : ULONG
+EXTERN TlBumpHits : ULONG
+
 
 // hash table stuff
 

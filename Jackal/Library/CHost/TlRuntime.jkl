@@ -99,10 +99,14 @@ FN TlErrorExit ()
     exit ( 1 )
 END
 
+TlHeapHits : ULONG = 0
+
 FN TlAlloc (
     IN bytes : ULONG,
     OUT ptr : ^^VOID,
 ) : TlStatus
+
+    TlHeapHits += 1
 
     ptr^ = malloc ( bytes )
 
@@ -122,6 +126,8 @@ END
 
 TlBumpPtr := NULLPTR
 TlBumpBytesLeft : ULONG = 0
+TlBumpBytesUsed : ULONG = 0
+TlBumpHits : ULONG = 0
 
 CONST TL_BUMP_EXTEND : ULONG = 65536
 
@@ -139,11 +145,15 @@ FN TlBumpAlloc (
     IF bytes <= TlBumpBytesLeft THEN
         ptr^ = TlBumpPtr
 
+        TlBumpHits += 1
+        TlBumpBytesUsed += bytes
         TlBumpPtr += bytes
         TlBumpBytesLeft -= bytes
 
         RETURN TL_SUCCESS
     END
+
+    TlHeapHits += 1
 
     IF bytes >= TL_BUMP_EXTEND THEN
         ptr^ = malloc ( bytes )
@@ -163,6 +173,7 @@ FN TlBumpAlloc (
 
     ptr ^= TlBumpPtr
 
+    TlBumpBytesUsed += bytes
     TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
     TlBumpPtr += bytes
 

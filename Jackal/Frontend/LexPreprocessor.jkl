@@ -299,7 +299,9 @@ FN LexParseInclude ()
         handle, // handle
     )
 
-    // Add it to the stream stack.
+    // Add it to the stream stack to cause further characters to be consumed
+    // from this file. It will be popped back off, resuming the previous file,
+    // when EOF is reached.
 
     LexPushStream ( stream )
 END
