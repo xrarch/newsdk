@@ -155,7 +155,10 @@ FN LexCollectString (
         // roll our own simple string consumer here, since the main lexer's will
         // process escaped characters! We don't want to do that; for macros
         // defined as strings we just want to pass it up wholesale to the main
-        // lexer, enclosing double quotes and all.
+        // lexer, enclosing double quotes and all, with an exception made in the
+        // case where this string is for the preprocessor's own consumption,
+        // such as the operand to the INCLUDE directive; this could be switched
+        // using an extra argument.
 
         LexGetStringTokenInternal (
             &LexStreamNextCharacter, // getbytefunc
