@@ -134,10 +134,7 @@ FN LexCollectString (
     //  0777                respectively.
     //  0xABCD
     //
-    //  NAME                The name of a macro. If the macro was defined as a
-    //                      string or integer value, then that string or integer
-    //                      value will be returned. If it was defined as a
-    //                      complex string, then it will be expanded in-place.
+    //  NAME                The name of a macro. It will be expanded in-place.
     //
     //  "STRING"            The contents of a literal string.
     //
@@ -145,13 +142,7 @@ FN LexCollectString (
     //                      un-escaped section of Jackal code, including
     //                      preprocessor expressions, etc.
     //
-    //  (OP val1 val2 ...)  An expression yielding some kind of value. The OP
-    //                      may instead be the name of a function macro, in
-    //                      which case the operands will be provided as its
-    //                      arguments. If the macro was defined as a string or
-    //                      integer value, then that string or integer value
-    //                      will be returned. If it was defined as a complex
-    //                      string, then it will be expanded in-place.
+    //  (OP val1 val2 ...)  An expression yielding some kind of value.
     //
     // The EXPR argument indicates whether this is the final operand of an
     // expression, in which case we should make sure to consume a straggling
@@ -160,6 +151,12 @@ FN LexCollectString (
     byte := LexNextNonWhitespaceCharacter ()
 
     IF byte == '\"' THEN
+        // XXX This is like this for testing, but is actually wrong. We should
+        // roll our own simple string consumer here, since the main lexer's will
+        // process escaped characters! We don't want to do that; for macros
+        // defined as strings we just want to pass it up wholesale to the main
+        // lexer, enclosing double quotes and all.
+
         LexGetStringTokenInternal (
             &LexStreamNextCharacter, // getbytefunc
             NULLPTR, // token
