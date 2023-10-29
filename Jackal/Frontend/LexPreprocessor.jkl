@@ -14,7 +14,6 @@ FNPTR LexDirectiveParseF ()
 
 STRUCT LexDirective
     Entry : TlHashTableEntry, // MUST be at the start
-
     ParseRoutine : LexDirectiveParseF,
 END
 
@@ -307,25 +306,34 @@ FN LexParseInclude ()
 END
 
 FN LexParseDefine ()
+
+    // This directive defines a simple macro (as opposed to a function macro).
+    // First we consume the name token, then we consume the contents.
+
     LexStreamError ( "TODO define", 0, 0, 0 )
 END
 
 FN LexParseMacro ()
+
     LexStreamError ( "TODO macro", 0, 0, 0 )
 END
 
 FN LexParseIf ()
+
     LexStreamError ( "TODO if", 0, 0, 0 )
 END
 
 FN LexParseElse ()
+
     LexStreamError ( "TODO else", 0, 0, 0 )
 END
 
 FN LexParseElseif ()
+
     LexStreamError ( "TODO elseif", 0, 0, 0 )
 END
 
 FN LexParseEnd ()
+
     LexStreamError ( "TODO end", 0, 0, 0 )
 END

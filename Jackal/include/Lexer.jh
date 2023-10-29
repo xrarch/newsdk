@@ -166,6 +166,22 @@ STRUCT LexSymbol
     Name : ^UBYTE,
 END
 
+ENUM LexPreprocessorValueType : UBYTE
+    LEX_VALUE_ANY,
+    LEX_VALUE_STRING,
+    LEX_VALUE_NUMBER,
+END
+
+STRUCT LexPreprocessorValue
+    Payload : ^VOID,
+    Type : LexPreprocessorValueType,
+END
+
+STRUCT LexMacro
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Value : LexPreprocessorValue,
+END
+
 EXTERN LexCharTreatment : LexCharBehavior[256]
 
 EXTERN LexCurrentStream : ^LexStream

@@ -55,6 +55,7 @@ CONST LEX_TOKEN_STRING_SIZE := 2048
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 
 LexCurrentStream : ^LexStream = NULLPTR
+LexRootMacroScope : ^TlSymbolTable = NULLPTR
 LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
@@ -126,10 +127,12 @@ FN LexInitialize ()
 
     // Create the root macro scope.
 
-    LexCurrentMacroScope = TlCreateSymbolTable (
+    LexRootMacroScope = TlCreateSymbolTable (
         0, // outerscope
         &LexMacroDelete, // deletefunc
     )
+
+    LexCurrentMacroScope = LexRootMacroScope
 
     // Create the global symbol table scope.
 
@@ -192,15 +195,15 @@ FN LexInitialize ()
     LexKeywordInsert ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
     LexKeywordInsert ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
 
-    LexKeywordInsert ( "(", TOKEN_LPAREN, NULL )
-    LexKeywordInsert ( ")", TOKEN_RPAREN, NULL )
-    LexKeywordInsert ( "[", TOKEN_LBRACKET, NULL )
-    LexKeywordInsert ( "]", TOKEN_RBRACKET, NULL )
-    LexKeywordInsert ( "^", TOKEN_CARET, NULL )
-    LexKeywordInsert ( ":", TOKEN_COLON, NULL )
-    LexKeywordInsert ( "{", TOKEN_LBRACE, NULL )
-    LexKeywordInsert ( "}", TOKEN_RBRACE, NULL )
-    LexKeywordInsert ( ",", TOKEN_COMMA, NULL )
+    LexKeywordInsert ( "(", TOKEN_LPAREN, 0 )
+    LexKeywordInsert ( ")", TOKEN_RPAREN, 0 )
+    LexKeywordInsert ( "[", TOKEN_LBRACKET, 0 )
+    LexKeywordInsert ( "]", TOKEN_RBRACKET, 0 )
+    LexKeywordInsert ( "^", TOKEN_CARET, 0 )
+    LexKeywordInsert ( ":", TOKEN_COLON, 0 )
+    LexKeywordInsert ( "{", TOKEN_LBRACE, 0 )
+    LexKeywordInsert ( "}", TOKEN_RBRACE, 0 )
+    LexKeywordInsert ( ",", TOKEN_COMMA, 0 )
 
     LexKeywordInsert ( "==", TOKEN_OPER, TOKEN_EQUIV )
     LexKeywordInsert ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV )
