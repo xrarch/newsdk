@@ -128,6 +128,35 @@ FN LexCollectString (
     // XXX The following comment indicates what this routine will be modified to
     //     do soon:
     //
+    // Collect a preprocessor value. This will be one of the following forms:
+    //
+    //  10                  A decimal, octal, or hexadecimal integer,
+    //  0777                respectively.
+    //  0xABCD
+    //
+    //  NAME                The name of a macro. If the macro was defined as a
+    //                      string or integer value, then that string or integer
+    //                      value will be returned. If it was defined as a
+    //                      complex string, then it will be expanded in-place.
+    //
+    //  "STRING"            The contents of a literal string.
+    //
+    //  [CMPLX STRING]      The contents of a complex string, which may be any
+    //                      un-escaped section of Jackal code, including
+    //                      preprocessor expressions, etc.
+    //
+    //  (OP val1 val2 ...)  An expression yielding some kind of value. The OP
+    //                      may instead be the name of a function macro, in
+    //                      which case the operands will be provided as its
+    //                      arguments. If the macro was defined as a string or
+    //                      integer value, then that string or integer value
+    //                      will be returned. If it was defined as a complex
+    //                      string, then it will be expanded in-place.
+    //
+    // The EXPR argument indicates whether this is the final operand of an
+    // expression, in which case we should make sure to consume a straggling
+    // close parenthesis, if one doesn't terminate our name or integer token.
+
     byte := LexNextNonWhitespaceCharacter ()
 
     IF byte == '\"' THEN
