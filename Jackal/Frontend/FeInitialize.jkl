@@ -2,7 +2,7 @@
 // Frontend initialization.
 //
 
-#INCLUDE "<inc>/Lexer.jh"
+#INCLUDE "<inc>/Lexer.hjk"
 
 FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]

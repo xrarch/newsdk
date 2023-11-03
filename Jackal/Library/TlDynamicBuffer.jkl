@@ -2,7 +2,7 @@
 // Resizing array implementation for building byte buffers.
 //
 
-#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Runtime.hjk"
 
 FN TlInitializeDynamicBuffer (
     IN array : ^TlDynamicBuffer,

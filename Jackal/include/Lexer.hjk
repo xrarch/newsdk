@@ -1,4 +1,4 @@
-#INCLUDE "<inc>/Frontend.jh"
+#INCLUDE "<inc>/Frontend.hjk"
 
 CONST LEX_PUTBACK_STACK_DEPTH := 4
 CONST LEX_BUFFER_SIZE := 16384

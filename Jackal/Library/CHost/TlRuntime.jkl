@@ -4,7 +4,7 @@
 // transpilation host, and around Rtl for the MINTIA host.
 //
 
-#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Runtime.hjk"
 
 EXTERN FN exit (
     IN status : _int,

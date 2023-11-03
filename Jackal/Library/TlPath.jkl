@@ -2,7 +2,7 @@
 // Path helper routines.
 //
 
-#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Runtime.hjk"
 
 FN TlCopyParentPath (
     IN srcpath : ^UBYTE,

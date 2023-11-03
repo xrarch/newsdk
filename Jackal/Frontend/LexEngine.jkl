@@ -2,7 +2,7 @@
 // Lexer.
 //
 
-#INCLUDE "<inc>/Lexer.jh"
+#INCLUDE "<inc>/Lexer.hjk"
 
 // The "engine" of the lexer, the bit that provides the character stream,
 // operates by stacking and unstacking source text streams. Each stream has a

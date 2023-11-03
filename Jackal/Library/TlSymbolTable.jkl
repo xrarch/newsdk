@@ -6,7 +6,7 @@
 // arguments and nested expansion.
 //
 
-#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Runtime.hjk"
 
 FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,

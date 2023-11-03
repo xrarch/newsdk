@@ -2,7 +2,7 @@
 // Simple hash table implementation for faster symbol lookup.
 //
 
-#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Runtime.hjk"
 
 FN TlInitializeHashTable (
     IN hashtable : ^TlHashTable,

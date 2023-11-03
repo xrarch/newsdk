@@ -2,7 +2,7 @@
 // Implements stream objects for the lexer.
 //
 
-#INCLUDE "<inc>/Lexer.jh"
+#INCLUDE "<inc>/Lexer.hjk"
 
 FN LexInitializeStream (
     IN stream : ^LexStream,

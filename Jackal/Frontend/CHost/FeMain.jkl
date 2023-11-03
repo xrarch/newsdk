@@ -2,9 +2,9 @@
 // Host-specific entrypoint for the Jackal compiler program.
 //
 
-#INCLUDE "<inc>/Frontend.jh"
-#INCLUDE "<inc>/Runtime.jh"
-#INCLUDE "<inc>/Lexer.jh"
+#INCLUDE "<inc>/Frontend.hjk"
+#INCLUDE "<inc>/Runtime.hjk"
+#INCLUDE "<inc>/Lexer.hjk"
 
 FN main (
     IN argc : _int,

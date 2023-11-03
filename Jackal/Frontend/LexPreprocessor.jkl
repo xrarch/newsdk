@@ -2,7 +2,7 @@
 // Inline preprocessor for the lexer.
 //
 
-#INCLUDE "<inc>/Lexer.jh"
+#INCLUDE "<inc>/Lexer.hjk"
 
 CONST LEX_DIRECTIVE_MAX := 64
 

@@ -1,4 +1,4 @@
-#INCLUDE "<inc>/Runtime.jh"
+#INCLUDE "<inc>/Runtime.hjk"
 
 CONST FE_PATH_BUFFER_SIZE := 256
 
