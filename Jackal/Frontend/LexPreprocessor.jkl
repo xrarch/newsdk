@@ -282,12 +282,22 @@ FN LexCollectValue (
             '\"', // byte
         )
 
+        TlInsertDynamicBuffer (
+            buffer, // array
+            0, // byte
+        )
+
         LEAVE
 
     ELSEIF byte == '[' THEN
         LexGetComplexString (
             token, // token
             buffer, // buffer
+        )
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            0, // byte
         )
 
         LEAVE
@@ -300,7 +310,10 @@ FN LexCollectValue (
         LEAVE
     END
 
-    // This must expand 
+    // This either matches with a macro name, or doesn't. Only non-function
+    // macros are permitted. If it matches, we expand in place by adding it to
+    // the top of the stream stack and looping. If it doesn't match, we just
+    // return this token.
 END
 
 FN LexParseInclude ()
