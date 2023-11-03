@@ -50,7 +50,7 @@ LexCharTreatment : LexCharBehavior[256] = {
     // be zero.
 }
 
-CONST LEX_TOKEN_STRING_SIZE := 2048
+CONST LEX_TOKEN_STRING_SIZE := 128
 
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 
@@ -352,9 +352,11 @@ FN (LexGetCharacterF) LexGetCharacter () : UBYTE
         IF LexCharacterCoalescePutback THEN
             byte = LexCharacterCoalescePutback
             LexCharacterCoalescePutback = 0
+
         ELSEIF LexCharacterPutback THEN
             byte = LexCharacterPutback
             LexCharacterPutback = 0
+
         ELSE
             byte = LexStreamNextCharacter ()
 
@@ -517,7 +519,6 @@ FN LexGetTokenInternal (
         TlInitializeDynamicBuffer ( dynamicbuffer )
 
         LexGetStringTokenInternal (
-            &LexGetCharacter, // getbytefunc
             token, // token
             '\"', // terminator
             dynamicbuffer, // dynamicbuffer
@@ -552,7 +553,6 @@ FN LexGetTokenInternal (
         // This is a character literal.
 
         LexGetStringTokenInternal (
-            &LexGetCharacter, // getbytefunc
             token, // token
             0x27, // terminator
             NULLPTR, // dynamicbuffer
@@ -581,7 +581,7 @@ FN LexGetTokenInternal (
         len := 0
 
         WHILE LexCharTreatment[byte] == CHAR_COALESCE DO
-            IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+            IF len == LEX_TOKEN_STRING_SIZE - 1 THEN
                 LexTokenError ( token,
                     "Token length exceeds maximum.", 0, 0, 0 )
             END
@@ -615,7 +615,7 @@ FN LexGetTokenInternal (
     len := 0
 
     WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
-        IF len == LEX_TOKEN_STRING_SIZE-1 THEN
+        IF len == LEX_TOKEN_STRING_SIZE - 1 THEN
             LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
         END
 
@@ -663,7 +663,6 @@ FN LexGetTokenInternal (
 END
 
 FN LexGetStringTokenInternal (
-    IN getbytefunc : LexGetCharacterF,
     IN token : ^LexToken,
     IN terminator : UBYTE,
     IN dynamicbuffer : ^TlDynamicBuffer,
@@ -675,7 +674,7 @@ FN LexGetStringTokenInternal (
     isbackslash := FALSE
 
     WHILE TRUE DO
-        byte := getbytefunc ()
+        byte := LexGetCharacter ()
 
         IF NOT byte THEN
             LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
@@ -714,7 +713,7 @@ FN LexGetStringTokenInternal (
         IF dynamicbuffer THEN
             TlInsertDynamicBuffer ( dynamicbuffer, byte )
         
-        ELSEIF len == LEX_TOKEN_STRING_SIZE-1 THEN
+        ELSEIF len == LEX_TOKEN_STRING_SIZE - 1 THEN
             LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
         
         ELSE

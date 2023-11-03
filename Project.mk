@@ -1,5 +1,5 @@
 INCLUDES := $(subst :, ,$(INCDIR))
-INCLUDEFILES := $(foreach incdir,$(INCLUDES),$(shell find $(incdir) -type f -name "*.jh"))
+INCLUDEFILES := $(foreach incdir,$(INCLUDES),$(shell find $(incdir) -type f -name "*.hjk"))
 
 TWRFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/*.jkl)) \
 			$(foreach component,$(COMPONENTS),$(wildcard $(component)/CHost/*.jkl))
@@ -18,7 +18,7 @@ $(FULLOUTPUTFILE): $(OBJ)
 
 define COMPONENT_TEMPLATE
 
-$(1)/%.c: $(1)/%.jkl $$(INCLUDEFILES) $$(wildcard $(1)/*.jh)
+$(1)/%.c: $(1)/%.jkl $$(INCLUDEFILES) $$(wildcard $(1)/*.hjk)
 	$$(TBC) $$< $$@ incdir=$$(INCDIR) libdir=$$(LIBDIR)
 
 $(1)/%.o: $(1)/%.c

@@ -66,7 +66,14 @@ FN LexParseDirective ()
     // layered nature of the lexer, we don't have to worry about maintaining
     // line numbers and so on.
 
-    LexCollectDirectiveToken ( &LexDirectiveBuffer[0] )
+    // Declare a token stub for error reporting purposes.
+
+    token : LexToken
+
+    LexCollectDirectiveToken (
+        &token, // token
+        &LexDirectiveBuffer[0], // buffer
+    )
 
     directive := CAST TlLookupHashTable (
         &LexDirectiveHashTable, // hashtable
@@ -74,19 +81,40 @@ FN LexParseDirective ()
     ) TO ^LexDirective
 
     IF NOT directive THEN
-        LexStreamError ( "Unknown directive", 0, 0, 0 )
+        LexTokenError ( &token, "Unknown directive", 0, 0, 0 )
     END
 
     directive^.ParseRoutine ()
 END
 
-FN LexNextNonWhitespaceCharacter () : UBYTE
+FN LexNextNonWhitespaceCharacter (
+    IN token : ^LexToken,
+) : UBYTE
+
+    // Capture the stream position information in the stub token, for error
+    // reporting.
+
+    stream := LexCurrentStream
+
+    IF stream THEN
+        token^.FileBlock = stream^.FileBlock
+        token^.LineNumber = stream^.LineNumber
+        token^.LinePosition = stream^.LinePosition
+    END
 
     byte := LexStreamNextCharacter ()
 
     // Skip any leading whitespace.
 
     WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
+        stream = LexCurrentStream
+
+        IF stream THEN
+            token^.FileBlock = stream^.FileBlock
+            token^.LineNumber = stream^.LineNumber
+            token^.LinePosition = stream^.LinePosition
+        END
+
         byte = LexStreamNextCharacter ()
     END
 
@@ -98,17 +126,18 @@ FN LexNextNonWhitespaceCharacter () : UBYTE
 END
 
 FN LexCollectDirectiveToken (
+    IN token : ^LexToken,
     IN buffer : ^UBYTE,
 )
 
     // Collect a simple token, terminated by whitespace.
 
-    byte := LexNextNonWhitespaceCharacter ()
+    byte := LexNextNonWhitespaceCharacter ( token )
     len := 0
 
     WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
-        IF len == LEX_DIRECTIVE_MAX-1 THEN
-            LexStreamError ( "Directive length exceeds maximum.", 0, 0, 0 )
+        IF len == LEX_DIRECTIVE_MAX - 1 THEN
+            LexTokenError ( token, "Directive length too great.", 0, 0, 0 )
         END
 
         buffer^ = byte
@@ -121,62 +150,77 @@ FN LexCollectDirectiveToken (
     buffer^ = 0
 END
 
-FN LexCollectString (
-    IN array : ^TlDynamicBuffer,
+FN LexGetPreprocessorString (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
 )
 
-    // XXX The following comment indicates what this routine will be modified to
-    //     do soon:
-    //
-    // Collect a preprocessor value. This will be one of the following forms:
-    //
-    //  10                  A decimal, octal, or hexadecimal integer,
-    //  0777                respectively.
-    //  0xABCD
-    //
-    //  NAME                The name of a macro. It will be expanded in-place.
-    //
-    //  "STRING"            The contents of a literal string.
-    //
-    //  [CMPLX STRING]      The contents of a complex string, which may be any
-    //                      un-escaped section of Jackal code, including
-    //                      preprocessor expressions, etc.
-    //
-    //  (OP val1 val2 ...)  An expression yielding some kind of value.
-    //
-    // The EXPR argument indicates whether this is the final operand of an
-    // expression, in which case we should make sure to consume a straggling
-    // close parenthesis, if one doesn't terminate our name or integer token.
+    // Collect a simple string. All we do is read the contents of the string,
+    // as-is, directly into the dynamic buffer. The only thing we care about is
+    // to ignore double-quotes that are directly preceded by a backslash, but we
+    // still pass the backslash up. The first double-quote not preceded by a
+    // backslash terminates the string.
 
-    byte := LexNextNonWhitespaceCharacter ()
+    backslash := FALSE
 
-    IF byte == '\"' THEN
-        // XXX This is like this for testing, but is actually wrong. We should
-        // roll our own simple string consumer here, since the main lexer's will
-        // process escaped characters! We don't want to do that; for macros
-        // defined as strings we just want to pass it up wholesale to the main
-        // lexer, enclosing double quotes and all, with an exception made in the
-        // case where this string is for the preprocessor's own consumption,
-        // such as the operand to the INCLUDE directive; this could be switched
-        // using an extra argument.
+    WHILE TRUE DO
+        byte := LexStreamNextCharacter ()
 
-        LexGetStringTokenInternal (
-            &LexStreamNextCharacter, // getbytefunc
-            NULLPTR, // token
-            '\"', // terminator
-            array, // dynamicbuffer
-            NULLPTR, // buffer
-            NULLPTR, // OUT length
+        IF byte == 0 THEN
+            LexTokenError ( token,
+                "Unexpected EOF while parsing string", 0, 0, 0 )
+        END
+
+        IF byte == '\"' AND NOT backslash THEN
+            LEAVE
+        END
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            byte, // byte
         )
 
-        LEAVE
+        IF backslash THEN
+            backslash = FALSE
+
+            CONTINUE
+        END
+
+        backslash = byte == '\\'
+    END
+END
+
+FN LexCollectString (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Collect a string token for internal preprocessor usage, such as for the
+    // INCLUDE directive.
+
+    byte := LexNextNonWhitespaceCharacter ( token )
+
+    IF byte != '\"' THEN
+        LexTokenError ( token, "Expected a string", 0, 0, 0 )
     END
 
-    IF byte != '[' THEN
-        LexStreamError (
-            "Expected a string opened by a double quote or open bracket",
-            0, 0, 0 )
-    END
+    LexGetPreprocessorString (
+        token, // token
+        buffer, // buffer
+    )
+
+    // Insert null terminator, since that wasn't done already.
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN LexGetComplexString (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+)
 
     // Collect a complex string into the provided dynamic buffer, which will be
     // terminated by a close bracket. Our job is complicated by the following
@@ -193,6 +237,70 @@ FN LexCollectString (
     //  o We have to track whether we're in a comment, for the same reason.
 
     TlInternalError ( "TODO parse complex string", 0, 0, 0 )
+END
+
+FN LexCollectValue (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Collect a preprocessor value. This will be one of the following forms in
+    // the source text; all of these cases will be presented to the caller as a
+    // string in a dynamic buffer:
+    //
+    //  MACRO               The name of a macro. It will be expanded in-place.
+    //
+    //  "STRING"            The contents of a literal string. The enclosing
+    //                      quotes will be considered part of the string.
+    //
+    //  [CMPLX STRING]      The contents of a complex string, which may be any
+    //                      un-escaped section of Jackal code, including
+    //                      preprocessor expressions, etc. Another difference is
+    //                      that the brackets are NOT considered part of the
+    //                      string.
+    //
+    //  (OP val1 val2 ...)  An expression yielding some kind of value.
+    //
+    //  None of above       Will be returned as a single whitespace-terminated
+    //                      token.
+
+    byte := LexNextNonWhitespaceCharacter ( token )
+
+    IF byte == '\"' THEN
+        TlInsertDynamicBuffer (
+            buffer, // array
+            '\"', // byte
+        )
+
+        LexGetPreprocessorString (
+            token, // token
+            buffer, // buffer
+        )
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            '\"', // byte
+        )
+
+        LEAVE
+
+    ELSEIF byte == '[' THEN
+        LexGetComplexString (
+            token, // token
+            buffer, // buffer
+        )
+
+        LEAVE
+
+    ELSEIF byte == '(' THEN
+        // This is an expression. Collect the operator, look it up in the hash
+        // table, and call the correct parse function for the operator. It will
+        // consume the close parenthesis.
+
+        LEAVE
+    END
+
+    // This must expand 
 END
 
 FN LexParseInclude ()
@@ -216,10 +324,14 @@ FN LexParseInclude ()
     // from that file until it reaches EOF.
 
     str : TlDynamicBuffer
+    token : LexToken
 
     TlInitializeDynamicBuffer ( &str )
 
-    LexCollectString ( &str )
+    LexCollectString (
+        &token, // token
+        &str, // buffer
+    )
 
     IF LexFalseCount THEN
         // We're in a region that is being conditionally compiled out, so
@@ -308,9 +420,7 @@ FN LexParseInclude ()
     END
 
     IF NOT found THEN
-        TlPrintString ( str.Buffer )
-        TlPrintString ( "\n" )
-        LexStreamError ( "Failed to include the specified file.", 0, 0, 0 )
+        LexTokenError ( &token, "Failed to include the file.", 0, 0, 0 )
     END
 
     // Copy the file path into the fileblock.

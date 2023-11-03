@@ -228,7 +228,6 @@ EXTERN FN LexCreateFileStream (
 EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
 EXTERN FN LexGetStringTokenInternal (
-    IN getbytefunc : LexGetCharacterF,
     IN token : ^LexToken,
     IN terminator : UBYTE,
     IN dynamicbuffer : ^TlDynamicBuffer,
