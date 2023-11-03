@@ -91,11 +91,14 @@ FN TlMatchPath (
 
             lastoff = i + 1
             length = 0
+
         ELSEIF pathset[i] == ':' THEN
             lastoff = i + 1
             length = 0
+
         ELSEIF pathset[i] == 0 THEN
             BREAK
+
         ELSE
             length += 1
         END
