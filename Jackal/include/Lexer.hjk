@@ -251,3 +251,8 @@ EXTERN FN LexTokenError (
     IN err2 : ULONG,
     IN err3 : ULONG,
 )
+
+EXTERN FN LexCrunchNumber (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+) : ULONG

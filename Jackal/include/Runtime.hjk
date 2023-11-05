@@ -253,6 +253,16 @@ EXTERN FN TlCopyIntoDynamicBuffer (
     IN length : ULONG,
 )
 
+EXTERN FN TlInsertNumberDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN number : ULONG,
+    IN base : UBYTE,
+)
+
+EXTERN FN TlPopDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+) : UBYTE
+
 
 // path stuff
 

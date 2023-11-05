@@ -140,3 +140,61 @@ FN TlCopyIntoDynamicBuffer (
 
     array^.Count += length
 END
+
+FN TlInsertNumberDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN number : ULONG,
+    IN base : UBYTE,
+)
+
+    IF base != 10 THEN
+        TlInternalError ( "Only base 10 supported", 0, 0, 0 )
+    END
+
+    IF number == 0 THEN
+        TlInsertDynamicBuffer (
+            array, // array
+            '0', // byte
+        )
+
+        LEAVE
+    END
+
+    log10 := 0
+    divisor := 1
+    n := number
+
+    WHILE n >= 10 DO
+        divisor *= 10
+        n /= 10
+        log10 += 1
+    END
+
+    log10 += 1
+
+    WHILE log10 DO
+        TlInsertDynamicBuffer (
+            array, // array
+            '0' + (number / divisor) % 10, // byte
+        )
+
+        log10 -= 1
+        divisor /= 10
+    END
+END
+
+FN TlPopDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+) : UBYTE
+
+    // Pop the last value inserted into the dynamic buffer. Allows abuse of it
+    // as a simple stack of bytes.
+
+    IF NOT array^.Count THEN
+        RETURN 0
+    END
+
+    array^.Count -= 1
+
+    RETURN array^.Buffer[array^.Count]
+END
