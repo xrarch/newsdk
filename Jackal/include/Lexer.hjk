@@ -2,6 +2,7 @@
 
 CONST LEX_PUTBACK_STACK_DEPTH := 4
 CONST LEX_BUFFER_SIZE := 16384
+CONST LEX_DIRECTIVE_MAX := 64
 
 ENUM LexTokenType : UBYTE
     TOKEN_STATEMENT, // subtype is a statement type
@@ -166,20 +167,12 @@ STRUCT LexSymbol
     Name : ^UBYTE,
 END
 
-ENUM LexPreprocessorValueType : UBYTE
-    LEX_VALUE_ANY,
-    LEX_VALUE_STRING,
-    LEX_VALUE_NUMBER,
-END
-
-STRUCT LexPreprocessorValue
-    Payload : ^VOID,
-    Type : LexPreprocessorValueType,
-END
-
 STRUCT LexMacro
     Entry : TlHashTableEntry, // MUST be at the beginning
-    Value : LexPreprocessorValue,
+    NameToken : LexToken, // for error reporting
+
+    Contents : TlDynamicBuffer,
+    Name : UBYTE[LEX_DIRECTIVE_MAX],
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]

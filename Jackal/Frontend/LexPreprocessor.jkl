@@ -4,8 +4,6 @@
 
 #INCLUDE "<inc>/Lexer.hjk"
 
-CONST LEX_DIRECTIVE_MAX := 64
-
 LexDirectiveHashTable : TlHashTable
 LexOperatorHashTable : TlHashTable
 LexIfStack : TlDynamicBuffer
@@ -657,7 +655,41 @@ FN (LexDirectiveParseF) LexParseDefine ()
     // This directive defines a simple macro (as opposed to a function macro).
     // First we consume the name token, then we consume the contents.
 
-    LexStreamError ( "TODO define", 0, 0, 0 )
+    macro : ^LexMacro
+
+    status := TlBumpAlloc (
+        SIZEOF LexMacro, // bytes
+        &macro, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
+    END
+
+    LexCollectDirectiveToken (
+        &macro^.NameToken, // token
+        &macro^.Name[0], // buffer
+    )
+
+    oldmacro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Name[0], // name
+    ) TO ^LexMacro
+
+    IF oldmacro THEN
+        LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
+    END
+
+    LexCollectValue (
+        &macro^.NameToken, // token
+        &macro^.Contents, // buffer
+    )
+
+    TlInsertSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
 END
 
 FN (LexDirectiveParseF) LexParseMacro ()
@@ -801,13 +833,8 @@ FN (LexOperatorParseF) LexOperatorEquals (
 
     token : LexToken
 
-    num1 := LexCollectValueNumeric (
-        &token, // token
-    )
-
-    num2 := LexCollectValueNumeric (
-        &token, // token
-    )
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
 
     LexConsumeCloseParenthesis ()
 
