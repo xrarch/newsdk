@@ -84,8 +84,25 @@ FN LexPreprocessorInit ()
     LexInsertDirective ( "ELSE", &LexParseElse )
     LexInsertDirective ( "ELSEIF", &LexParseElseif )
     LexInsertDirective ( "END", &LexParseEnd )
+    LexInsertDirective ( "UNDEFINE", &LexParseUndefine )
 
     LexInsertOperator ( "==", &LexOperatorEquals )
+    LexInsertOperator ( "<=", &LexOperatorLteq )
+    LexInsertOperator ( ">=", &LexOperatorGteq )
+    LexInsertOperator ( "!=", &LexOperatorNeq )
+    LexInsertOperator ( "+", &LexOperatorAdd )
+    LexInsertOperator ( "-", &LexOperatorSub )
+    LexInsertOperator ( "*", &LexOperatorMul )
+    LexInsertOperator ( "/", &LexOperatorDiv )
+    LexInsertOperator ( "<<", &LexOperatorLsh )
+    LexInsertOperator ( ">>", &LexOperatorRsh )
+    LexInsertOperator ( "strcat", &LexOperatorStrcat )
+    LexInsertOperator ( "strcmp", &LexOperatorStrcmp )
+    LexInsertOperator ( "not", &LexOperatorNot )
+    LexInsertOperator ( "~", &LexOperatorBitNot )
+    LexInsertOperator ( "|", &LexOperatorBitOr )
+    LexInsertOperator ( "$", &LexOperatorBitXor )
+    LexInsertOperator ( "&", &LexOperatorBitAnd )
 END
 
 FN LexParseDirective ()
@@ -655,6 +672,31 @@ FN (LexDirectiveParseF) LexParseDefine ()
     // This directive defines a simple macro (as opposed to a function macro).
     // First we consume the name token, then we consume the contents.
 
+    IF LexFalseCount THEN
+        // Nevermind, we are being compiled out! Just eat the name and contents
+        // and return.
+
+        namebuffer : UBYTE[LEX_DIRECTIVE_MAX]
+        contentsbuffer : TlDynamicBuffer
+        trashtoken : LexToken
+
+        TlInitializeDynamicBuffer ( &contentsbuffer )
+
+        LexCollectDirectiveToken (
+            &trashtoken, // token
+            &namebuffer[0], // buffer
+        )
+
+        LexCollectValue (
+            &trashtoken, // token
+            &contentsbuffer, // buffer
+        )
+
+        TlUninitializeDynamicBuffer ( &contentsbuffer )
+
+        LEAVE
+    END
+
     macro : ^LexMacro
 
     status := TlBumpAlloc (
@@ -689,6 +731,40 @@ FN (LexDirectiveParseF) LexParseDefine ()
         LexCurrentMacroScope, // symboltable
         &macro^.Entry, // entry
         &macro^.Name[0], // name
+    )
+END
+
+FN (LexDirectiveParseF) LexParseUndefine ()
+
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+    token : LexToken
+
+    LexCollectDirectiveToken (
+        &token, // token
+        &buffer[0], // buffer
+    )
+
+    IF LexFalseCount THEN
+        // We're being compiled out, just return.
+
+        LEAVE
+    END
+
+    oldmacro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &buffer[0], // name
+    ) TO ^LexMacro
+
+    IF NOT oldmacro THEN
+        // Wasn't defined anyway.
+
+        LEAVE
+    END
+
+    // Remove the macro from the symbol table.
+
+    TlRemoveSymbolTable (
+        CAST oldmacro TO ^TlHashTableEntry, // entry
     )
 END
 
@@ -851,6 +927,538 @@ FN (LexOperatorParseF) LexOperatorEquals (
             10, // base
         )
     END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorLteq (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 <= num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorGteq (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 >= num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorNeq (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 != num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorLt (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 < num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorGt (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 > num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorAdd (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 + num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorSub (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 - num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorMul (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 * num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorDiv (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 / num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorLsh (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 << num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorRsh (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 >> num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorStrcat (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Append two strings.
+
+    token : LexToken
+
+    // Consume the first value into the buffer.
+
+    LexCollectValue (
+        &token, // token
+        buffer, // buffer
+    )
+
+    // Strip the null terminator.
+
+    TlPopDynamicBuffer ( buffer )
+
+    // Consume the second value into the buffer.
+
+    LexCollectValue (
+        &token, // token
+        buffer, // buffer
+    )
+
+    LexConsumeCloseParenthesis ()
+END
+
+FN (LexOperatorParseF) LexOperatorStrcmp (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Compare two strings. Return 1 if equal, otherwise 0.
+
+    token : LexToken
+    str1 : TlDynamicBuffer
+    str2 : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &str1 )
+    TlInitializeDynamicBuffer ( &str2 )
+
+    // Consume the first value into the buffer.
+
+    LexCollectValue (
+        &token, // token
+        &str1, // buffer
+    )
+
+    // Consume the second value.
+
+    LexCollectValue (
+        &token, // token
+        &str2, // buffer
+    )
+
+    TlUninitializeDynamicBuffer ( &str1 )
+    TlUninitializeDynamicBuffer ( &str2 )
+
+    LexConsumeCloseParenthesis ()
+
+    IF TlCompareString ( str1.Buffer, str2.Buffer ) == 0 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorNot (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Return the logical inverse of the value.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitNot (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Return the bitwise inverse of the value.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        ~num1, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitOr (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 | num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitXor (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 $ num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitAnd (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 & num2, // number
+        10, // base
+    )
 
     TlInsertDynamicBuffer (
         buffer, // array
