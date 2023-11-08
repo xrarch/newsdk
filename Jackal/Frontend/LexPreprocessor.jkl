@@ -184,8 +184,12 @@ FN LexCollectDirectiveToken (
     len := 0
 
     WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+        IF LexCharTreatment[byte] != CHAR_NORMAL THEN
+            LexTokenError ( token, "Illegal character in token", 0, 0, 0 )
+        END
+
         IF len == LEX_DIRECTIVE_MAX - 1 THEN
-            LexTokenError ( token, "Directive length too great.", 0, 0, 0 )
+            LexTokenError ( token, "Token length too great", 0, 0, 0 )
         END
 
         buffer^ = byte
@@ -849,11 +853,11 @@ FN LexCollectMacroDefArgName (
         END
 
         IF LexCharTreatment[byte] != CHAR_NORMAL THEN
-            LexTokenError ( token, "Illegal character in arg name", 0, 0, 0 )
+            LexTokenError ( token, "Illegal character in token", 0, 0, 0 )
         END
 
         IF len == LEX_DIRECTIVE_MAX - 1 THEN
-            LexTokenError ( token, "Directive length too great.", 0, 0, 0 )
+            LexTokenError ( token, "Token length too great", 0, 0, 0 )
         END
 
         buffer^ = byte
