@@ -377,25 +377,16 @@ FN LexCollectValue (
     //
     //  (OP val1 val2 ...)  An expression yielding some kind of value.
     //
-    //  None of above       Will be returned as a single whitespace-terminated
-    //                      token.
+    //  1234                Decimal, hex, or octal number. Returned as the
+    //  0x1234              literal string.
+    //  01234
 
     byte := LexNextNonWhitespaceCharacter ( token )
 
     IF byte == '\"' THEN
-        TlInsertDynamicBuffer (
-            buffer, // array
-            '\"', // byte
-        )
-
         LexGetPreprocessorString (
             token, // token
             buffer, // buffer
-        )
-
-        TlInsertDynamicBuffer (
-            buffer, // array
-            '\"', // byte
         )
 
         TlInsertDynamicBuffer (
@@ -447,8 +438,12 @@ FN LexCollectValue (
 
     // Collect this as a simple token, terminated by whitespace.
 
+    simpletokbuf : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &simpletokbuf )
+
     TlInsertDynamicBuffer (
-        buffer, // array
+        &simpletokbuf, // array
         byte, // byte
     )
 
@@ -460,7 +455,7 @@ FN LexCollectValue (
         END
 
         TlInsertDynamicBuffer (
-            buffer, // array
+            &simpletokbuf, // array
             byte, // byte
         )
 
@@ -468,15 +463,51 @@ FN LexCollectValue (
     END
 
     TlInsertDynamicBuffer (
-        buffer, // array
+        &simpletokbuf, // array
         0, // byte
     )
 
+    IF simpletokbuf.Buffer[0] >= '0' AND simpletokbuf.Buffer[0] <= '9' THEN
+        // This is a number. Blast it directly into the caller's buffer and
+        // return.
+
+        TlCopyIntoDynamicBuffer (
+            buffer, // array
+            &simpletokbuf.Buffer[0], // srcbuf
+            simpletokbuf.Count, // length
+        )
+
+        TlUninitializeDynamicBuffer ( &simpletokbuf )
+
+        LEAVE
+    END
+
     // This either matches with a macro name, or doesn't. Only non-function
     // macros are permitted. If it matches, we expand in place by adding it to
-    // the top of the stream stack and looping. If it doesn't match, we just
-    // return this token.
+    // the top of the stream stack and looping.
 
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &simpletokbuf.Buffer[0], // name
+    ) TO ^LexMacro
+
+    TlUninitializeDynamicBuffer ( &simpletokbuf )
+
+    IF NOT macro THEN
+        LexTokenError ( token, "Not a defined macro name", 0, 0, 0 )
+    END
+
+    IF macro^.IsFunctionMacro THEN
+        LexTokenError ( token, "Function macros not permitted here", 0, 0, 0 )
+    END
+
+    // Directly copy the contents of the macro into the caller's buffer.
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // array
+        &macro^.Contents.Buffer[0], // srcbuf
+        macro^.Contents.Count, // length
+    )
 END
 
 FN LexCollectValueNumeric (
@@ -708,6 +739,8 @@ FN (LexDirectiveParseF) LexParseDefine ()
         TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
     END
 
+    TlInitializeDynamicBuffer ( &macro^.Contents )
+
     LexCollectDirectiveToken (
         &macro^.NameToken, // token
         &macro^.Name[0], // buffer
@@ -914,6 +947,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
     IF status THEN
         TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
     END
+
+    TlInitializeDynamicBuffer ( &macro^.Contents )
 
     LexCollectDirectiveToken (
         &macro^.NameToken, // token
