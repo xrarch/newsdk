@@ -722,6 +722,8 @@ FN (LexDirectiveParseF) LexParseDefine ()
         LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
     END
 
+    macro^.IsFunctionMacro = FALSE
+
     LexCollectValue (
         &macro^.NameToken, // token
         &macro^.Contents, // buffer
@@ -768,9 +770,219 @@ FN (LexDirectiveParseF) LexParseUndefine ()
     )
 END
 
+CONST ARG_NAME_NONZERO : UBYTE = 1
+CONST ARG_NAME_DONE : UBYTE = 2
+
+FN LexCollectMacroDefArgName (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+) : UBYTE
+
+    // Collect a token, terminated by comma, whitespace, or close parenthesis.
+    // Return whether or not it was terminated by a close parenthesis.
+
+    byte : UBYTE
+    len := 0
+
+    WHILE TRUE DO
+        byte = LexNextNonWhitespaceCharacter ( token )
+
+        IF byte == ')' THEN
+            RETURN ARG_NAME_DONE
+        ELSEIF byte == ',' THEN
+            CONTINUE
+        END
+
+        BREAK
+    END
+
+    WHILE TRUE DO
+        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+            buffer^ = 0
+
+            RETURN ARG_NAME_NONZERO
+        END
+
+        IF byte == ')' THEN
+            buffer^ = 0
+
+            RETURN ARG_NAME_NONZERO | ARG_NAME_DONE
+        END
+
+        IF byte == ',' THEN
+            buffer^ = 0
+
+            RETURN ARG_NAME_NONZERO
+        END
+
+        IF LexCharTreatment[byte] != CHAR_NORMAL THEN
+            LexTokenError ( token, "Illegal character in arg name", 0, 0, 0 )
+        END
+
+        IF len == LEX_DIRECTIVE_MAX - 1 THEN
+            LexTokenError ( token, "Directive length too great.", 0, 0, 0 )
+        END
+
+        buffer^ = byte
+        buffer += 1
+        len += 1
+
+        byte = LexStreamNextCharacter ()
+    END
+END
+
+FN LexCollectMacroDefArgList (
+    IN ignore : UBYTE,
+    OUT arglisthead : ^^LexMacroArgument,
+    OUT length : ^ULONG,
+)
+
+    token : LexToken
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+    hashtable : TlHashTable
+    arglisttail : ^LexMacroArgument = NULLPTR
+
+    // Use a hash set to determine if the user illegally uses an argument name
+    // twice.
+
+    TlInitializeHashTable ( &hashtable )
+
+    arglisthead^ = NULLPTR
+    length^ = 0
+
+    WHILE TRUE DO
+        state := LexCollectMacroDefArgName (
+            &token, // token
+            &buffer[0], // buffer
+        )
+
+        IF state & ARG_NAME_NONZERO AND NOT ignore THEN
+            created : UBYTE
+
+            arg := CAST TlLookupOrAllocateEntryHashTable (
+                &hashtable, // hashtable
+                SIZEOF LexMacroArgument, // entrysize
+                &buffer[0], // key
+                &created, // OUT created
+            ) TO ^LexMacroArgument
+
+            IF NOT created THEN
+                LexTokenError ( &token,
+                    "Macro argument name already used", 0, 0, 0 )
+            END
+
+            // Increment the length of the argument list by one.
+
+            length^ += 1
+
+            // Add to the caller's list of arguments.
+
+            arg^.Next = NULLPTR
+            arg^.Prev = arglisttail
+
+            IF arglisttail THEN
+                arglisttail^.Next = arg
+            ELSE
+                arglisthead^ = arg
+            END
+
+            arglisttail = arg
+        END
+
+        IF state & ARG_NAME_DONE THEN
+            LEAVE
+        END
+    END
+END
+
 FN (LexDirectiveParseF) LexParseMacro ()
 
-    LexStreamError ( "TODO macro", 0, 0, 0 )
+    // This directive defines a function macro.
+    // First we consume the name token, then we consume the argument list, then
+    // consume the contents.
+
+    arglisthead : ^LexMacroArgument
+    trashtoken : LexToken
+    length : ULONG
+    macro : ^LexMacro
+
+    status := TlBumpAlloc (
+        SIZEOF LexMacro, // bytes
+        &macro, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
+    END
+
+    LexCollectDirectiveToken (
+        &macro^.NameToken, // token
+        &macro^.Name[0], // buffer
+    )
+
+    byte := LexNextNonWhitespaceCharacter ( &trashtoken )
+
+    IF byte != '(' THEN
+        LexTokenError ( &trashtoken, "Expected an open parenthesis", 0, 0, 0 )
+    END
+
+    IF LexFalseCount THEN
+        // This macro definition is compiled out, so just collect the argument
+        // list and contents and return. Allow the bump-allocated macro
+        // structure to leak, this routine gets unruly if we try to avoid that.
+
+        LexCollectMacroDefArgList (
+            TRUE, // ignore
+            &macro^.ArgListHead, // OUT arglisthead
+            &length, // OUT length
+        )
+
+        contentsbuffer : TlDynamicBuffer
+
+        TlInitializeDynamicBuffer ( &contentsbuffer )
+
+        LexCollectValue (
+            &trashtoken, // token
+            &contentsbuffer, // buffer
+        )
+
+        TlUninitializeDynamicBuffer ( &contentsbuffer )
+
+        LEAVE
+    END
+
+    LexCollectMacroDefArgList (
+        FALSE, // ignore
+        &macro^.ArgListHead, // OUT arglisthead
+        &length, // OUT length
+    )
+
+    IF length == 0 THEN
+        LexTokenError ( &macro^.NameToken,
+            "Must have at least 1 argument", 0, 0, 0 )
+    END
+
+    oldmacro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Name[0], // name
+    ) TO ^LexMacro
+
+    IF oldmacro THEN
+        LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
+    END
+
+    macro^.IsFunctionMacro = TRUE
+
+    LexCollectValue (
+        &macro^.NameToken, // token
+        &macro^.Contents, // buffer
+    )
+
+    TlInsertSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
 END
 
 ENUM LexIfStatus : UBYTE

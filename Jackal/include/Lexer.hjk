@@ -173,6 +173,18 @@ STRUCT LexMacro
 
     Contents : TlDynamicBuffer,
     Name : UBYTE[LEX_DIRECTIVE_MAX],
+
+    ArgListHead : ^LexMacroArgument,
+    IsFunctionMacro : UBYTE,
+END
+
+STRUCT LexMacroArgument
+    Entry : TlHashTableEntry, // MUST be at the beginning
+
+    Prev : ^LexMacroArgument,
+    Next : ^LexMacroArgument,
+
+    Name : UBYTE[LEX_DIRECTIVE_MAX],
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
