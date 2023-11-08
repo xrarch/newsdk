@@ -23,6 +23,10 @@ FN FeInitialize (
 
     TlInitializeHashTable ( &FeFileBlockHashTable )
 
+    // Initialize the preprocessor.
+
+    LexPreprocessorInit ()
+
     // Parse the arguments.
 
     FeParseArguments ( argc, argv )
@@ -48,6 +52,23 @@ FN FeInitialize (
     END
 
     LexInitialize ()
+END
+
+FN FeIsMacroArgument (
+    IN arg : ^UBYTE,
+) : ^UBYTE
+
+    i := 0
+
+    WHILE arg[i] DO
+        IF arg[i] == '=' THEN
+            RETURN &arg[i]
+        END
+
+        i += 1
+    END
+
+    RETURN NULLPTR
 END
 
 FN FeParseArguments (
@@ -83,6 +104,9 @@ FN FeParseArguments (
                 &argv[i][7], // src
                 FE_PATH_BUFFER_SIZE, // bufsize
             )
+
+        ELSEIF FeIsMacroArgument ( argv[i] ) THEN
+            LexDefineMacroFromArgumentString ( argv[i] )
 
         ELSEIF foundinput THEN
             IF foundoutput THEN

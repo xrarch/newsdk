@@ -7,6 +7,11 @@
 LexDirectiveHashTable : TlHashTable
 LexOperatorHashTable : TlHashTable
 LexIfStack : TlDynamicBuffer
+LexRootMacroScope : ^TlSymbolTable = NULLPTR
+LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
+
+LexAsmBlockListHead : ^LexAsmBlock = NULLPTR
+LexAsmBlockListTail : ^LexAsmBlock = NULLPTR
 
 FNPTR LexDirectiveParseF ()
 
@@ -72,10 +77,33 @@ FN LexInsertOperator (
     )
 END
 
+FN (TlHashTableEnumeratorF) LexMacroDelete (
+    IN entry : ^TlHashTableEntry,
+)
+
+    macro := CAST entry TO ^LexMacro
+
+    TlUninitializeDynamicBuffer ( &macro^.Contents )
+
+    // Macros are bump-allocated, so it's meaningless to free one.
+    // TlFree ( entry )
+END
+
 FN LexPreprocessorInit ()
 
     TlInitializeHashTable ( &LexDirectiveHashTable )
     TlInitializeDynamicBuffer ( &LexIfStack )
+
+    // Create the root macro scope.
+
+    LexRootMacroScope = TlCreateSymbolTable (
+        0, // outerscope
+        &LexMacroDelete, // deletefunc
+    )
+
+    LexCurrentMacroScope = LexRootMacroScope
+
+    // Insert the directives and operators into their hash tables.
 
     LexInsertDirective ( "INCLUDE", &LexParseInclude )
     LexInsertDirective ( "DEFINE", &LexParseDefine )
@@ -85,6 +113,9 @@ FN LexPreprocessorInit ()
     LexInsertDirective ( "ELSEIF", &LexParseElseif )
     LexInsertDirective ( "END", &LexParseEnd )
     LexInsertDirective ( "UNDEFINE", &LexParseUndefine )
+    LexInsertDirective ( "ERROR", &LexParseError )
+    LexInsertDirective ( "PRINT", &LexParsePrint )
+    LexInsertDirective ( "ASM", &LexParseAsm )
 
     LexInsertOperator ( "==", &LexOperatorEquals )
     LexInsertOperator ( "<=", &LexOperatorLteq )
@@ -702,6 +733,69 @@ FN (LexDirectiveParseF) LexParseInclude ()
     LexPushStream ( stream )
 END
 
+FN LexDefineMacroFromArgumentString (
+    IN arg : ^UBYTE,
+)
+
+    // Allocate a macro structure.
+
+    macro : ^LexMacro
+
+    status := TlBumpAlloc (
+        SIZEOF LexMacro, // bytes
+        &macro, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
+    END
+
+    TlInitializeDynamicBuffer ( &macro^.Contents )
+
+    equalsptr := FeIsMacroArgument ( arg )
+    j := 0
+
+    // Copy the name into the macro structure.
+
+    WHILE arg < equalsptr DO
+        macro^.Name[j] = arg^
+
+        j += 1
+        arg += 1
+    END
+
+    macro^.Name[j] = 0
+
+    // Skip the equals character and copy the contents into the macro structure.
+
+    j = 0
+    equalsptr += 1
+
+    WHILE equalsptr^ DO
+        TlInsertDynamicBuffer (
+            &macro^.Contents, // array
+            equalsptr^, // byte
+        )
+
+        equalsptr += 1
+    END
+
+    TlInsertDynamicBuffer (
+        &macro^.Contents, // array
+        0
+    )
+
+    macro^.IsFunctionMacro = FALSE
+
+    // Insert the macro into the macro scope.
+
+    TlInsertSymbolTable (
+        LexRootMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
+END
+
 FN (LexDirectiveParseF) LexParseDefine ()
 
     // This directive defines a simple macro (as opposed to a function macro).
@@ -915,7 +1009,6 @@ FN LexCollectMacroDefArgList (
             // Add to the caller's list of arguments.
 
             arg^.Next = NULLPTR
-            arg^.Prev = arglisttail
 
             IF arglisttail THEN
                 arglisttail^.Next = arg
@@ -1127,10 +1220,6 @@ FN (LexDirectiveParseF) LexParseElseif ()
 
         LexIfStack.Buffer[LexIfStack.Count - 1] = IF_BEING_TAKEN
         LexFalseCount -= 1
-    ELSE
-        // Our condition was not truthy, so leave the false count biased.
-
-        LexIfStack.Buffer[LexIfStack.Count - 1] = IF_TAKEN
     END
 END
 
@@ -1149,6 +1238,100 @@ FN (LexDirectiveParseF) LexParseEnd ()
 
         LEAVE
     END
+END
+
+FN (LexDirectiveParseF) LexParseError ()
+
+    buffer : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &buffer )
+
+    LexCollectValue (
+        &token, // token
+        &buffer, // buffer
+    )
+
+    IF LexFalseCount THEN
+        TlUninitializeDynamicBuffer ( &buffer )
+
+        LEAVE
+    END
+
+    LexTokenError ( &token, buffer.Buffer, 0, 0, 0 )
+END
+
+FN (LexDirectiveParseF) LexParsePrint ()
+
+    buffer : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &buffer )
+
+    LexCollectValue (
+        &token, // token
+        &buffer, // buffer
+    )
+
+    IF LexFalseCount THEN
+        TlUninitializeDynamicBuffer ( &buffer )
+
+        LEAVE
+    END
+
+    TlPrintString ( buffer.Buffer )
+    TlPrintString ( "\n" )
+
+    TlUninitializeDynamicBuffer ( &buffer )
+END
+
+FN (LexDirectiveParseF) LexParseAsm ()
+
+    IF LexFalseCount THEN
+        // This region is being compiled out. Just collect the value and return.
+
+        token : LexToken
+        buffer : TlDynamicBuffer
+
+        TlInitializeDynamicBuffer ( &buffer )
+
+        LexCollectValue (
+            &token, // token
+            &buffer, // buffer
+        )
+
+        TlUninitializeDynamicBuffer ( &buffer )
+
+        LEAVE
+    END
+
+    asmblock : ^LexAsmBlock
+
+    status := TlBumpAlloc (
+        SIZEOF LexAsmBlock, // bytes
+        &asmblock, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate asm block", 0, 0, 0 )
+    END
+
+    TlInitializeDynamicBuffer ( &asmblock^.Contents )
+
+    LexCollectValue (
+        &asmblock^.Token, // token
+        &asmblock^.Contents, // buffer
+    )
+
+    asmblock^.Next = NULLPTR
+
+    IF NOT LexAsmBlockListTail THEN
+        LexAsmBlockListHead = asmblock
+    ELSE
+        LexAsmBlockListTail^.Next = asmblock
+    END
+
+    LexAsmBlockListTail = asmblock
 END
 
 FN (LexOperatorParseF) LexOperatorEquals (

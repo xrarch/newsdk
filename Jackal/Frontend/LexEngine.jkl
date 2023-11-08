@@ -55,8 +55,6 @@ CONST LEX_TOKEN_STRING_SIZE := 128
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 
 LexCurrentStream : ^LexStream = NULLPTR
-LexRootMacroScope : ^TlSymbolTable = NULLPTR
-LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
 
@@ -124,15 +122,6 @@ FN LexInitialize ()
     )
 
     LexPushStream ( filestream )
-
-    // Create the root macro scope.
-
-    LexRootMacroScope = TlCreateSymbolTable (
-        0, // outerscope
-        &LexMacroDelete, // deletefunc
-    )
-
-    LexCurrentMacroScope = LexRootMacroScope
 
     // Create the global symbol table scope.
 
@@ -236,10 +225,6 @@ FN LexInitialize ()
     LexInsertKeyword ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
     LexInsertKeyword ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
 
-    // Initialize preprocessor.
-
-    LexPreprocessorInit ()
-
     // Test some stuff (TEMPORARY)
 
     //TlSummarizeHashTable ( &LexKeywordHashTable )
@@ -310,16 +295,15 @@ FN LexInitialize ()
 //
 //      i += 1
 //  END
-END
 
-FN (TlHashTableEnumeratorF) LexMacroDelete (
-    IN entry : ^TlHashTableEntry,
-)
+    asmblock := LexAsmBlockListHead
 
-    // TODO: free buffer
+    WHILE asmblock DO
+        TlPrintString ( asmblock^.Contents.Buffer )
+        TlPrintString ( "\n" )
 
-    // Macros are bump-allocated, so it's meaningless to free one.
-    // TlFree ( entry )
+        asmblock = asmblock^.Next
+    END
 END
 
 FN (TlHashTableEnumeratorF) LexSymbolDelete (

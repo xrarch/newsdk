@@ -181,10 +181,16 @@ END
 STRUCT LexMacroArgument
     Entry : TlHashTableEntry, // MUST be at the beginning
 
-    Prev : ^LexMacroArgument,
     Next : ^LexMacroArgument,
 
     Name : UBYTE[LEX_DIRECTIVE_MAX],
+END
+
+STRUCT LexAsmBlock
+    Next : ^LexAsmBlock,
+
+    Token : LexToken,
+    Contents : TlDynamicBuffer,
 END
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
@@ -196,9 +202,15 @@ EXTERN LexFalseCount : ULONG
 EXTERN LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 EXTERN LexPutbackStackPtr : ULONG 
 
+EXTERN LexAsmBlockListHead : ^LexAsmBlock
+
 EXTERN FN LexInitialize ()
 
 EXTERN FN LexPreprocessorInit ()
+
+EXTERN FN LexDefineMacroFromArgumentString (
+    IN arg : ^UBYTE,
+)
 
 EXTERN FN LexInitializeStream (
     IN stream : ^LexStream,

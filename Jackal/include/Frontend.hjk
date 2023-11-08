@@ -25,6 +25,10 @@ STRUCT FeFileBlock
     IncludeName : UBYTE[FE_PATH_BUFFER_SIZE],
 END
 
+EXTERN FN FeIsMacroArgument (
+    IN arg : ^UBYTE,
+) : ^UBYTE
+
 EXTERN FN FeCreateFileBlock (
     IN includename : ^UBYTE,
     OUT created : ^UBYTE,
