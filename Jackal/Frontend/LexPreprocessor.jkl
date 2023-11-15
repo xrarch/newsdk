@@ -127,9 +127,11 @@ FN LexPreprocessorInit ()
     LexInsertOperator ( "/", &LexOperatorDiv )
     LexInsertOperator ( "<<", &LexOperatorLsh )
     LexInsertOperator ( ">>", &LexOperatorRsh )
-    LexInsertOperator ( "strcat", &LexOperatorStrcat )
-    LexInsertOperator ( "strcmp", &LexOperatorStrcmp )
-    LexInsertOperator ( "not", &LexOperatorNot )
+    LexInsertOperator ( "STRCAT", &LexOperatorStrcat )
+    LexInsertOperator ( "STRCMP", &LexOperatorStrcmp )
+    LexInsertOperator ( "NOT", &LexOperatorNot )
+    LexInsertOperator ( "OR", &LexOperatorOr )
+    LexInsertOperator ( "AND", &LexOperatorAnd )
     LexInsertOperator ( "~", &LexOperatorBitNot )
     LexInsertOperator ( "|", &LexOperatorBitOr )
     LexInsertOperator ( "$", &LexOperatorBitXor )
@@ -1791,6 +1793,72 @@ FN (LexOperatorParseF) LexOperatorNot (
         TlInsertNumberDynamicBuffer (
             buffer, // array
             1, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorOr (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 OR num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorAnd (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric ( &token )
+    num2 := LexCollectValueNumeric ( &token )
+
+    LexConsumeCloseParenthesis ()
+
+    IF num1 AND num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
             10, // base
         )
     END
