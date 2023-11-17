@@ -132,6 +132,7 @@ FN LexPreprocessorInit ()
     LexInsertOperator ( "NOT", &LexOperatorNot )
     LexInsertOperator ( "OR", &LexOperatorOr )
     LexInsertOperator ( "AND", &LexOperatorAnd )
+    LexInsertOperator ( "DEFINED", &LexOperatorDefined )
     LexInsertOperator ( "~", &LexOperatorBitNot )
     LexInsertOperator ( "|", &LexOperatorBitOr )
     LexInsertOperator ( "$", &LexOperatorBitXor )
@@ -1850,6 +1851,47 @@ FN (LexOperatorParseF) LexOperatorAnd (
     LexConsumeCloseParenthesis ()
 
     IF num1 AND num2 THEN
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            1, // number
+            10, // base
+        )
+    ELSE
+        TlInsertNumberDynamicBuffer (
+            buffer, // array
+            0, // number
+            10, // base
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorDefined (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Return whether the token is a defined macro.
+
+    token : LexToken
+    tokbuffer : UBYTE[LEX_DIRECTIVE_MAX]
+
+    LexCollectDirectiveToken (
+        &token, // token
+        &tokbuffer[0], // buffer
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &tokbuffer[0], // name
+    ) TO ^LexMacro
+
+    IF macro THEN
         TlInsertNumberDynamicBuffer (
             buffer, // array
             1, // number
