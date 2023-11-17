@@ -177,6 +177,16 @@ EXTERN FN TlEnumerateHashTable (
     IN enumfunc : TlHashTableEnumeratorF,
 )
 
+EXTERN FN TlLookupHashTableByHash (
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
+    IN hash : ULONG,
+) : ^TlHashTableEntry
+
+EXTERN FN TlHashString (
+    IN str : ^UBYTE,
+) : ULONG
+
 FNPTR TlHashTableEnumeratorF (
     IN entry : ^TlHashTableEntry,
 )

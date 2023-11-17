@@ -202,6 +202,25 @@ FN TlLookupHashTable (
     RETURN NULLPTR
 END
 
+FN TlLookupHashTableByHash (
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
+    IN hash : ULONG,
+) : ^TlHashTableEntry
+
+    entry := hashtable^.BucketHeads[hash]
+
+    WHILE entry DO
+        IF TlCompareString ( key, entry^.Key ) == 0 THEN
+            RETURN entry
+        END
+
+        entry = entry^.Next
+    END
+
+    RETURN NULLPTR
+END
+
 FN TlRemoveHashTable (
     IN entry : ^TlHashTableEntry,
 )

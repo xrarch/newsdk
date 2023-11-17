@@ -169,8 +169,8 @@ END
 
 STRUCT LexMacro
     Entry : TlHashTableEntry, // MUST be at the beginning
-    NameToken : LexToken, // for error reporting
 
+    NameToken : LexToken, // for error reporting
     Contents : TlDynamicBuffer,
     Name : UBYTE[LEX_DIRECTIVE_MAX],
 
@@ -180,7 +180,6 @@ END
 
 STRUCT LexMacroArgument
     Entry : TlHashTableEntry, // MUST be at the beginning
-
     Next : ^LexMacroArgument,
 
     Name : UBYTE[LEX_DIRECTIVE_MAX],

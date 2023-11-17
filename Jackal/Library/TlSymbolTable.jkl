@@ -64,10 +64,13 @@ FN TlLookupSymbolTable (
     IN name : ^UBYTE,
 ) : ^TlHashTableEntry
 
+    hash := TlHashString ( name )
+
     WHILE symboltable DO
-        entry := TlLookupHashTable (
+        entry := TlLookupHashTableByHash (
             &symboltable^.HashTable, // hashtable
             name, // key
+            hash, // hash
         )
 
         IF entry THEN
