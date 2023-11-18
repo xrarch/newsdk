@@ -64,6 +64,8 @@ FN TlLookupSymbolTable (
     IN name : ^UBYTE,
 ) : ^TlHashTableEntry
 
+    // Calculate the hash only once.
+
     hash := TlHashString ( name )
 
     WHILE symboltable DO

@@ -307,6 +307,7 @@ END
 FN LexGetComplexString (
     IN token : ^LexToken,
     IN buffer : ^TlDynamicBuffer,
+    IN macroargument : UBYTE,
 )
 
     // Collect a complex string into the provided dynamic buffer, which will be
@@ -322,6 +323,9 @@ FN LexGetComplexString (
     //    to mistakenly exit.
     //
     //  o We have to track whether we're in a comment, for the same reason.
+    //
+    // This function also works to collect macro call arguments, due to similar
+    // requirements.
 
     bracketdepth := 1
     comment := FALSE
@@ -373,6 +377,24 @@ FN LexGetComplexString (
         ELSEIF byte == 0x27 THEN // single-quote
             inliteral = TRUE
 
+        ELSEIF macroargument THEN
+            IF byte == '(' THEN
+                bracketdepth += 1
+
+            ELSEIF byte == ')' THEN
+                bracketdepth -= 1
+
+                IF bracketdepth == 0 THEN
+                    // Break out now so that we don't include the close bracket
+                    // in the string buffer.
+
+                    BREAK
+                END
+
+            ELSEIF bracketdepth == 1 AND byte == ',' THEN
+                BREAK
+            END
+
         ELSEIF byte == '[' THEN
             bracketdepth += 1
 
@@ -380,8 +402,8 @@ FN LexGetComplexString (
             bracketdepth -= 1
 
             IF bracketdepth == 0 THEN
-                // Break out now so that we don't include the close bracket in
-                // the string buffer.
+                // Break out now so that we don't include the close bracket
+                // in the string buffer.
 
                 BREAK
             END
@@ -440,6 +462,7 @@ FN LexCollectValue (
         LexGetComplexString (
             token, // token
             buffer, // buffer
+            FALSE, // macroargument
         )
 
         TlInsertDynamicBuffer (
@@ -616,6 +639,73 @@ FN LexConsumeCloseParenthesis ()
     END
 END
 
+FN LexDefineMacroFromArgumentString (
+    IN arg : ^UBYTE,
+)
+
+    // Allocate a macro structure.
+
+    macro : ^LexMacro
+
+    status := TlBumpAlloc (
+        SIZEOF LexMacro, // bytes
+        &macro, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
+    END
+
+    TlInitializeDynamicBuffer ( &macro^.Contents )
+
+    equalsptr := FeIsMacroArgument ( arg )
+    j := 0
+
+    // Copy the name into the macro structure.
+
+    WHILE arg < equalsptr DO
+        macro^.Name[j] = arg^
+
+        j += 1
+        arg += 1
+    END
+
+    macro^.Name[j] = 0
+
+    // Skip the equals character and copy the contents into the macro structure.
+
+    j = 0
+    equalsptr += 1
+
+    WHILE equalsptr^ DO
+        TlInsertDynamicBuffer (
+            &macro^.Contents, // array
+            equalsptr^, // byte
+        )
+
+        equalsptr += 1
+    END
+
+    TlInsertDynamicBuffer (
+        &macro^.Contents, // array
+        0
+    )
+
+    macro^.IsFunctionMacro = FALSE
+
+    // Insert the macro into the macro scope.
+
+    TlInsertSymbolTable (
+        LexRootMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
+END
+
+//
+// Parsing for all of the preprocessor directives follows...
+//
+
 FN (LexDirectiveParseF) LexParseInclude ()
 
     // Parse the include statement. We just have to consume a string. Then we
@@ -766,69 +856,6 @@ FN (LexDirectiveParseF) LexParseInclude ()
     LexPushStream ( stream )
 END
 
-FN LexDefineMacroFromArgumentString (
-    IN arg : ^UBYTE,
-)
-
-    // Allocate a macro structure.
-
-    macro : ^LexMacro
-
-    status := TlBumpAlloc (
-        SIZEOF LexMacro, // bytes
-        &macro, // OUT ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
-    END
-
-    TlInitializeDynamicBuffer ( &macro^.Contents )
-
-    equalsptr := FeIsMacroArgument ( arg )
-    j := 0
-
-    // Copy the name into the macro structure.
-
-    WHILE arg < equalsptr DO
-        macro^.Name[j] = arg^
-
-        j += 1
-        arg += 1
-    END
-
-    macro^.Name[j] = 0
-
-    // Skip the equals character and copy the contents into the macro structure.
-
-    j = 0
-    equalsptr += 1
-
-    WHILE equalsptr^ DO
-        TlInsertDynamicBuffer (
-            &macro^.Contents, // array
-            equalsptr^, // byte
-        )
-
-        equalsptr += 1
-    END
-
-    TlInsertDynamicBuffer (
-        &macro^.Contents, // array
-        0
-    )
-
-    macro^.IsFunctionMacro = FALSE
-
-    // Insert the macro into the macro scope.
-
-    TlInsertSymbolTable (
-        LexRootMacroScope, // symboltable
-        &macro^.Entry, // entry
-        &macro^.Name[0], // name
-    )
-END
-
 FN (LexDirectiveParseF) LexParseDefine ()
 
     // This directive defines a simple macro (as opposed to a function macro).
@@ -939,7 +966,7 @@ END
 CONST ARG_NAME_NONZERO : UBYTE = 1
 CONST ARG_NAME_DONE : UBYTE = 2
 
-FN LexCollectMacroArgName (
+FN LexCollectMacroArgumentName (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
 ) : UBYTE
@@ -997,7 +1024,7 @@ FN LexCollectMacroArgName (
     END
 END
 
-FN LexCollectMacroArgList (
+FN LexCollectMacroArgumentList (
     IN ignore : UBYTE,
     OUT arglisthead : ^^LexMacroArgument,
     OUT length : ^ULONG,
@@ -1017,7 +1044,7 @@ FN LexCollectMacroArgList (
     length^ = 0
 
     WHILE TRUE DO
-        state := LexCollectMacroArgName (
+        state := LexCollectMacroArgumentName (
             &token, // token
             &buffer[0], // buffer
         )
@@ -1098,7 +1125,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
         // list and contents and return. Allow the bump-allocated macro
         // structure to leak, this routine gets unruly if we try to avoid that.
 
-        LexCollectMacroArgList (
+        LexCollectMacroArgumentList (
             TRUE, // ignore
             &macro^.ArgListHead, // OUT arglisthead
             &length, // OUT length
@@ -1119,7 +1146,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
         LEAVE
     END
 
-    LexCollectMacroArgList (
+    LexCollectMacroArgumentList (
         FALSE, // ignore
         &macro^.ArgListHead, // OUT arglisthead
         &length, // OUT length
@@ -1386,6 +1413,10 @@ FN (LexDirectiveParseF) LexParseAsm ()
 
     LexAsmBlockListTail = asmblock
 END
+
+//
+// Parsing for all of the preprocessor operators follows...
+//
 
 FN (LexOperatorParseF) LexOperatorEquals (
     IN buffer : ^TlDynamicBuffer,
