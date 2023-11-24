@@ -158,8 +158,11 @@ STRUCT LexStream
     LineNumber : ULONG,
     LinePosition : ULONG,
 
-    IsMacro : UBYTE,
+    Macro : ^LexMacro,
     LastWasNewline : UBYTE,
+
+    LastScope : ^TlSymbolTable,
+    LastMacroScope : ^TlSymbolTable,
 END
 
 STRUCT LexSymbol
@@ -174,8 +177,16 @@ STRUCT LexMacro
     Contents : TlDynamicBuffer,
     Name : UBYTE[LEX_DIRECTIVE_MAX],
 
+    ResumeScope : ^TlSymbolTable,
+    ResumeMacroScope : ^TlSymbolTable,
+
+    FileBlock : ^FeFileBlock,
+    LineNumber : ULONG,
+    LinePosition : ULONG,
+
     ArgListHead : ^LexMacroArgument,
     IsFunctionMacro : UBYTE,
+    IsArgumentMacro : UBYTE,
 END
 
 STRUCT LexMacroArgument
@@ -196,14 +207,22 @@ EXTERN LexCharTreatment : LexCharBehavior[256]
 
 EXTERN LexCurrentStream : ^LexStream
 EXTERN LexCurrentMacroScope : ^TlSymbolTable
+EXTERN LexRootScope : ^TlSymbolTable
+EXTERN LexCurrentScope : ^TlSymbolTable
 EXTERN LexFalseCount : ULONG
 
 EXTERN LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
-EXTERN LexPutbackStackPtr : ULONG 
+EXTERN LexPutbackStackPtr : ULONG
+
+EXTERN LexMacroDepth : ULONG
 
 EXTERN LexAsmBlockListHead : ^LexAsmBlock
 
 EXTERN FN LexInitialize ()
+
+EXTERN FN LexCreateSymbolTable (
+    IN outerscope : ^TlSymbolTable,
+) : ^TlSymbolTable
 
 EXTERN FN LexPreprocessorInit ()
 
@@ -211,14 +230,23 @@ EXTERN FN LexDefineMacroFromArgumentString (
     IN arg : ^UBYTE,
 )
 
+EXTERN FN LexExpandMacro (
+    IN macro : ^LexMacro,
+    IN token : ^LexToken,
+)
+
+EXTERN FN LexInitializeStreamZone ()
+
 EXTERN FN LexInitializeStream (
     IN stream : ^LexStream,
-    IN ismacro : UBYTE,
+    IN macro : ^LexMacro,
 )
 
 EXTERN FN LexUninitializeStream (
     IN stream : ^LexStream,
 )
+
+EXTERN FN LexAllocateStream () : ^LexStream
 
 EXTERN FN LexFreeStream (
     IN stream : ^LexStream,

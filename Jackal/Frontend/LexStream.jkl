@@ -4,9 +4,26 @@
 
 #INCLUDE "<inc>/Lexer.hjk"
 
+LexStreamZone : TlZone
+
+FN LexInitializeStreamZone ()
+
+    // Initialize the stream zone.
+
+    TlInitializeZone (
+        &LexStreamZone, // zone
+        SIZEOF LexStream, // blocksize
+    )
+END
+
+FN LexAllocateStream () : ^LexStream
+
+    RETURN CAST TlAllocateFromZone ( &LexStreamZone ) TO ^LexStream
+END
+
 FN LexInitializeStream (
     IN stream : ^LexStream,
-    IN ismacro : UBYTE,
+    IN macro : ^LexMacro,
 )
 
     // Initialize a stream structure.
@@ -21,8 +38,10 @@ FN LexInitializeStream (
     stream^.LineNumber = 1
     stream^.LinePosition = 1
     stream^.BufferPosition = 0
-    stream^.IsMacro = ismacro
+    stream^.Macro = macro
     stream^.LastWasNewline = FALSE
+    stream^.LastScope = NULLPTR
+    stream^.LastMacroScope = NULLPTR
 END
 
 FN LexUninitializeStream (
@@ -31,7 +50,7 @@ FN LexUninitializeStream (
 
     // Generic uninitialization for any stream type.
 
-    IF NOT stream^.IsMacro THEN
+    IF NOT stream^.Macro THEN
         // This is a file stream, free the buffer.
         // We don't delete the file block since it's still referenced by
         // tokens and in a hash table and whatnot.
@@ -46,7 +65,11 @@ FN LexFreeStream (
 )
 
     LexUninitializeStream ( stream )
-    TlFree ( stream )
+
+    TlFreeToZone (
+        &LexStreamZone, // zone
+        stream, // block
+    )
 END
 
 FN LexPushStream (
@@ -75,7 +98,7 @@ FN LexInitializeFileStream (
 
     LexInitializeStream (
         stream, // stream
-        FALSE, // ismacro
+        NULLPTR, // macro
     )
 
     // Allocate the lex buffer.
@@ -105,16 +128,7 @@ FN LexCreateFileStream (
     IN handle : ^VOID,
 ) : ^LexStream
 
-    stream : ^LexStream
-
-    status := TlAlloc (
-        SIZEOF LexStream, // bytes
-        &stream, // OUT ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate stream", 0, 0, 0 )
-    END
+    stream := LexAllocateStream ()
 
     LexInitializeFileStream (
         stream, // stream
@@ -157,8 +171,46 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
             stream^.BufferPosition += 1
 
-        ELSEIF stream^.IsMacro THEN
+        ELSEIF stream^.Macro THEN
+            IF NOT stream^.LastWasNewline THEN
+                // Make sure that the macro terminates with whitespace so that
+                // it doesn't bleed into the next token.
+
+                stream^.LastWasNewline = TRUE
+
+                RETURN 0x0A
+            END
+
             // The macro stream has emptied.
+            // Decrement the macro depth and pop it from the stream stack.
+
+            LexMacroDepth -= 1
+
+            macro := stream^.Macro
+
+            IF NOT macro^.IsArgumentMacro THEN
+                IF LexCurrentScope^.PrevScope^.PrevScope THEN
+                    // We weren't in the uppermost macro scope! This is a no-no.
+                    // Checking the previous scope of the previous scope is fine
+                    // because there's no way to get within a level of the root
+                    // scope from inside a macro, since they have a root scope
+                    // whose parent is the global scope.
+
+                    LexStreamError (
+                        "Macro terminated during nested scope", 0, 0, 0 )
+                END
+
+                // Delete the root scope and macro scope.
+
+                TlDeleteSymbolTable ( LexCurrentScope )
+                TlDeleteSymbolTable ( LexCurrentMacroScope )
+            END
+
+            // Macros are hygienic, meaning they have their own scopes.
+            // We have to reset the scope after we've consumed the entire macro.
+
+            LexCurrentScope = stream^.LastScope
+            LexCurrentMacroScope = stream^.LastMacroScope
 
             LexFreeStream ( LexPopStream () )
 

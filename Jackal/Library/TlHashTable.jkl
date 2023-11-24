@@ -8,6 +8,8 @@ FN TlInitializeHashTable (
     IN hashtable : ^TlHashTable,
 )
 
+    hashtable^.OrderedListHead = NULLPTR
+
     TlFillMemoryWithByte (
         &hashtable^.BucketHeads, // ptr
         SIZEOFVALUE hashtable^.BucketHeads, // sz
@@ -46,16 +48,12 @@ FN TlSummarizeHashTable (
     END
 END
 
-FN TlInsertHashTable (
+FN TlInsertHashTableByHash (
     IN hashtable : ^TlHashTable,
     IN entry : ^TlHashTableEntry,
     IN key : ^UBYTE,
+    IN hash : ULONG,
 )
-
-    // Caller needs to guarantee that the memory in which the key resides sticks
-    // around until such time as the entry is removed from the hash table.
-
-    hash := TlHashString ( key )
 
     head := hashtable^.BucketHeads[hash]
 
@@ -69,17 +67,42 @@ FN TlInsertHashTable (
     entry^.Next = head
 
     IF head THEN
-//      TlPrintString ( head^.Key )
-//      TlPrintString ( ":" )
-//      TlPrintString ( key )
-//      TlPrintString ( " " )
-//      TlPrintNumber ( hash )
-//      TlPrintString ( " " )
-
         head^.Prev = entry
     END
 
     hashtable^.BucketHeads[hash] = entry
+
+    // Insert entry into ordered list, at the head.
+
+    head = hashtable^.OrderedListHead
+
+    entry^.PrevOrdered = NULLPTR
+    entry^.NextOrdered = head
+
+    IF head THEN
+        head^.Prev = entry
+    END
+
+    hashtable^.OrderedListHead = entry
+END
+
+FN TlInsertHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
+)
+
+    // Caller needs to guarantee that the memory in which the key resides sticks
+    // around until such time as the entry is removed from the hash table.
+
+    hash := TlHashString ( key )
+
+    TlInsertHashTableByHash (
+        hashtable, // hashtable
+        entry, // entry
+        key, // key
+        hash, // hash
+    )
 END
 
 FN TlLookupOrAllocateEntryHashTable (
@@ -119,20 +142,12 @@ FN TlLookupOrAllocateEntryHashTable (
         TlInternalError ( "Failed to allocate entry", 0, 0, 0 )
     END
 
-    entry^.HashTable = hashtable
-    entry^.Key = key
-    entry^.Hash = hash
-
-    // Insert entry into doubly linked hash bucket list, at the head.
-
-    entry^.Prev = NULLPTR
-    entry^.Next = head
-
-    IF head THEN
-        head^.Prev = entry
-    END
-
-    hashtable^.BucketHeads[hash] = entry
+    TlInsertHashTableByHash (
+        hashtable, // hashtable
+        entry, // entry
+        key, // key
+        hash, // hash
+    )
 
     created^ = TRUE
 
@@ -164,42 +179,14 @@ FN TlLookupOrInsertHashTable (
 
     // Not found!
 
-    entry^.HashTable = hashtable
-    entry^.Key = key
-    entry^.Hash = hash
-
-    // Insert entry into doubly linked hash bucket list, at the head.
-
-    entry^.Prev = NULLPTR
-    entry^.Next = head
-
-    IF head THEN
-        head^.Prev = entry
-    END
-
-    hashtable^.BucketHeads[hash] = entry
+    TlInsertHashTableByHash (
+        hashtable, // hashtable
+        entry, // entry
+        key, // key
+        hash, // hash
+    )
 
     RETURN entry
-END
-
-FN TlLookupHashTable (
-    IN hashtable : ^TlHashTable,
-    IN key : ^UBYTE,
-) : ^TlHashTableEntry
-
-    hash := TlHashString ( key )
-
-    entry := hashtable^.BucketHeads[hash]
-
-    WHILE entry DO
-        IF TlCompareString ( key, entry^.Key ) == 0 THEN
-            RETURN entry
-        END
-
-        entry = entry^.Next
-    END
-
-    RETURN NULLPTR
 END
 
 FN TlLookupHashTableByHash (
@@ -219,6 +206,20 @@ FN TlLookupHashTableByHash (
     END
 
     RETURN NULLPTR
+END
+
+FN TlLookupHashTable (
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
+) : ^TlHashTableEntry
+
+    hash := TlHashString ( key )
+
+    RETURN TlLookupHashTableByHash (
+        hashtable, // hashtable
+        key, // key
+        hash, // hash
+    )
 END
 
 FN TlRemoveHashTable (
@@ -243,6 +244,22 @@ FN TlRemoveHashTable (
     IF p THEN
         p^.Prev = entry^.Prev
     END
+
+    // Remove entry from doubly linked ordered list.
+
+    p = entry^.PrevOrdered
+
+    IF p THEN
+        p^.NextOrdered = entry^.NextOrdered
+    ELSE // no prev means we were the head
+        hashtable^.OrderedListHead = entry^.NextOrdered
+    END
+
+    p = entry^.NextOrdered
+
+    IF p THEN
+        p^.PrevOrdered = entry^.PrevOrdered
+    END
 END
 
 FN TlEnumerateHashTable (
@@ -250,23 +267,17 @@ FN TlEnumerateHashTable (
     IN enumfunc : TlHashTableEnumeratorF,
 )
 
-    i := 0
+    entry := hashtable^.OrderedListHead
 
-    WHILE i < TL_HASH_SIZE DO
-        entry := hashtable^.BucketHeads[i]
+    WHILE entry DO
+        // Capture the next entry now since the enumeration function might
+        // destroy this entry.
 
-        WHILE entry DO
-            // Capture the next entry now since the enumeration function might
-            // destroy this entry.
+        nextentry := entry^.Next
 
-            nextentry := entry^.Next
+        enumfunc ( entry )
 
-            enumfunc ( entry )
-
-            entry = nextentry
-        END
-
-        i += 1
+        entry = nextentry
     END
 END
 

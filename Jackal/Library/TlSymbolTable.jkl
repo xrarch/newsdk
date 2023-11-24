@@ -10,10 +10,11 @@
 
 FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,
+    IN outerscope : ^TlSymbolTable,
     IN deletefunc : TlHashTableEnumeratorF,
 )
 
-    symboltable^.PrevScope = NULLPTR
+    symboltable^.PrevScope = outerscope
     symboltable^.DeleteRoutine = deletefunc
 
     TlInitializeHashTable ( &symboltable^.HashTable )
@@ -37,6 +38,7 @@ FN TlCreateSymbolTable (
 
     TlInitializeSymbolTable (
         symboltable, // symboltable
+        outerscope, // outerscope
         deletefunc, // deletefunc
     )
 

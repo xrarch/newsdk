@@ -9,6 +9,13 @@ LexOperatorHashTable : TlHashTable
 LexIfStack : TlDynamicBuffer
 LexRootMacroScope : ^TlSymbolTable = NULLPTR
 LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
+LexMacroDepth : ULONG = 0
+
+LexMacroZone : TlZone
+
+// More than this deep in macros and we assume you messed up.
+
+CONST LEX_MACRO_DEPTH_MAX := 64
 
 LexAsmBlockListHead : ^LexAsmBlock = NULLPTR
 LexAsmBlockListTail : ^LexAsmBlock = NULLPTR
@@ -86,8 +93,20 @@ FN (TlHashTableEnumeratorF) LexMacroDelete (
 
     TlUninitializeDynamicBuffer ( &macro^.Contents )
 
-    // Macros are bump-allocated, so it's meaningless to free one.
-    // TlFree ( entry )
+    TlFreeToZone (
+        &LexMacroZone, // zone
+        entry, // block
+    )
+END
+
+FN LexCreateMacroTable (
+    IN outerscope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    RETURN TlCreateSymbolTable (
+        outerscope, // outerscope
+        &LexMacroDelete, // deletefunc
+    )
 END
 
 FN LexPreprocessorInit ()
@@ -97,12 +116,16 @@ FN LexPreprocessorInit ()
 
     // Create the root macro scope.
 
-    LexRootMacroScope = TlCreateSymbolTable (
-        0, // outerscope
-        &LexMacroDelete, // deletefunc
-    )
+    LexRootMacroScope = LexCreateMacroTable ( NULLPTR )
 
     LexCurrentMacroScope = LexRootMacroScope
+
+    // Initialize the macro zone.
+
+    TlInitializeZone (
+        &LexMacroZone, // zone
+        SIZEOF LexMacro, // blocksize
+    )
 
     // Insert the directives and operators into their hash tables.
 
@@ -645,16 +668,7 @@ FN LexDefineMacroFromArgumentString (
 
     // Allocate a macro structure.
 
-    macro : ^LexMacro
-
-    status := TlBumpAlloc (
-        SIZEOF LexMacro, // bytes
-        &macro, // OUT ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
-    END
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -692,6 +706,7 @@ FN LexDefineMacroFromArgumentString (
     )
 
     macro^.IsFunctionMacro = FALSE
+    macro^.IsArgumentMacro = FALSE
 
     // Insert the macro into the macro scope.
 
@@ -700,6 +715,63 @@ FN LexDefineMacroFromArgumentString (
         &macro^.Entry, // entry
         &macro^.Name[0], // name
     )
+END
+
+FN LexExpandMacro (
+    IN macro : ^LexMacro,
+    IN token : ^LexToken,
+)
+
+    LexMacroDepth += 1
+
+    IF LexMacroDepth >= LEX_MACRO_DEPTH_MAX THEN
+        LexTokenError ( token, "Too many macros deep!", 0, 0, 0 )
+    END
+
+    // Create new scopes.
+
+    oldscope := LexCurrentScope
+    oldmacroscope := LexCurrentMacroScope
+
+    IF macro^.IsArgumentMacro THEN
+        // The macro resumes the scope of the "caller".
+
+        LexCurrentScope = macro^.ResumeScope
+        LexCurrentMacroScope = macro^.ResumeMacroScope
+    ELSE
+        // The macro gets all new scopes.
+
+        LexCurrentScope = LexCreateSymbolTable ( LexRootScope )
+        LexCurrentMacroScope = LexCreateMacroTable ( LexRootMacroScope )
+    END
+
+    // Create the stream.
+
+    stream := LexAllocateStream ()
+
+    // Initialize the stream.
+
+    LexInitializeStream (
+        stream, // stream
+        macro, // macro
+    )
+
+    // TODO better error messages within macros
+
+    stream^.FileBlock = LexCurrentStream^.FileBlock
+    stream^.Buffer = macro^.Contents.Buffer
+    stream^.ValidLength = macro^.Contents.Count - 1
+    stream^.LastScope = oldscope
+    stream^.LastMacroScope = oldmacroscope
+
+    IF macro^.IsFunctionMacro THEN
+        // TODO create argument macros for the function macro arguments
+    END
+
+    // Push the stream on the stream stack, causing the contents of the macro to
+    // be consumed.
+
+    LexPushStream ( stream )
 END
 
 //
@@ -887,16 +959,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
         LEAVE
     END
 
-    macro : ^LexMacro
-
-    status := TlBumpAlloc (
-        SIZEOF LexMacro, // bytes
-        &macro, // OUT ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
-    END
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -915,6 +978,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
     END
 
     macro^.IsFunctionMacro = FALSE
+    macro^.IsArgumentMacro = FALSE
 
     LexCollectValue (
         &macro^.NameToken, // token
@@ -923,7 +987,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
     )
 
     TlInsertSymbolTable (
-        LexCurrentMacroScope, // symboltable
+        LexRootMacroScope, // symboltable
         &macro^.Entry, // entry
         &macro^.Name[0], // name
     )
@@ -1096,16 +1160,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
     arglisthead : ^LexMacroArgument
     trashtoken : LexToken
     length : ULONG
-    macro : ^LexMacro
 
-    status := TlBumpAlloc (
-        SIZEOF LexMacro, // bytes
-        &macro, // OUT ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate macro", 0, 0, 0 )
-    END
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -1167,6 +1223,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     END
 
     macro^.IsFunctionMacro = TRUE
+    macro^.IsArgumentMacro = FALSE
 
     LexCollectValue (
         &macro^.NameToken, // token
@@ -1175,7 +1232,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     )
 
     TlInsertSymbolTable (
-        LexCurrentMacroScope, // symboltable
+        LexRootMacroScope, // symboltable
         &macro^.Entry, // entry
         &macro^.Name[0], // name
     )

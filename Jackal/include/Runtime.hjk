@@ -122,12 +122,16 @@ EXTERN TlBumpHits : ULONG
 CONST TL_HASH_SIZE : ULONG = 97
 
 STRUCT TlHashTable
+    OrderedListHead : ^TlHashTableEntry,
     BucketHeads : ^TlHashTableEntry[TL_HASH_SIZE],
 END
 
 STRUCT TlHashTableEntry
     Next : ^TlHashTableEntry,
     Prev : ^TlHashTableEntry,
+
+    NextOrdered : ^TlHashTableEntry,
+    PrevOrdered : ^TlHashTableEntry,
 
     HashTable : ^TlHashTable,
 
@@ -203,6 +207,7 @@ END
 
 EXTERN FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,
+    IN outerscope : ^TlSymbolTable,
     IN deletefunc : TlHashTableEnumeratorF,
 )
 
@@ -287,4 +292,33 @@ EXTERN FN TlMatchPath (
 EXTERN FN TlCopyParentPath (
     IN srcpath : ^UBYTE,
     IN destpath : ^TlDynamicBuffer,
+)
+
+
+// zone stuff
+
+
+CONST TL_ZONE_GROW_BY : ULONG = 32
+
+STRUCT TlZone
+    BlockSize : ULONG,
+    FreeListHead : ^TlZoneBlockHeader,
+END
+
+STRUCT TlZoneBlockHeader
+    FreeListNext : ^TlZoneBlockHeader,
+END
+
+EXTERN FN TlInitializeZone (
+    IN zone : ^TlZone,
+    IN blocksize : ULONG,
+)
+
+EXTERN FN TlAllocateFromZone (
+    IN zone : ^TlZone,
+) : ^VOID
+
+EXTERN FN TlFreeToZone (
+    IN zone : ^TlZone,
+    IN block : ^VOID,
 )

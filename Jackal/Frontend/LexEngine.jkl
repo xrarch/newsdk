@@ -53,11 +53,11 @@ LexCharTreatment : LexCharBehavior[256] = {
 CONST LEX_TOKEN_STRING_SIZE := 128
 
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
-
 LexCurrentStream : ^LexStream = NULLPTR
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
-
+LexSymbolZone : TlZone
+LexRootScope : ^TlSymbolTable = NULLPTR
 LexCurrentScope : ^TlSymbolTable = NULLPTR
 
 STRUCT LexKeyword
@@ -98,6 +98,28 @@ FN LexInsertKeyword (
     )
 END
 
+FN (TlHashTableEnumeratorF) LexSymbolDelete (
+    IN entry : ^TlHashTableEntry,
+)
+
+    // TODO: free whatever context symbols have
+
+    TlFreeToZone (
+        &LexSymbolZone, // zone
+        entry, // block
+    )
+END
+
+FN LexCreateSymbolTable (
+    IN outerscope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    RETURN TlCreateSymbolTable (
+        outerscope, // outerscope
+        &LexSymbolDelete, // deletefunc
+    )
+END
+
 FN LexInitialize ()
 
     dumpster : UBYTE
@@ -114,6 +136,10 @@ FN LexInitialize ()
         &FeInputFile[0], // filepath
     )
 
+    // Initialize the stream zone.
+
+    LexInitializeStreamZone ()
+
     // Create the root file stream.
 
     filestream := LexCreateFileStream (
@@ -125,9 +151,15 @@ FN LexInitialize ()
 
     // Create the global symbol table scope.
 
-    LexCurrentScope = TlCreateSymbolTable (
-        0, // outerscope
-        &LexSymbolDelete, // deletefunc
+    LexRootScope = LexCreateSymbolTable ( NULLPTR )
+
+    LexCurrentScope = LexRootScope
+
+    // Initialize the symbol zone.
+
+    TlInitializeZone (
+        &LexSymbolZone, // zone
+        SIZEOF LexSymbol, // blocksize
     )
 
     // Initialize interned string hash table.
@@ -267,35 +299,6 @@ FN LexInitialize ()
     TlPrintNumber ( TlBumpBytesUsed )
     TlPrintString ( "\n" )
 
-//  dynamicbuf : TlDynamicBuffer
-//
-//  TlInitializeDynamicBuffer ( &dynamicbuf )
-//
-//  i := 0
-//  c := '0'
-//
-//  WHILE i < 1024 DO
-//      IF c > '9' THEN
-//          c = '0'
-//      END
-//
-//      TlInsertDynamicBuffer (
-//          &dynamicbuf, // array
-//          c, // byte
-//      )
-//
-//      c += 1
-//      i += 1
-//  END
-//
-//  i = 0
-//
-//  WHILE i < dynamicbuf.Count DO
-//      TlPrintCharacter ( dynamicbuf.Buffer[i] )
-//
-//      i += 1
-//  END
-
     asmblock := LexAsmBlockListHead
 
     WHILE asmblock DO
@@ -304,16 +307,6 @@ FN LexInitialize ()
 
         asmblock = asmblock^.Next
     END
-END
-
-FN (TlHashTableEnumeratorF) LexSymbolDelete (
-    IN entry : ^TlHashTableEntry,
-)
-
-    // TODO: free whatever context symbols have
-
-    // Symbols are bump-allocated, so it's meaningless to free one.
-    // TlFree ( entry )
 END
 
 LexCharacterBackslash := FALSE
@@ -442,6 +435,13 @@ FN LexGetTokenInternal (
     OUT length : ^ULONG,
     OUT internedstring : ^^LexInternedString,
 ) : UBYTE
+
+    // Label to loop back to in the case that the token turns out to be a macro
+    // that needs expansion. This is gross, I know, but the alternative is
+    // either a tail call, or wrapping this routine in a giant while true loop,
+    // which is grosser.
+
+    @LoopOnMacro
 
     // Reads the string of the next token into the provided buffer. Identifies
     // macros and expands them. Returns a set of flags indicating things about
@@ -641,9 +641,23 @@ FN LexGetTokenInternal (
     // this case with file streams in LexStreamNextCharacter is applicable to
     // macro streams as well.
 
-    // TODO
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &buffer[0], // name
+    ) TO ^LexMacro
 
-    RETURN 0
+    IF NOT macro THEN
+        // Not a defined macro, just return the token.
+
+        RETURN 0
+    END
+
+    LexExpandMacro (
+        macro, // macro
+        token, // token
+    )
+
+    GOTO LoopOnMacro
 END
 
 FN LexGetStringTokenInternal (
@@ -810,20 +824,23 @@ FN LexGetToken (
     ) TO ^LexSymbol
 
     IF NOT symbol THEN
-        // Create new symbol.
+        // Create new symbol. We allocate the symbol from a zone, but allocate
+        // the name string from the bump allocator.
+
+        symbol = CAST TlAllocateFromZone ( &LexSymbolZone ) TO ^LexSymbol
+
+        symbolname : ^UBYTE
 
         status := TlBumpAlloc (
-            SIZEOF LexSymbol + length + 1, // bytes
-            &symbol, // OUT ptr
+            length + 1, // bytes
+            &symbolname, // OUT ptr
         )
 
         IF status THEN
-            TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
+            TlInternalError ( "Couldn't allocate symbol name", 0, 0, 0 )
         END
 
-        // Place the symbol name directly after the symbol structure in memory.
-
-        symbol^.Name = symbol + SIZEOF LexSymbol
+        symbol^.Name = symbolname
 
         TlCopyMemory (
             symbol^.Name, // dest

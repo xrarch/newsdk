@@ -1,0 +1,71 @@
+//
+// Generic zone allocator. These zones are permanent and cannot be destroyed.
+// They will grow to the maximum amount that will be concurrently needed by the
+// program and stays that size until the program terminates.
+//
+
+#INCLUDE "<inc>/Runtime.hjk"
+
+FN TlInitializeZone (
+    IN zone : ^TlZone,
+    IN blocksize : ULONG,
+)
+
+    zone^.BlockSize = blocksize + SIZEOF TlZoneBlockHeader
+    zone^.FreeListHead = NULLPTR
+END
+
+FN TlAllocateFromZone (
+    IN zone : ^TlZone,
+) : ^VOID
+
+    block := zone^.FreeListHead
+
+    IF block THEN
+        zone^.FreeListHead = block^.FreeListNext
+
+        RETURN block + SIZEOF TlZoneBlockHeader
+    END
+
+    // We have to add another chunk to the zone.
+
+    blocksize := zone^.BlockSize
+    chunksize := blocksize * TL_ZONE_GROW_BY
+
+    chunk : ^TlZoneBlockHeader
+
+    status := TlBumpAlloc (
+        chunksize, // bytes
+        &chunk, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate zone chunk", 0, 0, 0 )
+    END
+
+    block = chunk + SIZEOF TlZoneBlockHeader
+    chunk = chunk + blocksize
+
+    i := 1
+
+    WHILE i < TL_ZONE_GROW_BY DO
+        chunk^.FreeListNext = zone^.FreeListHead
+        zone^.FreeListHead = chunk
+
+        i += 1
+        chunk = chunk + blocksize
+    END
+
+    RETURN block
+END
+
+FN TlFreeToZone (
+    IN zone : ^TlZone,
+    IN block : ^VOID,
+)
+
+    blockheader := CAST (block - SIZEOF TlZoneBlockHeader) TO ^TlZoneBlockHeader
+
+    blockheader^.FreeListNext = zone^.FreeListHead
+    zone^.FreeListHead = blockheader
+END
