@@ -180,10 +180,6 @@ STRUCT LexMacro
     ResumeScope : ^TlSymbolTable,
     ResumeMacroScope : ^TlSymbolTable,
 
-    FileBlock : ^FeFileBlock,
-    LineNumber : ULONG,
-    LinePosition : ULONG,
-
     ArgListHead : ^LexMacroArgument,
     IsFunctionMacro : UBYTE,
     IsArgumentMacro : UBYTE,

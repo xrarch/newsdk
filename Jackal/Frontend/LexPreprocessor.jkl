@@ -330,7 +330,6 @@ END
 FN LexGetComplexString (
     IN token : ^LexToken,
     IN buffer : ^TlDynamicBuffer,
-    IN macroargument : UBYTE,
 )
 
     // Collect a complex string into the provided dynamic buffer, which will be
@@ -368,6 +367,8 @@ FN LexGetComplexString (
             IF byte == '\n' THEN
                 comment = FALSE
             ELSE
+                byte = 0
+
                 CONTINUE
             END
         ELSEIF byte != '/' THEN
@@ -400,24 +401,6 @@ FN LexGetComplexString (
         ELSEIF byte == 0x27 THEN // single-quote
             inliteral = TRUE
 
-        ELSEIF macroargument THEN
-            IF byte == '(' THEN
-                bracketdepth += 1
-
-            ELSEIF byte == ')' THEN
-                bracketdepth -= 1
-
-                IF bracketdepth == 0 THEN
-                    // Break out now so that we don't include the close bracket
-                    // in the string buffer.
-
-                    BREAK
-                END
-
-            ELSEIF bracketdepth == 1 AND byte == ',' THEN
-                BREAK
-            END
-
         ELSEIF byte == '[' THEN
             bracketdepth += 1
 
@@ -436,7 +419,126 @@ FN LexGetComplexString (
             buffer, // array
             byte, // byte
         )
+
+        byte = 0
     END
+END
+
+CONST ARG_NAME_NONZERO : UBYTE = 1
+CONST ARG_NAME_DONE : UBYTE = 2
+
+FN LexCollectMacroArgumentContents (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+) : UBYTE
+
+    // Very much alike collecting a complex string, but for macro argument
+    // contents. These vary just enough for them to be too annoying/slow to put
+    // in a common function. Returns flags indicating properties of the returned
+    // contents.
+
+    // XXX This entire business is so freaking janky.
+
+    bracketdepth := 1
+    comment := FALSE
+    backslash := FALSE
+    instring := FALSE
+    inliteral := FALSE
+    sawforwardslash := FALSE
+
+    byte : UBYTE
+
+    WHILE TRUE DO
+        byte = LexNextNonWhitespaceCharacter ( token )
+
+        IF byte == ')' THEN
+            RETURN ARG_NAME_DONE
+        END
+
+        IF byte == ',' THEN
+            CONTINUE
+        END
+
+        BREAK
+    END
+
+    WHILE TRUE DO
+        IF comment AND byte == '\n' THEN
+            comment = FALSE
+        ELSEIF byte != '/' THEN
+            sawforwardslash = FALSE
+        END
+
+        IF comment THEN
+            // nothing
+
+        ELSEIF backslash THEN
+            backslash = FALSE
+
+        ELSEIF byte == '\\' THEN
+            backslash = TRUE
+
+        ELSEIF instring THEN
+            instring = NOT (byte == '\"')
+
+        ELSEIF inliteral THEN
+            inliteral = NOT (byte == 0x27) // single-quote
+
+        ELSEIF byte == '/' THEN
+            IF sawforwardslash THEN
+                // Remove the first forward slash from the buffer by
+                // decrementing the count by one.
+
+                buffer^.Count -= 1
+
+                sawforwardslash = FALSE
+                comment = TRUE
+            ELSE
+                sawforwardslash = TRUE
+            END
+
+        ELSEIF byte == '\"' THEN
+            instring = TRUE
+
+        ELSEIF byte == 0x27 THEN // single-quote
+            inliteral = TRUE
+
+        ELSEIF byte == '(' THEN
+            bracketdepth += 1
+
+        ELSEIF byte == ')' THEN
+            bracketdepth -= 1
+
+            IF bracketdepth == 0 THEN
+                // Break out now so that we don't include the close bracket
+                // in the string buffer.
+
+                RETURN ARG_NAME_DONE | ARG_NAME_NONZERO
+            END
+
+        ELSEIF bracketdepth == 1 AND byte == ',' THEN
+            BREAK
+
+        ELSEIF byte == '\n' THEN
+            byte = ' '
+        END
+
+        IF NOT comment AND NOT backslash THEN
+            TlInsertDynamicBuffer (
+                buffer, // array
+                byte, // byte
+            )
+        END
+
+        byte = LexStreamNextCharacter ()
+
+        IF byte == 0 THEN
+            LexTokenError ( token,
+                "Unexpected EOF while parsing string", 0, 0, 0 )
+        END
+    END
+
+    RETURN ARG_NAME_NONZERO
 END
 
 FN LexCollectValue (
@@ -485,7 +587,6 @@ FN LexCollectValue (
         LexGetComplexString (
             token, // token
             buffer, // buffer
-            FALSE, // macroargument
         )
 
         TlInsertDynamicBuffer (
@@ -756,16 +857,100 @@ FN LexExpandMacro (
         macro, // macro
     )
 
+    // TODO push a sentinel value on the parser's structure stack so that it
+    // knows not to permit ENDs and stuff that "leave" the level the macro was
+    // expanded at (I figured out how to do this while staring in the bathroom
+    // mirror at my college campus at 8:30pm)
+
     // TODO better error messages within macros
 
     stream^.FileBlock = LexCurrentStream^.FileBlock
+    stream^.LineNumber = 1000000
     stream^.Buffer = macro^.Contents.Buffer
     stream^.ValidLength = macro^.Contents.Count - 1
     stream^.LastScope = oldscope
     stream^.LastMacroScope = oldmacroscope
 
     IF macro^.IsFunctionMacro THEN
-        // TODO create argument macros for the function macro arguments
+        // This is a function macro.
+        // Consume each argument and make it into an argument macro.
+
+        trashtoken : LexToken
+
+        byte := LexNextNonWhitespaceCharacter ( &trashtoken )
+
+        IF byte != '(' THEN
+            LexTokenError ( &trashtoken,
+                "Expected open parenthesis after function macro name", 0, 0, 0 )
+        END
+
+        arg := macro^.ArgListHead
+
+        WHILE arg DO
+            argmacro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+            argmacro^.ResumeScope = oldscope
+            argmacro^.ResumeMacroScope = oldmacroscope
+
+            TlCopyString (
+                &argmacro^.Name[0], // dest
+                &arg^.Name[0], // src
+                LEX_DIRECTIVE_MAX, // bufsize
+            )
+
+            argmacro^.IsFunctionMacro = FALSE
+            argmacro^.IsArgumentMacro = TRUE
+
+            // Collect the macro contents from the argument list.
+
+            TlInitializeDynamicBuffer ( &argmacro^.Contents )
+
+            foundclose : UBYTE = 0
+
+            WHILE NOT foundclose & ARG_NAME_NONZERO DO
+                IF foundclose & ARG_NAME_DONE THEN
+                    LexTokenError ( &trashtoken,
+                        "Too few arguments to function macro", 0, 0, 0 )
+                END
+
+                foundclose = LexCollectMacroArgumentContents (
+                    &argmacro^.NameToken, // token
+                    &argmacro^.Contents, // buffer
+                )
+            END
+
+            TlInsertDynamicBuffer (
+                &argmacro^.Contents, // array
+                0, // byte
+            )
+
+            // Insert the macro into the new macro scope.
+
+            TlInsertSymbolTable (
+                LexCurrentMacroScope, // symboltable
+                &argmacro^.Entry, // entry
+                &argmacro^.Name[0], // name
+            )
+
+            arg = arg^.Next
+
+            IF foundclose & ARG_NAME_DONE THEN
+                IF arg THEN
+                    LexTokenError ( &trashtoken,
+                        "Too few arguments to function macro", 0, 0, 0 )
+                END
+            ELSEIF NOT arg THEN
+                // Blindly eat up until the next close parenthesis.
+
+                WHILE TRUE DO
+                    byte = LexNextNonWhitespaceCharacter ( &trashtoken )
+
+                    IF byte == ')' THEN
+                        BREAK
+                    END
+                END
+            END
+        END
     END
 
     // Push the stream on the stream stack, causing the contents of the macro to
@@ -987,7 +1172,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
     )
 
     TlInsertSymbolTable (
-        LexRootMacroScope, // symboltable
+        LexCurrentMacroScope, // symboltable
         &macro^.Entry, // entry
         &macro^.Name[0], // name
     )
@@ -1025,10 +1210,13 @@ FN (LexDirectiveParseF) LexParseUndefine ()
     TlRemoveSymbolTable (
         CAST oldmacro TO ^TlHashTableEntry, // entry
     )
-END
 
-CONST ARG_NAME_NONZERO : UBYTE = 1
-CONST ARG_NAME_DONE : UBYTE = 2
+    // Free the macro.
+
+    LexMacroDelete (
+        CAST oldmacro TO ^TlHashTableEntry, // entry
+    )
+END
 
 FN LexCollectMacroArgumentName (
     IN token : ^LexToken,
@@ -1127,6 +1315,14 @@ FN LexCollectMacroArgumentList (
                 LexTokenError ( &token,
                     "Macro argument name already used", 0, 0, 0 )
             END
+
+            // Copy the name into the argument structure.
+
+            TlCopyString (
+                &arg^.Name[0], // dest
+                &buffer[0], // src
+                LEX_DIRECTIVE_MAX, // bufsize
+            )
 
             // Increment the length of the argument list by one.
 
@@ -1232,7 +1428,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     )
 
     TlInsertSymbolTable (
-        LexRootMacroScope, // symboltable
+        LexCurrentMacroScope, // symboltable
         &macro^.Entry, // entry
         &macro^.Name[0], // name
     )
