@@ -1,0 +1,17 @@
+//
+// Initialization for the Toolchain Library.
+//
+
+#INCLUDE "<inc>/Runtime.hjk"
+
+EXTERN TlSymbolTableZone : TlZone
+
+FN TlInitialize ()
+
+    // Initialize the symbol table zone.
+
+    TlInitializeZone (
+        &TlSymbolTableZone, // zone
+        SIZEOF TlSymbolTable, // blocksize
+    )
+END

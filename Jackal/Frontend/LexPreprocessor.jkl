@@ -907,7 +907,7 @@ FN LexExpandMacro (
 
             foundclose : UBYTE = 0
 
-            WHILE NOT foundclose & ARG_NAME_NONZERO DO
+            WHILE NOT (foundclose & ARG_NAME_NONZERO) DO
                 IF foundclose & ARG_NAME_DONE THEN
                     LexTokenError ( &trashtoken,
                         "Too few arguments to function macro", 0, 0, 0 )

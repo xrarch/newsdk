@@ -8,6 +8,8 @@
 
 #INCLUDE "<inc>/Runtime.hjk"
 
+TlSymbolTableZone : TlZone
+
 FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,
     IN outerscope : ^TlSymbolTable,
@@ -25,16 +27,9 @@ FN TlCreateSymbolTable (
     IN deletefunc : TlHashTableEnumeratorF,
 ) : ^TlSymbolTable
 
-    symboltable : ^TlSymbolTable
-
-    status := TlAlloc (
-        SIZEOF TlSymbolTable, // bytes
-        &symboltable, // OUT ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate symbol table", 0, 0, 0 )
-    END
+    symboltable := CAST TlAllocateFromZone (
+        &TlSymbolTableZone, // zone
+    ) TO ^TlSymbolTable
 
     TlInitializeSymbolTable (
         symboltable, // symboltable
@@ -56,7 +51,10 @@ FN TlDeleteSymbolTable (
         symboltable^.DeleteRoutine, // deletefunc
     )
 
-    TlFree ( symboltable )
+    TlFreeToZone (
+        &TlSymbolTableZone, // zone
+        symboltable, // block
+    )
 
     RETURN outerscope
 END

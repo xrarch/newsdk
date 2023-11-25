@@ -10,6 +10,8 @@ ENUM TlStatus : ULONG
     TL_COULDNT_OPEN,
 END
 
+EXTERN FN TlInitialize ()
+
 EXTERN FN TlMeasureString (
     IN str : ^UBYTE,
 ) : ULONG

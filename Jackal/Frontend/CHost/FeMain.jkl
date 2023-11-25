@@ -11,6 +11,8 @@ FN main (
     IN argv : ^_char[],
 ) : _int
 
+    TlInitialize ()
+
     FeInitialize ( argc, argv )
 
     // Perform phase 1 of the compiler (lexing & parsing).
