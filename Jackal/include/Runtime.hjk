@@ -10,6 +10,10 @@ ENUM TlStatus : ULONG
     TL_COULDNT_OPEN,
 END
 
+// TODO ifdef this for 64 bits as well
+
+TYPE TlMachineWord : ULONG
+
 EXTERN FN TlInitialize ()
 
 EXTERN FN TlMeasureString (

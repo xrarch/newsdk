@@ -718,7 +718,7 @@ END
 FN LexCollectValueNumeric (
     IN token : ^LexToken,
     IN ignore : UBYTE,
-) : ULONG
+) : TlMachineWord
 
     buffer : TlDynamicBuffer
 

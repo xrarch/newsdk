@@ -135,6 +135,15 @@ STRUCT LexInternedString
 END
 
 STRUCT LexToken
+    // NOTE: There's an assumption that a pointer for the host architecture of
+    // the compiler is large enough to contain the biggest integer that is
+    // directly representable by the set of target architectures. I.e., a 32-bit
+    // host will be able to build for any of the 32-bit architectures, and its
+    // 32-bit Payload pointer will be large enough to store 32-bit integers. A
+    // 64-bit host will be able to build for any of the 32-bit architectures,
+    // plus the 64-bit architectures, and its pointer will be large enough to
+    // store 64-bit integers here.
+
     Payload : ^VOID,
     FileBlock : ^FeFileBlock,
 
@@ -295,4 +304,4 @@ EXTERN FN LexTokenError (
 EXTERN FN LexCrunchNumber (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
-) : ULONG
+) : TlMachineWord

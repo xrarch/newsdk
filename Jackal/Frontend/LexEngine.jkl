@@ -885,7 +885,7 @@ END
 FN LexCrunchNumber (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
-) : ULONG
+) : TlMachineWord
 
     num : ULONG = 0
     i := 0
@@ -963,3 +963,19 @@ FN LexCrunchNumber (
 
     RETURN num
 END
+
+FN LexCopyToken (
+    IN dest : ^LexToken,
+    IN src : ^LexToken,
+)
+
+    // Copy all the fields of a source token into a destination token.
+
+    dest^.Payload = src^.Payload
+    dest^.FileBlock = src^.FileBlock
+    dest^.LineNumber = src^.LineNumber
+    dest^.LinePosition = src^.LinePosition
+    dest^.Type = src^.Type
+    dest^.Subtype = src^.Subtype
+END
+

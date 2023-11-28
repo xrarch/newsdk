@@ -11,6 +11,12 @@ FN TlInitializeZone (
     IN blocksize : ULONG,
 )
 
+    // First align to 8 bytes, assuming a 64-bit C host.
+    // TODO ifdef this for 32 bits as well
+
+    blocksize += 7
+    blocksize &= ~7
+
     zone^.BlockSize = blocksize + SIZEOF TlZoneBlockHeader
     zone^.FreeListHead = NULLPTR
 END
