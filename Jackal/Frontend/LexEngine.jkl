@@ -56,9 +56,13 @@ LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 LexCurrentStream : ^LexStream = NULLPTR
 LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
-LexSymbolZone : TlZone
+
 LexRootScope : ^TlSymbolTable = NULLPTR
 LexCurrentScope : ^TlSymbolTable = NULLPTR
+
+LexSymbolZone : TlZone
+LexInternedStringZone : TlZone
+LexInternedStringHashTable : TlHashTable
 
 STRUCT LexKeyword
     Entry : TlHashTableEntry, // MUST be at the beginning
@@ -67,7 +71,6 @@ STRUCT LexKeyword
 END
 
 LexKeywordHashTable : TlHashTable
-LexInternedStringHashTable : TlHashTable
 
 LexKeywordBumpArray : LexKeyword[128]
 LexKeywordBumpIndex := 0
@@ -160,6 +163,13 @@ FN LexInitialize ()
     TlInitializeZone (
         &LexSymbolZone, // zone
         SIZEOF LexSymbol, // blocksize
+    )
+
+    // Initialize the interned string zone.
+
+    TlInitializeZone (
+        &LexInternedStringZone, // zone
+        SIZEOF LexInternedString, // blocksize
     )
 
     // Initialize interned string hash table.
@@ -486,17 +496,11 @@ FN LexGetTokenInternal (
     END
 
     IF byte == '\"' THEN
-        // This is a string token.
-        // Bump-allocate a LexInternedString.
+        // This is a string token. Allocate a LexInternedString.
 
-        status := TlBumpAlloc (
-            SIZEOF LexInternedString, // bytes
-            internedstring, // OUT ptr
-        )
-
-        IF status THEN
-            TlInternalError ( "Failed to allocate interned string", 0, 0, 0 )
-        END
+        internedstring^ = CAST TlAllocateFromZone (
+            &LexInternedStringZone, // zone
+        ) TO ^LexInternedString
 
         dynamicbuffer := &internedstring^^.DynamicBuffer
 
@@ -520,12 +524,13 @@ FN LexGetTokenInternal (
 
         IF str != internedstring^ THEN
             // Release our dynamic buffer and return the one we found.
-            // I wish we could free the dynamic buffer structure itself, but
-            // we already bump allocated it. This is done under the assumption
-            // that the most common case is a unique string, and that we aren't
-            // likely to find anything in the hash table.
 
             TlUninitializeDynamicBuffer ( dynamicbuffer )
+
+            TlFreeToZone (
+                &LexInternedStringZone, // zone
+                internedstring^, // block
+            )
 
             internedstring^ = str
         END
