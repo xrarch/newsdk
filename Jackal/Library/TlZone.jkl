@@ -11,13 +11,19 @@ FN TlInitializeZone (
     IN blocksize : ULONG,
 )
 
+    // Make the block size at least great enough to store a block header.
+
+    IF blocksize < SIZEOF TlZoneBlockHeader THEN
+        blocksize = SIZEOF TlZoneBlockHeader
+    END
+
     // First align to 8 bytes, assuming a 64-bit C host.
     // TODO ifdef this for 32 bits as well
 
     blocksize += 7
     blocksize &= ~7
 
-    zone^.BlockSize = blocksize + SIZEOF TlZoneBlockHeader
+    zone^.BlockSize = blocksize
     zone^.FreeListHead = NULLPTR
 END
 
@@ -30,7 +36,7 @@ FN TlAllocateFromZone (
     IF block THEN
         zone^.FreeListHead = block^.FreeListNext
 
-        RETURN block + SIZEOF TlZoneBlockHeader
+        RETURN block
     END
 
     // We have to add another chunk to the zone.
@@ -49,7 +55,7 @@ FN TlAllocateFromZone (
         TlInternalError ( "Failed to allocate zone chunk", 0, 0, 0 )
     END
 
-    block = chunk + SIZEOF TlZoneBlockHeader
+    block = chunk
     chunk = chunk + blocksize
 
     i := 1
@@ -70,7 +76,7 @@ FN TlFreeToZone (
     IN block : ^VOID,
 )
 
-    blockheader := CAST (block - SIZEOF TlZoneBlockHeader) TO ^TlZoneBlockHeader
+    blockheader := CAST block TO ^TlZoneBlockHeader
 
     blockheader^.FreeListNext = zone^.FreeListHead
     zone^.FreeListHead = blockheader
