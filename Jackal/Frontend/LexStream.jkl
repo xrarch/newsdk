@@ -1,5 +1,8 @@
 //
-// Implements stream objects for the lexer.
+// Implements stream objects for the lexer. Operates by stacking and unstacking
+// stream objects from the stream stack. Characters are consumed from the stream
+// atop the stream stack. This lends itself to easy implementation of include
+// directives, macro expansion, etc.
 //
 
 #INCLUDE "<inc>/Lexer.hjk"

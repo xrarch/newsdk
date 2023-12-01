@@ -1,5 +1,6 @@
 //
-// Inline preprocessor for the lexer.
+// Inline preprocessor for the lexer. Invoked when the tokenizer stumbles on a
+// '#' character inbetween tokens.
 //
 
 #INCLUDE "<inc>/Lexer.hjk"

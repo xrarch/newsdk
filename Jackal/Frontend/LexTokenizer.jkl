@@ -1,14 +1,10 @@
 //
-// Lexer.
+// The tokenizer of the lexer. Processes the raw character stream into tokens
+// for the parser to use. Also does string internment, and creates the symbol
+// tables (with scopes directed by the parser).
 //
 
 #INCLUDE "<inc>/Lexer.hjk"
-
-// The "engine" of the lexer, the bit that provides the character stream,
-// operates by stacking and unstacking source text streams. Each stream has a
-// filename and a current line number associated with it, which are ultimately
-// used to generate useful diagnostic messages. Streams are associated with
-// include files, and also with preprocessor macro expansion.
 
 LexCharTreatment : LexCharBehavior[256] = {
     [0] = CHAR_EOF,
