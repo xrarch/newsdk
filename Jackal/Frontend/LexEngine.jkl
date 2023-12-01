@@ -446,19 +446,18 @@ FN LexGetTokenInternal (
     OUT internedstring : ^^LexInternedString,
 ) : UBYTE
 
-    // Label to loop back to in the case that the token turns out to be a macro
-    // that needs expansion. This is gross, I know, but the alternative is
-    // either a tail call, or wrapping this routine in a giant while true loop,
-    // which is grosser.
-
-    @LoopOnMacro
-
     // Reads the string of the next token into the provided buffer. Identifies
     // macros and expands them. Returns a set of flags indicating things about
     // the token; for instance, if EOF has been reached (i.e. there is no
     // token), if the token is all uppercase, and if the token is a SPLIT or
     // COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
     // in length or greater.
+
+    // We GOTO LoopOnMacro in the case that the token turns out to be a macro
+    // that needs expansion (this is intentionally picked over the alternative
+    // of wrapping this routine in a WHILE TRUE loop).
+
+    @LoopOnMacro
 
     length^ = 0
 
@@ -636,15 +635,9 @@ FN LexGetTokenInternal (
     //
     // N.B. Jackal macros are "hygienic", meaning that they have no access to
     // the "parent scope", except via their arguments, which become special
-    // macros that restore the parent scope during their expansion. This might
-    // require associating scopes with streams, so that we know what to restore
+    // macros that restore the parent scope during their expansion. This
+    // requires associating scopes with streams, so that we know what to restore
     // when we pop a stream off the stream stack.
-    //
-    // NOTE, also, that we might have consumed the whitespace character after
-    // the macro, so if the macro's contents don't conclude with a newline, we
-    // might not tokenize that correctly. See if the same trick we use to avoid
-    // this case with file streams in LexStreamNextCharacter is applicable to
-    // macro streams as well.
 
     macro := CAST TlLookupSymbolTable (
         LexCurrentMacroScope, // symboltable
@@ -656,6 +649,9 @@ FN LexGetTokenInternal (
 
         RETURN 0
     END
+
+    // It is a macro! Expand it and loop, so our caller gets the next "real"
+    // token.
 
     LexExpandMacro (
         macro, // macro
