@@ -2,12 +2,13 @@
 // Frontend initialization.
 //
 
-#INCLUDE "<inc>/Lexer.hjk"
+#INCLUDE "<inc>/Parser.hjk"
 
 FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
 
 FeInputFileHandle : ^VOID
 FeOutputFileHandle : ^VOID
@@ -79,6 +80,7 @@ FN FeParseArguments (
     // Find the value of these arguments, if they exist:
     //  libdir=
     //  incdir=
+    //  target=
     //
     // Identify the source and destination filenames.
 
@@ -87,6 +89,7 @@ FN FeParseArguments (
 
     foundinput := FALSE
     foundoutput := FALSE
+    foundtarget := FALSE
 
     i := 1
 
@@ -104,6 +107,15 @@ FN FeParseArguments (
                 &argv[i][7], // src
                 FE_PATH_BUFFER_SIZE, // bufsize
             )
+
+        ELSEIF TlCompareStringWithMax ( argv[i], "target=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeTargetString[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+            foundtarget = TRUE
 
         ELSEIF FeIsMacroArgument ( argv[i] ) THEN
             LexDefineMacroFromArgumentString ( argv[i] )
@@ -140,6 +152,16 @@ FN FeParseArguments (
 
     IF NOT foundoutput THEN
         TlUserError ( "No output file specified.", 0, 0, 0 )
+    END
+
+    IF NOT foundtarget THEN
+        // Default is XR/17032.
+
+        TlCopyString (
+            &FeTargetString[0], // dest
+            "XR/17032", // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
     END
 END
 
@@ -184,4 +206,32 @@ FN FeCopyPathFileBlock (
         filepath, // src
         FE_PATH_BUFFER_SIZE, // bufsize
     )
+END
+
+FN JklCompileProgram (
+    IN argc : ULONG,
+    IN argv : ^UBYTE[],
+)
+
+    // Compile the entire program.
+
+    // Initialize the front-end components.
+
+    FeInitialize (
+        argc, // argc
+        argv, // argv
+    )
+
+    // Parse the program and construct a global symbol table and abstract syntax
+    // trees.
+
+    PrsProgram ()
+
+    // Generate IR for each function, in the form of control flow graphs.
+
+    // IrGenerate ()
+
+    // Call the target-specific code to finish compilation.
+
+    // ...
 END

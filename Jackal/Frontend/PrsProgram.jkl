@@ -1,0 +1,15 @@
+//
+// Parses Jackal programs and constructs an abstract syntax tree.
+//
+
+#INCLUDE "<inc>/Parser.hjk"
+
+FN PrsProgram ()
+
+    // Parse a program. This consists of a sequence of global declarations. We
+    // also want to place these global declarations on lists so the subsequent
+    // phases can use them appropriately, linked via the symbol table entry
+    // given to us by the lexer.
+
+
+END

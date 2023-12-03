@@ -97,7 +97,7 @@ FN LexInsertKeyword (
     )
 END
 
-FN (TlHashTableEnumeratorF) LexSymbolDelete (
+FN (TlHashTableEnumeratorF) LexDeleteSymbol (
     IN entry : ^TlHashTableEntry,
 )
 
@@ -115,7 +115,7 @@ FN LexCreateSymbolTable (
 
     RETURN TlCreateSymbolTable (
         outerscope, // outerscope
-        &LexSymbolDelete, // deletefunc
+        &LexDeleteSymbol, // deletefunc
     )
 END
 
@@ -435,7 +435,7 @@ CONST TOKEN_FLAG_STRING   := 4
 CONST TOKEN_FLAG_CHARLIT  := 8
 CONST TOKEN_FLAG_UPPER    := 16
 
-FN LexGetTokenInternal (
+FN LexGetTokenContents (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
     OUT length : ^ULONG,
@@ -725,18 +725,20 @@ FN LexGetStringTokenInternal (
     END
 END
 
-FN LexGetToken (
+FN LexNextToken (
     IN token : ^LexToken,
 )
 
-    // LexGetTokenInternal might need to allocate an interned string structure.
+    // Upper level part of token getting.
+    // Receives a token string and some flags, and does some extra crunching on
+    // it. Ignores the putback stack.
 
     internedstring : ^LexInternedString
 
     buffer : UBYTE[LEX_TOKEN_STRING_SIZE]
     length : ULONG
 
-    tokenflag := LexGetTokenInternal (
+    tokenflag := LexGetTokenContents (
         token, // token
         &buffer[0], // buffer
         &length, // OUT length
@@ -956,6 +958,23 @@ FN LexCrunchNumber (
     RETURN num
 END
 
+FN LexEnterScope ()
+
+    // Enter a new scope.
+
+    LexCurrentScope = TlCreateSymbolTable (
+        LexCurrentScope, // outerscope
+        &LexDeleteSymbol, // deletefunc
+    )
+END
+
+FN LexLeaveScope ()
+
+    // Leave the current scope.
+
+    LexCurrentScope = TlDeleteSymbolTable ( LexCurrentScope )
+END
+
 FN LexCopyToken (
     IN dest : ^LexToken,
     IN src : ^LexToken,
@@ -971,3 +990,93 @@ FN LexCopyToken (
     dest^.Subtype = src^.Subtype
 END
 
+FN LexGetToken (
+    IN token : ^LexToken,
+)
+
+    // Read a token from the putback stack if one is present, otherwise read
+    // from the source stream.
+
+    index := LexPutbackStackPtr
+
+    IF index THEN
+        LexCopyToken (
+            token, // dest
+            &LexPutbackStack[index - 1], // src
+        )
+
+        LexPutbackStackPtr = index - 1
+
+        LEAVE
+    END
+
+    LexNextToken ( token )
+END
+
+FN LexPutbackToken (
+    IN token : ^LexToken,
+)
+
+    // Put the token on top of the putback stack.
+
+    index := LexPutbackStackPtr
+
+    IF index == LEX_PUTBACK_STACK_DEPTH THEN
+        TlInternalError ( "Lexer putback stack overflow", 0, 0, 0 )
+    END
+
+    LexCopyToken (
+        &LexPutbackStack[index], // dest
+        token, // src
+    )
+
+    LexPutbackStackPtr = index + 1
+END
+
+FN LexMatchToken (
+    IN token : ^LexToken,
+    IN type : LexTokenType,
+    IN subtype : LexTokenSubtype,
+) : UBYTE
+
+    // Read the next token into the caller's token structure, but only if it
+    // matches the type and subtype. If the type or subtype are specified as
+    // TOKEN_ANY or TOKEN_SUBTYPE_ANY respectively, then it will match any type
+    // or subtype of token. Returns TRUE if a token was read, FALSE otherwise.
+
+    index := LexPutbackStackPtr
+
+    IF NOT index THEN
+        // The putback stack is empty, read one token directly into the top.
+
+        LexNextToken (
+            &LexPutbackStack[0], // token
+        )
+
+        LexPutbackStackPtr = 1
+        index = 1
+    END
+
+    matchtoken := &LexPutbackStack[index - 1]
+
+    IF matchtoken^.Type != type THEN
+        // Not a match.
+
+        RETURN FALSE
+    END
+
+    IF NOT subtype OR matchtoken^.Subtype == subtype THEN
+        // Token matches! Pop it.
+
+        LexCopyToken (
+            token, // dest
+            matchtoken, // src
+        )
+
+        LexPutbackStackPtr = index - 1
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END

@@ -1,0 +1,3 @@
+#INCLUDE "<inc>/Lexer.hjk"
+
+EXTERN FN PrsProgram ()

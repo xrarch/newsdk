@@ -5,6 +5,8 @@ CONST LEX_BUFFER_SIZE := 16384
 CONST LEX_DIRECTIVE_MAX := 64
 
 ENUM LexTokenType : UBYTE
+    TOKEN_ANY,
+
     TOKEN_STATEMENT, // subtype is a statement type
     TOKEN_PTYPE, // subtype is a primitive type
     TOKEN_OPER, // subtype is operator type
@@ -32,6 +34,8 @@ ENUM LexTokenType : UBYTE
 END
 
 ENUM LexTokenSubtype : UBYTE
+    TOKEN_SUBTYPE_ANY,
+
     TOKEN_AND,         // operator
     TOKEN_BEGIN,       // statement
     TOKEN_BREAK,       // statement
@@ -276,15 +280,30 @@ EXTERN FN LexCreateFileStream (
 
 EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
-EXTERN FN LexGetStringTokenInternal (
-    IN token : ^LexToken,
-    IN terminator : UBYTE,
-    IN dynamicbuffer : ^TlDynamicBuffer,
-    IN buffer : ^UBYTE,
-    OUT length : ^ULONG,
+EXTERN FN LexParseDirective ()
+
+EXTERN FN LexEnterScope ()
+
+EXTERN FN LexLeaveScope ()
+
+EXTERN FN LexCopyToken (
+    IN dest : ^LexToken,
+    IN src : ^LexToken,
 )
 
-EXTERN FN LexParseDirective ()
+EXTERN FN LexGetToken (
+    IN token : ^LexToken,
+)
+
+EXTERN FN LexPutbackToken (
+    IN token : ^LexToken,
+)
+
+EXTERN FN LexMatchToken (
+    IN token : ^LexToken,
+    IN type : LexTokenType,
+    IN subtype : LexTokenSubtype,
+) : UBYTE
 
 EXTERN FN LexStreamError (
     IN str : ^UBYTE,
