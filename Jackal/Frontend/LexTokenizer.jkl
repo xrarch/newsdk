@@ -998,6 +998,13 @@ FN LexMatchToken (
 
     matchtoken := &LexPutbackStack[index - 1]
 
+    IF token THEN
+        LexCopyToken (
+            token, // dest
+            matchtoken, // src
+        )
+    END
+
     IF matchtoken^.Type != type THEN
         // Not a match.
 
@@ -1006,11 +1013,6 @@ FN LexMatchToken (
 
     IF NOT subtype OR matchtoken^.Subtype == subtype THEN
         // Token matches! Pop it.
-
-        LexCopyToken (
-            token, // dest
-            matchtoken, // src
-        )
 
         LexPutbackStackPtr = index - 1
 

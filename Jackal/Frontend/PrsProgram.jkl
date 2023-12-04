@@ -23,6 +23,8 @@ FN PrsVariableDeclaration (
     //  name : = initial
     //  name : type
     //
+    // The colon has already been consumed (that's how the caller knew this is a
+    // declaration and not an assignment).
     // Non-extern declarations may override extern declarations.
     // Extern declarations must not have an initial value, just a name and type.
     // The passed in token contains the relevant symbol already.
@@ -104,6 +106,20 @@ FN PrsDeclaration () : UBYTE
     IF token.Type == TOKEN_IDENTIFIER THEN
         // This is a non-public, non-extern variable declaration.
         // It may be overriding an extern declaration.
+
+        colontoken : LexToken
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COLON, // type
+            TOKEN_SUBTYPE_ANY, // subtype
+        ) THEN
+            // There MUST be a colon for global declarations, otherwise it would
+            // be a global assignment which makes no sense.
+
+            LexTokenError ( &colontoken,
+                "Expected a colon (indicating a declaration).", 0, 0, 0 )
+        END
 
         PrsVariableDeclaration (
             &token, // token
