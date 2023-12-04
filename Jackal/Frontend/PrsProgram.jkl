@@ -4,6 +4,111 @@
 
 #INCLUDE "<inc>/Parser.hjk"
 
+PUBLIC PrsGlobalListHead : ^LexSymbol = NULLPTR
+PUBLIC PrsGlobalListTail : ^LexSymbol = NULLPTR
+
+CONST VAR_FLAG_EXTERN := 1
+CONST VAR_FLAG_PUBLIC := 2
+CONST VAR_FLAG_EXPORT := 4
+
+FN PrsVariableDeclaration (
+    IN token : ^LexToken,
+    IN flags : ULONG,
+    IN global : UBYTE,
+)
+
+    // Parse a variable declaration of one of the following forms:
+    //
+    //  name : type = initial
+    //  name : = initial
+    //  name : type
+    //
+    // Non-extern declarations may override extern declarations.
+    // Extern declarations must not have an initial value, just a name and type.
+    // The passed in token contains the relevant symbol already.
+    // For local declarations, we should generate an AST assignment node.
+    // For globals, we should just associate the initial value with the symbol,
+    // and add the symbol to a list of globals for the whole program. The
+    // initial value AST node is interpreted in the next phase of the compiler.
+
+    symbol := CAST token^.Payload TO ^LexSymbol
+
+    IF token^.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        // This symbol has already appeared, so we want to find out if this is
+        // a valid override.
+
+        IF symbol^.Type != SYM_VAR THEN
+            // This symbol isn't even a variable.
+
+            LexTokenError ( token, "Symbol name already in use.", 0, 0, 0 )
+        END
+
+        IF NOT (symbol^.Flags & VAR_FLAG_EXTERN) THEN
+            // Can only override externs.
+
+            LexTokenError ( token, "Variable already declared.", 0, 0, 0 )
+        END
+    ELSE
+        // Initialize the symbol.
+
+        symbol^.Type = SYM_VAR
+
+        IF global THEN
+            // Add it to the list of globals, at the tail.
+
+            tail := PrsGlobalListTail
+
+            symbol^.Next = NULLPTR
+            symbol^.Prev = tail
+
+            IF tail THEN
+                tail^.Next = symbol
+            END
+
+            PrsGlobalListTail = symbol
+        END
+    END
+
+    symbol^.Flags = flags
+
+    // 
+END
+
+FN PrsDeclaration () : UBYTE
+
+    // Parse the next global declaration. Return FALSE on EOF.
+
+    token : LexToken
+
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_EOF THEN
+        RETURN FALSE
+    END
+
+    IF token.Type != TOKEN_IDENTIFIER AND token.Type != TOKEN_DECL THEN
+        LexTokenError ( &token,
+            "Expected identifier or declarative keyword", 0, 0, 0 )
+    END
+
+    IF token.Type == TOKEN_IDENTIFIER THEN
+        // This is a non-public, non-extern variable declaration.
+        // It may be overriding an extern declaration.
+
+        PrsVariableDeclaration (
+            &token, // token
+            0, // flags
+            TRUE, // global
+        )
+
+        RETURN TRUE
+    END
+
+    // This is a declarative keyword of some variety.
+
+    RETURN TRUE
+END
+
 FN PrsProgram ()
 
     // Parse a program. This consists of a sequence of global declarations. We
@@ -11,53 +116,7 @@ FN PrsProgram ()
     // phases can use them appropriately, linked via the symbol table entry
     // given to us by the lexer.
 
-    // Test some stuff (TEMPORARY)
-
-    //TlSummarizeHashTable ( &LexKeywordHashTable )
-
-    len : ULONG
-
-    tok : LexToken
-
-    LexGetToken (
-        &tok, // token
-    )
-
-    WHILE tok.Type != TOKEN_EOF DO
-        //TlPrintNumber ( tok.Type )
-        //TlPrintString ( "\n" )
-
-        IF tok.Type == TOKEN_STRING THEN
-            str := CAST tok.Payload TO ^LexInternedString
-
-            //TlPrintString ( str^.DynamicBuffer.Buffer )
-            //TlPrintString ( "\n" )
-        END
-
-        IF tok.Type == TOKEN_NUMBER THEN
-            //TlPrintString ( "num: " )
-            //TlPrintNumber ( tok.Payload )
-            //TlPrintString ( "\n" )
-        END
-
-        LexGetToken (
-            &tok, // token
-        )
-    END
-
-    TlPrintNumber ( TlBumpHits )
-    TlPrintString ( "\n" )
-    TlPrintNumber ( TlHeapHits )
-    TlPrintString ( "\n" )
-    TlPrintNumber ( TlBumpBytesUsed )
-    TlPrintString ( "\n" )
-
-    asmblock := LexAsmBlockListHead
-
-    WHILE asmblock DO
-        TlPrintString ( asmblock^.Contents.Buffer )
-        TlPrintString ( "\n" )
-
-        asmblock = asmblock^.Next
+    WHILE PrsDeclaration () DO
+        // Keep going...
     END
 END

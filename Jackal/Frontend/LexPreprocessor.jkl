@@ -5,21 +5,21 @@
 
 #INCLUDE "<inc>/Lexer.hjk"
 
+PUBLIC LexRootMacroScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexMacroDepth : ULONG = 0
+PUBLIC LexAsmBlockListHead : ^LexAsmBlock = NULLPTR
+PUBLIC LexAsmBlockListTail : ^LexAsmBlock = NULLPTR
+
 LexDirectiveHashTable : TlHashTable
 LexOperatorHashTable : TlHashTable
 LexIfStack : TlDynamicBuffer
-LexRootMacroScope : ^TlSymbolTable = NULLPTR
-LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
-LexMacroDepth : ULONG = 0
 
 LexMacroZone : TlZone
 
 // More than this deep in macros and we assume you messed up.
 
 CONST LEX_MACRO_DEPTH_MAX := 64
-
-LexAsmBlockListHead : ^LexAsmBlock = NULLPTR
-LexAsmBlockListTail : ^LexAsmBlock = NULLPTR
 
 FNPTR LexDirectiveParseF ()
 

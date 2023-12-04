@@ -6,7 +6,7 @@
 
 #INCLUDE "<inc>/Lexer.hjk"
 
-LexCharTreatment : LexCharBehavior[256] = {
+PUBLIC LexCharTreatment : LexCharBehavior[256] = {
     [0] = CHAR_EOF,
 
     [' ']  = CHAR_WHITESPACE,
@@ -48,15 +48,14 @@ LexCharTreatment : LexCharBehavior[256] = {
 
 CONST LEX_TOKEN_STRING_SIZE := 128
 
+PUBLIC LexCurrentStream : ^LexStream = NULLPTR
+PUBLIC LexRootScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexCurrentScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexFalseCount : ULONG = 0
+
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
-LexCurrentStream : ^LexStream = NULLPTR
-LexFalseCount : ULONG = 0
 LexPutbackStackPtr : ULONG = 0
 
-LexRootScope : ^TlSymbolTable = NULLPTR
-LexCurrentScope : ^TlSymbolTable = NULLPTR
-
-LexSymbolZone : TlZone
 LexInternedStringZone : TlZone
 LexInternedStringHashTable : TlHashTable
 
@@ -101,12 +100,13 @@ FN (TlHashTableEnumeratorF) LexDeleteSymbol (
     IN entry : ^TlHashTableEntry,
 )
 
-    // TODO: free whatever context symbols have
+    // We can't free symbols because these structures are referenced throughout
+    // the phases of the compiler long after the front-end finishes.
 
-    TlFreeToZone (
-        &LexSymbolZone, // zone
-        entry, // block
-    )
+    // TlFreeToZone (
+    //     &LexSymbolZone, // zone
+    //     entry, // block
+    // )
 END
 
 FN LexCreateSymbolTable (
@@ -153,13 +153,6 @@ FN LexInitialize ()
     LexRootScope = LexCreateSymbolTable ( NULLPTR )
 
     LexCurrentScope = LexRootScope
-
-    // Initialize the symbol zone.
-
-    TlInitializeZone (
-        &LexSymbolZone, // zone
-        SIZEOF LexSymbol, // blocksize
-    )
 
     // Initialize the interned string zone.
 
@@ -221,6 +214,8 @@ FN LexInitialize ()
     LexInsertKeyword ( "UNION", TOKEN_DECL, TOKEN_UNION )
     LexInsertKeyword ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
     LexInsertKeyword ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
+    LexInsertKeyword ( "EXPORT", TOKEN_DECL, TOKEN_EXPORT )
+    LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE )
 
     LexInsertKeyword ( "(", TOKEN_LPAREN, 0 )
     LexInsertKeyword ( ")", TOKEN_RPAREN, 0 )
@@ -772,23 +767,18 @@ FN LexNextToken (
     ) TO ^LexSymbol
 
     IF NOT symbol THEN
-        // Create new symbol. We allocate the symbol from a zone, but allocate
-        // the name string from the bump allocator.
-
-        symbol = CAST TlAllocateFromZone ( &LexSymbolZone ) TO ^LexSymbol
-
-        symbolname : ^UBYTE
+        // Create new symbol from bump allocator.
 
         status := TlBumpAlloc (
-            length + 1, // bytes
-            &symbolname, // OUT ptr
+            SIZEOF LexSymbol + length + 1, // bytes
+            &symbol, // OUT ptr
         )
 
         IF status THEN
-            TlInternalError ( "Couldn't allocate symbol name", 0, 0, 0 )
+            TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
         END
 
-        symbol^.Name = symbolname
+        symbol^.Name = symbol + SIZEOF LexSymbol
 
         TlCopyMemory (
             symbol^.Name, // dest

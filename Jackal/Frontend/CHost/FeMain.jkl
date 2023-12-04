@@ -19,6 +19,13 @@ FN main (
 
     JklCompileProgram ( argc, argv )
 
+    TlPrintNumber ( TlBumpHits )
+    TlPrintString ( "\n" )
+    TlPrintNumber ( TlHeapHits )
+    TlPrintString ( "\n" )
+    TlPrintNumber ( TlBumpBytesUsed )
+    TlPrintString ( "\n" )
+
     // Return success.
 
     RETURN 0

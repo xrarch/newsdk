@@ -81,6 +81,8 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_UNION,       // declarator
     TOKEN_VOID,        // type
     TOKEN_WHILE,       // statement
+    TOKEN_EXPORT,      // declarator
+    TOKEN_PRIVATE,     // declarator
 
     TOKEN_EQUIV,       // operator
     TOKEN_NOTEQUIV,    // operator
@@ -178,9 +180,19 @@ STRUCT LexStream
     LastMacroScope : ^TlSymbolTable,
 END
 
+ENUM LexSymbolType : UBYTE
+    SYM_VAR,
+END
+
 STRUCT LexSymbol
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : ^UBYTE,
+
+    Next : ^LexSymbol,
+    Prev : ^LexSymbol,
+
+    Type : LexSymbolType,
+    Flags : ULONG,
 END
 
 STRUCT LexMacro
@@ -219,9 +231,6 @@ EXTERN LexCurrentMacroScope : ^TlSymbolTable
 EXTERN LexRootScope : ^TlSymbolTable
 EXTERN LexCurrentScope : ^TlSymbolTable
 EXTERN LexFalseCount : ULONG
-
-EXTERN LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
-EXTERN LexPutbackStackPtr : ULONG
 
 EXTERN LexMacroDepth : ULONG
 

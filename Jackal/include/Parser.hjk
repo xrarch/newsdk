@@ -1,3 +1,10 @@
 #INCLUDE "<inc>/Lexer.hjk"
 
 EXTERN FN PrsProgram ()
+
+STRUCT AstNode
+    // TBD
+
+    FillerTbd : UBYTE,
+END
+

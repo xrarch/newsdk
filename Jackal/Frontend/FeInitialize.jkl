@@ -4,14 +4,14 @@
 
 #INCLUDE "<inc>/Parser.hjk"
 
-FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
-FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
-FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
-FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
-FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
 
-FeInputFileHandle : ^VOID
-FeOutputFileHandle : ^VOID
+PUBLIC FeInputFileHandle : ^VOID
+PUBLIC FeOutputFileHandle : ^VOID
 
 FeFileBlockHashTable : TlHashTable
 
