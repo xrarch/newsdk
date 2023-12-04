@@ -11,5 +11,53 @@ FN PrsProgram ()
     // phases can use them appropriately, linked via the symbol table entry
     // given to us by the lexer.
 
+    // Test some stuff (TEMPORARY)
 
+    //TlSummarizeHashTable ( &LexKeywordHashTable )
+
+    len : ULONG
+
+    tok : LexToken
+
+    LexGetToken (
+        &tok, // token
+    )
+
+    WHILE tok.Type != TOKEN_EOF DO
+        //TlPrintNumber ( tok.Type )
+        //TlPrintString ( "\n" )
+
+        IF tok.Type == TOKEN_STRING THEN
+            str := CAST tok.Payload TO ^LexInternedString
+
+            //TlPrintString ( str^.DynamicBuffer.Buffer )
+            //TlPrintString ( "\n" )
+        END
+
+        IF tok.Type == TOKEN_NUMBER THEN
+            //TlPrintString ( "num: " )
+            //TlPrintNumber ( tok.Payload )
+            //TlPrintString ( "\n" )
+        END
+
+        LexGetToken (
+            &tok, // token
+        )
+    END
+
+    TlPrintNumber ( TlBumpHits )
+    TlPrintString ( "\n" )
+    TlPrintNumber ( TlHeapHits )
+    TlPrintString ( "\n" )
+    TlPrintNumber ( TlBumpBytesUsed )
+    TlPrintString ( "\n" )
+
+    asmblock := LexAsmBlockListHead
+
+    WHILE asmblock DO
+        TlPrintString ( asmblock^.Contents.Buffer )
+        TlPrintString ( "\n" )
+
+        asmblock = asmblock^.Next
+    END
 END
