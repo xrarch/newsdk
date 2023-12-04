@@ -2,7 +2,7 @@
 
 EXTERN FN PrsProgram ()
 
-STRUCT AstNode
+STRUCT PrsAstNode
     // TBD
 
     FillerTbd : UBYTE,

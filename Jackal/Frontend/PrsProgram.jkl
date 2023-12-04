@@ -15,7 +15,7 @@ FN PrsVariableDeclaration (
     IN token : ^LexToken,
     IN flags : ULONG,
     IN global : UBYTE,
-)
+) : ^PrsAstNode
 
     // Parse a variable declaration of one of the following forms:
     //
@@ -63,6 +63,8 @@ FN PrsVariableDeclaration (
 
             IF tail THEN
                 tail^.Next = symbol
+            ELSE
+                PrsGlobalListHead = symbol
             END
 
             PrsGlobalListTail = symbol
@@ -71,7 +73,12 @@ FN PrsVariableDeclaration (
 
     symbol^.Flags = flags
 
-    // 
+    // ...
+
+    IF NOT global THEN
+        // Create an AST node for the assignment of the initial value.
+
+    END
 END
 
 FN PrsDeclaration () : UBYTE
