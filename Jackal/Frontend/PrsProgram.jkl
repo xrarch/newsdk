@@ -15,7 +15,7 @@ FN PrsVariableDeclaration (
     IN token : ^LexToken,
     IN flags : ULONG,
     IN global : UBYTE,
-) : ^PrsAstNode
+)
 
     // Parse a variable declaration of one of the following forms:
     //
@@ -77,6 +77,9 @@ FN PrsVariableDeclaration (
 
     IF NOT global THEN
         // Create an AST node for the assignment of the initial value.
+        // We can place it directly in the statement list for the current block
+        // because the existence of a block is implied by the fact this is a
+        // local declaration.
 
     END
 END
