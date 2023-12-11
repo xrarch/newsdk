@@ -11,6 +11,26 @@ CONST VAR_FLAG_EXTERN := 1
 CONST VAR_FLAG_PUBLIC := 2
 CONST VAR_FLAG_EXPORT := 4
 
+FN PrsCreateAstNode (
+    IN type : PrsAstType
+) : ^PrsAstNode
+
+    node : ^PrsAstNode
+
+    status := TlBumpAlloc (
+        SIZEOF PrsAstNode, // bytes
+        &node, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create AST node", 0, 0, 0 )
+    END
+
+    node^.Type = type
+
+    RETURN node
+END
+
 FN PrsVariableDeclaration (
     IN token : ^LexToken,
     IN flags : ULONG,
@@ -49,6 +69,13 @@ FN PrsVariableDeclaration (
             // Can only override externs.
 
             LexTokenError ( token, "Variable already declared.", 0, 0, 0 )
+        END
+
+        IF NOT global THEN
+            // Can't override externs from local scope.
+
+            LexTokenError ( token,
+                "Can't override extern from local scope.", 0, 0, 0 )
         END
     ELSE
         // Initialize the symbol.
