@@ -2,9 +2,11 @@
 
 EXTERN FN PrsProgram ()
 
-STRUCT PrsAstNode
-    // TBD
+ENUM PrsAstType : UBYTE
+    AST_PLACEHOLDER,
+END
 
-    FillerTbd : UBYTE,
+STRUCT PrsAstNode
+    Type : PrsAstType,
 END
 
