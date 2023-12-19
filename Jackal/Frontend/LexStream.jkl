@@ -21,6 +21,8 @@ END
 
 FN LexAllocateStream () : ^LexStream
 
+    // Allocate a stream object from the stream zone.
+
     RETURN CAST TlAllocateFromZone ( &LexStreamZone ) TO ^LexStream
 END
 
