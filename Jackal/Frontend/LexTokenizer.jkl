@@ -842,7 +842,16 @@ FN LexCrunchNumber (
             i = 2
 
             WHILE buffer[i] DO
+                lastnum := num
+
                 num *= 16
+
+                // Check for overflow.
+
+                IF num < lastnum THEN
+                    LexTokenError ( token,
+                        "Number does not fit in machine word.", 0, 0, 0 )
+                END
 
                 IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
                     num += buffer[i] - '0'
@@ -855,6 +864,13 @@ FN LexCrunchNumber (
 
                 ELSE
                     LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
+                END
+
+                // Check for overflow.
+
+                IF num < lastnum THEN
+                    LexTokenError ( token,
+                        "Number does not fit in machine word.", 0, 0, 0 )
                 END
 
                 i += 1
@@ -872,8 +888,25 @@ FN LexCrunchNumber (
                 LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
             END
 
+            lastnum := num
+
             num *= 8
+
+            // Check for overflow.
+
+            IF num < lastnum THEN
+                LexTokenError ( token,
+                    "Number does not fit in machine word.", 0, 0, 0 )
+            END
+
             num += buffer[i] - '0'
+
+            // Check for overflow.
+
+            IF num < lastnum THEN
+                LexTokenError ( token,
+                    "Number does not fit in machine word.", 0, 0, 0 )
+            END
 
             i += 1
         END
@@ -888,8 +921,25 @@ FN LexCrunchNumber (
             LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
         END
 
+        lastnum := num
+
         num *= 10
+
+        // Check for overflow.
+
+        IF num < lastnum THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
         num += buffer[i] - '0'
+
+        // Check for overflow.
+
+        IF num < lastnum THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
 
         i += 1
     END
