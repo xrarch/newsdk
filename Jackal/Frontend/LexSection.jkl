@@ -1,6 +1,6 @@
 //
 // Implements section management for the lexer. Sections correspond to actual
-// sections in the final program module.
+// sections in the final program object.
 //
 
 #INCLUDE "<inc>/Lexer.hjk"
