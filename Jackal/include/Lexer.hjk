@@ -52,7 +52,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_FALSE,       // value
     TOKEN_FN,          // declarator
     TOKEN_FNPTR,       // declarator
-    TOKEN_FNSECTION,   // statement
     TOKEN_GOTO,        // statement
     TOKEN_IF,          // statement
     TOKEN_IN,          // argspec
@@ -67,7 +66,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_PACKED,      // other
     TOKEN_PUBLIC,      // declarator
     TOKEN_RETURN,      // statement
-    TOKEN_SECTION,     // declarator
     TOKEN_SIZEOF,      // value
     TOKEN_SIZEOFVALUE, // operator
     TOKEN_STRUCT,      // declarator
@@ -188,6 +186,8 @@ STRUCT LexSymbol
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : ^UBYTE,
 
+    Section : ^LexSection,
+
     Next : ^LexSymbol,
     Prev : ^LexSymbol,
 
@@ -224,6 +224,35 @@ STRUCT LexAsmBlock
     Contents : TlDynamicBuffer,
 END
 
+STRUCT LexSectionStackElement
+    Prev : ^LexSectionStackElement,
+    Section : ^LexSection,
+END
+
+STRUCT LexSection
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Name : UBYTE[LEX_DIRECTIVE_MAX],
+
+    InternedStringHashTable : TlHashTable,
+
+    // Include a context word for the code generator.
+
+    CodeGenContext : ^VOID,
+END
+
+EXTERN FN LexLookupSection (
+    IN name : ^UBYTE,
+) : ^LexSection
+
+EXTERN FN LexPushSection (
+    IN section : ^LexSection,
+)
+
+EXTERN FN LexPopSection () : UBYTE
+
+EXTERN LexNextSymbolSection : ^LexSection
+EXTERN LexCurrentSection : ^LexSection
+
 EXTERN LexCharTreatment : LexCharBehavior[256]
 
 EXTERN LexCurrentStream : ^LexStream
@@ -242,7 +271,9 @@ EXTERN FN LexCreateSymbolTable (
     IN outerscope : ^TlSymbolTable,
 ) : ^TlSymbolTable
 
-EXTERN FN LexPreprocessorInit ()
+EXTERN FN LexInitializeSectionStuff ()
+
+EXTERN FN LexInitializePreprocessor ()
 
 EXTERN FN LexDefineMacroFromArgumentString (
     IN arg : ^UBYTE,

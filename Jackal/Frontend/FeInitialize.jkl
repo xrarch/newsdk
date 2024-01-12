@@ -26,7 +26,7 @@ FN FeInitialize (
 
     // Initialize the preprocessor.
 
-    LexPreprocessorInit ()
+    LexInitializePreprocessor ()
 
     // Parse the arguments.
 
@@ -51,6 +51,8 @@ FN FeInitialize (
     IF status THEN
         TlUserError ( "Failed to open destination file.", 0, 0, 0 )
     END
+
+    // Initialize the lexer.
 
     LexInitialize ()
 END

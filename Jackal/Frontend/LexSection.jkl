@@ -1,0 +1,148 @@
+//
+// Implements section management for the lexer. Sections correspond to actual
+// sections in the final program module.
+//
+
+#INCLUDE "<inc>/Lexer.hjk"
+
+PUBLIC LexNextSymbolSection : ^LexSection = NULLPTR
+PUBLIC LexCurrentSection : ^LexSection = NULLPTR
+
+LexSectionStackElementZone : TlZone
+LexSectionHashTable : TlHashTable
+LexSectionStackTop : ^LexSectionStackElement
+
+LexDefaultSection : LexSection
+
+FN LexInitializeSection (
+    IN section : ^LexSection,
+    IN name : ^UBYTE,
+)
+
+    // Initialize a section.
+
+    // Copy the name into the section.
+
+    TlCopyString (
+        &section^.Name[0], // dest
+        name, // src
+        LEX_DIRECTIVE_MAX, // bufsize
+    )
+
+    // Manually set the key on the hash table entry, because the one we passed
+    // in isn't permanent. If we left it like that, it'd try to use random
+    // memory as the key for comparison later, which is bad.
+
+    section^.Entry.Key = &section^.Name[0]
+
+    // Initialize the interned string hash table.
+
+    TlInitializeHashTable (
+        &section^.InternedStringHashTable, // hashtable
+    )
+END
+
+FN LexInitializeSectionStuff ()
+
+    // Initialize the section package.
+
+    // Initialize the stack element zone.
+
+    TlInitializeZone (
+        &LexSectionStackElementZone, // zone
+        SIZEOF LexSectionStackElement, // blocksize
+    )
+
+    // Initialize the section hash table.
+
+    TlInitializeHashTable (
+        &LexSectionHashTable, // hashtable
+    )
+
+    // Initialize the default section.
+
+    LexInitializeSection (
+        &LexDefaultSection, // section
+        "DEFAULT_SECTION", // name
+    )
+
+    LexCurrentSection = &LexDefaultSection
+END
+
+FN LexLookupSection (
+    IN name : ^UBYTE,
+) : ^LexSection
+
+    // Look up a section by name.
+
+    IF name[0] == 0 THEN
+        // The name string is empty, so return the default section.
+
+        RETURN &LexDefaultSection
+    END
+
+    created : UBYTE
+
+    section := CAST TlLookupOrAllocateEntryHashTable (
+        &LexSectionHashTable, // hashtable
+        SIZEOF LexSection, // entrysize
+        name, // key
+        &created, // OUT created
+    ) TO ^LexSection
+
+    IF NOT created THEN
+        // We found the section already, so return it.
+
+        RETURN section
+    END
+
+    // Initialize the section.
+
+    LexInitializeSection (
+        section, // section
+        name, // name
+    )
+END
+
+FN LexPushSection (
+    IN section : ^LexSection,
+)
+
+    // Push the section to the top of the section stack.
+
+    // Allocate a section stack element.
+
+    elem := CAST TlAllocateFromZone (
+        &LexSectionStackElementZone, // zone
+    ) TO ^LexSectionStackElement
+
+    elem^.Prev = LexSectionStackTop
+    elem^.Section = LexCurrentSection
+
+    // Push the section stack.
+
+    LexSectionStackTop = elem
+    LexCurrentSection = section
+END
+
+FN LexPopSection () : UBYTE
+
+    // Pop a section from the section stack. Returns TRUE if popped, FALSE
+    // otherwise.
+
+    elem := LexSectionStackTop
+
+    IF NOT elem THEN
+        RETURN FALSE
+    END
+
+    LexSectionStackTop = elem^.Prev
+    LexCurrentSection = elem^.Section
+
+    TlFreeToZone (
+        &LexSectionStackElementZone, // zone
+        elem, // block
+    )
+
+    RETURN TRUE
+END

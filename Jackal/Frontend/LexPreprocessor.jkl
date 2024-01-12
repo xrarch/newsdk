@@ -17,6 +17,8 @@ LexIfStack : TlDynamicBuffer
 
 LexMacroZone : TlZone
 
+LexDirectiveToken : LexToken
+
 // More than this deep in macros and we assume you messed up.
 
 CONST LEX_MACRO_DEPTH_MAX := 64
@@ -110,60 +112,6 @@ FN LexCreateMacroTable (
     )
 END
 
-FN LexPreprocessorInit ()
-
-    TlInitializeHashTable ( &LexDirectiveHashTable )
-    TlInitializeDynamicBuffer ( &LexIfStack )
-
-    // Create the root macro scope.
-
-    LexRootMacroScope = LexCreateMacroTable ( NULLPTR )
-
-    LexCurrentMacroScope = LexRootMacroScope
-
-    // Initialize the macro zone.
-
-    TlInitializeZone (
-        &LexMacroZone, // zone
-        SIZEOF LexMacro, // blocksize
-    )
-
-    // Insert the directives and operators into their hash tables.
-
-    LexInsertDirective ( "INCLUDE", &LexParseInclude )
-    LexInsertDirective ( "DEFINE", &LexParseDefine )
-    LexInsertDirective ( "MACRO", &LexParseMacro )
-    LexInsertDirective ( "IF", &LexParseIf )
-    LexInsertDirective ( "ELSE", &LexParseElse )
-    LexInsertDirective ( "ELSEIF", &LexParseElseif )
-    LexInsertDirective ( "END", &LexParseEnd )
-    LexInsertDirective ( "UNDEFINE", &LexParseUndefine )
-    LexInsertDirective ( "ERROR", &LexParseError )
-    LexInsertDirective ( "PRINT", &LexParsePrint )
-    LexInsertDirective ( "ASM", &LexParseAsm )
-
-    LexInsertOperator ( "==", &LexOperatorEquals )
-    LexInsertOperator ( "<=", &LexOperatorLteq )
-    LexInsertOperator ( ">=", &LexOperatorGteq )
-    LexInsertOperator ( "!=", &LexOperatorNeq )
-    LexInsertOperator ( "+", &LexOperatorAdd )
-    LexInsertOperator ( "-", &LexOperatorSub )
-    LexInsertOperator ( "*", &LexOperatorMul )
-    LexInsertOperator ( "/", &LexOperatorDiv )
-    LexInsertOperator ( "<<", &LexOperatorLsh )
-    LexInsertOperator ( ">>", &LexOperatorRsh )
-    LexInsertOperator ( "STRCAT", &LexOperatorStrcat )
-    LexInsertOperator ( "STRCMP", &LexOperatorStrcmp )
-    LexInsertOperator ( "NOT", &LexOperatorNot )
-    LexInsertOperator ( "OR", &LexOperatorOr )
-    LexInsertOperator ( "AND", &LexOperatorAnd )
-    LexInsertOperator ( "DEFINED", &LexOperatorDefined )
-    LexInsertOperator ( "~", &LexOperatorBitNot )
-    LexInsertOperator ( "|", &LexOperatorBitOr )
-    LexInsertOperator ( "$", &LexOperatorBitXor )
-    LexInsertOperator ( "&", &LexOperatorBitAnd )
-END
-
 FN LexParseDirective ()
 
     // The lexer found a preprocessor directive and called us to handle it.
@@ -174,11 +122,10 @@ FN LexParseDirective ()
 
     // Declare a token stub for error reporting purposes.
 
-    token : LexToken
     buffer : UBYTE[LEX_DIRECTIVE_MAX]
 
     LexCollectDirectiveToken (
-        &token, // token
+        &LexDirectiveToken, // token
         &buffer[0], // buffer
     )
 
@@ -188,7 +135,7 @@ FN LexParseDirective ()
     ) TO ^LexDirective
 
     IF NOT directive THEN
-        LexTokenError ( &token, "Unknown directive", 0, 0, 0 )
+        LexTokenError ( &LexDirectiveToken, "Unknown directive", 0, 0, 0 )
     END
 
     directive^.ParseRoutine ()
@@ -1665,6 +1612,99 @@ FN (LexDirectiveParseF) LexParseAsm ()
     LexAsmBlockListTail = asmblock
 END
 
+FN (LexDirectiveParseF) LexParseSection ()
+
+    // Parse the section directive. Causes the next symbol to be declared to be
+    // placed in the specified section.
+
+    str : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &str )
+
+    LexCollectString (
+        &token, // token
+        &str, // buffer
+    )
+
+    IF LexFalseCount THEN
+        // We're in a region that is being conditionally compiled out, so
+        // do nothing except collect that string from the source stream.
+
+        TlUninitializeDynamicBuffer ( &str )
+
+        LEAVE
+    END
+
+    // Validate that the name isn't too long.
+
+    IF str.Count >= LEX_DIRECTIVE_MAX - 1 THEN
+        LexTokenError ( &token, "Section name too long", 0, 0, 0 )
+    END
+
+    section := LexLookupSection (
+        &str.Buffer[0], // name
+    )
+
+    TlUninitializeDynamicBuffer ( &str )
+
+    // Set the next symbol section.
+
+    LexNextSymbolSection = section
+END
+
+FN (LexDirectiveParseF) LexParseEnterSection ()
+
+    // Parse the enter section directive. Causes subsequent symbols to be placed
+    // in the specified section until the next leave section directive.
+
+    str : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &str )
+
+    LexCollectString (
+        &token, // token
+        &str, // buffer
+    )
+
+    IF LexFalseCount THEN
+        // We're in a region that is being conditionally compiled out, so
+        // do nothing except collect that string from the source stream.
+
+        TlUninitializeDynamicBuffer ( &str )
+
+        LEAVE
+    END
+
+    // Validate that the name isn't too long.
+
+    IF str.Count >= LEX_DIRECTIVE_MAX - 1 THEN
+        LexTokenError ( &token, "Section name too long", 0, 0, 0 )
+    END
+
+    section := LexLookupSection (
+        &str.Buffer[0], // name
+    )
+
+    TlUninitializeDynamicBuffer ( &str )
+
+    // Push the section.
+
+    LexPushSection ( section )
+END
+
+FN (LexDirectiveParseF) LexParseLeaveSection ()
+
+    // Parse the leave section directive. Pops the section stack.
+
+    popped := LexPopSection ()
+
+    IF NOT popped THEN
+        LexTokenError ( &LexDirectiveToken, "Section stack was empty", 0, 0, 0 )
+    END
+END
+
 //
 // Parsing for all of the preprocessor operators follows...
 //
@@ -2403,4 +2443,61 @@ FN (LexOperatorParseF) LexOperatorBitAnd (
         buffer, // array
         0, // byte
     )
+END
+
+FN LexInitializePreprocessor ()
+
+    TlInitializeHashTable ( &LexDirectiveHashTable )
+    TlInitializeDynamicBuffer ( &LexIfStack )
+
+    // Create the root macro scope.
+
+    LexRootMacroScope = LexCreateMacroTable ( NULLPTR )
+
+    LexCurrentMacroScope = LexRootMacroScope
+
+    // Initialize the macro zone.
+
+    TlInitializeZone (
+        &LexMacroZone, // zone
+        SIZEOF LexMacro, // blocksize
+    )
+
+    // Insert the directives and operators into their hash tables.
+
+    LexInsertDirective ( "INCLUDE", &LexParseInclude )
+    LexInsertDirective ( "DEFINE", &LexParseDefine )
+    LexInsertDirective ( "MACRO", &LexParseMacro )
+    LexInsertDirective ( "IF", &LexParseIf )
+    LexInsertDirective ( "ELSE", &LexParseElse )
+    LexInsertDirective ( "ELSEIF", &LexParseElseif )
+    LexInsertDirective ( "END", &LexParseEnd )
+    LexInsertDirective ( "UNDEFINE", &LexParseUndefine )
+    LexInsertDirective ( "ERROR", &LexParseError )
+    LexInsertDirective ( "PRINT", &LexParsePrint )
+    LexInsertDirective ( "ASM", &LexParseAsm )
+    LexInsertDirective ( "SECTION", &LexParseSection )
+    LexInsertDirective ( "ENTERSECTION", &LexParseEnterSection )
+    LexInsertDirective ( "LEAVESECTION", &LexParseLeaveSection )
+
+    LexInsertOperator ( "==", &LexOperatorEquals )
+    LexInsertOperator ( "<=", &LexOperatorLteq )
+    LexInsertOperator ( ">=", &LexOperatorGteq )
+    LexInsertOperator ( "!=", &LexOperatorNeq )
+    LexInsertOperator ( "+", &LexOperatorAdd )
+    LexInsertOperator ( "-", &LexOperatorSub )
+    LexInsertOperator ( "*", &LexOperatorMul )
+    LexInsertOperator ( "/", &LexOperatorDiv )
+    LexInsertOperator ( "<<", &LexOperatorLsh )
+    LexInsertOperator ( ">>", &LexOperatorRsh )
+    LexInsertOperator ( "STRCAT", &LexOperatorStrcat )
+    LexInsertOperator ( "STRCMP", &LexOperatorStrcmp )
+    LexInsertOperator ( "NOT", &LexOperatorNot )
+    LexInsertOperator ( "OR", &LexOperatorOr )
+    LexInsertOperator ( "AND", &LexOperatorAnd )
+    LexInsertOperator ( "DEFINED", &LexOperatorDefined )
+    LexInsertOperator ( "~", &LexOperatorBitNot )
+    LexInsertOperator ( "|", &LexOperatorBitOr )
+    LexInsertOperator ( "$", &LexOperatorBitXor )
+    LexInsertOperator ( "&", &LexOperatorBitAnd )
 END

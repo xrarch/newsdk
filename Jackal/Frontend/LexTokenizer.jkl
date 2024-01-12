@@ -57,7 +57,6 @@ LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 LexPutbackStackPtr : ULONG = 0
 
 LexInternedStringZone : TlZone
-LexInternedStringHashTable : TlHashTable
 
 STRUCT LexKeyword
     Entry : TlHashTableEntry, // MUST be at the beginning
@@ -135,6 +134,10 @@ FN LexInitialize ()
         &FeInputFile[0], // filepath
     )
 
+    // Initialize the section package.
+
+    LexInitializeSectionStuff ()
+
     // Initialize the stream zone.
 
     LexInitializeStreamZone ()
@@ -161,10 +164,6 @@ FN LexInitialize ()
         SIZEOF LexInternedString, // blocksize
     )
 
-    // Initialize interned string hash table.
-
-    TlInitializeHashTable ( &LexInternedStringHashTable )
-
     // Initialize keyword hash table.
 
     TlInitializeHashTable ( &LexKeywordHashTable )
@@ -185,7 +184,6 @@ FN LexInitialize ()
     LexInsertKeyword ( "FALSE", TOKEN_VALUE, TOKEN_FALSE )
     LexInsertKeyword ( "FN", TOKEN_DECL, TOKEN_FN )
     LexInsertKeyword ( "FNPTR", TOKEN_DECL, TOKEN_FNPTR )
-    LexInsertKeyword ( "FNSECTION", TOKEN_STATEMENT, TOKEN_FNSECTION )
     LexInsertKeyword ( "GOTO", TOKEN_STATEMENT, TOKEN_GOTO )
     LexInsertKeyword ( "IF", TOKEN_STATEMENT, TOKEN_IF )
     LexInsertKeyword ( "IN", TOKEN_ARGSPEC, TOKEN_IN )
@@ -200,7 +198,6 @@ FN LexInitialize ()
     LexInsertKeyword ( "PACKED", TOKEN_OTHER, TOKEN_PACKED )
     LexInsertKeyword ( "PUBLIC", TOKEN_DECL, TOKEN_PUBLIC )
     LexInsertKeyword ( "RETURN", TOKEN_STATEMENT, TOKEN_RETURN )
-    LexInsertKeyword ( "SECTION", TOKEN_DECL, TOKEN_SECTION )
     LexInsertKeyword ( "SIZEOF", TOKEN_VALUE, TOKEN_SIZEOF )
     LexInsertKeyword ( "SIZEOFVALUE", TOKEN_OPER, TOKEN_SIZEOFVALUE )
     LexInsertKeyword ( "STRUCT", TOKEN_DECL, TOKEN_STRUCT )
@@ -456,7 +453,7 @@ FN LexGetTokenContents (
         // Lookup or insert the string in the interned string hash table.
 
         str := CAST TlLookupOrInsertHashTable (
-            &LexInternedStringHashTable, // hashtable
+            &LexCurrentSection^.InternedStringHashTable, // hashtable
             CAST internedstring^ TO ^TlHashTableEntry, // entry
             dynamicbuffer^.Buffer, // key
         ) TO ^LexInternedString
@@ -776,6 +773,16 @@ FN LexNextToken (
 
         IF status THEN
             TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
+        END
+
+        IF LexNextSymbolSection THEN
+            // There was a single symbol section override.
+
+            symbol^.Section = LexNextSymbolSection
+
+            LexNextSymbolSection = NULLPTR
+        ELSE
+            symbol^.Section = LexCurrentSection
         END
 
         symbol^.Name = symbol + SIZEOF LexSymbol
