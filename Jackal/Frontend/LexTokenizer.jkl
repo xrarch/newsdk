@@ -776,7 +776,7 @@ FN LexNextToken (
         END
 
         IF LexNextSymbolSection THEN
-            // There was a single symbol section override via SECTION directive.
+            // There was a single-symbol section override via SECTION directive.
 
             symbol^.Section = LexNextSymbolSection
             LexNextSymbolSection = NULLPTR
