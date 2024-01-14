@@ -102,7 +102,7 @@ FN LexLookupSection (
     ) TO ^LexSection
 
     IF NOT created THEN
-        // We found the section already, so return it.
+        // We created the section already, so return it.
 
         RETURN section
     END
@@ -113,6 +113,8 @@ FN LexLookupSection (
         section, // section
         name, // name
     )
+
+    RETURN section
 END
 
 FN LexPushSection (

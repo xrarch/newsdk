@@ -376,18 +376,6 @@ FN PrsFoundSymbol (
             LexTokenError ( token,
                 "Can't override extern from local scope.", 0, 0, 0 )
         END
-
-        // Since we're overriding the symbol, we should see if there's a pending
-        // section override from the lexer, and do it now if so.
-
-        IF LexNextSymbolSection THEN
-            // There was a single-symbol section override via SECTION directive.
-
-            symbol^.Section = LexNextSymbolSection
-            LexNextSymbolSection = NULLPTR
-        ELSE
-            symbol^.Section = LexCurrentSection
-        END
     ELSE
         // Initialize the symbol.
 
@@ -412,6 +400,18 @@ FN PrsFoundSymbol (
     END
 
     symbol^.Flags = flags
+
+    // We should see if there's a pending section override from the lexer, and
+    // do it now if so.
+
+    IF LexNextSymbolSection THEN
+        // There was a single-symbol section override via SECTION directive.
+
+        symbol^.Section = LexNextSymbolSection
+        LexNextSymbolSection = NULLPTR
+    ELSE
+        symbol^.Section = LexCurrentSection
+    END
 END
 
 FN PrsVariableDeclaration (

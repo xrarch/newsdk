@@ -781,15 +781,6 @@ FN LexNextToken (
             TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
         END
 
-        IF LexNextSymbolSection THEN
-            // There was a single-symbol section override via SECTION directive.
-
-            symbol^.Section = LexNextSymbolSection
-            LexNextSymbolSection = NULLPTR
-        ELSE
-            symbol^.Section = LexCurrentSection
-        END
-
         symbol^.Name = symbol + SIZEOF LexSymbol
 
         TlCopyMemory (
