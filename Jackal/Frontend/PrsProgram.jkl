@@ -129,23 +129,99 @@ FN PrsPrintType (
     END
 END
 
-FN PrsAtom (
-    IN minprecedence : ULONG,
-) : ^PrsAstNode
+FN PrsAtom () : ^PrsAstNode
 
-    // Parse an atom. This is an "atomic" part of an expression.
+    // Parse an atom. This is an "atomic" part of an expression, such as a
+    // single constant number or identifier.
+
+    atomnode : ^PrsAstNode
 
     token : LexToken
 
-    IF LexMatchToken (
-        &token, // token
-        TOKEN_OPER, // type
-        0, // subtype
-    ) THEN
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_NUMBER THEN
+        // This is a constant number. The value of the constant stays in the
+        // token payload.
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+    ELSEIF token.Type == TOKEN_IDENTIFIER THEN
+        // This is an identifier. The symbol pointer and stuff stay in the token
+        // payload.
+
+        IF token.Subtype == TOKEN_IDENTIFIER_NEW THEN
+            LexTokenError ( &token, "Use of undeclared symbol.", 0, 0, 0 )
+        END
+
+        atomnode = PrsCreateIdentifierNode (
+            &token, // token
+        )
+
+    ELSEIF token.Type == TOKEN_STRING THEN
+        // This is a literal string. The value of the string stays in the
+        // token payload.
+
+        atomnode = PrsCreateAstNode (
+            AST_STRING,
+            &token, // token
+        )
+
+    ELSEIF token.Type == TOKEN_OPER AND token.Subtype == TOKEN_LPAREN THEN
+        // This is a parenthesized expression.
+
+        atomnode = PrsExpression ( 0 )
+
+        // Collect the right parenthesis.
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right parenthesis.", 0, 0, 0 )
+        END
+
+    ELSEIF token.Type == TOKEN_OPER THEN
         // This must be a left-operator. Look it up in the table.
+        // The operator type stays as the subtype of the token.
 
+        operator := &PrsLeftOperators[token.Subtype]
 
+        IF NOT operator^.Precedence THEN
+            LexTokenError ( &token, "Expected a left operator.", 0, 0, 0 )
+        END
+
+        atomnode = PrsCreateAstNode (
+            AST_OPERATOR, // type
+            &token, // token
+        )
+
+        atomnode^.Body.Operator.Left = PrsExpression ( operator^.Precedence )
+
+        IF operator^.ParseFunc THEN
+            operator^.ParseFunc (
+                atomnode, // node
+            )
+        END
+
+    ELSEIF token.Type == TOKEN_VALUE THEN
+        // This is a primitive value, such as NULLPTR, TRUE, or FALSE.
+        // The value type stays as the subtype of the token.
+
+        atomnode = PrsCreateAstNode (
+            AST_PRIM_VALUE,
+            &token, // token
+        )
+    
+    ELSE
+        LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
     END
+
+    RETURN atomnode
 END
 
 FN PrsExpression (
@@ -154,7 +230,71 @@ FN PrsExpression (
 
     // Parse a expression. Pays attention to precedence.
 
-    atomnode := PrsAtom ( minprecedence )
+    atomnode := PrsAtom ()
+
+    optoken : LexToken
+
+    WHILE LexMatchToken (
+        &optoken, // token
+        TOKEN_OPER, // type
+        0, // subtype
+    ) DO
+        operator := &PrsOperators[optoken.Subtype]
+
+        IF NOT operator^.Precedence THEN
+            // This must have been a left operator, which we didn't expect.
+
+            LexTokenError ( &optoken, "Unexpected left operator", 0, 0, 0 )
+        END
+
+        IF operator^.Precedence < minprecedence THEN
+            // Put the operator token back.
+
+            LexPutbackToken ( &optoken )
+
+            BREAK
+        END
+
+        node := PrsCreateAstNode (
+            AST_OPERATOR, // type
+            &optoken, // token
+        )
+
+        node^.Body.Operator.Left = atomnode
+
+        IF operator^.ParseFunc THEN
+            operator^.ParseFunc (
+                node, // node
+            )
+        ELSE
+            node^.Body.Operator.Right = PrsExpression ( minprecedence + 1 )
+        END
+
+        atomnode = node
+    END
+
+    RETURN atomnode
+END
+
+FN PrsParseInitializer () : ^PrsAstNode
+
+    // Parse an initializer. This is either of the form { ... } or it's an
+    // expression.
+
+    IF NOT LexMatchToken (
+        NULLPTR, // token
+        TOKEN_LBRACE, // type
+        0, // subtype
+    ) THEN
+        // It's an expression initializer.
+
+        RETURN PrsExpression ( 0 )
+    END
+
+    // It's a fancy array initializer.
+    // TODO parse those
+
+    RETURN NULLPTR
 END
 
 FN PrsType (
@@ -166,23 +306,17 @@ FN PrsType (
 
     typetoken : LexToken
 
+    LexGetToken ( &typetoken )
+
     // First check if it's a primitive type.
 
-    IF LexMatchToken (
-        &typetoken, // token
-        TOKEN_PTYPE, // type
-        0, // subtype
-    ) THEN
+    IF typetoken.Type == TOKEN_PTYPE THEN
         // It's a primitive type, that was easy!
 
         type^.Subtype = TYPE_PRIMITIVE
         type^.Body.Primitive.Type = typetoken.TypeContext
 
-    ELSEIF LexMatchToken (
-        &typetoken, // token
-        TOKEN_OPER, // type
-        TOKEN_CARET, // subtype
-    ) THEN
+    ELSEIF typetoken.Type == TOKEN_OPER AND typetoken.Subtype == TOKEN_CARET THEN
         // It's a pointer type! Allocate a base type.
 
         basetype := PrsCreateType ()
@@ -197,11 +331,7 @@ FN PrsType (
         type^.Subtype = TYPE_POINTER
         type^.Body.Pointer.Base = basetype
 
-    ELSEIF LexMatchToken (
-        &typetoken, // token
-        TOKEN_IDENTIFIER, // type
-        0, // subtype
-    ) THEN
+    ELSEIF typetoken.Type == TOKEN_IDENTIFIER THEN
         // It's a named type!
 
         symbol := CAST typetoken.Payload TO ^LexSymbol
@@ -296,9 +426,7 @@ FN PrsType (
 
             arraytype^.Body.Array.Bound = NULLPTR
         ELSE
-            // arraytype^.Body.Array.Bound = PrsExpression ( 0 )
-            // TODO uncomment above, and test multidimensional array type parses
-            //      correctly
+            arraytype^.Body.Array.Bound = PrsExpression ( 0 )
 
             rbrackettoken : LexToken
 
@@ -462,9 +590,23 @@ FN PrsVariableDeclaration (
         )
 
         PrsPrintType ( &symbol^.SemanticType )
+
+        eqtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &eqtoken, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            // This variable is uninitialized.
+
+            LEAVE
+        END
     END
 
-    // Parse the initial value.
+    // Parse the initializer.
+
+    initialnode := PrsParseInitializer ()
 
     // If the type was implicit, evaluate the type of the initial value.
 
@@ -479,8 +621,7 @@ FN PrsVariableDeclaration (
         )
 
         asgnnode^.Body.Assign.Left = idnode
-        // asgnnode^.Body.Assign.Right = initialnode
-        // TODO uncomment above
+        asgnnode^.Body.Assign.Right = initialnode
 
         // We can place it directly in the statement list for the current block
         // because the existence of a block is implied by the fact this is a

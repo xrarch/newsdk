@@ -7,6 +7,10 @@ EXTERN FN PrsInitialize ()
 ENUM PrsAstType : UBYTE
     AST_IDENTIFIER,
     AST_ASSIGN,
+    AST_OPERATOR,
+    AST_CONSTANT,
+    AST_STRING,
+    AST_PRIM_VALUE,
 END
 
 STRUCT PrsBlock
@@ -20,8 +24,14 @@ STRUCT PrsAstAssign
     Right : ^PrsAstNode,
 END
 
+STRUCT PrsAstOperator
+    Left : ^PrsAstNode,
+    Right : ^PrsAstNode,
+END
+
 UNION PrsAstBody
     Assign : PrsAstAssign,
+    Operator : PrsAstOperator,
 END
 
 STRUCT PrsAstNode
