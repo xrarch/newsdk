@@ -1,5 +1,5 @@
 //
-// Parses Jackal programs and constructs an abstract syntax tree.
+// Parses a Jackal program and constructs an abstract syntax tree.
 //
 
 #INCLUDE "<inc>/Parser.hjk"
@@ -7,13 +7,36 @@
 PUBLIC PrsGlobalListHead : ^LexSymbol = NULLPTR
 PUBLIC PrsGlobalListTail : ^LexSymbol = NULLPTR
 
+PrsCurrentBlock : ^PrsBlock = NULLPTR
+
 CONST VAR_FLAG_EXTERN := 1
 CONST VAR_FLAG_PUBLIC := 2
 CONST VAR_FLAG_EXPORT := 4
 
+FN PrsCreateType () : ^LexSemanticType
+
+    // Create a type.
+
+    type : ^LexSemanticType
+
+    status := TlBumpAlloc (
+        SIZEOF LexSemanticType, // bytes
+        &type, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create type", 0, 0, 0 )
+    END
+
+    RETURN type
+END
+
 FN PrsCreateAstNode (
-    IN type : PrsAstType
+    IN type : PrsAstType,
+    IN token : ^LexToken,
 ) : ^PrsAstNode
+
+    // Create an AST node.
 
     node : ^PrsAstNode
 
@@ -28,7 +51,247 @@ FN PrsCreateAstNode (
 
     node^.Type = type
 
+    LexCopyToken (
+        &node^.Token, // dest
+        token, // src
+    )
+
     RETURN node
+END
+
+FN PrsCreateIdentifierNode (
+    IN token : ^LexToken,
+) : ^PrsAstNode
+
+    // Create an identifier node.
+    // XXX Turn this into a macro when those work.
+
+    RETURN PrsCreateAstNode (
+        AST_IDENTIFIER, // type
+        token, // token
+    )
+END
+
+FN PrsInsertNodeIntoBlock (
+    IN block : ^PrsBlock,
+    IN node : ^PrsAstNode,
+)
+
+    // Insert the node into the given block.
+    // XXX Turn this into a macro when those work.
+    // XXX Better yet, just use the circular list macros when we have those.
+
+    IF NOT block^.StatementListTail THEN
+        block^.StatementListHead = node
+    ELSE
+        block^.StatementListTail^.Next = node
+    END
+
+    block^.StatementListTail = node
+END
+
+FN PrsPrintType (
+    IN type : ^LexSemanticType,
+)
+
+    // Debug function that recursively prints a type.
+
+    TlPrintString ( "Subtype: " )
+    TlPrintNumber ( type^.Subtype )
+    TlPrintString ( "\n" )
+
+    IF type^.Subtype == TYPE_PRIMITIVE THEN
+        TlPrintString ( "Primitive type: " )
+        TlPrintNumber ( type^.Body.Primitive.Type )
+        TlPrintString ( "\n" )
+    ELSEIF type^.Subtype == TYPE_NAMED THEN
+        TlPrintString ( "Type name: " )
+        TlPrintString ( type^.Body.Named.Symbol^.Name )
+        TlPrintString ( "\n" )
+    ELSEIF type^.Subtype == TYPE_POINTER THEN
+        TlPrintString ( "Pointer to:\n" )
+        PrsPrintType ( type^.Body.Pointer.Base )
+    ELSEIF type^.Subtype == TYPE_ARRAY THEN
+        TlPrintString ( "Array of:\n" )
+        PrsPrintType ( type^.Body.Array.Base )
+    END
+END
+
+FN PrsType (
+    IN type : ^LexSemanticType,
+    IN depth : UBYTE,
+)
+
+    // Parse the type into the provided type structure.
+
+    typetoken : LexToken
+
+    // First check if it's a primitive type.
+
+    IF LexMatchToken (
+        &typetoken, // token
+        TOKEN_PTYPE, // type
+        0, // subtype
+    ) THEN
+        // It's a primitive type, that was easy!
+
+        type^.Subtype = TYPE_PRIMITIVE
+        type^.Body.Primitive.Type = typetoken.TypeContext
+
+    ELSEIF LexMatchToken (
+        &typetoken, // token
+        TOKEN_CARET, // type
+        0, // subtype
+    ) THEN
+        // It's a pointer type! Allocate a base type.
+
+        basetype := PrsCreateType ()
+
+        // Parse the base type into it.
+
+        PrsType (
+            basetype, // type
+            depth + 1, // depth
+        )
+
+        type^.Subtype = TYPE_POINTER
+        type^.Body.Pointer.Base = basetype
+
+    ELSEIF LexMatchToken (
+        &typetoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        // It's a named type!
+
+        symbol := CAST typetoken.Payload TO ^LexSymbol
+
+        IF typetoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+            // This symbol has already appeared, so verify that it's a type.
+
+            IF symbol^.Type != SYM_TYPE AND
+                symbol^.Type != SYM_FORWARD_TYPE THEN
+
+                // Nope, that's bad :(
+
+                LexTokenError ( &typetoken, "Symbol isn't a type", 0, 0, 0 )
+            END
+        ELSE
+            // This is a new type, so forward declare it for now.
+
+            symbol^.Type = SYM_FORWARD_TYPE
+        END
+
+        type^.Subtype = TYPE_NAMED
+        type^.Body.Named.Symbol = symbol
+
+    ELSE
+        // Type didn't match with anything we expected.
+
+        LexTokenError ( &typetoken,
+            "Type must be primitive, pointer, or named.", 0, 0, 0 )
+    END
+
+    IF depth THEN
+        // We don't collect the array components if the type is nested at all.
+
+        LEAVE
+    END
+
+    // Collect array components, if any exist. This has to be done in a manner
+    // such that the type structure we were passed in becomes the head of a
+    // chain of array types, where the tail of the chain contains the original
+    // type.
+
+    IF NOT LexMatchToken (
+        NULLPTR, // token
+        TOKEN_LBRACKET, // type
+        0, // subtype
+    ) THEN
+        // No array components.
+
+        LEAVE
+    END
+
+    dimensions := 1
+    boundless := FALSE
+
+    // There are array components, so firstly we need to allocate a base type
+    // and move whatever we created for this type into it.
+
+    basetype := PrsCreateType ()
+
+    TlCopyMemory (
+        basetype, // dest
+        type, // src
+        SIZEOF LexSemanticType, // sz
+    )
+
+    arraytype := type
+
+    arraytail : ^LexSemanticType = NULLPTR
+
+    WHILE TRUE DO
+        arraytype^.Subtype = TYPE_ARRAY
+
+        IF arraytail THEN
+            arraytail^.Body.Array.Base = arraytype
+        END
+
+        arraytail = arraytype
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACKET, // type
+            0, // subtype
+        ) THEN
+            // The array is boundless.
+
+            IF dimensions > 1 THEN
+                LexTokenError ( &typetoken,
+                    "Boundless arrays can't be multidimensional.", 0, 0, 0 )
+            END
+
+            boundless = TRUE
+
+            arraytype^.Body.Array.Bound = NULLPTR
+        ELSE
+            // arraytype^.Body.Array.Bound = PrsExpression ()
+            // TODO uncomment above
+
+            rbrackettoken : LexToken
+
+            IF NOT LexMatchToken (
+                &rbrackettoken, // token
+                TOKEN_RBRACKET, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &rbrackettoken,
+                    "Array type must be terminated by right bracket.", 0, 0, 0 )
+            END
+        END
+
+        IF NOT LexMatchToken (
+            NULLPTR, // token
+            TOKEN_LBRACKET, // type
+            0, // subtype
+        ) THEN
+            // No more array components.
+
+            BREAK
+        END
+
+        IF boundless THEN
+            LexTokenError ( &typetoken,
+                "Boundless arrays can't be multidimensional.", 0, 0, 0 )
+        END
+
+        dimensions += 1
+
+        arraytype = PrsCreateType ()
+    END
+
+    arraytail^.Body.Array.Base = basetype
 END
 
 FN PrsVariableDeclaration (
@@ -102,18 +365,50 @@ FN PrsVariableDeclaration (
 
     symbol^.Flags = flags
 
-    // ...
+    // Now we have to check if the next token is an equals sign. If so, the type
+    // is inferred. Otherwise, we have to put the token back and parse the type.
+
+    IF NOT LexMatchToken (
+        NULLPTR, // token
+        TOKEN_ASSIGN, // type
+        TOKEN_EQUALS, // subtype
+    ) THEN
+        // The type is explicit. Parse that now.
+
+        PrsType (
+            &symbol^.SemanticType, // type
+            0, // depth
+        )
+
+        PrsPrintType ( &symbol^.SemanticType )
+    END
 
     IF NOT global THEN
         // Create an AST node for the assignment of the initial value.
+
+        idnode := PrsCreateIdentifierNode ( token )
+
+        asgnnode := PrsCreateAstNode (
+            AST_ASSIGN, // type
+            token, // token
+        )
+
+        asgnnode^.Body.Assign.Left = idnode
+        // asgnnode^.Body.Assign.Right = initialnode
+        // TODO uncomment above
+
         // We can place it directly in the statement list for the current block
         // because the existence of a block is implied by the fact this is a
         // local declaration.
 
+        PrsInsertNodeIntoBlock (
+            PrsCurrentBlock, // block
+            asgnnode, // node
+        )
     END
 END
 
-FN PrsDeclaration () : UBYTE
+FN PrsGlobalDeclaration () : UBYTE
 
     // Parse the next global declaration. Return FALSE on EOF.
 
@@ -169,7 +464,7 @@ FN PrsProgram ()
     // phases can use them appropriately, linked via the symbol table entry
     // given to us by the lexer.
 
-    WHILE PrsDeclaration () DO
+    WHILE PrsGlobalDeclaration () DO
         // Keep going...
     END
 END

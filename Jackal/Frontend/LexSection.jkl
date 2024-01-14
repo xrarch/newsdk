@@ -8,11 +8,14 @@
 PUBLIC LexNextSymbolSection : ^LexSection = NULLPTR
 PUBLIC LexCurrentSection : ^LexSection = NULLPTR
 
+PUBLIC LexSectionListHead : ^LexSection = NULLPTR
+LexSectionListTail : ^LexSection = NULLPTR
+
 LexSectionStackElementZone : TlZone
 LexSectionHashTable : TlHashTable
 LexSectionStackTop : ^LexSectionStackElement
 
-LexDefaultSection : LexSection
+PUBLIC LexDefaultSection : LexSection
 
 FN LexInitializeSection (
     IN section : ^LexSection,
@@ -37,9 +40,19 @@ FN LexInitializeSection (
 
     // Initialize the interned string hash table.
 
-    TlInitializeHashTable (
-        &section^.InternedStringHashTable, // hashtable
-    )
+    TlInitializeHashTable ( &section^.InternedStringHashTable )
+
+    // Add the section to the ordered list of all sections.
+
+    section^.Next = NULLPTR
+
+    IF LexSectionListTail THEN
+        LexSectionListTail^.Next = section
+    ELSE
+        LexSectionListHead = section
+    END
+
+    LexSectionListTail = section
 END
 
 FN LexInitializeSectionStuff ()
@@ -55,9 +68,7 @@ FN LexInitializeSectionStuff ()
 
     // Initialize the section hash table.
 
-    TlInitializeHashTable (
-        &LexSectionHashTable, // hashtable
-    )
+    TlInitializeHashTable ( &LexSectionHashTable )
 
     // Initialize the default section.
 

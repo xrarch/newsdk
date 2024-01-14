@@ -62,6 +62,7 @@ STRUCT LexKeyword
     Entry : TlHashTableEntry, // MUST be at the beginning
     Type : LexTokenType,
     Subtype : LexTokenSubtype,
+    TypeContext : UBYTE,
 END
 
 LexKeywordHashTable : TlHashTable
@@ -73,6 +74,7 @@ FN LexInsertKeyword (
     IN name : ^UBYTE,
     IN type : LexTokenType,
     IN subtype : LexTokenSubtype,
+    IN context : UBYTE,
 )
 
     // Insert the keyword into the keyword hash table.
@@ -87,6 +89,7 @@ FN LexInsertKeyword (
 
     keyword^.Type = type
     keyword^.Subtype = subtype
+    keyword^.TypeContext = context
 
     TlInsertHashTable (
         &LexKeywordHashTable, // hashtable
@@ -168,92 +171,92 @@ FN LexInitialize ()
 
     TlInitializeHashTable ( &LexKeywordHashTable )
 
-    LexInsertKeyword ( "AND", TOKEN_OPER, TOKEN_AND )
-    LexInsertKeyword ( "BEGIN", TOKEN_STATEMENT, TOKEN_BEGIN )
-    LexInsertKeyword ( "BREAK", TOKEN_STATEMENT, TOKEN_BREAK )
-    LexInsertKeyword ( "BYTE", TOKEN_PTYPE, TOKEN_BYTE )
-    LexInsertKeyword ( "CAST", TOKEN_OPER, TOKEN_CAST )
-    LexInsertKeyword ( "CONST", TOKEN_DECL, TOKEN_CONST )
-    LexInsertKeyword ( "CONTINUE", TOKEN_STATEMENT, TOKEN_CONTINUE )
-    LexInsertKeyword ( "DO", TOKEN_OTHER, TOKEN_DO )
-    LexInsertKeyword ( "ELSE", TOKEN_STATEMENT, TOKEN_ELSE )
-    LexInsertKeyword ( "ELSEIF", TOKEN_STATEMENT, TOKEN_ELSEIF )
-    LexInsertKeyword ( "END", TOKEN_STATEMENT, TOKEN_END )
-    LexInsertKeyword ( "ENUM", TOKEN_DECL, TOKEN_ENUM )
-    LexInsertKeyword ( "EXTERN", TOKEN_DECL, TOKEN_EXTERN )
-    LexInsertKeyword ( "FALSE", TOKEN_VALUE, TOKEN_FALSE )
-    LexInsertKeyword ( "FN", TOKEN_DECL, TOKEN_FN )
-    LexInsertKeyword ( "FNPTR", TOKEN_DECL, TOKEN_FNPTR )
-    LexInsertKeyword ( "GOTO", TOKEN_STATEMENT, TOKEN_GOTO )
-    LexInsertKeyword ( "IF", TOKEN_STATEMENT, TOKEN_IF )
-    LexInsertKeyword ( "IN", TOKEN_ARGSPEC, TOKEN_IN )
-    LexInsertKeyword ( "INT", TOKEN_PTYPE, TOKEN_INT )
-    LexInsertKeyword ( "LEAVE", TOKEN_STATEMENT, TOKEN_LEAVE )
-    LexInsertKeyword ( "LONG", TOKEN_PTYPE, TOKEN_LONG )
-    LexInsertKeyword ( "NOT", TOKEN_OPER, TOKEN_NOT )
-    LexInsertKeyword ( "NULL", TOKEN_VALUE, TOKEN_NULL )
-    LexInsertKeyword ( "NULLPTR", TOKEN_VALUE, TOKEN_NULLPTR )
-    LexInsertKeyword ( "OR", TOKEN_OPER, TOKEN_OR )
-    LexInsertKeyword ( "OUT", TOKEN_ARGSPEC, TOKEN_OUT )
-    LexInsertKeyword ( "PACKED", TOKEN_OTHER, TOKEN_PACKED )
-    LexInsertKeyword ( "PUBLIC", TOKEN_DECL, TOKEN_PUBLIC )
-    LexInsertKeyword ( "RETURN", TOKEN_STATEMENT, TOKEN_RETURN )
-    LexInsertKeyword ( "SIZEOF", TOKEN_VALUE, TOKEN_SIZEOF )
-    LexInsertKeyword ( "SIZEOFVALUE", TOKEN_OPER, TOKEN_SIZEOFVALUE )
-    LexInsertKeyword ( "STRUCT", TOKEN_DECL, TOKEN_STRUCT )
-    LexInsertKeyword ( "THEN", TOKEN_OTHER, TOKEN_THEN )
-    LexInsertKeyword ( "TO", TOKEN_OTHER, TOKEN_TO )
-    LexInsertKeyword ( "TRUE", TOKEN_VALUE, TOKEN_TRUE )
-    LexInsertKeyword ( "TYPE", TOKEN_DECL, TOKEN_TYPE )
-    LexInsertKeyword ( "UBYTE", TOKEN_PTYPE, TOKEN_UBYTE )
-    LexInsertKeyword ( "UINT", TOKEN_PTYPE, TOKEN_UINT )
-    LexInsertKeyword ( "ULONG", TOKEN_PTYPE, TOKEN_ULONG )
-    LexInsertKeyword ( "UNION", TOKEN_DECL, TOKEN_UNION )
-    LexInsertKeyword ( "VOID", TOKEN_PTYPE, TOKEN_VOID )
-    LexInsertKeyword ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE )
-    LexInsertKeyword ( "EXPORT", TOKEN_DECL, TOKEN_EXPORT )
-    LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE )
+    LexInsertKeyword ( "AND", TOKEN_OPER, TOKEN_AND, 0 )
+    LexInsertKeyword ( "BEGIN", TOKEN_STATEMENT, TOKEN_BEGIN, 0 )
+    LexInsertKeyword ( "BREAK", TOKEN_STATEMENT, TOKEN_BREAK, 0 )
+    LexInsertKeyword ( "BYTE", TOKEN_PTYPE, TOKEN_BYTE, PRIM_TYPE_BYTE )
+    LexInsertKeyword ( "CAST", TOKEN_OPER, TOKEN_CAST, 0 )
+    LexInsertKeyword ( "CONST", TOKEN_DECL, TOKEN_CONST, 0 )
+    LexInsertKeyword ( "CONTINUE", TOKEN_STATEMENT, TOKEN_CONTINUE, 0 )
+    LexInsertKeyword ( "DO", TOKEN_OTHER, TOKEN_DO, 0 )
+    LexInsertKeyword ( "ELSE", TOKEN_STATEMENT, TOKEN_ELSE, 0 )
+    LexInsertKeyword ( "ELSEIF", TOKEN_STATEMENT, TOKEN_ELSEIF, 0 )
+    LexInsertKeyword ( "END", TOKEN_STATEMENT, TOKEN_END, 0 )
+    LexInsertKeyword ( "ENUM", TOKEN_DECL, TOKEN_ENUM, 0 )
+    LexInsertKeyword ( "EXTERN", TOKEN_DECL, TOKEN_EXTERN, 0 )
+    LexInsertKeyword ( "FALSE", TOKEN_VALUE, TOKEN_FALSE, 0 )
+    LexInsertKeyword ( "FN", TOKEN_DECL, TOKEN_FN, 0 )
+    LexInsertKeyword ( "FNPTR", TOKEN_DECL, TOKEN_FNPTR, 0 )
+    LexInsertKeyword ( "GOTO", TOKEN_STATEMENT, TOKEN_GOTO, 0 )
+    LexInsertKeyword ( "IF", TOKEN_STATEMENT, TOKEN_IF, 0 )
+    LexInsertKeyword ( "IN", TOKEN_ARGSPEC, TOKEN_IN, 0 )
+    LexInsertKeyword ( "INT", TOKEN_PTYPE, TOKEN_INT, PRIM_TYPE_INT )
+    LexInsertKeyword ( "LEAVE", TOKEN_STATEMENT, TOKEN_LEAVE, 0 )
+    LexInsertKeyword ( "LONG", TOKEN_PTYPE, TOKEN_LONG, PRIM_TYPE_LONG )
+    LexInsertKeyword ( "NOT", TOKEN_OPER, TOKEN_NOT, 0 )
+    LexInsertKeyword ( "NULL", TOKEN_VALUE, TOKEN_NULL, 0 )
+    LexInsertKeyword ( "NULLPTR", TOKEN_VALUE, TOKEN_NULLPTR, 0 )
+    LexInsertKeyword ( "OR", TOKEN_OPER, TOKEN_OR, 0 )
+    LexInsertKeyword ( "OUT", TOKEN_ARGSPEC, TOKEN_OUT, 0 )
+    LexInsertKeyword ( "PACKED", TOKEN_OTHER, TOKEN_PACKED, 0 )
+    LexInsertKeyword ( "PUBLIC", TOKEN_DECL, TOKEN_PUBLIC, 0 )
+    LexInsertKeyword ( "RETURN", TOKEN_STATEMENT, TOKEN_RETURN, 0 )
+    LexInsertKeyword ( "SIZEOF", TOKEN_VALUE, TOKEN_SIZEOF, 0 )
+    LexInsertKeyword ( "SIZEOFVALUE", TOKEN_OPER, TOKEN_SIZEOFVALUE, 0 )
+    LexInsertKeyword ( "STRUCT", TOKEN_DECL, TOKEN_STRUCT, 0 )
+    LexInsertKeyword ( "THEN", TOKEN_OTHER, TOKEN_THEN, 0 )
+    LexInsertKeyword ( "TO", TOKEN_OTHER, TOKEN_TO, 0 )
+    LexInsertKeyword ( "TRUE", TOKEN_VALUE, TOKEN_TRUE, 0 )
+    LexInsertKeyword ( "TYPE", TOKEN_DECL, TOKEN_TYPE, 0 )
+    LexInsertKeyword ( "UBYTE", TOKEN_PTYPE, TOKEN_UBYTE, PRIM_TYPE_UBYTE )
+    LexInsertKeyword ( "UINT", TOKEN_PTYPE, TOKEN_UINT, PRIM_TYPE_UINT )
+    LexInsertKeyword ( "ULONG", TOKEN_PTYPE, TOKEN_ULONG, PRIM_TYPE_ULONG )
+    LexInsertKeyword ( "UNION", TOKEN_DECL, TOKEN_UNION, 0 )
+    LexInsertKeyword ( "VOID", TOKEN_PTYPE, TOKEN_VOID, 0 )
+    LexInsertKeyword ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE, 0 )
+    LexInsertKeyword ( "EXPORT", TOKEN_DECL, TOKEN_EXPORT, 0 )
+    LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE, 0 )
 
-    LexInsertKeyword ( "(", TOKEN_LPAREN, 0 )
-    LexInsertKeyword ( ")", TOKEN_RPAREN, 0 )
-    LexInsertKeyword ( "[", TOKEN_LBRACKET, 0 )
-    LexInsertKeyword ( "]", TOKEN_RBRACKET, 0 )
-    LexInsertKeyword ( "^", TOKEN_CARET, 0 )
-    LexInsertKeyword ( ":", TOKEN_COLON, 0 )
-    LexInsertKeyword ( "{", TOKEN_LBRACE, 0 )
-    LexInsertKeyword ( "}", TOKEN_RBRACE, 0 )
-    LexInsertKeyword ( ",", TOKEN_COMMA, 0 )
+    LexInsertKeyword ( "(", TOKEN_LPAREN, 0, 0 )
+    LexInsertKeyword ( ")", TOKEN_RPAREN, 0, 0 )
+    LexInsertKeyword ( "[", TOKEN_LBRACKET, 0, 0 )
+    LexInsertKeyword ( "]", TOKEN_RBRACKET, 0, 0 )
+    LexInsertKeyword ( "^", TOKEN_CARET, 0, 0 )
+    LexInsertKeyword ( ":", TOKEN_COLON, 0, 0 )
+    LexInsertKeyword ( "{", TOKEN_LBRACE, 0, 0 )
+    LexInsertKeyword ( "}", TOKEN_RBRACE, 0, 0 )
+    LexInsertKeyword ( ",", TOKEN_COMMA, 0, 0 )
 
-    LexInsertKeyword ( "==", TOKEN_OPER, TOKEN_EQUIV )
-    LexInsertKeyword ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV )
-    LexInsertKeyword ( "&", TOKEN_OPER, TOKEN_BITAND )
-    LexInsertKeyword ( "|", TOKEN_OPER, TOKEN_BITOR )
-    LexInsertKeyword ( "<", TOKEN_OPER, TOKEN_LESSTHAN )
-    LexInsertKeyword ( ">", TOKEN_OPER, TOKEN_GREATERTHAN )
-    LexInsertKeyword ( "<=", TOKEN_OPER, TOKEN_LTEQ )
-    LexInsertKeyword ( ">=", TOKEN_OPER, TOKEN_GTEQ )
-    LexInsertKeyword ( "+", TOKEN_OPER, TOKEN_PLUS )
-    LexInsertKeyword ( "-", TOKEN_OPER, TOKEN_MINUS )
-    LexInsertKeyword ( "/", TOKEN_OPER, TOKEN_DIVIDE )
-    LexInsertKeyword ( "%", TOKEN_OPER, TOKEN_MODULO )
-    LexInsertKeyword ( ".", TOKEN_OPER, TOKEN_DOT )
-    LexInsertKeyword ( "@", TOKEN_STATEMENT, TOKEN_LABEL )
-    LexInsertKeyword ( "$", TOKEN_OPER, TOKEN_BITXOR )
-    LexInsertKeyword ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT )
-    LexInsertKeyword ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT )
-    LexInsertKeyword ( "~", TOKEN_OPER, TOKEN_BITNOT )
+    LexInsertKeyword ( "==", TOKEN_OPER, TOKEN_EQUIV, 0 )
+    LexInsertKeyword ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV, 0 )
+    LexInsertKeyword ( "&", TOKEN_OPER, TOKEN_BITAND, 0 )
+    LexInsertKeyword ( "|", TOKEN_OPER, TOKEN_BITOR, 0 )
+    LexInsertKeyword ( "<", TOKEN_OPER, TOKEN_LESSTHAN, 0 )
+    LexInsertKeyword ( ">", TOKEN_OPER, TOKEN_GREATERTHAN, 0 )
+    LexInsertKeyword ( "<=", TOKEN_OPER, TOKEN_LTEQ, 0 )
+    LexInsertKeyword ( ">=", TOKEN_OPER, TOKEN_GTEQ, 0 )
+    LexInsertKeyword ( "+", TOKEN_OPER, TOKEN_PLUS, 0 )
+    LexInsertKeyword ( "-", TOKEN_OPER, TOKEN_MINUS, 0 )
+    LexInsertKeyword ( "/", TOKEN_OPER, TOKEN_DIVIDE, 0 )
+    LexInsertKeyword ( "%", TOKEN_OPER, TOKEN_MODULO, 0 )
+    LexInsertKeyword ( ".", TOKEN_OPER, TOKEN_DOT, 0 )
+    LexInsertKeyword ( "@", TOKEN_STATEMENT, TOKEN_LABEL, 0 )
+    LexInsertKeyword ( "$", TOKEN_OPER, TOKEN_BITXOR, 0 )
+    LexInsertKeyword ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT, 0 )
+    LexInsertKeyword ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT, 0 )
+    LexInsertKeyword ( "~", TOKEN_OPER, TOKEN_BITNOT, 0 )
 
-    LexInsertKeyword ( "=", TOKEN_ASSIGN, TOKEN_EQUALS )
-    LexInsertKeyword ( "+=", TOKEN_ASSIGN, TOKEN_PLUSEQUALS )
-    LexInsertKeyword ( "-=", TOKEN_ASSIGN, TOKEN_MINUSEQUALS )
-    LexInsertKeyword ( "*=", TOKEN_ASSIGN, TOKEN_MULEQUALS )
-    LexInsertKeyword ( "/=", TOKEN_ASSIGN, TOKEN_DIVEQUALS )
-    LexInsertKeyword ( "%=", TOKEN_ASSIGN, TOKEN_MODEQUALS )
-    LexInsertKeyword ( "&=", TOKEN_ASSIGN, TOKEN_ANDEQUALS )
-    LexInsertKeyword ( "|=", TOKEN_ASSIGN, TOKEN_OREQUALS )
-    LexInsertKeyword ( "$=", TOKEN_ASSIGN, TOKEN_XOREQUALS )
-    LexInsertKeyword ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS )
-    LexInsertKeyword ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS )
+    LexInsertKeyword ( "=", TOKEN_ASSIGN, TOKEN_EQUALS, 0 )
+    LexInsertKeyword ( "+=", TOKEN_ASSIGN, TOKEN_PLUSEQUALS, 0 )
+    LexInsertKeyword ( "-=", TOKEN_ASSIGN, TOKEN_MINUSEQUALS, 0 )
+    LexInsertKeyword ( "*=", TOKEN_ASSIGN, TOKEN_MULEQUALS, 0 )
+    LexInsertKeyword ( "/=", TOKEN_ASSIGN, TOKEN_DIVEQUALS, 0 )
+    LexInsertKeyword ( "%=", TOKEN_ASSIGN, TOKEN_MODEQUALS, 0 )
+    LexInsertKeyword ( "&=", TOKEN_ASSIGN, TOKEN_ANDEQUALS, 0 )
+    LexInsertKeyword ( "|=", TOKEN_ASSIGN, TOKEN_OREQUALS, 0 )
+    LexInsertKeyword ( "$=", TOKEN_ASSIGN, TOKEN_XOREQUALS, 0 )
+    LexInsertKeyword ( "<<=", TOKEN_ASSIGN, TOKEN_LSHEQUALS, 0 )
+    LexInsertKeyword ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS, 0 )
 END
 
 LexCharacterBackslash := FALSE
@@ -709,6 +712,9 @@ FN LexNextToken (
 
         token^.Type = keyword^.Type
         token^.Subtype = keyword^.Subtype
+        token^.TypeContext = keyword^.TypeContext
+
+        TlPrintNumber ( keyword^.TypeContext )
 
         LEAVE
     END
@@ -983,6 +989,7 @@ FN LexCopyToken (
     dest^.LinePosition = src^.LinePosition
     dest^.Type = src^.Type
     dest^.Subtype = src^.Subtype
+    dest^.TypeContext = src^.TypeContext
 END
 
 FN LexGetToken (

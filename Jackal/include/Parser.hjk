@@ -3,10 +3,30 @@
 EXTERN FN PrsProgram ()
 
 ENUM PrsAstType : UBYTE
-    AST_PLACEHOLDER,
+    AST_IDENTIFIER,
+    AST_ASSIGN,
+END
+
+STRUCT PrsBlock
+    StatementListHead : ^PrsAstNode,
+    StatementListTail : ^PrsAstNode,
+    StatementCount : ULONG,
+END
+
+STRUCT PrsAstAssign
+    Left : ^PrsAstNode,
+    Right : ^PrsAstNode,
+END
+
+UNION PrsAstBody
+    Assign : PrsAstAssign,
 END
 
 STRUCT PrsAstNode
-    Type : PrsAstType,
-END
+    Token : LexToken,
 
+    Next : ^PrsAstNode,
+
+    Type : PrsAstType,
+    Body : PrsAstBody,
+END

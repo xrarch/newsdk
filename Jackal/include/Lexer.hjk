@@ -125,6 +125,15 @@ ENUM LexCharBehavior : UBYTE
     CHAR_EOF,
 END
 
+ENUM LexPrimitiveType : UBYTE
+    PRIM_TYPE_UBYTE,
+    PRIM_TYPE_UINT,
+    PRIM_TYPE_ULONG,
+    PRIM_TYPE_BYTE,
+    PRIM_TYPE_INT,
+    PRIM_TYPE_LONG,
+END
+
 FNPTR LexGetCharacterF () : UBYTE
 
 STRUCT LexInternedString
@@ -156,6 +165,7 @@ STRUCT LexToken
 
     Type : LexTokenType,
     Subtype : LexTokenSubtype,
+    TypeContext : UBYTE,
 END
 
 STRUCT LexStream
@@ -180,19 +190,78 @@ END
 
 ENUM LexSymbolType : UBYTE
     SYM_VAR,
+    SYM_LABEL,
+    SYM_TYPE,
+
+    // The "forward" types signify a symbol that has been used before it was
+    // defined, in a context where it was okay to do so. In fact, it's okay to
+    // never declare these as long as they weren't referenced in the source
+    // program.
+
+    SYM_FORWARD_LABEL,
+    SYM_FORWARD_TYPE,
 END
 
 STRUCT LexSymbol
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : ^UBYTE,
-
     Section : ^LexSection,
+
+    // Parser private stuff in a symbol.
 
     Next : ^LexSymbol,
     Prev : ^LexSymbol,
 
-    Type : LexSymbolType,
+    SemanticType : LexSemanticType,
+
     Flags : ULONG,
+    Type : LexSymbolType,
+END
+
+ENUM LexSemanticSubtype : UBYTE
+    TYPE_PRIMITIVE,
+    TYPE_ARRAY,
+    TYPE_POINTER,
+    TYPE_NAMED,
+END
+
+STRUCT LexSemanticTypePrimitiveBody
+    Type : LexPrimitiveType,
+END
+
+STRUCT LexSemanticTypeArrayBody
+    // The base points to the "underlying type". I.e., "array of [base]".
+
+    Base : ^LexSemanticType,
+
+    // The bound is a pointer to an AST expression node but unfortunately we
+    // can't refer to that here.
+
+    Bound : ^VOID,
+END
+
+STRUCT LexSemanticTypePointerBody
+    // The base points to the "underlying type". I.e., "pointer to [base]".
+
+    Base : ^LexSemanticType,
+END
+
+STRUCT LexSemanticTypeNamedBody
+    // The type is named, so it has an associated symbol.
+
+    Symbol : ^LexSymbol,
+END
+
+UNION LexSemanticTypeBody
+    Primitive : LexSemanticTypePrimitiveBody,
+    Array : LexSemanticTypeArrayBody,
+    Pointer : LexSemanticTypePointerBody,
+    Named : LexSemanticTypeNamedBody,
+END
+
+STRUCT LexSemanticType
+    Subtype : LexSemanticSubtype,
+    Body : LexSemanticTypeBody,
 END
 
 STRUCT LexMacro
@@ -232,6 +301,7 @@ END
 STRUCT LexSection
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : UBYTE[LEX_DIRECTIVE_MAX],
+    Next : ^LexSection,
 
     InternedStringHashTable : TlHashTable,
 
@@ -252,6 +322,8 @@ EXTERN FN LexPopSection () : UBYTE
 
 EXTERN LexNextSymbolSection : ^LexSection
 EXTERN LexCurrentSection : ^LexSection
+EXTERN LexSectionListHead : ^LexSection
+EXTERN LexDefaultSection : LexSection
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
 
