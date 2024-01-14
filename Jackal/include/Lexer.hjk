@@ -16,11 +16,8 @@ ENUM LexTokenType : UBYTE
     TOKEN_OTHER, // anything else (THEN, DO, )
     TOKEN_ASSIGN, // assignment operators
 
-    TOKEN_LPAREN,
     TOKEN_RPAREN,
-    TOKEN_LBRACKET,
     TOKEN_RBRACKET,
-    TOKEN_CARET,
     TOKEN_COLON,
     TOKEN_LBRACE,
     TOKEN_RBRACE,
@@ -30,7 +27,10 @@ ENUM LexTokenType : UBYTE
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
     TOKEN_NUMBER, // payload is the number value
 
+    TOKEN_VIRTUAL,
+
     TOKEN_EOF,
+    TOKEN_TYPE_MAX, // MUST be at the end
 END
 
 ENUM LexTokenSubtype : UBYTE
@@ -100,6 +100,11 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_LEFTSHIFT,   // operator
     TOKEN_RIGHTSHIFT,  // operator
     TOKEN_BITNOT,      // operator
+    TOKEN_MUL,         // operator
+
+    TOKEN_LBRACKET,    // operator
+    TOKEN_CARET,       // operator
+    TOKEN_LPAREN,      // operator
 
     TOKEN_EQUALS,      // assign
     TOKEN_PLUSEQUALS,  // assign
@@ -113,8 +118,13 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_LSHEQUALS,   // assign
     TOKEN_RSHEQUALS,   // assign
 
+    TOKEN_ADDROF, // virtual (to distinguish from bitwise AND)
+    TOKEN_INVERSE, // virtual (to distinguish from subtraction)
+
     TOKEN_IDENTIFIER_NEW,
     TOKEN_IDENTIFIER_FOUND,
+
+    TOKEN_SUBTYPE_MAX, // MUST be at the end of the token subtypes
 END
 
 ENUM LexCharBehavior : UBYTE
@@ -192,6 +202,7 @@ ENUM LexSymbolType : UBYTE
     SYM_VAR,
     SYM_LABEL,
     SYM_TYPE,
+    SYM_FN,
 
     // The "forward" types signify a symbol that has been used before it was
     // defined, in a context where it was okay to do so. In fact, it's okay to

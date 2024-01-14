@@ -13,6 +13,18 @@ CONST VAR_FLAG_EXTERN := 1
 CONST VAR_FLAG_PUBLIC := 2
 CONST VAR_FLAG_EXPORT := 4
 
+FNPTR PrsOperatorF (
+    IN node : ^PrsAstNode,
+)
+
+STRUCT PrsOperatorRecord
+    ParseFunc : PrsOperatorF,
+    Precedence : ULONG,
+END
+
+PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+
 FN PrsCreateType () : ^LexSemanticType
 
     // Create a type.
@@ -117,6 +129,34 @@ FN PrsPrintType (
     END
 END
 
+FN PrsAtom (
+    IN minprecedence : ULONG,
+) : ^PrsAstNode
+
+    // Parse an atom. This is an "atomic" part of an expression.
+
+    token : LexToken
+
+    IF LexMatchToken (
+        &token, // token
+        TOKEN_OPER, // type
+        0, // subtype
+    ) THEN
+        // This must be a left-operator. Look it up in the table.
+
+
+    END
+END
+
+FN PrsExpression (
+    IN minprecedence : ULONG,
+) : ^PrsAstNode
+
+    // Parse a expression. Pays attention to precedence.
+
+    atomnode := PrsAtom ( minprecedence )
+END
+
 FN PrsType (
     IN type : ^LexSemanticType,
     IN depth : UBYTE,
@@ -140,8 +180,8 @@ FN PrsType (
 
     ELSEIF LexMatchToken (
         &typetoken, // token
-        TOKEN_CARET, // type
-        0, // subtype
+        TOKEN_OPER, // type
+        TOKEN_CARET, // subtype
     ) THEN
         // It's a pointer type! Allocate a base type.
 
@@ -205,8 +245,8 @@ FN PrsType (
 
     IF NOT LexMatchToken (
         NULLPTR, // token
-        TOKEN_LBRACKET, // type
-        0, // subtype
+        TOKEN_OPER, // type
+        TOKEN_LBRACKET, // subtype
     ) THEN
         // No array components.
 
@@ -256,8 +296,9 @@ FN PrsType (
 
             arraytype^.Body.Array.Bound = NULLPTR
         ELSE
-            // arraytype^.Body.Array.Bound = PrsExpression ()
-            // TODO uncomment above
+            // arraytype^.Body.Array.Bound = PrsExpression ( 0 )
+            // TODO uncomment above, and test multidimensional array type parses
+            //      correctly
 
             rbrackettoken : LexToken
 
@@ -273,8 +314,8 @@ FN PrsType (
 
         IF NOT LexMatchToken (
             NULLPTR, // token
-            TOKEN_LBRACKET, // type
-            0, // subtype
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
         ) THEN
             // No more array components.
 
@@ -292,6 +333,85 @@ FN PrsType (
     END
 
     arraytail^.Body.Array.Base = basetype
+END
+
+FN PrsFoundSymbol (
+    IN token : ^LexToken,
+    IN symbol : ^LexSymbol,
+    IN type : LexSymbolType,
+    IN flags : ULONG,
+    IN global : UBYTE,
+)
+
+    // A symbol is being declared. Check for override and make sure stuff is
+    // legal and whatever. This is its own function because it is common between
+    // function and variable declarations.
+
+    IF token^.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        // This symbol has already appeared, so we want to find out if this is
+        // a valid override.
+
+        IF symbol^.Type != type THEN
+            // This symbol isn't the expected type.
+
+            LexTokenError ( token, "Symbol name already in use.", 0, 0, 0 )
+        END
+
+        IF flags & VAR_FLAG_EXTERN THEN
+            // This is an attempt at an extern declaration. Externs can't
+            // override anything.
+
+            LexTokenError ( token, "Symbol already declared.", 0, 0, 0 )
+        END
+
+        IF NOT (symbol^.Flags & VAR_FLAG_EXTERN) THEN
+            // Can only override externs.
+
+            LexTokenError ( token, "Symbol already declared.", 0, 0, 0 )
+        END
+
+        IF NOT global THEN
+            // Can't override externs from local scope.
+
+            LexTokenError ( token,
+                "Can't override extern from local scope.", 0, 0, 0 )
+        END
+
+        // Since we're overriding the symbol, we should see if there's a pending
+        // section override from the lexer, and do it now if so.
+
+        IF LexNextSymbolSection THEN
+            // There was a single-symbol section override via SECTION directive.
+
+            symbol^.Section = LexNextSymbolSection
+            LexNextSymbolSection = NULLPTR
+        ELSE
+            symbol^.Section = LexCurrentSection
+        END
+    ELSE
+        // Initialize the symbol.
+
+        symbol^.Type = type
+
+        IF global THEN
+            // Add it to the list of globals, at the tail.
+
+            tail := PrsGlobalListTail
+
+            symbol^.Next = NULLPTR
+            symbol^.Prev = tail
+
+            IF tail THEN
+                tail^.Next = symbol
+            ELSE
+                PrsGlobalListHead = symbol
+            END
+
+            PrsGlobalListTail = symbol
+        END
+    END
+
+    symbol^.Flags = flags
 END
 
 FN PrsVariableDeclaration (
@@ -318,52 +438,13 @@ FN PrsVariableDeclaration (
 
     symbol := CAST token^.Payload TO ^LexSymbol
 
-    IF token^.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-        // This symbol has already appeared, so we want to find out if this is
-        // a valid override.
-
-        IF symbol^.Type != SYM_VAR THEN
-            // This symbol isn't even a variable.
-
-            LexTokenError ( token, "Symbol name already in use.", 0, 0, 0 )
-        END
-
-        IF NOT (symbol^.Flags & VAR_FLAG_EXTERN) THEN
-            // Can only override externs.
-
-            LexTokenError ( token, "Variable already declared.", 0, 0, 0 )
-        END
-
-        IF NOT global THEN
-            // Can't override externs from local scope.
-
-            LexTokenError ( token,
-                "Can't override extern from local scope.", 0, 0, 0 )
-        END
-    ELSE
-        // Initialize the symbol.
-
-        symbol^.Type = SYM_VAR
-
-        IF global THEN
-            // Add it to the list of globals, at the tail.
-
-            tail := PrsGlobalListTail
-
-            symbol^.Next = NULLPTR
-            symbol^.Prev = tail
-
-            IF tail THEN
-                tail^.Next = symbol
-            ELSE
-                PrsGlobalListHead = symbol
-            END
-
-            PrsGlobalListTail = symbol
-        END
-    END
-
-    symbol^.Flags = flags
+    PrsFoundSymbol (
+        token, // token
+        symbol, // symbol
+        SYM_VAR, // type
+        flags, // flags
+        global, // global
+    )
 
     // Now we have to check if the next token is an equals sign. If so, the type
     // is inferred. Otherwise, we have to put the token back and parse the type.
@@ -382,6 +463,10 @@ FN PrsVariableDeclaration (
 
         PrsPrintType ( &symbol^.SemanticType )
     END
+
+    // Parse the initial value.
+
+    // If the type was implicit, evaluate the type of the initial value.
 
     IF NOT global THEN
         // Create an AST node for the assignment of the initial value.
@@ -405,6 +490,14 @@ FN PrsVariableDeclaration (
             PrsCurrentBlock, // block
             asgnnode, // node
         )
+    ELSE
+        // Statically evaluate the initial value. If it can't be statically
+        // evaluated, that's an error, since this is a global. Note that we
+        // might still leave it as a "complex" AST node if it's a pointer to
+        // some other global or something because we don't know the value of
+        // that immediately.
+
+
     END
 END
 
@@ -467,4 +560,101 @@ FN PrsProgram ()
     WHILE PrsGlobalDeclaration () DO
         // Keep going...
     END
+END
+
+FN (PrsOperatorF) PrsParseArrayIndex (
+    IN node : ^PrsAstNode,
+)
+
+    // Parse an array index. We have to collect the index itself and the right
+    // bracket.
+END
+
+FN (PrsOperatorF) PrsParseFunctionCall (
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a function call. We have to collect the arguments and the right
+    // parenthesis.
+END
+
+FN (PrsOperatorF) PrsParsePointerRef (
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a pointer ref. We don't actually do anything here, the presence of
+    // this routine just stops the expression parser from collecting a "right
+    // side".
+END
+
+FN (PrsOperatorF) PrsParseAddrOf (
+    IN node : ^PrsAstNode,
+)
+
+    // Parse an addr-of operation. This just sets the operation type to
+    // TOKEN_ADDROF, to distinguish it from a bitwise AND.
+END
+
+FN (PrsOperatorF) PrsParseInverse (
+    IN node : ^PrsAstNode,
+)
+
+    // Parse an inverse operation. This just sets the operation type to
+    // TOKEN_INVERSE, to distinguish it from a subtraction.
+END
+
+FN (PrsOperatorF) PrsParseCast (
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a cast. This takes the form CAST [expression] TO [type].
+END
+
+FN PrsInitialize ()
+
+    // Initialize the parser.
+
+    PrsOperators[TOKEN_DOT].Precedence = 25
+
+    PrsOperators[TOKEN_LBRACKET].Precedence = 25
+    PrsOperators[TOKEN_LBRACKET].ParseFunc = &PrsParseArrayIndex
+
+    PrsOperators[TOKEN_LPAREN].Precedence = 25
+    PrsOperators[TOKEN_LPAREN].ParseFunc = &PrsParseFunctionCall
+
+    PrsOperators[TOKEN_CARET].Precedence = 25
+    PrsOperators[TOKEN_CARET].ParseFunc = &PrsParsePointerRef
+
+    PrsOperators[TOKEN_MUL].Precedence = 20
+    PrsOperators[TOKEN_DIVIDE].Precedence = 20
+    PrsOperators[TOKEN_MODULO].Precedence = 20
+    PrsOperators[TOKEN_PLUS].Precedence = 19
+    PrsOperators[TOKEN_MINUS].Precedence = 19
+    PrsOperators[TOKEN_LEFTSHIFT].Precedence = 18
+    PrsOperators[TOKEN_RIGHTSHIFT].Precedence = 18
+    PrsOperators[TOKEN_BITAND].Precedence = 17
+    PrsOperators[TOKEN_BITXOR].Precedence = 16
+    PrsOperators[TOKEN_BITOR].Precedence = 15
+    PrsOperators[TOKEN_LESSTHAN].Precedence = 14
+    PrsOperators[TOKEN_GREATERTHAN].Precedence = 14
+    PrsOperators[TOKEN_LTEQ].Precedence = 14
+    PrsOperators[TOKEN_GTEQ].Precedence = 14
+    PrsOperators[TOKEN_EQUIV].Precedence = 13
+    PrsOperators[TOKEN_NOTEQUIV].Precedence = 13
+    PrsOperators[TOKEN_AND].Precedence = 12
+    PrsOperators[TOKEN_OR].Precedence = 11
+
+    PrsLeftOperators[TOKEN_BITAND].Precedence = 24
+    PrsLeftOperators[TOKEN_BITAND].ParseFunc = &PrsParseAddrOf
+
+    PrsLeftOperators[TOKEN_MINUS].Precedence = 24
+    PrsLeftOperators[TOKEN_MINUS].ParseFunc = &PrsParseInverse
+
+    PrsLeftOperators[TOKEN_NOT].Precedence = 24
+    PrsLeftOperators[TOKEN_BITNOT].Precedence = 24
+
+    PrsLeftOperators[TOKEN_CAST].Precedence = 24
+    PrsLeftOperators[TOKEN_CAST].ParseFunc = &PrsParseCast
+
+    PrsLeftOperators[TOKEN_SIZEOFVALUE].Precedence = 24
 END

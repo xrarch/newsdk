@@ -217,11 +217,8 @@ FN LexInitialize ()
     LexInsertKeyword ( "EXPORT", TOKEN_DECL, TOKEN_EXPORT, 0 )
     LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE, 0 )
 
-    LexInsertKeyword ( "(", TOKEN_LPAREN, 0, 0 )
     LexInsertKeyword ( ")", TOKEN_RPAREN, 0, 0 )
-    LexInsertKeyword ( "[", TOKEN_LBRACKET, 0, 0 )
     LexInsertKeyword ( "]", TOKEN_RBRACKET, 0, 0 )
-    LexInsertKeyword ( "^", TOKEN_CARET, 0, 0 )
     LexInsertKeyword ( ":", TOKEN_COLON, 0, 0 )
     LexInsertKeyword ( "{", TOKEN_LBRACE, 0, 0 )
     LexInsertKeyword ( "}", TOKEN_RBRACE, 0, 0 )
@@ -245,6 +242,11 @@ FN LexInitialize ()
     LexInsertKeyword ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT, 0 )
     LexInsertKeyword ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT, 0 )
     LexInsertKeyword ( "~", TOKEN_OPER, TOKEN_BITNOT, 0 )
+    LexInsertKeyword ( "*", TOKEN_OPER, TOKEN_MUL, 0 )
+
+    LexInsertKeyword ( "[", TOKEN_OPER, TOKEN_LBRACKET, 0 )
+    LexInsertKeyword ( "^", TOKEN_OPER, TOKEN_CARET, 0 )
+    LexInsertKeyword ( "(", TOKEN_OPER, TOKEN_LPAREN, 0 )
 
     LexInsertKeyword ( "=", TOKEN_ASSIGN, TOKEN_EQUALS, 0 )
     LexInsertKeyword ( "+=", TOKEN_ASSIGN, TOKEN_PLUSEQUALS, 0 )
@@ -713,8 +715,6 @@ FN LexNextToken (
         token^.Type = keyword^.Type
         token^.Subtype = keyword^.Subtype
         token^.TypeContext = keyword^.TypeContext
-
-        TlPrintNumber ( keyword^.TypeContext )
 
         LEAVE
     END

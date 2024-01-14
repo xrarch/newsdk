@@ -55,6 +55,10 @@ FN FeInitialize (
     // Initialize the lexer.
 
     LexInitialize ()
+
+    // Initialize the parser.
+
+    PrsInitialize ()
 END
 
 FN FeIsMacroArgument (

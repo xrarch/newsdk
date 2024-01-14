@@ -2,6 +2,8 @@
 
 EXTERN FN PrsProgram ()
 
+EXTERN FN PrsInitialize ()
+
 ENUM PrsAstType : UBYTE
     AST_IDENTIFIER,
     AST_ASSIGN,
