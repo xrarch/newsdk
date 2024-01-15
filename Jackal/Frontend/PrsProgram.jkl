@@ -159,6 +159,12 @@ FN PrsAtom () : ^PrsAstNode
             LexTokenError ( &token, "Use of undeclared symbol.", 0, 0, 0 )
         END
 
+        symbol := CAST token.Payload TO ^LexSymbol
+
+        IF symbol^.Type != SYM_VAR THEN
+            LexTokenError ( &token, "Expected a variable.", 0, 0, 0 )
+        END
+
         atomnode = PrsCreateIdentifierNode (
             &token, // token
         )
