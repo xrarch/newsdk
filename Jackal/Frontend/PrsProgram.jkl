@@ -746,6 +746,19 @@ END
 
 // Special operator parse routines.
 
+FN (PrsOperatorF) PrsParseCompoundTypeIndex (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a compound type index. We need to evaluate the type of the left
+    // side, and make sure it's really a compound type (i.e., a STRUCT or a
+    // UNION). Then, we set the lexical scope to the one for the compound type's
+    // field names, and collect the field name.
+
+    TlInternalError ( "TODO PrsParseCompoundTypeIndex", 0, 0, 0 )
+END
+
 FN (PrsOperatorF) PrsParseArrayIndex (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -912,6 +925,7 @@ FN PrsInitialize ()
     // Initialize the parser.
 
     PrsOperators[TOKEN_DOT].Precedence = 25
+    PrsOperators[TOKEN_DOT].ParseFunc = &PrsParseCompoundTypeIndex
 
     PrsOperators[TOKEN_LBRACKET].Precedence = 25
     PrsOperators[TOKEN_LBRACKET].ParseFunc = &PrsParseArrayIndex
