@@ -13,6 +13,7 @@ END
 // TODO ifdef this for 64 bits as well
 
 TYPE TlMachineWord : ULONG
+CONST TL_MACHINE_WORD_MAX : ULONG = 0xFFFFFFFF
 
 EXTERN FN TlInitialize ()
 

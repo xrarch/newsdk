@@ -17,6 +17,7 @@ CONST VAR_FLAG_FUNCTION := 8
 STRUCT PrsOperatorRecord
     ParseFunc : PrsOperatorF,
     Precedence : ULONG,
+    NoRightSide : UBYTE,
 END
 
 FNPTR PrsOperatorF (
@@ -131,6 +132,30 @@ FN PrsPrintType (
     END
 END
 
+FN PrsIsCompileTime (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Evaluates whether the value of a node can be known at compile time.
+
+    IF node^.Type == AST_CONSTANT THEN
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_STRING THEN
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_OPERATOR AND
+        node^.Token.Subtype == TOKEN_ADDROF AND
+        node^.Body.Operator.Left^.Type == AST_IDENTIFIER THEN
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
 FN PrsAtom () : ^PrsAstNode
 
     // Parse an atom. This is an "atomic" part of an expression, such as a
@@ -143,13 +168,14 @@ FN PrsAtom () : ^PrsAstNode
     LexGetToken ( &token )
 
     IF token.Type == TOKEN_NUMBER THEN
-        // This is a constant number. The value of the constant stays in the
-        // token payload.
+        // This is a constant number.
 
         atomnode = PrsCreateAstNode (
             AST_CONSTANT,
             &token, // token
         )
+
+        atomnode^.Body.Constant.Value = CAST token.Payload TO TlMachineWord
 
     ELSEIF token.Type == TOKEN_IDENTIFIER THEN
         // This is an identifier. The symbol pointer and stuff stay in the token
@@ -208,24 +234,46 @@ FN PrsAtom () : ^PrsAstNode
             &token, // token
         )
 
+        IF NOT operator^.NoRightSide THEN
+            // Actually the left side but who's checking.
+
+            atomnode^.Body.Operator.Left = PrsExpression ( operator^.Precedence )
+        END
+
         IF operator^.ParseFunc THEN
             operator^.ParseFunc (
                 operator, // operator
                 atomnode, // node
             )
-        ELSE
-            atomnode^.Body.Operator.Left = PrsExpression ( operator^.Precedence )
         END
 
     ELSEIF token.Type == TOKEN_VALUE THEN
         // This is a primitive value, such as NULLPTR, TRUE, or FALSE.
         // The value type stays as the subtype of the token.
 
-        atomnode = PrsCreateAstNode (
-            AST_PRIM_VALUE,
-            &token, // token
-        )
-    
+        IF token.Subtype == TOKEN_TRUE THEN
+            atomnode = PrsCreateAstNode (
+                AST_CONSTANT,
+                &token, // token
+            )
+
+            atomnode^.Body.Constant.Value = 1
+
+        ELSEIF token.Subtype == TOKEN_FALSE THEN
+            atomnode = PrsCreateAstNode (
+                AST_CONSTANT,
+                &token, // token
+            )
+
+            atomnode^.Body.Constant.Value = 0
+
+        ELSE
+            atomnode = PrsCreateAstNode (
+                AST_PRIM_VALUE,
+                &token, // token
+            )
+        END
+
     ELSE
         LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
     END
@@ -271,13 +319,15 @@ FN PrsExpression (
 
         node^.Body.Operator.Left = atomnode
 
+        IF NOT operator^.NoRightSide THEN
+            node^.Body.Operator.Right = PrsExpression ( minprecedence + 1 )
+        END
+
         IF operator^.ParseFunc THEN
             operator^.ParseFunc (
                 operator, // operator
                 node, // node
             )
-        ELSE
-            node^.Body.Operator.Right = PrsExpression ( minprecedence + 1 )
         END
 
         atomnode = node
@@ -458,7 +508,10 @@ FN PrsType (
         ELSE
             boundnode := PrsExpression ( 0 )
 
-            TlInternalError ( "TODO statically evaluate the array bound", 0, 0, 0 )
+            IF boundnode^.Type != AST_CONSTANT THEN
+                LexTokenError ( &typetoken,
+                    "Expected a constant array bound", 0, 0, 0 )
+            END
 
             arraytype^.Body.Array.Bound = boundnode
 
@@ -689,7 +742,13 @@ FN PrsVariableDeclaration (
         // some other global or something because we don't know the value of
         // that immediately.
 
-        TlInternalError ( "TODO statically evaluate initial value", 0, 0, 0 )
+        IF NOT PrsIsCompileTime ( initialnode ) THEN
+            LexTokenError ( token,
+                "Globals require a compile-time initial value.", 0, 0, 0 )
+        END
+
+        TlPrintNumber ( initialnode^.Body.Constant.Value )
+        TlPrintString ( "\n" )
 
         symbol^.InitialValue = initialnode
     END
@@ -849,14 +908,600 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     END
 END
 
-FN (PrsOperatorF) PrsParsePointerRef (
+FN (PrsOperatorF) PrsParseMul (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
 )
 
-    // Parse a pointer ref. We don't actually do anything here, the presence of
-    // this routine just stops the expression parser from collecting a "right
-    // side".
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value * right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseDivide (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        IF right^.Body.Constant.Value == 0 THEN
+            LexTokenError ( &node^.Token, "Division by zero not allowed", 0, 0, 0 )
+        END
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value / right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseModulo (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        IF right^.Body.Constant.Value == 0 THEN
+            LexTokenError ( &node^.Token, "Modulo by zero not allowed", 0, 0, 0 )
+        END
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value % right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParsePlus (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value + right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    // Check various arithmetic cases for simplification.
+    // TODO test these more thoroughly
+
+    IF left^.Type == AST_OPERATOR THEN
+        b := right^.Body.Constant.Value
+
+        IF left^.Token.Subtype == TOKEN_PLUS AND
+            left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+
+            // (x + a) + b -> x + (a + b)
+
+            a := left^.Body.Operator.Right^.Body.Constant.Value
+
+            right^.Body.Constant.Value = a + b
+
+            node^.Body.Operator.Left = left^.Body.Operator.Left
+
+            LEAVE
+
+        ELSEIF left^.Token.Subtype == TOKEN_MINUS AND
+            left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+
+            // (x - a) + b -> x - (a - b)
+
+            a := left^.Body.Operator.Right^.Body.Constant.Value
+
+            right^.Body.Constant.Value = a - b
+
+            node^.Body.Operator.Left = left^.Body.Operator.Left
+            node^.Token.Subtype = TOKEN_MINUS
+
+            LEAVE
+
+        ELSEIF left^.Token.Subtype == TOKEN_MINUS AND
+            left^.Body.Operator.Left^.Type == AST_CONSTANT THEN
+
+            // (a - x) + b -> (a + b) - x
+
+            a := left^.Body.Operator.Left^.Body.Constant.Value
+
+            node^.Body.Operator.Left = right
+
+            right^.Body.Constant.Value = a + b
+
+            node^.Body.Operator.Right = left^.Body.Operator.Right
+            node^.Token.Subtype = TOKEN_MINUS
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseMinus (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value - right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    // Check various arithmetic cases for simplification.
+    // TODO test these more thoroughly
+
+    IF left^.Type == AST_OPERATOR THEN
+        b := right^.Body.Constant.Value
+
+        IF left^.Token.Subtype == TOKEN_MINUS THEN
+            IF left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+                // (x - a) - b  ->  x - (a + b)
+
+                a := left^.Body.Operator.Right^.Body.Constant.Value
+
+                right^.Body.Constant.Value = a + b
+
+                node^.Body.Operator.Left = left^.Body.Operator.Left
+
+                LEAVE
+            ELSEIF left^.Body.Operator.Left^.Type == AST_CONSTANT THEN
+                // (a - x) - b  ->  (a - b) - x
+
+                a := left^.Body.Operator.Left^.Body.Constant.Value
+
+                right^.Body.Constant.Value = a - b
+
+                node^.Body.Operator.Left = right
+                node^.Body.Operator.Right = left^.Body.Operator.Right
+
+                LEAVE
+            END
+        ELSEIF left^.Token.Subtype == TOKEN_PLUS AND
+            left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+
+            // (x + a) - b -> x + (a - b)
+
+            a := left^.Body.Operator.Right^.Body.Constant.Value
+
+            right^.Body.Constant.Value = a - b
+
+            node^.Token.Subtype = TOKEN_PLUS
+            node^.Body.Operator.Left = left^.Body.Operator.Left
+
+            LEAVE
+        END
+    END
+
+    IF right^.Type == AST_OPERATOR THEN
+        b := left^.Body.Constant.Value
+
+        IF right^.Token.Subtype == TOKEN_MINUS THEN
+            IF right^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+                // b - (x - a) -> (a + b) - x
+
+                a := right^.Body.Operator.Right^.Body.Constant.Value
+
+                left^.Body.Constant.Value = a + b
+
+                node^.Body.Operator.Right = right^.Body.Operator.Left
+
+                LEAVE
+            ELSEIF right^.Body.Operator.Left^.Type == AST_CONSTANT THEN
+                // b - (a - x) -> x + (b - a)
+
+                a := right^.Body.Operator.Left^.Body.Constant.Value
+
+                left^.Body.Constant.Value = b - a
+
+                node^.Token.Subtype = TOKEN_PLUS
+                node^.Body.Operator.Left = right^.Body.Operator.Right
+
+                LEAVE
+            END
+        ELSEIF right^.Token.Subtype == TOKEN_PLUS AND
+            right^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+            
+            // b - (x + a) -> (b - a) - x
+
+            a := right^.Body.Operator.Right^.Body.Constant.Value
+
+            left^.Body.Constant.Value = b - a
+
+            node^.Body.Operator.Right = right^.Body.Operator.Left
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitAnd (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value & right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF (right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0) OR
+        (left^.Type == AST_CONSTANT AND left^.Body.Constant.Value == 0) THEN
+
+        // We can roll this into the constant zero.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = 0
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND
+        right^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
+
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND
+        left^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
+
+        // No effect. Copy the right node over us.
+
+        TlCopyMemory (
+            node, // dest
+            right, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitXor (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value $ right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND left^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the right node over us.
+
+        TlCopyMemory (
+            node, // dest
+            right, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND
+        right^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
+
+        // Turn this node into a bitwise NOT of the left side.
+
+        node^.Type = AST_OPERATOR
+        node^.Token.Subtype = TOKEN_BITNOT
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND
+        left^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
+
+        // Turn this node into a bitwise NOT of the right side.
+
+        node^.Type = AST_OPERATOR
+        node^.Token.Subtype = TOKEN_BITNOT
+        node^.Body.Operator.Left = node^.Body.Operator.Right
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitOr (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value | right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND left^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the right node over us.
+
+        TlCopyMemory (
+            node, // dest
+            right, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseLessThan (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value < right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseGreaterThan (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value > right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseLtEq (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value <= right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseGtEq (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value >= right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseEquiv (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value == right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseNotEquiv (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value != right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseAnd (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value AND right^.Body.Constant.Value
+
+        LEAVE
+    END
+END
+
+FN (PrsOperatorF) PrsParseOr (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value OR right^.Body.Constant.Value
+    END
 END
 
 // Special left-operator parse routines.
@@ -870,9 +1515,6 @@ FN (PrsOperatorF) PrsParseAddrOf (
     // TOKEN_ADDROF, to distinguish it from a bitwise AND.
 
     node^.Token.Subtype = TOKEN_ADDROF
-
-    oper := CAST operator TO ^PrsOperatorRecord
-    node^.Body.Operator.Left = PrsExpression ( oper^.Precedence )
 END
 
 FN (PrsOperatorF) PrsParseInverse (
@@ -880,13 +1522,77 @@ FN (PrsOperatorF) PrsParseInverse (
     IN node : ^PrsAstNode,
 )
 
+    left := node^.Body.Operator.Left
+
+    IF left^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = -left^.Body.Constant.Value
+
+        LEAVE
+    END
+
     // Parse an inverse operation. This just sets the operation type to
     // TOKEN_INVERSE, to distinguish it from a subtraction.
 
     node^.Token.Subtype = TOKEN_INVERSE
+END
 
-    oper := CAST operator TO ^PrsOperatorRecord
-    node^.Body.Operator.Left = PrsExpression ( oper^.Precedence )
+FN (PrsOperatorF) PrsParseNot (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_NOT THEN
+        // Get rid of the redundant NOTs by copying the left side of our left
+        // side over the top of us.
+
+        TlCopyMemory (
+            node, // dest
+            left^.Body.Operator.Left, // src
+            SIZEOF PrsAstNode, // sz
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = NOT left^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitNot (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_BITNOT THEN
+        // Get rid of the redundant NOTs by copying the left side of our left
+        // side over the top of us.
+
+        TlCopyMemory (
+            node, // dest
+            left^.Body.Operator.Left, // src
+            SIZEOF PrsAstNode, // sz
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = ~left^.Body.Constant.Value
+    END
 END
 
 FN (PrsOperatorF) PrsParseCast (
@@ -920,40 +1626,88 @@ FN (PrsOperatorF) PrsParseCast (
     node^.Body.Operator.OperatorSpecific = type
 END
 
+FN (PrsOperatorF) PrsParseSizeOfValue (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // We have to figure out the size of the type of the value, and convert our
+    // node to a constant node containing this size.
+
+    TlInternalError ( "TODO PrsParseSizeOfValue", 0, 0, 0 )
+END
+
 FN PrsInitialize ()
 
     // Initialize the parser.
 
     PrsOperators[TOKEN_DOT].Precedence = 25
     PrsOperators[TOKEN_DOT].ParseFunc = &PrsParseCompoundTypeIndex
+    PrsOperators[TOKEN_DOT].NoRightSide = TRUE
 
     PrsOperators[TOKEN_LBRACKET].Precedence = 25
     PrsOperators[TOKEN_LBRACKET].ParseFunc = &PrsParseArrayIndex
+    PrsOperators[TOKEN_LBRACKET].NoRightSide = TRUE
 
     PrsOperators[TOKEN_LPAREN].Precedence = 25
     PrsOperators[TOKEN_LPAREN].ParseFunc = &PrsParseFunctionCall
+    PrsOperators[TOKEN_LPAREN].NoRightSide = TRUE
 
     PrsOperators[TOKEN_CARET].Precedence = 25
-    PrsOperators[TOKEN_CARET].ParseFunc = &PrsParsePointerRef
+    PrsOperators[TOKEN_CARET].NoRightSide = TRUE
 
     PrsOperators[TOKEN_MUL].Precedence = 20
+    PrsOperators[TOKEN_MUL].ParseFunc = &PrsParseMul
+
     PrsOperators[TOKEN_DIVIDE].Precedence = 20
+    PrsOperators[TOKEN_DIVIDE].ParseFunc = &PrsParseDivide
+
     PrsOperators[TOKEN_MODULO].Precedence = 20
+    PrsOperators[TOKEN_MODULO].ParseFunc = &PrsParseModulo
+
     PrsOperators[TOKEN_PLUS].Precedence = 19
+    PrsOperators[TOKEN_PLUS].ParseFunc = &PrsParsePlus
+
     PrsOperators[TOKEN_MINUS].Precedence = 19
+    PrsOperators[TOKEN_MINUS].ParseFunc = &PrsParseMinus
+
     PrsOperators[TOKEN_LEFTSHIFT].Precedence = 18
     PrsOperators[TOKEN_RIGHTSHIFT].Precedence = 18
+
     PrsOperators[TOKEN_BITAND].Precedence = 17
+    PrsOperators[TOKEN_BITAND].ParseFunc = &PrsParseBitAnd
+
     PrsOperators[TOKEN_BITXOR].Precedence = 16
+    PrsOperators[TOKEN_BITXOR].ParseFunc = &PrsParseBitXor
+
     PrsOperators[TOKEN_BITOR].Precedence = 15
+    PrsOperators[TOKEN_BITOR].ParseFunc = &PrsParseBitOr
+    
     PrsOperators[TOKEN_LESSTHAN].Precedence = 14
+    PrsOperators[TOKEN_LESSTHAN].ParseFunc = &PrsParseLessThan
+
     PrsOperators[TOKEN_GREATERTHAN].Precedence = 14
+    PrsOperators[TOKEN_GREATERTHAN].ParseFunc = &PrsParseGreaterThan
+
     PrsOperators[TOKEN_LTEQ].Precedence = 14
+    PrsOperators[TOKEN_LTEQ].ParseFunc = &PrsParseLtEq
+
     PrsOperators[TOKEN_GTEQ].Precedence = 14
+    PrsOperators[TOKEN_GTEQ].ParseFunc = &PrsParseGtEq
+
     PrsOperators[TOKEN_EQUIV].Precedence = 13
+    PrsOperators[TOKEN_EQUIV].ParseFunc = &PrsParseEquiv
+
     PrsOperators[TOKEN_NOTEQUIV].Precedence = 13
+    PrsOperators[TOKEN_NOTEQUIV].ParseFunc = &PrsParseNotEquiv
+
     PrsOperators[TOKEN_AND].Precedence = 12
+    PrsOperators[TOKEN_AND].ParseFunc = &PrsParseAnd
+
     PrsOperators[TOKEN_OR].Precedence = 11
+    PrsOperators[TOKEN_OR].ParseFunc = &PrsParseOr
+
+    // Initialize the left-operators.
 
     PrsLeftOperators[TOKEN_BITAND].Precedence = 24
     PrsLeftOperators[TOKEN_BITAND].ParseFunc = &PrsParseAddrOf
@@ -962,12 +1716,17 @@ FN PrsInitialize ()
     PrsLeftOperators[TOKEN_MINUS].ParseFunc = &PrsParseInverse
 
     PrsLeftOperators[TOKEN_NOT].Precedence = 24
+    PrsLeftOperators[TOKEN_NOT].ParseFunc = &PrsParseNot
+
     PrsLeftOperators[TOKEN_BITNOT].Precedence = 24
+    PrsLeftOperators[TOKEN_BITNOT].ParseFunc = &PrsParseBitNot
 
     PrsLeftOperators[TOKEN_CAST].Precedence = 24
     PrsLeftOperators[TOKEN_CAST].ParseFunc = &PrsParseCast
+    PrsLeftOperators[TOKEN_CAST].NoRightSide = TRUE
 
     PrsLeftOperators[TOKEN_SIZEOFVALUE].Precedence = 24
+    PrsLeftOperators[TOKEN_SIZEOFVALUE].ParseFunc = &PrsParseSizeOfValue
 END
 
 FN PrsProgram ()

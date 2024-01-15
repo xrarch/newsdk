@@ -30,9 +30,14 @@ STRUCT PrsAstOperator
     OperatorSpecific : ^VOID,
 END
 
+STRUCT PrsAstConstant
+    Value : TlMachineWord,
+END
+
 UNION PrsAstBody
     Assign : PrsAstAssign,
     Operator : PrsAstOperator,
+    Constant : PrsAstConstant,
 END
 
 STRUCT PrsAstNode
