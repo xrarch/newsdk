@@ -136,6 +136,7 @@ ENUM LexCharBehavior : UBYTE
 END
 
 ENUM LexPrimitiveType : UBYTE
+    PRIM_TYPE_VOID,
     PRIM_TYPE_UBYTE,
     PRIM_TYPE_UINT,
     PRIM_TYPE_ULONG,
@@ -202,7 +203,6 @@ ENUM LexSymbolType : UBYTE
     SYM_VAR,
     SYM_LABEL,
     SYM_TYPE,
-    SYM_FN,
 
     // The "forward" types signify a symbol that has been used before it was
     // defined, in a context where it was okay to do so. In fact, it's okay to
@@ -223,7 +223,12 @@ STRUCT LexSymbol
     Next : ^LexSymbol,
     Prev : ^LexSymbol,
 
-    SemanticType : LexSemanticType,
+    // Unfortunately the initial value has to be a void pointer but it's
+    // actually a pointer to an AST node.
+
+    InitialValue : ^VOID,
+
+    SemanticType : ^LexSemanticType,
 
     Flags : ULONG,
     Type : LexSymbolType,
@@ -234,6 +239,7 @@ ENUM LexSemanticSubtype : UBYTE
     TYPE_ARRAY,
     TYPE_POINTER,
     TYPE_NAMED,
+    TYPE_FUNCTION,
 END
 
 STRUCT LexSemanticTypePrimitiveBody

@@ -27,6 +27,7 @@ END
 STRUCT PrsAstOperator
     Left : ^PrsAstNode,
     Right : ^PrsAstNode,
+    OperatorSpecific : ^VOID,
 END
 
 UNION PrsAstBody
