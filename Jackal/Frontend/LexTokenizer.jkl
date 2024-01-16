@@ -178,9 +178,9 @@ FN LexInitialize ()
     LexInsertKeyword ( "CAST", TOKEN_OPER, TOKEN_CAST, 0 )
     LexInsertKeyword ( "CONTINUE", TOKEN_STATEMENT, TOKEN_CONTINUE, 0 )
     LexInsertKeyword ( "DO", TOKEN_OTHER, TOKEN_DO, 0 )
-    LexInsertKeyword ( "ELSE", TOKEN_STATEMENT, TOKEN_ELSE, 0 )
-    LexInsertKeyword ( "ELSEIF", TOKEN_STATEMENT, TOKEN_ELSEIF, 0 )
-    LexInsertKeyword ( "END", TOKEN_STATEMENT, TOKEN_END, 0 )
+    LexInsertKeyword ( "ELSE", TOKEN_TERMINATOR, TOKEN_ELSE, 0 )
+    LexInsertKeyword ( "ELSEIF", TOKEN_TERMINATOR, TOKEN_ELSEIF, 0 )
+    LexInsertKeyword ( "END", TOKEN_TERMINATOR, TOKEN_END, 0 )
     LexInsertKeyword ( "ENUM", TOKEN_DECL, TOKEN_ENUM, 0 )
     LexInsertKeyword ( "EXTERN", TOKEN_DECL, TOKEN_EXTERN, 0 )
     LexInsertKeyword ( "FALSE", TOKEN_VALUE, TOKEN_FALSE, 0 )
@@ -781,6 +781,8 @@ FN LexNextToken (
         END
 
         symbol^.Name = symbol + SIZEOF LexSymbol
+
+        symbol^.Type = SYM_UNINITIALIZED
 
         TlCopyMemory (
             symbol^.Name, // dest

@@ -161,6 +161,10 @@ FN PrsIsCompileTime (
         RETURN TRUE
     END
 
+    IF node^.Type == AST_INITIALIZER THEN
+        RETURN TRUE
+    END
+
     RETURN FALSE
 END
 
@@ -195,13 +199,24 @@ FN PrsAtom () : ^PrsAstNode
 
         symbol := CAST token.Payload TO ^LexSymbol
 
-        IF symbol^.Type != SYM_VAR THEN
+        IF symbol^.Type == SYM_CONSTANT THEN
+            // This is a constant.
+
+            atomnode = PrsCreateAstNode (
+                AST_CONSTANT,
+                &token, // token
+            )
+
+            atomnode^.Body.Constant.Value = symbol^.Value
+
+        ELSEIF symbol^.Type != SYM_VAR THEN
+            atomnode = PrsCreateIdentifierNode (
+                &token, // token
+            )
+
+        ELSE
             LexTokenError ( &token, "Expected a variable.", 0, 0, 0 )
         END
-
-        atomnode = PrsCreateIdentifierNode (
-            &token, // token
-        )
 
     ELSEIF token.Type == TOKEN_STRING THEN
         // This is a literal string. The value of the string stays in the
@@ -648,7 +663,7 @@ FN PrsVariableDeclaration (
     IN token : ^LexToken,
     IN flags : ULONG,
     IN global : UBYTE,
-)
+) : ^LexSymbol
 
     // Parse a variable declaration of one of the following forms:
     //
@@ -672,6 +687,8 @@ FN PrsVariableDeclaration (
     // is inferred. Otherwise, we have to put the token back and parse the type.
 
     type : ^LexSemanticType = NULLPTR
+
+    hasinitializer := TRUE
 
     IF NOT LexMatchToken (
         NULLPTR, // token
@@ -698,18 +715,27 @@ FN PrsVariableDeclaration (
         ) THEN
             // This variable is uninitialized.
 
-            LEAVE
+            hasinitializer = FALSE
         END
     END
 
-    // Parse the initializer.
+    initialnode : ^PrsAstNode = NULLPTR
 
-    initialnode := PrsParseInitializer ()
+    IF hasinitializer THEN
+        IF flags & VAR_FLAG_EXTERN THEN
+            LexTokenError ( token,
+                "EXTERN declarations must not have an initializer.", 0, 0, 0 )
+        END
 
-    IF NOT type THEN
-        // If the type was implicit, evaluate the type of the initial value.
+        // Parse the initializer.
 
-        type = PrsEvaluateType ( initialnode )
+        initialnode = PrsParseInitializer ()
+
+        IF NOT type THEN
+            // If the type was implicit, evaluate the type of the initial value.
+
+            type = PrsEvaluateType ( initialnode )
+        END
     END
 
     // Do general declaration processing of the symbol.
@@ -723,40 +749,61 @@ FN PrsVariableDeclaration (
     )
 
     IF NOT global THEN
-        // Create an AST node for the assignment of the initial value.
+        IF hasinitializer THEN
+            // Create an AST node for the assignment of the initial value.
 
-        idnode := PrsCreateIdentifierNode ( token )
+            idnode := PrsCreateIdentifierNode ( token )
 
-        asgnnode := PrsCreateAstNode (
-            AST_ASSIGN, // type
-            token, // token
-        )
+            asgnnode := PrsCreateAstNode (
+                AST_ASSIGN, // type
+                token, // token
+            )
 
-        asgnnode^.Body.Assign.Left = idnode
-        asgnnode^.Body.Assign.Right = initialnode
+            asgnnode^.Body.Assign.Left = idnode
+            asgnnode^.Body.Assign.Right = initialnode
 
-        // We can place it directly in the statement list for the current block
-        // because the existence of a block is implied by the fact this is a
-        // local declaration.
+            // We can place it directly in the statement list for the current
+            // block because the existence of a block is implied by the fact
+            // this is a local declaration.
 
-        PrsInsertNodeIntoBlock (
-            PrsCurrentBlock, // block
-            asgnnode, // node
-        )
-    ELSE
+            PrsInsertNodeIntoBlock (
+                PrsCurrentBlock, // block
+                asgnnode, // node
+            )
+        END
+    ELSEIF initialnode THEN
         // Statically evaluate the initial value. If it can't be statically
         // evaluated, that's an error, since this is a global. Note that we
         // might still leave it as a "complex" AST node if it's a pointer to
         // some other global or something because we don't know the value of
         // that immediately.
 
+        // TODO only allow initializer if the type is an array, struct, or union
+        //      type
+
         IF NOT PrsIsCompileTime ( initialnode ) THEN
             LexTokenError ( token,
                 "Globals require a compile-time initial value.", 0, 0, 0 )
         END
 
+        TlPrintNumber ( initialnode^.Body.Constant.Value )
+
+        symbol^.InitialValue = initialnode
+    ELSE
+        // Uninitialized globals have a value of zero, always.
+        // Backend may place this in BSS.
+
+        initialnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        initialnode^.Body.Constant.Value = 0
+
         symbol^.InitialValue = initialnode
     END
+
+    RETURN symbol
 END
 
 FN PrsGlobalDeclaration () : UBYTE
@@ -1863,25 +1910,174 @@ END
 
 // Declarator parse routines.
 
+FN PrsCreateNamedType (
+    IN token : ^LexToken,
+) : ^LexSymbol
+
+    // Common part of creating a named type, such as an ENUM, a TYPE, an FNPTR,
+    // etc.
+
+    symbol := CAST token^.Payload TO ^LexSymbol
+
+    IF token^.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        // We must be overriding a forward-declared type, otherwise this is a no
+        // go.
+
+        IF symbol^.Type != SYM_FORWARD_TYPE THEN
+            LexTokenError ( token, "Identifier already in use", 0, 0, 0 )
+        END
+    END
+
+    symbol^.Type = SYM_TYPE
+
+    RETURN symbol
+END
+
 FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
 
     // Parse an ENUM declaration.
 
-    TlInternalError ( "TODO PrsParseEnum", 0, 0, 0 )
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := PrsCreateNamedType ( &nametoken )
+
+    colontoken : LexToken
+
+    IF NOT LexMatchToken (
+        &colontoken, // token
+        TOKEN_COLON, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    PrsType (
+        &type, // type
+        0, // depth
+    )
+
+    symbol^.SemanticType = type
+
+    // Parse the list of constant names.
+    // These are of the form:
+    //
+    // NAME
+    // NAME = NewPosition
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_TERMINATOR, // type
+        TOKEN_END, // subtype
+    ) THEN
+        // Empty list, we're done.
+
+        RETURN symbol
+    END
+
+    token : LexToken
+
+    value : TlMachineWord = 0
+
+    WHILE TRUE DO
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0)
+        END
+
+        IF token.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &token, "Identifier already in use", 0, 0, 0 )
+        END
+
+        constsymbol := CAST token.Payload TO ^LexSymbol
+
+        constsymbol^.Type = SYM_CONSTANT
+        constsymbol^.Value = value
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            // Set a new position for the constant values.
+
+            newposnode := PrsExpression ( 0 )
+
+            IF newposnode^.Type != AST_CONSTANT THEN
+                LexTokenError ( &newposnode^.Token,
+                    "Expected a constant value", 0, 0, 0 )
+            END
+
+            value = newposnode^.Body.Constant.Value
+            constsymbol^.Value = value
+        END
+
+        value += 1
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &token,
+                "Expected a comma or END", 0, 0, 0 )
+        END
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the constant list. This isn't redundant, it's to
+            // allow the , END case.
+
+            BREAK
+        END
+    END
+
+    RETURN symbol
 END
 
-FN (PrsDeclaratorF) PrsParseExtern () : ^LexSymbol
+FN PrsParseFnDeclaration (
+    IN flags : ULONG,
+) : ^LexSymbol
 
-    // Parse an EXTERN declaration.
+    // Parse a function declaration.
 
-    TlInternalError ( "TODO PrsParseExtern", 0, 0, 0 )
+    TlInternalError ( "TODO PrsParseFnDeclaration", 0, 0, 0 )
 END
 
 FN (PrsDeclaratorF) PrsParseFn () : ^LexSymbol
 
     // Parse a function declaration.
 
-    TlInternalError ( "TODO PrsParseFn", 0, 0, 0 )
+    RETURN PrsParseFnDeclaration (
+        VAR_FLAG_PUBLIC, // flags
+    )
 END
 
 FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
@@ -1891,17 +2087,12 @@ FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
     TlInternalError ( "TODO PrsParseFnPtr", 0, 0, 0 )
 END
 
-FN (PrsDeclaratorF) PrsParsePublic () : ^LexSymbol
-
-    // Parse a PUBLIC declaration.
-
-    TlInternalError ( "TODO PrsParsePublic", 0, 0, 0 )
-END
-
 FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
 
     // Parse a STRUCT declaration.
     // XXX remember bit fields!
+    // XXX remember that non-pointer references to undeclared STRUCTs are
+    //     absolutely forbidden! may require a new argument on PrsType
 
     TlInternalError ( "TODO PrsParseStruct", 0, 0, 0 )
 END
@@ -1920,18 +2111,88 @@ FN (PrsDeclaratorF) PrsParseUnion () : ^LexSymbol
     TlInternalError ( "TODO PrsParseUnion", 0, 0, 0 )
 END
 
+FN PrsParseStorageClassSpecifier (
+    IN flags : ULONG,
+) : ^LexSymbol
+
+    // Parse any of the storage class specifiers (EXTERN, PUBLIC, etc)
+
+    symbol : ^LexSymbol
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_DECL, // type
+        TOKEN_FN, // subtype
+    ) THEN
+        symbol = PrsParseFnDeclaration (
+            flags, // flags
+        )
+    ELSE
+        token : LexToken
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+        END
+
+        colontoken : LexToken
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &colontoken,
+                "Expected a colon (indicating a declaration).", 0, 0, 0 )
+        END
+
+        symbol = PrsVariableDeclaration (
+            &token, // token
+            flags, // flags
+            TRUE, // global
+        )
+    END
+
+    RETURN symbol
+END
+
+FN (PrsDeclaratorF) PrsParseExtern () : ^LexSymbol
+
+    // Parse an EXTERN declaration.
+
+    RETURN PrsParseStorageClassSpecifier (
+        VAR_FLAG_EXTERN, // flags
+    )
+END
+
+FN (PrsDeclaratorF) PrsParsePublic () : ^LexSymbol
+
+    // Parse a PUBLIC declaration.
+
+    RETURN PrsParseStorageClassSpecifier (
+        VAR_FLAG_PUBLIC, // flags
+    )
+END
+
 FN (PrsDeclaratorF) PrsParseExport () : ^LexSymbol
 
     // Parse an EXPORT declaration.
 
-    TlInternalError ( "TODO PrsParseExport", 0, 0, 0 )
+    RETURN PrsParseStorageClassSpecifier (
+        VAR_FLAG_EXPORT, // flags
+    )
 END
 
 FN (PrsDeclaratorF) PrsParsePrivate () : ^LexSymbol
 
     // Parse a PRIVATE declaration.
 
-    TlInternalError ( "TODO PrsParsePrivate", 0, 0, 0 )
+    RETURN PrsParseStorageClassSpecifier (
+        0, // flags
+    )
 END
 
 FN PrsInitialize ()

@@ -15,6 +15,7 @@ ENUM LexTokenType : UBYTE
     TOKEN_DECL, // declarator
     TOKEN_OTHER, // anything else (THEN, DO, )
     TOKEN_ASSIGN, // assignment operators
+    TOKEN_TERMINATOR, // block terminators (ELSE, ELSEIF, END)
 
     TOKEN_RPAREN,
     TOKEN_RBRACKET,
@@ -43,9 +44,9 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_CAST,        // operator
     TOKEN_CONTINUE,    // statement
     TOKEN_DO,          // other
-    TOKEN_ELSE,        // statement
-    TOKEN_ELSEIF,      // statement
-    TOKEN_END,         // statement
+    TOKEN_ELSE,        // terminator
+    TOKEN_ELSEIF,      // terminator
+    TOKEN_END,         // terminator
     TOKEN_ENUM,        // declarator
     TOKEN_EXTERN,      // declarator
     TOKEN_FALSE,       // value
@@ -202,6 +203,8 @@ ENUM LexSymbolType : UBYTE
     SYM_VAR,
     SYM_LABEL,
     SYM_TYPE,
+    SYM_CONSTANT,
+    SYM_UNINITIALIZED,
 
     // The "forward" types signify a symbol that has been used before it was
     // defined, in a context where it was okay to do so. In fact, it's okay to
@@ -221,6 +224,8 @@ STRUCT LexSymbol
 
     Next : ^LexSymbol,
     Prev : ^LexSymbol,
+
+    Value : TlMachineWord,
 
     // Unfortunately the initial value has to be a void pointer but it's
     // actually a pointer to an AST node.
