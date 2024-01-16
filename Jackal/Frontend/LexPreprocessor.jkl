@@ -763,6 +763,8 @@ FN LexDefineMacroFromArgumentString (
     )
 END
 
+EXTERN FN PrsEnterMacro ()
+
 FN LexExpandMacro (
     IN macro : ^LexMacro,
     IN token : ^LexToken,
@@ -801,11 +803,6 @@ FN LexExpandMacro (
         stream, // stream
         macro, // macro
     )
-
-    // TODO push a sentinel value on the parser's structure stack so that it
-    // knows not to permit ENDs and stuff that "leave" the level the macro was
-    // expanded at (I figured out how to do this while staring in the bathroom
-    // mirror at my college campus at 8:30pm)
 
     // TODO better error messages within macros
 
@@ -902,6 +899,13 @@ FN LexExpandMacro (
     // be consumed.
 
     LexPushStream ( stream )
+
+    // Push a sentinel value on the parser's structure stack so that it
+    // knows not to permit ENDs and stuff that "leave" the level the macro was
+    // expanded at (I figured out how to do this while staring in the bathroom
+    // mirror at my college campus at 8:30pm)
+
+    PrsEnterMacro ()
 END
 
 //

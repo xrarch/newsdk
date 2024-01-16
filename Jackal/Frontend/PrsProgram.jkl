@@ -8,6 +8,25 @@ PUBLIC PrsGlobalListHead : ^LexSymbol = NULLPTR
 PUBLIC PrsGlobalListTail : ^LexSymbol = NULLPTR
 
 PrsCurrentBlock : ^PrsBlock = NULLPTR
+PrsCurrentFunction : ^LexSemanticType = NULLPTR
+
+PrsBlockStack : TlDynamicBuffer
+
+ENUM PrsBlockType : UBYTE
+    BLOCK_NULL,
+
+    // Controls the behavior of the terminator keywords.
+
+    BLOCK_PLAIN_BODY, // END is legal to terminate the block.
+    BLOCK_IF_BODY, // ELSEIF, ELSE, and END are legal to terminate the block.
+
+    // Nothing is legal to terminate the block. The lexer pushes this when it
+    // expands a macro and pops it when the macro is empty.
+
+    BLOCK_MACRO_BODY,
+END
+
+PrsWhileDepth : ULONG = 0
 
 CONST VAR_FLAG_EXTERN := 1
 CONST VAR_FLAG_PUBLIC := 2
@@ -52,6 +71,27 @@ FN PrsCreateType () : ^LexSemanticType
     END
 
     RETURN type
+END
+
+FN PrsEnterMacro ()
+
+    // The lexer calls this when it enters a macro.
+    // Pushing this to the block stack ensures that the scope can't leave the
+    // macro scope.
+
+    TlInsertDynamicBuffer (
+        &PrsBlockStack, // array
+        BLOCK_MACRO_BODY, // byte
+    )
+END
+
+FN PrsLeaveMacro () : UBYTE
+
+    // The lexer calls this when it leaves a macro.
+
+    byte := TlPopDynamicBuffer ( &PrsBlockStack )
+
+    RETURN byte == BLOCK_MACRO_BODY
 END
 
 FN PrsCreateAstNode (
@@ -127,15 +167,26 @@ FN PrsPrintType (
         TlPrintString ( "Primitive type: " )
         TlPrintNumber ( type^.Body.Primitive.Type )
         TlPrintString ( "\n" )
+
     ELSEIF type^.Subtype == TYPE_NAMED THEN
         TlPrintString ( "Type name: " )
         TlPrintString ( type^.Body.Named.Symbol^.Name )
         TlPrintString ( "\n" )
+
     ELSEIF type^.Subtype == TYPE_POINTER THEN
         TlPrintString ( "Pointer to:\n" )
         PrsPrintType ( type^.Body.Pointer.Base )
+
     ELSEIF type^.Subtype == TYPE_ARRAY THEN
-        TlPrintString ( "Array of:\n" )
+        TlPrintString ( "Array with bound: " )
+
+        IF type^.Body.Array.HasBound THEN
+            TlPrintNumber ( type^.Body.Array.Bound )
+            TlPrintString ( ", of:\n" )
+        ELSE
+            TlPrintString ( "Boundless, of:\n" )
+        END
+
         PrsPrintType ( type^.Body.Array.Base )
     END
 END
@@ -209,7 +260,7 @@ FN PrsAtom () : ^PrsAstNode
 
             atomnode^.Body.Constant.Value = symbol^.Value
 
-        ELSEIF symbol^.Type != SYM_VAR THEN
+        ELSEIF symbol^.Type == SYM_VAR THEN
             atomnode = PrsCreateIdentifierNode (
                 &token, // token
             )
@@ -527,7 +578,7 @@ FN PrsType (
 
             boundless = TRUE
 
-            arraytype^.Body.Array.Bound = NULLPTR
+            arraytype^.Body.Array.HasBound = FALSE
         ELSE
             boundnode := PrsExpression ( 0 )
 
@@ -536,7 +587,8 @@ FN PrsType (
                     "Expected a constant array bound", 0, 0, 0 )
             END
 
-            arraytype^.Body.Array.Bound = boundnode
+            arraytype^.Body.Array.Bound = boundnode^.Body.Constant.Value
+            arraytype^.Body.Array.HasBound = TRUE
 
             rbrackettoken : LexToken
 
@@ -855,6 +907,176 @@ FN PrsGlobalDeclaration () : UBYTE
     PrsDeclarators[token.Subtype].ParseFunc ()
 
     RETURN TRUE
+END
+
+FN PrsParseBlock (
+    OUT terminator : ^LexTokenSubtype,
+) : ^PrsBlock
+
+    // Parse a block. A block is composed of a sequence of statements, followed
+    // by one of the allowed terminator keywords.
+
+    block : ^PrsBlock
+
+    status := TlBumpAlloc (
+        SIZEOF PrsBlock, // bytes
+        &block, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate a block", 0, 0, 0 )
+    END
+
+    // Initialize the block.
+
+    block^.StatementListHead = NULLPTR
+    block^.StatementListTail = NULLPTR
+    block^.StatementCount = 0
+
+    // Save the old block and set the new.
+
+    oldblock := PrsCurrentBlock
+    PrsCurrentBlock = block
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            0, // subtype
+        ) THEN
+            // We found a terminator keyword. Check if this terminator is
+            // allowed right now and break out.
+
+            terminator^ = token.Subtype
+
+            IF PrsBlockStack.Count == 0 THEN
+                TlInternalError ( "Block stack was empty", 0, 0, 0 )
+            END
+
+            blockstate := PrsBlockStack.Buffer[PrsBlockStack.Count - 1]
+
+            IF blockstate == BLOCK_MACRO_BODY THEN
+                LexTokenError ( &token,
+                    "Attempt to leave block from within macro", 0, 0, 0 )
+            END
+
+            IF blockstate == BLOCK_PLAIN_BODY THEN
+                IF token.Subtype != TOKEN_END THEN
+                    LexTokenError ( &token,
+                        "Only END is allowed to terminate this block", 0, 0, 0 )
+                END
+
+                BREAK
+            END
+
+            IF blockstate == BLOCK_IF_BODY THEN
+                BREAK
+            END
+
+            TlInternalError ( "PrsParseBlock Unreachable", blockstate, 0, 0 )
+        END
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_STATEMENT, // type
+            0, // subtype
+        ) THEN
+            // We found a statement keyword. Look up the table and call the
+            // parse function for the statement.
+
+            TlInternalError ( "TODO parse statement", 0, 0, 0 )
+
+            CONTINUE
+        END
+
+        // There are now three options:
+        //
+        // Declaration: IDENTIFIER : TYPE = INITIAL
+        // Assignment: EXPR = EXPR
+        // Expression w/ side effects: EXPR
+        //
+        // The only way to tell if it's a declaration is to look ahead by two
+        // tokens. After we've ruled that out we can safely eat an expression.
+        // Then we check if there's an equals sign; if so, it's an assignment,
+        // otherwise, it's a free-floating expression (such as a function call).
+
+        decl := FALSE
+
+        LexGetToken ( &token )
+
+        IF token.Type == TOKEN_IDENTIFIER THEN
+            // Maybe a declaration? Check for the colon.
+
+            colontoken : LexToken
+
+            IF LexMatchToken (
+                &colontoken, // token
+                TOKEN_COLON, // type
+                0, // subtype
+            ) THEN
+                // Yep!
+
+                decl = TRUE
+            END
+        END
+
+        IF decl THEN
+            // It was a declaration, parse the rest.
+
+            PrsVariableDeclaration (
+                &token, // token
+                0, // flags
+                FALSE, // global
+            )
+        ELSE
+            // Not a declaration. Put the token back and try the expression
+            // cases.
+
+            LexPutbackToken ( &token )
+
+            leftexpr := PrsExpression ( 0 )
+
+            // Check for an assign operator.
+
+            assigntoken : LexToken
+
+            IF LexMatchToken (
+                &assigntoken, // token
+                TOKEN_ASSIGN, // type
+                0, // subtype
+            ) THEN
+                // Found an assign operator.
+
+                asgnnode := PrsCreateAstNode (
+                    AST_ASSIGN, // type
+                    &token, // token
+                )
+
+                asgnnode^.Body.Assign.Left = leftexpr
+                asgnnode^.Body.Assign.Right = PrsExpression ( 0 )
+
+                PrsInsertNodeIntoBlock (
+                    block, // block
+                    asgnnode, // node
+                )
+            ELSE
+                // Free floating expression.
+
+                PrsInsertNodeIntoBlock (
+                    block, // block
+                    leftexpr, // node
+                )
+            END
+        END
+    END
+
+    // Restore the old block.
+
+    PrsCurrentBlock = oldblock
+
+    RETURN block
 END
 
 // Special operator parse routines.
@@ -2179,6 +2401,7 @@ FN PrsParseFnSignature (
     type^.Body.Function.ArgListHead = NULLPTR
     type^.Body.Function.ReturnType = NULLPTR
     type^.Body.Function.FnPtrType = fnptrtype
+    type^.Body.Function.IsVarArg = FALSE
 
     argtail : ^LexFunctionArgument = NULLPTR
 
@@ -2205,16 +2428,6 @@ FN PrsParseFnSignature (
                 TlInternalError ( "Failed to allocate arg", 0, 0, 0 )
             END
 
-            arg^.Next = NULLPTR
-
-            IF NOT argtail THEN
-                type^.Body.Function.ArgListHead = arg
-            ELSE
-                argtail^.Next = arg
-            END
-
-            argtail = arg
-
             checktoken : LexToken
             argtoken : LexToken
 
@@ -2227,9 +2440,117 @@ FN PrsParseFnSignature (
 
             IF checktoken.Subtype == TOKEN_IN THEN
                 arg^.InOut = ARG_IN
-            ELSE
+            ELSEIF checktoken.Subtype == TOKEN_OUT THEN
                 arg^.InOut = ARG_OUT
+            ELSEIF checktoken.Subtype == TOKEN_VARARG THEN
+                type^.Body.Function.IsVarArg = TRUE
+
+                IF NOT fnptr THEN
+                    // The next two identifier tokens are the name of the vararg
+                    // array and the count respectively. We have to collect
+                    // those and set them up.
+
+                    varargtoken : LexToken
+
+                    IF NOT LexMatchToken (
+                        &varargtoken, // token
+                        TOKEN_IDENTIFIER, // type
+                        0, // subtype
+                    ) THEN
+                        LexTokenError ( &varargtoken,
+                            "Expected identifier", 0, 0, 0 )
+                    END
+
+                    IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                        LexTokenError ( &varargtoken,
+                            "Identifier already in use", 0, 0, 0 )
+                    END
+
+                    varargtablesymbol := CAST varargtoken.Payload TO ^LexSymbol
+
+                    varargtablesymbol^.Type = SYM_VAR
+                    varargtablesymbol^.Flags = 0
+
+                    type^.Body.Function.VarArgTable = varargtablesymbol
+
+                    // The type of the vararg table is boundless array of
+                    // pointer to void. Slap that together ugly-ly.
+
+                    varargtabletype := PrsCreateType ()
+
+                    varargtabletype^.Subtype = TYPE_ARRAY
+                    varargtabletype^.Body.Array.HasBound = FALSE
+
+                    ptrtype := PrsCreateType ()
+
+                    ptrtype^.Subtype = TYPE_POINTER
+                    varargtabletype^.Body.Array.Base = ptrtype
+
+                    voidtype := PrsCreateType ()
+
+                    voidtype^.Subtype = TYPE_PRIMITIVE
+                    voidtype^.Body.Primitive.Type = PRIM_TYPE_VOID
+
+                    ptrtype^.Body.Pointer.Base = voidtype
+
+                    varargtablesymbol^.SemanticType = varargtabletype
+
+                    // Now yoink the count.
+
+                    IF NOT LexMatchToken (
+                        &varargtoken, // token
+                        TOKEN_IDENTIFIER, // type
+                        0, // subtype
+                    ) THEN
+                        LexTokenError ( &varargtoken,
+                            "Expected identifier", 0, 0, 0 )
+                    END
+
+                    IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                        LexTokenError ( &varargtoken,
+                            "Identifier already in use", 0, 0, 0 )
+                    END
+
+                    varargcountsymbol := CAST varargtoken.Payload TO ^LexSymbol
+
+                    varargcountsymbol^.Type = SYM_VAR
+                    varargcountsymbol^.Flags = 0
+
+                    type^.Body.Function.VarArgCount = varargcountsymbol
+
+                    // The type of the vararg count is ULONG.
+
+                    varargcounttype := PrsCreateType ()
+
+                    varargcounttype^.Subtype = TYPE_PRIMITIVE
+                    varargcounttype^.Body.Primitive.Type = PRIM_TYPE_ULONG
+
+                    varargcountsymbol^.SemanticType = varargcounttype
+                END
+
+                // No more arguments are allowed after the vararg specifier.
+
+                IF NOT LexMatchToken (
+                    &checktoken, // token
+                    TOKEN_RPAREN, // type
+                    0, // subtype
+                ) THEN
+                    LexTokenError ( &checktoken,
+                        "Expected right parenthesis", 0, 0, 0 )
+                END
+
+                BREAK
             END
+
+            arg^.Next = NULLPTR
+
+            IF NOT argtail THEN
+                type^.Body.Function.ArgListHead = arg
+            ELSE
+                argtail^.Next = arg
+            END
+
+            argtail = arg
 
             LexGetToken ( &argtoken )
 
@@ -2297,7 +2618,12 @@ FN PrsParseFnSignature (
         END
     END
 
-    LexResetScope ( oldscope )
+    IF fnptr OR flags & VAR_FLAG_EXTERN THEN
+        // There's no body, so reset the scope now, or the lookahead might
+        // mistakenly pull a symbol into our scope. This is kind of hacky.
+
+        LexResetScope ( oldscope )
+    END
 
     IF LexMatchToken (
         NULLPTR, // token
@@ -2314,6 +2640,14 @@ FN PrsParseFnSignature (
         )
 
         type^.Body.Function.ReturnType = returntype
+    END
+
+    IF NOT fnptr AND (flags & VAR_FLAG_EXTERN == 0) THEN
+        // There's a body, so only reset the scope now. We waited until after we
+        // looked for the colon because otherwise lookahead might cause strange
+        // symbol scoping. This is kind of hacky.
+
+        LexResetScope ( oldscope )
     END
 
     IF fnptrtype THEN
@@ -2352,7 +2686,7 @@ FN PrsParseFnDeclaration (
 
     symbol : ^LexSymbol
 
-    PrsParseFnSignature (
+    type := PrsParseFnSignature (
         flags, // flags
         FALSE, // fnptr
         &symbol, // OUT symbol
@@ -2362,7 +2696,32 @@ FN PrsParseFnDeclaration (
         RETURN symbol
     END
 
-    TlInternalError ( "TODO parse function body", 0, 0, 0 )
+    // Collect the body of the function.
+
+    // First resume the argument scope.
+
+    oldscope := LexEnterScope (
+        type^.Body.Function.ArgListSymbolTable, // scope
+    )
+
+    TlInsertDynamicBuffer (
+        &PrsBlockStack, // array
+        BLOCK_PLAIN_BODY, // byte
+    )
+
+    PrsCurrentFunction = type
+
+    terminator : LexTokenSubtype
+
+    type^.Body.Function.BodyBlock = PrsParseBlock (
+        &terminator, // OUT terminator
+    )
+
+    PrsCurrentFunction = NULLPTR
+
+    TlPopDynamicBuffer ( &PrsBlockStack )
+
+    LexResetScope ( oldscope )
 
     RETURN symbol
 END
@@ -2553,6 +2912,10 @@ END
 FN PrsInitialize ()
 
     // Initialize the parser.
+
+    TlInitializeDynamicBuffer ( &PrsBlockStack )
+
+    // Initialize the operators.
 
     PrsOperators[TOKEN_DOT].Precedence = 25
     PrsOperators[TOKEN_DOT].ParseFunc = &PrsParseCompoundTypeIndex

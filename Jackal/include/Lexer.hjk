@@ -101,6 +101,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_RIGHTSHIFT,  // operator
     TOKEN_BITNOT,      // operator
     TOKEN_MUL,         // operator
+    TOKEN_VARARG,      // argspec
 
     TOKEN_LBRACKET,    // operator
     TOKEN_CARET,       // operator
@@ -200,11 +201,11 @@ STRUCT LexStream
 END
 
 ENUM LexSymbolType : UBYTE
+    SYM_UNINITIALIZED,
     SYM_VAR,
     SYM_LABEL,
     SYM_TYPE,
     SYM_CONSTANT,
-    SYM_UNINITIALIZED,
 
     // The "forward" types signify a symbol that has been used before it was
     // defined, in a context where it was okay to do so. In fact, it's okay to
@@ -255,10 +256,9 @@ STRUCT LexSemanticTypeArrayBody
 
     Base : ^LexSemanticType,
 
-    // The bound is a pointer to an AST expression node but unfortunately we
-    // can't refer to that here.
+    Bound : TlMachineWord,
 
-    Bound : ^VOID,
+    HasBound : UBYTE,
 END
 
 STRUCT LexSemanticTypePointerBody
@@ -292,6 +292,10 @@ STRUCT LexSemanticTypeFunctionBody
     ReturnType : ^LexSemanticType,
     ArgListSymbolTable : ^TlSymbolTable,
     FnPtrType : ^LexSemanticType,
+    VarArgTable : ^LexSymbol,
+    VarArgCount : ^LexSymbol,
+    BodyBlock : ^VOID, // actually a PrsBlock
+    IsVarArg : UBYTE,
 END
 
 UNION LexSemanticTypeBody
@@ -305,6 +309,7 @@ END
 STRUCT LexSemanticType
     Subtype : LexSemanticSubtype,
     Body : LexSemanticTypeBody,
+    Size : TlMachineWord,
 END
 
 STRUCT LexMacro

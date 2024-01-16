@@ -144,6 +144,8 @@ FN LexCreateFileStream (
     RETURN stream
 END
 
+EXTERN FN PrsLeaveMacro () : UBYTE
+
 FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
     // Return the next byte from the stream on top of the stream stack. If the
@@ -209,6 +211,11 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
                 TlDeleteSymbolTable ( LexCurrentScope )
                 TlDeleteSymbolTable ( LexCurrentMacroScope )
+            END
+
+            IF NOT PrsLeaveMacro () THEN
+                LexStreamError (
+                    "Macro terminated during nested block", 0, 0, 0 )
             END
 
             // Macros are hygienic, meaning they have their own scopes.
