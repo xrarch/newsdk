@@ -2410,7 +2410,13 @@ FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
     //     field offsets right now.
     // XXX remember that it might be possible to use the same type structure as
     //     unions because we can have each field be defined only by offset and
-    //     type, and in a union the offsets would just all be zero
+    //     type, and in a union the offsets would just all be zero. we can
+    //     also probably share most of the parsing logic between structs and
+    //     unions.
+    // XXX remember that we can probably go back and have types contain their
+    //     size where applicable. where not applicable the size should be a
+    //     magical value like -1 indicating that the type is not directly
+    //     assignable (which means it isn't legal in a struct and union).
 
     TlInternalError ( "TODO PrsParseStruct", 0, 0, 0 )
 END
