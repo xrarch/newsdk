@@ -755,9 +755,6 @@ FN PrsVariableDeclaration (
                 "Globals require a compile-time initial value.", 0, 0, 0 )
         END
 
-        TlPrintNumber ( initialnode^.Body.Constant.Value )
-        TlPrintString ( "\n" )
-
         symbol^.InitialValue = initialnode
     END
 END
@@ -918,6 +915,33 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     END
 END
 
+FN PrsIsPowerOfTwo (
+    IN constant : TlMachineWord,
+) : ULONG
+
+    // Check if the constant is a power of two. If it is, return which Nth power
+    // of two it is. This is used for some basic strength reduction.
+
+    IF constant == 0 THEN
+        RETURN -1
+    END
+
+    bitpos := 0
+
+    WHILE TRUE DO
+        IF constant & 1 THEN
+            IF constant != 1 THEN
+                RETURN -1
+            END
+
+            RETURN bitpos
+        END
+
+        constant >>= 1
+        bitpos += 1
+    END
+END
+
 FN (PrsOperatorF) PrsParseMul (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -926,6 +950,12 @@ FN (PrsOperatorF) PrsParseMul (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -933,6 +963,64 @@ FN (PrsOperatorF) PrsParseMul (
 
         node^.Body.Constant.Value =
             left^.Body.Constant.Value * right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        IF left^.Body.Constant.Value == 0 THEN
+            // We can roll this into the constant zero.
+
+            node^.Type = AST_CONSTANT
+
+            node^.Body.Constant.Value = 0
+
+            LEAVE
+        ELSEIF left^.Body.Constant.Value == 1 THEN
+            // We can roll this into the right side.
+
+            TlCopyMemory (
+                node, // dest
+                right, // src
+                SIZEOF PrsAstNode, // sz
+            )
+
+            LEAVE
+        END
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        IF right^.Body.Constant.Value == 0 THEN
+            // We can roll this into the constant zero.
+
+            node^.Type = AST_CONSTANT
+
+            node^.Body.Constant.Value = 0
+
+            LEAVE
+        ELSEIF right^.Body.Constant.Value == 1 THEN
+            // We can roll this into the left side.
+
+            TlCopyMemory (
+                node, // dest
+                left, // src
+                SIZEOF PrsAstNode, // sz
+            )
+
+            LEAVE
+        END
+
+        pwrtwo := PrsIsPowerOfTwo ( right^.Body.Constant.Value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a left shift.
+
+            node^.Token.Subtype = TOKEN_LEFTSHIFT
+
+            right^.Body.Constant.Value = pwrtwo
+
+            LEAVE
+        END
     END
 END
 
@@ -943,6 +1031,12 @@ FN (PrsOperatorF) PrsParseDivide (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
 
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
@@ -955,6 +1049,34 @@ FN (PrsOperatorF) PrsParseDivide (
 
         node^.Body.Constant.Value =
             left^.Body.Constant.Value / right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        IF right^.Body.Constant.Value == 1 THEN
+            // We can roll this into the left side.
+
+            TlCopyMemory (
+                node, // dest
+                left, // src
+                SIZEOF PrsAstNode, // sz
+            )
+
+            LEAVE
+        END
+
+        pwrtwo := PrsIsPowerOfTwo ( right^.Body.Constant.Value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a right shift.
+
+            node^.Token.Subtype = TOKEN_RIGHTSHIFT
+
+            right^.Body.Constant.Value = pwrtwo
+
+            LEAVE
+        END
     END
 END
 
@@ -965,6 +1087,12 @@ FN (PrsOperatorF) PrsParseModulo (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
 
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
@@ -977,6 +1105,32 @@ FN (PrsOperatorF) PrsParseModulo (
 
         node^.Body.Constant.Value =
             left^.Body.Constant.Value % right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        IF right^.Body.Constant.Value == 1 THEN
+            // We can turn this into the constant zero.
+
+            node^.Type = AST_CONSTANT
+
+            node^.Body.Constant.Value = 0
+
+            LEAVE
+        END
+
+        pwrtwo := PrsIsPowerOfTwo ( right^.Body.Constant.Value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a bit mask.
+
+            node^.Token.Subtype = TOKEN_BITAND
+
+            right^.Body.Constant.Value = right^.Body.Constant.Value - 1
+
+            LEAVE
+        END
     END
 END
 
@@ -1201,6 +1355,66 @@ FN (PrsOperatorF) PrsParseMinus (
 
             LEAVE
         END
+    END
+END
+
+FN (PrsOperatorF) PrsParseLeftShift (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value << right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseRightShift (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value >> right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
     END
 END
 
@@ -1755,7 +1969,10 @@ FN PrsInitialize ()
     PrsOperators[TOKEN_MINUS].ParseFunc = &PrsParseMinus
 
     PrsOperators[TOKEN_LEFTSHIFT].Precedence = 18
+    PrsOperators[TOKEN_LEFTSHIFT].ParseFunc = &PrsParseLeftShift
+
     PrsOperators[TOKEN_RIGHTSHIFT].Precedence = 18
+    PrsOperators[TOKEN_RIGHTSHIFT].ParseFunc = &PrsParseRightShift
 
     PrsOperators[TOKEN_BITAND].Precedence = 17
     PrsOperators[TOKEN_BITAND].ParseFunc = &PrsParseBitAnd
