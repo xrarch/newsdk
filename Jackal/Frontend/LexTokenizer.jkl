@@ -951,14 +951,35 @@ FN LexCrunchNumber (
     RETURN num
 END
 
-FN LexEnterScope ()
+FN LexEnterScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
 
     // Enter a new scope.
 
-    LexCurrentScope = TlCreateSymbolTable (
-        LexCurrentScope, // outerscope
-        &LexDeleteSymbol, // deletefunc
-    )
+    oldscope := LexCurrentScope
+
+    IF scope == NULLPTR THEN
+        LexCurrentScope = TlCreateSymbolTable (
+            LexCurrentScope, // outerscope
+            &LexDeleteSymbol, // deletefunc
+        )
+    ELSE
+        LexCurrentScope = scope
+    END
+
+    RETURN oldscope
+END
+
+FN LexResetScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    oldscope := LexCurrentScope
+
+    LexCurrentScope = scope
+
+    RETURN oldscope
 END
 
 FN LexLeaveScope ()

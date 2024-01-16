@@ -624,8 +624,6 @@ FN PrsFoundSymbol (
 
         symbol^.Type = SYM_VAR
 
-        symbol^.SemanticType = newtype
-
         IF global THEN
             // Add it to the list of globals, at the tail.
 
@@ -645,6 +643,8 @@ FN PrsFoundSymbol (
     END
 
     symbol^.Flags = flags
+
+    symbol^.SemanticType = newtype
 
     // We should see if there's a pending section override from the lexer, and
     // do it now if so.
@@ -794,8 +794,8 @@ FN PrsVariableDeclaration (
         // Backend may place this in BSS.
 
         initialnode = PrsCreateAstNode (
-            AST_CONSTANT,
-            &token, // token
+            AST_CONSTANT, // type
+            token, // token
         )
 
         initialnode^.Body.Constant.Value = 0
@@ -919,6 +919,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
     WHILE TRUE DO
         node := PrsExpression ( 0 )
+
+        node^.Next = NULLPTR
 
         IF NOT argtail THEN
             node^.Body.Operator.OperatorSpecific = node
@@ -1962,7 +1964,7 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
     type := PrsCreateType ()
 
     PrsType (
-        &type, // type
+        type, // type
         0, // depth
     )
 
@@ -2031,7 +2033,7 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
             TOKEN_TERMINATOR, // type
             TOKEN_END, // subtype
         ) THEN
-            // Done with the argument list.
+            // Done with the constant list.
 
             BREAK
         END
@@ -2062,13 +2064,307 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
     RETURN symbol
 END
 
+FN PrsParseFnSignature (
+    IN flags : ULONG,
+    IN fnptr : UBYTE,
+    OUT outsymbol : ^^LexSymbol,
+) : ^LexSemanticType
+
+    // Parse a function signature and return a type structure for it.
+
+    // A Jackal function signature takes one of the following forms:
+    //
+    // (FNPTR) NAME (IN/OUT ARG : TYPE, ...)
+    // NAME (IN/OUT ARG : TYPE, ...)
+
+    fnptrtype : ^LexSemanticType = NULLPTR
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_OPER, // type
+        TOKEN_LPAREN, // subtype
+    ) THEN
+        // An FNPTR name is specified. Collect it.
+
+        IF fnptr THEN
+            LexTokenError ( &fnptrtoken, "FNPTR not allowed on an FNPTR", 0, 0, 0 )
+        END
+
+        fnptrtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &fnptrtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &fnptrtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF fnptrtoken.Subtype == TOKEN_IDENTIFIER_NEW THEN
+            LexTokenError ( &fnptrtoken, "Undeclared identifier", 0, 0, 0 )
+        END
+
+        symbol := CAST fnptrtoken.Payload TO ^LexSymbol
+
+        IF symbol^.Type != SYM_TYPE THEN
+            LexTokenError ( &fnptrtoken, "Symbol isn't a type", 0, 0, 0 )
+        END
+
+        fnptrtype = symbol^.SemanticType
+
+        IF fnptrtype^.Subtype != TYPE_POINTER THEN
+            LexTokenError ( &fnptrtoken, "Type isn't a function pointer", 0, 0, 0 )
+        END
+
+        fnptrtype = fnptrtype^.Body.Pointer.Base
+
+        IF fnptrtype^.Subtype != TYPE_FUNCTION THEN
+            LexTokenError ( &fnptrtoken, "Type isn't a function pointer", 0, 0, 0 )
+        END
+
+        IF NOT LexMatchToken (
+            &fnptrtoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &fnptrtoken, "Expected a right parenthesis.", 0, 0, 0 )
+        END
+    END
+
+    // Collect the name.
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := CAST nametoken.Payload TO ^LexSymbol
+
+    IF fnptr THEN
+        PrsCreateNamedType (
+            &nametoken, // token
+        )
+    END
+
+    // We'll verify stuff about the name token after we've fully assembled the
+    // type.
+
+    parentoken : LexToken
+
+    IF NOT LexMatchToken (
+        &parentoken, // token
+        TOKEN_OPER, // type
+        TOKEN_LPAREN, // subtype
+    ) THEN
+        LexTokenError ( &parentoken, "Expected a left parenthesis", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    type^.Subtype = TYPE_FUNCTION
+
+    // We have to create a scope atop the global scope to contain the function
+    // arguments. This scope will also be used as the function scope.
+
+    oldscope := LexEnterScope (
+        NULLPTR, // scope
+    )
+
+    type^.Body.Function.ArgListSymbolTable = LexCurrentScope
+    type^.Body.Function.ArgListHead = NULLPTR
+    type^.Body.Function.ReturnType = NULLPTR
+    type^.Body.Function.FnPtrType = fnptrtype
+
+    argtail : ^LexFunctionArgument = NULLPTR
+
+    // Parse the list of arguments.
+    // These are of the form:
+    //
+    // IN NAME : TYPE
+    // OUT NAME : TYPE
+
+    IF NOT LexMatchToken (
+        NULLPTR, // token
+        TOKEN_RPAREN, // type
+        0, // subtype
+    ) THEN
+        WHILE TRUE DO
+            arg : ^LexFunctionArgument
+
+            status := TlBumpAlloc (
+                SIZEOF LexFunctionArgument, // bytes
+                &arg, // OUT ptr
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to allocate arg", 0, 0, 0 )
+            END
+
+            arg^.Next = NULLPTR
+
+            IF NOT argtail THEN
+                type^.Body.Function.ArgListHead = arg
+            ELSE
+                argtail^.Next = arg
+            END
+
+            argtail = arg
+
+            checktoken : LexToken
+            argtoken : LexToken
+
+            LexGetToken ( &checktoken )
+
+            IF checktoken.Type != TOKEN_ARGSPEC THEN
+                LexTokenError ( &checktoken,
+                    "Expected an argument specifier IN/OUT", 0, 0, 0 )
+            END
+
+            IF checktoken.Subtype == TOKEN_IN THEN
+                arg^.InOut = ARG_IN
+            ELSE
+                arg^.InOut = ARG_OUT
+            END
+
+            LexGetToken ( &argtoken )
+
+            IF argtoken.Type != TOKEN_IDENTIFIER THEN
+                LexTokenError ( &argtoken, "Expected an identifier", 0, 0, 0)
+            END
+
+            IF argtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                LexTokenError ( &argtoken, "Identifier already in use", 0, 0, 0 )
+            END
+
+            argsymbol := CAST argtoken.Payload TO ^LexSymbol
+
+            argsymbol^.Type = SYM_VAR
+            argsymbol^.Flags = 0
+
+            arg^.Symbol = argsymbol
+
+            IF NOT LexMatchToken (
+                &checktoken, // token
+                TOKEN_COLON, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &checktoken, "Expected a type", 0, 0, 0 )
+            END
+
+            argsymbol^.SemanticType = PrsCreateType ()
+
+            PrsType (
+                argsymbol^.SemanticType, // type
+                0, // depth
+            )
+
+            IF LexMatchToken (
+                &checktoken, // token
+                TOKEN_RPAREN, // type
+                0, // subtype
+            ) THEN
+                // Done with the argument list.
+
+                BREAK
+            END
+
+            IF NOT LexMatchToken (
+                &checktoken, // token
+                TOKEN_COMMA, // type
+                0, // subtype
+            ) THEN
+                // Bad.
+
+                LexTokenError ( &checktoken,
+                    "Expected a comma or right parenthesis", 0, 0, 0 )
+            END
+
+            IF LexMatchToken (
+                &checktoken, // token
+                TOKEN_RPAREN, // type
+                0, // subtype
+            ) THEN
+                // Done with the argument list. This isn't redundant, it's to
+                // allow the , ) case.
+
+                BREAK
+            END
+        END
+    END
+
+    LexResetScope ( oldscope )
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_COLON, // type
+        0, // subtype
+    ) THEN
+        // There's a return type!
+
+        returntype := PrsCreateType ()
+
+        PrsType (
+            returntype, // type
+            0, // depth
+        )
+
+        type^.Body.Function.ReturnType = returntype
+    END
+
+    IF fnptrtype THEN
+        IF NOT PrsCheckType (
+            type, // type1
+            fnptrtype, // type2
+        ) THEN
+            LexTokenError ( &nametoken,
+                "Function signature doesn't match associated FNPTR", 0, 0, 0 )
+        END
+    END
+
+    IF NOT fnptr THEN
+        // Now that we have the type, do the found-symbol processing.
+
+        PrsFoundSymbol (
+            &nametoken, // token
+            symbol, // symbol
+            flags, // flags
+            TRUE, // global
+            type, // newtype
+        )
+    END
+
+    outsymbol^ = symbol
+
+    RETURN type
+END
+
 FN PrsParseFnDeclaration (
     IN flags : ULONG,
 ) : ^LexSymbol
 
-    // Parse a function declaration.
+    // Parse a function declaration. If the flags specify EXTERN, there is no
+    // body.
 
-    TlInternalError ( "TODO PrsParseFnDeclaration", 0, 0, 0 )
+    symbol : ^LexSymbol
+
+    PrsParseFnSignature (
+        flags, // flags
+        FALSE, // fnptr
+        &symbol, // OUT symbol
+    )
+
+    IF flags & VAR_FLAG_EXTERN THEN
+        RETURN symbol
+    END
+
+    TlInternalError ( "TODO parse function body", 0, 0, 0 )
+
+    RETURN symbol
 END
 
 FN (PrsDeclaratorF) PrsParseFn () : ^LexSymbol
@@ -2082,9 +2378,26 @@ END
 
 FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
 
-    // Parse a function pointer declaration.
+    // Parse a function pointer named type declaration.
 
-    TlInternalError ( "TODO PrsParseFnPtr", 0, 0, 0 )
+    symbol : ^LexSymbol
+
+    type := PrsParseFnSignature (
+        0, // flags
+        TRUE, // fnptr
+        &symbol, // OUT symbol
+    )
+
+    // Wrap a pointer type around the given type.
+
+    ptrtype := PrsCreateType ()
+
+    ptrtype^.Subtype = TYPE_POINTER
+    ptrtype^.Body.Pointer.Base = type
+
+    symbol^.SemanticType = ptrtype
+
+    RETURN symbol
 END
 
 FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
@@ -2093,15 +2406,13 @@ FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
     // XXX remember bit fields!
     // XXX remember that non-pointer references to undeclared STRUCTs are
     //     absolutely forbidden! may require a new argument on PrsType
+    // XXX remember that we want to calculate the size of the struct and its
+    //     field offsets right now.
+    // XXX remember that it might be possible to use the same type structure as
+    //     unions because we can have each field be defined only by offset and
+    //     type, and in a union the offsets would just all be zero
 
     TlInternalError ( "TODO PrsParseStruct", 0, 0, 0 )
-END
-
-FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
-
-    // Parse a TYPE declaration.
-
-    TlInternalError ( "TODO PrsParseType", 0, 0, 0 )
 END
 
 FN (PrsDeclaratorF) PrsParseUnion () : ^LexSymbol
@@ -2109,6 +2420,44 @@ FN (PrsDeclaratorF) PrsParseUnion () : ^LexSymbol
     // Parse a UNION declaration.
 
     TlInternalError ( "TODO PrsParseUnion", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
+
+    // Parse a TYPE declaration.
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := PrsCreateNamedType ( &nametoken )
+
+    colontoken : LexToken
+
+    IF NOT LexMatchToken (
+        &colontoken, // token
+        TOKEN_COLON, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    PrsType (
+        type, // type
+        0, // depth
+    )
+
+    symbol^.SemanticType = type
+
+    RETURN symbol
 END
 
 FN PrsParseStorageClassSpecifier (

@@ -273,11 +273,33 @@ STRUCT LexSemanticTypeNamedBody
     Symbol : ^LexSymbol,
 END
 
+ENUM LexFunctionArgumentTypes : UBYTE
+    ARG_IN,
+    ARG_OUT,
+END
+
+STRUCT LexFunctionArgument
+    Next : ^LexFunctionArgument,
+
+    Symbol : ^LexSymbol,
+    InOut : LexFunctionArgumentTypes,
+END
+
+STRUCT LexSemanticTypeFunctionBody
+    // The type is a function, so it has an argument list and a return type.
+
+    ArgListHead : ^LexFunctionArgument,
+    ReturnType : ^LexSemanticType,
+    ArgListSymbolTable : ^TlSymbolTable,
+    FnPtrType : ^LexSemanticType,
+END
+
 UNION LexSemanticTypeBody
     Primitive : LexSemanticTypePrimitiveBody,
     Array : LexSemanticTypeArrayBody,
     Pointer : LexSemanticTypePointerBody,
     Named : LexSemanticTypeNamedBody,
+    Function : LexSemanticTypeFunctionBody,
 END
 
 STRUCT LexSemanticType
@@ -415,7 +437,13 @@ EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
 EXTERN FN LexParseDirective ()
 
-EXTERN FN LexEnterScope ()
+EXTERN FN LexEnterScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN LexResetScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
 
 EXTERN FN LexLeaveScope ()
 
