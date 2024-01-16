@@ -33,27 +33,35 @@ CONST VAR_FLAG_PUBLIC := 2
 CONST VAR_FLAG_EXPORT := 4
 CONST VAR_FLAG_FUNCTION := 8
 
+FNPTR PrsOperatorF (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
 STRUCT PrsOperatorRecord
     ParseFunc : PrsOperatorF,
     Precedence : ULONG,
     NoRightSide : UBYTE,
 END
 
-FNPTR PrsOperatorF (
-    IN operator : ^VOID,
-    IN node : ^PrsAstNode,
-)
-
 PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
 PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+
+FNPTR PrsDeclaratorF () : ^LexSymbol
 
 STRUCT PrsDeclaratorRecord
     ParseFunc : PrsDeclaratorF,
 END
 
-FNPTR PrsDeclaratorF () : ^LexSymbol
-
 PrsDeclarators : PrsDeclaratorRecord[TOKEN_SUBTYPE_MAX]
+
+FNPTR PrsStatementF ()
+
+STRUCT PrsStatementRecord
+    ParseFunc : PrsStatementF,
+END
+
+PrsStatements : PrsStatementRecord[TOKEN_SUBTYPE_MAX]
 
 FN PrsCreateType () : ^LexSemanticType
 
@@ -986,7 +994,7 @@ FN PrsParseBlock (
             // We found a statement keyword. Look up the table and call the
             // parse function for the statement.
 
-            TlInternalError ( "TODO parse statement", 0, 0, 0 )
+            PrsStatements[token.Subtype].ParseFunc ()
 
             CONTINUE
         END
@@ -2909,6 +2917,71 @@ FN (PrsDeclaratorF) PrsParsePrivate () : ^LexSymbol
     )
 END
 
+// Statement parse routines.
+
+FN (PrsStatementF) PrsParseBegin ()
+
+    // Parse a BEGIN block. Just creates a scoping block.
+
+    TlInternalError ( "TODO PrsParseBegin", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseBreak ()
+
+    // Parse a BREAK statement.
+
+    TlInternalError ( "TODO PrsParseBreak", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseContinue ()
+
+    // Parse a CONTINUE statement.
+
+    TlInternalError ( "TODO PrsParseContinue", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseGoTo ()
+
+    // Parse a GOTO statement.
+
+    TlInternalError ( "TODO PrsParseGoTo", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseIf ()
+
+    // Parse an IF statement.
+
+    TlInternalError ( "TODO PrsParseIf", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseLeave ()
+
+    // Parse a LEAVE statement.
+
+    TlInternalError ( "TODO PrsParseLeave", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseReturn ()
+
+    // Parse a RETURN statement.
+
+    TlInternalError ( "TODO PrsParseReturn", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseWhile ()
+
+    // Parse a WHILE statement.
+
+    TlInternalError ( "TODO PrsParseWhile", 0, 0, 0 )
+END
+
+FN (PrsStatementF) PrsParseLabel ()
+
+    // Parse a label definition. Goes in the function scope.
+
+    TlInternalError ( "TODO PrsParseLabel", 0, 0, 0 )
+END
+
 FN PrsInitialize ()
 
     // Initialize the parser.
@@ -3019,6 +3092,18 @@ FN PrsInitialize ()
     PrsDeclarators[TOKEN_UNION].ParseFunc = &PrsParseUnion
     PrsDeclarators[TOKEN_EXPORT].ParseFunc = &PrsParseExport
     PrsDeclarators[TOKEN_PRIVATE].ParseFunc = &PrsParsePrivate
+
+    // Initialize the statements.
+
+    PrsStatements[TOKEN_BEGIN].ParseFunc = &PrsParseBegin
+    PrsStatements[TOKEN_BREAK].ParseFunc = &PrsParseBreak
+    PrsStatements[TOKEN_CONTINUE].ParseFunc = &PrsParseContinue
+    PrsStatements[TOKEN_GOTO].ParseFunc = &PrsParseGoTo
+    PrsStatements[TOKEN_IF].ParseFunc = &PrsParseIf
+    PrsStatements[TOKEN_LEAVE].ParseFunc = &PrsParseLeave
+    PrsStatements[TOKEN_RETURN].ParseFunc = &PrsParseReturn
+    PrsStatements[TOKEN_WHILE].ParseFunc = &PrsParseWhile
+    PrsStatements[TOKEN_LABEL].ParseFunc = &PrsParseLabel
 END
 
 FN PrsProgram ()
