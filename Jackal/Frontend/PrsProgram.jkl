@@ -28,6 +28,14 @@ FNPTR PrsOperatorF (
 PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
 PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
 
+STRUCT PrsDeclaratorRecord
+    ParseFunc : PrsDeclaratorF,
+END
+
+FNPTR PrsDeclaratorF () : ^LexSymbol
+
+PrsDeclarators : PrsDeclaratorRecord[TOKEN_SUBTYPE_MAX]
+
 FN PrsCreateType () : ^LexSemanticType
 
     // Create a type.
@@ -799,6 +807,8 @@ FN PrsGlobalDeclaration () : UBYTE
     END
 
     // This is a declarative keyword of some variety.
+
+    PrsDeclarators[token.Subtype].ParseFunc ()
 
     RETURN TRUE
 END
@@ -1637,6 +1647,79 @@ FN (PrsOperatorF) PrsParseSizeOfValue (
     TlInternalError ( "TODO PrsParseSizeOfValue", 0, 0, 0 )
 END
 
+// Declarator parse routines.
+
+FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
+
+    // Parse an ENUM declaration.
+
+    TlInternalError ( "TODO PrsParseEnum", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseExtern () : ^LexSymbol
+
+    // Parse an EXTERN declaration.
+
+    TlInternalError ( "TODO PrsParseExtern", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseFn () : ^LexSymbol
+
+    // Parse a function declaration.
+
+    TlInternalError ( "TODO PrsParseFn", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
+
+    // Parse a function pointer declaration.
+
+    TlInternalError ( "TODO PrsParseFnPtr", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParsePublic () : ^LexSymbol
+
+    // Parse a PUBLIC declaration.
+
+    TlInternalError ( "TODO PrsParsePublic", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
+
+    // Parse a STRUCT declaration.
+    // XXX remember bit fields!
+
+    TlInternalError ( "TODO PrsParseStruct", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
+
+    // Parse a TYPE declaration.
+
+    TlInternalError ( "TODO PrsParseType", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseUnion () : ^LexSymbol
+
+    // Parse a UNION declaration.
+
+    TlInternalError ( "TODO PrsParseUnion", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParseExport () : ^LexSymbol
+
+    // Parse an EXPORT declaration.
+
+    TlInternalError ( "TODO PrsParseExport", 0, 0, 0 )
+END
+
+FN (PrsDeclaratorF) PrsParsePrivate () : ^LexSymbol
+
+    // Parse a PRIVATE declaration.
+
+    TlInternalError ( "TODO PrsParsePrivate", 0, 0, 0 )
+END
+
 FN PrsInitialize ()
 
     // Initialize the parser.
@@ -1727,6 +1810,19 @@ FN PrsInitialize ()
 
     PrsLeftOperators[TOKEN_SIZEOFVALUE].Precedence = 24
     PrsLeftOperators[TOKEN_SIZEOFVALUE].ParseFunc = &PrsParseSizeOfValue
+
+    // Initialize the declarators.
+
+    PrsDeclarators[TOKEN_ENUM].ParseFunc = &PrsParseEnum
+    PrsDeclarators[TOKEN_EXTERN].ParseFunc = &PrsParseExtern
+    PrsDeclarators[TOKEN_FN].ParseFunc = &PrsParseFn
+    PrsDeclarators[TOKEN_FNPTR].ParseFunc = &PrsParseFnPtr
+    PrsDeclarators[TOKEN_PUBLIC].ParseFunc = &PrsParsePublic
+    PrsDeclarators[TOKEN_STRUCT].ParseFunc = &PrsParseStruct
+    PrsDeclarators[TOKEN_TYPE].ParseFunc = &PrsParseType
+    PrsDeclarators[TOKEN_UNION].ParseFunc = &PrsParseUnion
+    PrsDeclarators[TOKEN_EXPORT].ParseFunc = &PrsParseExport
+    PrsDeclarators[TOKEN_PRIVATE].ParseFunc = &PrsParsePrivate
 END
 
 FN PrsProgram ()
