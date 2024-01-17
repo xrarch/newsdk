@@ -196,20 +196,37 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
             macro := stream^.Macro
 
             IF NOT macro^.IsArgumentMacro THEN
-                IF LexCurrentScope^.PrevScope^.PrevScope THEN
-                    // We weren't in the uppermost macro scope! This is a no-no.
-                    // Checking the previous scope of the previous scope is fine
-                    // because there's no way to get within a level of the root
-                    // scope from inside a macro, since they have a root scope
-                    // whose parent is the global scope.
+                // If the macro was invoked in the global scope, then it's still
+                // there, so don't delete its scope.
+
+                IF stream^.LastScope != LexRootScope THEN
+                    IF LexCurrentScope^.PrevScope^.PrevScope THEN
+                        // We weren't in the uppermost macro scope! This is a
+                        // no-no. Checking the previous scope of the previous
+                        // scope is fine because there's no way to get within a
+                        // level of the root scope from inside a macro, since
+                        // they have a root scope whose parent is the global
+                        // scope.
+
+                        LexStreamError (
+                            "Macro terminated during nested scope", 0, 0, 0 )
+                    END
+
+                    // Delete the symbol scope.
+
+                    TlDeleteSymbolTable ( LexCurrentScope )
+
+                ELSEIF LexCurrentScope != LexRootScope THEN
+                    // This macro was invoked in the global scope, but the
+                    // current scope is no longer the global scope, so it must
+                    // have terminated inappropriately.
 
                     LexStreamError (
                         "Macro terminated during nested scope", 0, 0, 0 )
                 END
 
-                // Delete the root scope and macro scope.
+                // Delete the macro scope.
 
-                TlDeleteSymbolTable ( LexCurrentScope )
                 TlDeleteSymbolTable ( LexCurrentMacroScope )
             END
 

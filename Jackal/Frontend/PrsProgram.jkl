@@ -55,7 +55,9 @@ END
 
 PrsDeclarators : PrsDeclaratorRecord[TOKEN_SUBTYPE_MAX]
 
-FNPTR PrsStatementF ()
+FNPTR PrsStatementF (
+    IN token : ^LexToken,
+)
 
 STRUCT PrsStatementRecord
     ParseFunc : PrsStatementF,
@@ -831,6 +833,7 @@ FN PrsVariableDeclaration (
                 asgnnode, // node
             )
         END
+
     ELSEIF initialnode THEN
         // Statically evaluate the initial value. If it can't be statically
         // evaluated, that's an error, since this is a global. Note that we
@@ -994,7 +997,9 @@ FN PrsParseBlock (
             // We found a statement keyword. Look up the table and call the
             // parse function for the statement.
 
-            PrsStatements[token.Subtype].ParseFunc ()
+            PrsStatements[token.Subtype].ParseFunc (
+                &token, // token
+            )
 
             CONTINUE
         END
@@ -1255,6 +1260,7 @@ FN (PrsOperatorF) PrsParseMul (
             node^.Body.Constant.Value = 0
 
             LEAVE
+
         ELSEIF left^.Body.Constant.Value == 1 THEN
             // We can roll this into the right side.
 
@@ -1277,6 +1283,7 @@ FN (PrsOperatorF) PrsParseMul (
             node^.Body.Constant.Value = 0
 
             LEAVE
+
         ELSEIF right^.Body.Constant.Value == 1 THEN
             // We can roll this into the left side.
 
@@ -1567,6 +1574,7 @@ FN (PrsOperatorF) PrsParseMinus (
                 node^.Body.Operator.Left = left^.Body.Operator.Left
 
                 LEAVE
+
             ELSEIF left^.Body.Operator.Left^.Type == AST_CONSTANT THEN
                 // (a - x) - b  ->  (a - b) - x
 
@@ -1579,6 +1587,7 @@ FN (PrsOperatorF) PrsParseMinus (
 
                 LEAVE
             END
+
         ELSEIF left^.Token.Subtype == TOKEN_PLUS AND
             left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
 
@@ -1609,6 +1618,7 @@ FN (PrsOperatorF) PrsParseMinus (
                 node^.Body.Operator.Right = right^.Body.Operator.Left
 
                 LEAVE
+
             ELSEIF right^.Body.Operator.Left^.Type == AST_CONSTANT THEN
                 // b - (a - x) -> x + (b - a)
 
@@ -1621,6 +1631,7 @@ FN (PrsOperatorF) PrsParseMinus (
 
                 LEAVE
             END
+
         ELSEIF right^.Token.Subtype == TOKEN_PLUS AND
             right^.Body.Operator.Right^.Type == AST_CONSTANT THEN
             
@@ -2448,8 +2459,10 @@ FN PrsParseFnSignature (
 
             IF checktoken.Subtype == TOKEN_IN THEN
                 arg^.InOut = ARG_IN
+
             ELSEIF checktoken.Subtype == TOKEN_OUT THEN
                 arg^.InOut = ARG_OUT
+
             ELSEIF checktoken.Subtype == TOKEN_VARARG THEN
                 type^.Body.Function.IsVarArg = TRUE
 
@@ -2919,63 +2932,151 @@ END
 
 // Statement parse routines.
 
-FN (PrsStatementF) PrsParseBegin ()
-
-    // Parse a BEGIN block. Just creates a scoping block.
-
-    TlInternalError ( "TODO PrsParseBegin", 0, 0, 0 )
-END
-
-FN (PrsStatementF) PrsParseBreak ()
+FN (PrsStatementF) PrsParseBreak (
+    IN token : ^LexToken,
+)
 
     // Parse a BREAK statement.
 
-    TlInternalError ( "TODO PrsParseBreak", 0, 0, 0 )
+    IF NOT PrsWhileDepth THEN
+        LexTokenError ( token, "Can't BREAK outside of a WHILE loop", 0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_STATEMENT, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
 END
 
-FN (PrsStatementF) PrsParseContinue ()
+FN (PrsStatementF) PrsParseContinue (
+    IN token : ^LexToken,
+)
 
     // Parse a CONTINUE statement.
 
-    TlInternalError ( "TODO PrsParseContinue", 0, 0, 0 )
+    IF NOT PrsWhileDepth THEN
+        LexTokenError ( token,
+            "Can't CONTINUE outside of a WHILE loop", 0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_STATEMENT, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
 END
 
-FN (PrsStatementF) PrsParseGoTo ()
+FN (PrsStatementF) PrsParseGoTo (
+    IN token : ^LexToken,
+)
 
     // Parse a GOTO statement.
 
     TlInternalError ( "TODO PrsParseGoTo", 0, 0, 0 )
 END
 
-FN (PrsStatementF) PrsParseIf ()
+FN (PrsStatementF) PrsParseIf (
+    IN token : ^LexToken,
+)
 
     // Parse an IF statement.
 
     TlInternalError ( "TODO PrsParseIf", 0, 0, 0 )
 END
 
-FN (PrsStatementF) PrsParseLeave ()
+FN (PrsStatementF) PrsParseLeave (
+    IN token : ^LexToken,
+)
 
     // Parse a LEAVE statement.
 
-    TlInternalError ( "TODO PrsParseLeave", 0, 0, 0 )
+    IF PrsCurrentFunction^.Body.Function.ReturnType THEN
+        LexTokenError ( token,
+            "Can't LEAVE from a function with a return value, use RETURN",
+            0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_STATEMENT, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+    // In this case, fiddle it to be the same as return but set the return value
+    // expression to null.
+
+    node^.Token.Subtype = TOKEN_RETURN
+
+    node^.Body.Statement.StatementSpecific = NULLPTR
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
 END
 
-FN (PrsStatementF) PrsParseReturn ()
+FN (PrsStatementF) PrsParseReturn (
+    IN token : ^LexToken,
+)
 
     // Parse a RETURN statement.
 
-    TlInternalError ( "TODO PrsParseReturn", 0, 0, 0 )
+    IF NOT PrsCurrentFunction^.Body.Function.ReturnType THEN
+        LexTokenError ( token,
+            "Can't RETURN from a function with no return value, use LEAVE",
+            0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_STATEMENT, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+
+    // Parse the return value expression.
+
+    node^.Body.Statement.StatementSpecific = PrsExpression ( 0 )
 END
 
-FN (PrsStatementF) PrsParseWhile ()
+FN (PrsStatementF) PrsParseWhile (
+    IN token : ^LexToken,
+)
 
-    // Parse a WHILE statement.
+    // Parse a WHILE loop.
 
     TlInternalError ( "TODO PrsParseWhile", 0, 0, 0 )
 END
 
-FN (PrsStatementF) PrsParseLabel ()
+FN (PrsStatementF) PrsParseLabel (
+    IN token : ^LexToken,
+)
 
     // Parse a label definition. Goes in the function scope.
 
@@ -3095,7 +3196,6 @@ FN PrsInitialize ()
 
     // Initialize the statements.
 
-    PrsStatements[TOKEN_BEGIN].ParseFunc = &PrsParseBegin
     PrsStatements[TOKEN_BREAK].ParseFunc = &PrsParseBreak
     PrsStatements[TOKEN_CONTINUE].ParseFunc = &PrsParseContinue
     PrsStatements[TOKEN_GOTO].ParseFunc = &PrsParseGoTo

@@ -319,6 +319,7 @@ FN LexGetComplexString (
 
                 CONTINUE
             END
+
         ELSEIF byte != '/' THEN
             sawforwardslash = FALSE
         END
@@ -413,6 +414,7 @@ FN LexCollectMacroArgumentContents (
     WHILE TRUE DO
         IF comment AND byte == '\n' THEN
             comment = FALSE
+
         ELSEIF byte != '/' THEN
             sawforwardslash = FALSE
         END
@@ -787,9 +789,13 @@ FN LexExpandMacro (
         LexCurrentScope = macro^.ResumeScope
         LexCurrentMacroScope = macro^.ResumeMacroScope
     ELSE
-        // The macro gets all new scopes.
+        // The macro gets all new scopes, unless we're already in the global
+        // scope, then it stays there.
 
-        LexCurrentScope = LexCreateSymbolTable ( LexRootScope )
+        IF oldscope != LexRootScope THEN
+            LexCurrentScope = LexCreateSymbolTable ( LexRootScope )
+        END
+
         LexCurrentMacroScope = LexCreateMacroTable ( LexRootMacroScope )
     END
 
@@ -881,6 +887,7 @@ FN LexExpandMacro (
                     LexTokenError ( &trashtoken,
                         "Too few arguments to function macro", 0, 0, 0 )
                 END
+
             ELSEIF NOT arg THEN
                 // Blindly eat up until the next close parenthesis.
 
@@ -1183,6 +1190,7 @@ FN LexCollectMacroArgumentName (
 
         IF byte == ')' THEN
             RETURN ARG_NAME_DONE
+
         ELSEIF byte == ',' THEN
             CONTINUE
         END

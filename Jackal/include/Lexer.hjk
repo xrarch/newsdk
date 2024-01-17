@@ -38,7 +38,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_SUBTYPE_ANY,
 
     TOKEN_AND,         // operator
-    TOKEN_BEGIN,       // statement
     TOKEN_BREAK,       // statement
     TOKEN_BYTE,        // type
     TOKEN_CAST,        // operator
@@ -309,7 +308,6 @@ END
 STRUCT LexSemanticType
     Subtype : LexSemanticSubtype,
     Body : LexSemanticTypeBody,
-    Size : TlMachineWord,
 END
 
 STRUCT LexMacro
