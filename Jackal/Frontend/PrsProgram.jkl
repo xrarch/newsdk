@@ -1070,6 +1070,8 @@ FN PrsParseBlock (
                 asgnnode^.Body.Assign.Left = leftexpr
                 asgnnode^.Body.Assign.Right = PrsExpression ( 0 )
 
+                // TODO: type check left and right to make sure compatible types
+
                 PrsInsertNodeIntoBlock (
                     block, // block
                     asgnnode, // node
@@ -1081,6 +1083,8 @@ FN PrsParseBlock (
                     block, // block
                     leftexpr, // node
                 )
+
+                // TODO: check if expression is side effect-less and error if so
             END
         END
     END
@@ -3071,7 +3075,44 @@ FN (PrsStatementF) PrsParseWhile (
 
     // Parse a WHILE loop.
 
-    TlInternalError ( "TODO PrsParseWhile", 0, 0, 0 )
+    node := PrsCreateAstNode (
+        AST_WHILE, // type
+        token, // token
+    )
+
+    node^.Body.While.Conditional = PrsExpression ( 0 )
+
+    dotoken : LexToken
+
+    IF NOT LexMatchToken (
+        &dotoken, // token
+        TOKEN_OTHER, // type
+        TOKEN_DO, // subtype
+    ) THEN
+        LexTokenError ( &dotoken, "Expected DO", 0, 0, 0 )
+    END
+
+    LexEnterScope ( NULLPTR )
+
+    TlInsertDynamicBuffer (
+        &PrsBlockStack, // array
+        BLOCK_PLAIN_BODY, // byte
+    )
+
+    terminator : LexTokenSubtype
+
+    node^.Body.While.BodyBlock = PrsParseBlock (
+        &terminator, // OUT terminator
+    )
+
+    TlPopDynamicBuffer ( &PrsBlockStack )
+
+    LexLeaveScope ()
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
 END
 
 FN (PrsStatementF) PrsParseLabel (

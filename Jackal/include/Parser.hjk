@@ -13,6 +13,7 @@ ENUM PrsAstType : UBYTE
     AST_PRIM_VALUE,
     AST_INITIALIZER,
     AST_STATEMENT,
+    AST_WHILE,
 END
 
 STRUCT PrsBlock
@@ -40,11 +41,17 @@ STRUCT PrsAstStatement
     StatementSpecific : ^VOID,
 END
 
+STRUCT PrsAstWhile
+    Conditional : ^PrsAstNode,
+    BodyBlock : ^PrsBlock,
+END
+
 UNION PrsAstBody
     Assign : PrsAstAssign,
     Operator : PrsAstOperator,
     Constant : PrsAstConstant,
     Statement : PrsAstStatement,
+    While : PrsAstWhile,
 END
 
 STRUCT PrsAstNode

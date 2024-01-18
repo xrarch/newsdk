@@ -23,6 +23,7 @@ ENUM LexTokenType : UBYTE
     TOKEN_LBRACE,
     TOKEN_RBRACE,
     TOKEN_COMMA,
+    TOKEN_SIZEOF,
 
     TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
@@ -65,7 +66,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_PACKED,      // other
     TOKEN_PUBLIC,      // declarator
     TOKEN_RETURN,      // statement
-    TOKEN_SIZEOF,      // value
     TOKEN_SIZEOFVALUE, // operator
     TOKEN_STRUCT,      // declarator
     TOKEN_THEN,        // other
