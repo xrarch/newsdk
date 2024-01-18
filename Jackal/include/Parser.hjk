@@ -12,14 +12,19 @@ ENUM PrsAstType : UBYTE
     AST_STRING,
     AST_PRIM_VALUE,
     AST_INITIALIZER,
-    AST_STATEMENT,
+    AST_BREAK,
+    AST_RETURN,
     AST_WHILE,
+    AST_LABEL,
+    AST_GOTO,
+    AST_CONTINUE,
 END
 
 STRUCT PrsBlock
     StatementListHead : ^PrsAstNode,
     StatementListTail : ^PrsAstNode,
     StatementCount : ULONG,
+    LabelCount : ULONG,
 END
 
 STRUCT PrsAstAssign
@@ -46,12 +51,23 @@ STRUCT PrsAstWhile
     BodyBlock : ^PrsBlock,
 END
 
+STRUCT PrsIfCase
+    Conditional : ^PrsAstNode,
+    BodyBlock : ^PrsBlock,
+END
+
+STRUCT PrsAstIf
+    IfCaseListHead : ^PrsIfCase,
+    IfCaseListTail : ^PrsIfCase,
+END
+
 UNION PrsAstBody
     Assign : PrsAstAssign,
     Operator : PrsAstOperator,
     Constant : PrsAstConstant,
     Statement : PrsAstStatement,
     While : PrsAstWhile,
+    If : PrsAstIf,
 END
 
 STRUCT PrsAstNode

@@ -289,7 +289,7 @@ STRUCT LexSemanticTypeFunctionBody
 
     ArgListHead : ^LexFunctionArgument,
     ReturnType : ^LexSemanticType,
-    ArgListSymbolTable : ^TlSymbolTable,
+    FuncScope : ^TlSymbolTable,
     FnPtrType : ^LexSemanticType,
     VarArgTable : ^LexSymbol,
     VarArgCount : ^LexSymbol,
