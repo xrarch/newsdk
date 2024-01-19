@@ -203,6 +203,33 @@ FN PrsPrintType (
     END
 END
 
+FN PrsIsLvalue (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Return whether the node is a valid l-value or not.
+
+    IF node^.Type == AST_IDENTIFIER THEN
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_OPERATOR THEN
+        IF node^.Token.Subtype == TOKEN_LBRACKET THEN
+            // Array references are l-values.
+
+            RETURN TRUE
+        END
+
+        IF node^.Token.Subtype == TOKEN_CARET THEN
+            // Pointer derefs are l-values.
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
 FN PrsIsCompileTime (
     IN node : ^PrsAstNode,
 ) : UBYTE
@@ -1496,6 +1523,11 @@ FN PrsParseBlock (
                     &token, // token
                 )
 
+                IF NOT PrsIsLvalue ( leftexpr ) THEN
+                    LexTokenError ( &leftexpr^.Token,
+                        "Not a valid L-value", 0, 0, 0 )
+                END
+
                 asgnnode^.Body.Assign.Left = leftexpr
                 asgnnode^.Body.Assign.Right = PrsExpression ( 0 )
 
@@ -1669,6 +1701,18 @@ FN PrsIsPowerOfTwo (
     END
 END
 
+FN (PrsOperatorF) PrsParseCaret (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    // Check that the left side is a pointer type.
+
+    // TODO that
+END
+
 FN (PrsOperatorF) PrsParseMul (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -1695,26 +1739,14 @@ FN (PrsOperatorF) PrsParseMul (
     END
 
     IF left^.Type == AST_CONSTANT THEN
-        IF left^.Body.Constant.Value == 0 THEN
-            // We can roll this into the constant zero.
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
 
-            node^.Type = AST_CONSTANT
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
 
-            node^.Body.Constant.Value = 0
-
-            LEAVE
-
-        ELSEIF left^.Body.Constant.Value == 1 THEN
-            // We can roll this into the right side.
-
-            TlCopyMemory (
-                node, // dest
-                right, // src
-                SIZEOF PrsAstNode, // sz
-            )
-
-            LEAVE
-        END
+        left = right
+        right = node^.Body.Operator.Right
     END
 
     IF right^.Type == AST_CONSTANT THEN
@@ -2170,9 +2202,18 @@ FN (PrsOperatorF) PrsParseBitAnd (
         LEAVE
     END
 
-    IF (right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0) OR
-        (left^.Type == AST_CONSTANT AND left^.Body.Constant.Value == 0) THEN
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
 
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    IF (right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0) THEN
         // We can roll this into the constant zero.
 
         node^.Type = AST_CONSTANT
@@ -2189,20 +2230,6 @@ FN (PrsOperatorF) PrsParseBitAnd (
         TlCopyMemory (
             node, // dest
             left, // src
-            SIZEOF PrsAstNode
-        )
-
-        LEAVE
-    END
-
-    IF left^.Type == AST_CONSTANT AND
-        left^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
-
-        // No effect. Copy the right node over us.
-
-        TlCopyMemory (
-            node, // dest
-            right, // src
             SIZEOF PrsAstNode
         )
     END
@@ -2227,24 +2254,23 @@ FN (PrsOperatorF) PrsParseBitXor (
         LEAVE
     END
 
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
     IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
         // No effect. Copy the left node over us.
 
         TlCopyMemory (
             node, // dest
             left, // src
-            SIZEOF PrsAstNode
-        )
-
-        LEAVE
-    END
-
-    IF left^.Type == AST_CONSTANT AND left^.Body.Constant.Value == 0 THEN
-        // No effect. Copy the right node over us.
-
-        TlCopyMemory (
-            node, // dest
-            right, // src
             SIZEOF PrsAstNode
         )
 
@@ -2258,18 +2284,6 @@ FN (PrsOperatorF) PrsParseBitXor (
 
         node^.Type = AST_OPERATOR
         node^.Token.Subtype = TOKEN_BITNOT
-
-        LEAVE
-    END
-
-    IF left^.Type == AST_CONSTANT AND
-        left^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
-
-        // Turn this node into a bitwise NOT of the right side.
-
-        node^.Type = AST_OPERATOR
-        node^.Token.Subtype = TOKEN_BITNOT
-        node^.Body.Operator.Left = node^.Body.Operator.Right
     END
 END
 
@@ -2292,24 +2306,23 @@ FN (PrsOperatorF) PrsParseBitOr (
         LEAVE
     END
 
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
     IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
         // No effect. Copy the left node over us.
 
         TlCopyMemory (
             node, // dest
             left, // src
-            SIZEOF PrsAstNode
-        )
-
-        LEAVE
-    END
-
-    IF left^.Type == AST_CONSTANT AND left^.Body.Constant.Value == 0 THEN
-        // No effect. Copy the right node over us.
-
-        TlCopyMemory (
-            node, // dest
-            right, // src
             SIZEOF PrsAstNode
         )
     END
@@ -2402,6 +2415,19 @@ FN (PrsOperatorF) PrsParseEquiv (
 
         node^.Body.Constant.Value =
             left^.Body.Constant.Value == right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
     END
 END
 
@@ -2420,6 +2446,19 @@ FN (PrsOperatorF) PrsParseNotEquiv (
 
         node^.Body.Constant.Value =
             left^.Body.Constant.Value != right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
     END
 END
 
@@ -2472,6 +2511,15 @@ FN (PrsOperatorF) PrsParseAddrOf (
     // TOKEN_ADDROF, to distinguish it from a bitwise AND.
 
     node^.Token.Subtype = TOKEN_ADDROF
+
+    left := node^.Body.Operator.Left
+
+    // Check to make sure that it makes any sense to take the address here.
+    // We can only take the address of l-values.
+
+    IF NOT PrsIsLvalue ( left ) THEN
+        LexTokenError ( &left^.Token, "Not a valid L-value", 0, 0, 0 )
+    END
 END
 
 FN (PrsOperatorF) PrsParseInverse (
@@ -3925,6 +3973,7 @@ FN PrsInitialize ()
     PrsOperators[TOKEN_LPAREN].NoRightSide = TRUE
 
     PrsOperators[TOKEN_CARET].Precedence = 25
+    PrsOperators[TOKEN_CARET].ParseFunc = &PrsParseCaret
     PrsOperators[TOKEN_CARET].NoRightSide = TRUE
 
     PrsOperators[TOKEN_MUL].Precedence = 20
