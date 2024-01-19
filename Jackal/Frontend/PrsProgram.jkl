@@ -826,6 +826,32 @@ FN PrsTypeGetMinimumAlignment (
     RETURN type^.MinimumAlignment
 END
 
+FN PrsHasSideEffect (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Return whether the AST node has a side effect.
+    // We only expect expression nodes here.
+
+    IF node^.Type == AST_OPERATOR AND
+        node^.Token.Subtype == TOKEN_CARET THEN
+
+        // Loads may have side effects.
+
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_OPERATOR AND
+        node^.Token.Subtype == TOKEN_LPAREN THEN
+
+        // Function calls may have side effects.
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
 FN PrsType (
     IN type : ^LexSemanticType,
     IN depth : UBYTE,
@@ -1487,9 +1513,11 @@ FN PrsParseBlock (
                     block, // block
                     leftexpr, // node
                 )
-
-                // TODO: check if expression is side-effect-less and error if so
-                //   
+                
+                IF NOT PrsHasSideEffect ( leftexpr ) THEN
+                    LexTokenError ( &leftexpr^.Token,
+                    "Free-floating expressions must have side effects", 0, 0, 0 )
+                END
             END
         END
     END
@@ -3088,14 +3116,20 @@ FN PrsParseFnSignature (
     ) THEN
         // There's a return type!
 
-        // TODO check that the return type is a value type
-
         returntype := PrsCreateType ()
 
         PrsType (
             returntype, // type
             0, // depth
         )
+
+        IF NOT PrsTypeIsValue (
+            &nametoken, // errtoken
+            returntype, // type
+        ) THEN
+            LexTokenError (  &nametoken,
+                "Return type is not directly usable as a value", 0, 0, 0 )
+        END
 
         type^.Body.Function.ReturnType = returntype
     END
@@ -3225,7 +3259,7 @@ FN PrsParseCompoundType (
 ) : ^LexSymbol
 
     // XXX remember bit fields, and that bit field types must only be primitive
-    //     types
+    //     types, and that unions cant have bit fields
     // XXX remember that non-pointer references to undeclared STRUCTs are
     //     absolutely forbidden! may require a new argument on PrsType
     // XXX remember that we want to calculate the size of the struct and its
