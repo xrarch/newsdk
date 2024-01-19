@@ -463,6 +463,114 @@ FN PrsEvaluateType (
     TlInternalError ( "TODO PrsEvaluateType", 0, 0, 0 )
 END
 
+FN PrsTypeIsDeclarable (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : UBYTE
+
+    // Returns TRUE if the type can be directly declarable, FALSE otherwise.
+
+    // Skip past all the names first.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type^.Subtype == TYPE_FUNCTION THEN
+        // Functions are not directly declarable.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_PRIMITIVE AND
+        type^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+
+        // VOID types are not directly declarable.
+
+        RETURN FALSE
+    END
+
+    RETURN TRUE
+END
+
+FN PrsTypeIsValue (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : UBYTE
+
+    // Returns TRUE if the type is directly usable as an Rvalue, FALSE
+    // otherwise.
+
+    // Skip past all the names first.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type^.Subtype == TYPE_FUNCTION THEN
+        // Functions are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_COMPOUND THEN
+        // Compound types (STRUCT and UNION) are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        // Arrays are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_PRIMITIVE AND
+        type^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+
+        // VOID types are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    RETURN TRUE
+END
+
+FN PrsTypeGetMinimumAlignment (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : UBYTE
+
+    // Skip past all the names first.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    RETURN type^.MinimumAlignment
+END
+
 FN PrsType (
     IN type : ^LexSemanticType,
     IN depth : UBYTE,
@@ -479,8 +587,16 @@ FN PrsType (
     IF typetoken.Type == TOKEN_PTYPE THEN
         // It's a primitive type, that was easy!
 
+        IF NOT JklTargetInfo^.SupportedTypes[typetoken.TypeContext] THEN
+            LexTokenError ( &typetoken,
+                "This primitive type is not supported on this target", 0, 0, 0 )
+        END
+
         type^.Subtype = TYPE_PRIMITIVE
         type^.Body.Primitive.Type = typetoken.TypeContext
+
+        type^.MinimumAlignment =
+            JklTargetInfo^.PrimitiveAlignment[typetoken.TypeContext]
 
     ELSEIF typetoken.Type == TOKEN_OPER AND typetoken.Subtype == TOKEN_CARET THEN
         // It's a pointer type! Allocate a base type.
@@ -496,6 +612,7 @@ FN PrsType (
 
         type^.Subtype = TYPE_POINTER
         type^.Body.Pointer.Base = basetype
+        type^.MinimumAlignment = JklTargetInfo^.PointerAlignment
 
     ELSEIF typetoken.Type == TOKEN_IDENTIFIER THEN
         // It's a named type!
@@ -520,6 +637,7 @@ FN PrsType (
 
         type^.Subtype = TYPE_NAMED
         type^.Body.Named.Symbol = symbol
+        type^.MinimumAlignment = 0
 
     ELSE
         // Type didn't match with anything we expected.
@@ -563,12 +681,18 @@ FN PrsType (
         SIZEOF LexSemanticType, // sz
     )
 
+    elementalign := PrsTypeGetMinimumAlignment (
+        &typetoken, // errtoken
+        basetype, // type
+    )
+
     arraytype := type
 
     arraytail : ^LexSemanticType = NULLPTR
 
     WHILE TRUE DO
         arraytype^.Subtype = TYPE_ARRAY
+        arraytype^.MinimumAlignment = elementalign
 
         IF arraytail THEN
             arraytail^.Body.Array.Base = arraytype
@@ -768,7 +892,13 @@ FN PrsVariableDeclaration (
             0, // depth
         )
 
-        PrsPrintType ( type )
+        IF NOT PrsTypeIsDeclarable (
+            token, // errtoken
+            type, // type
+        ) THEN
+            LexTokenError ( token,
+                "This type is not directly declarable", 0, 0, 0 )
+        END
 
         eqtoken : LexToken
 
@@ -799,6 +929,16 @@ FN PrsVariableDeclaration (
             // If the type was implicit, evaluate the type of the initial value.
 
             type = PrsEvaluateType ( initialnode )
+
+            IF NOT PrsTypeIsValue (
+                token, // errtoken
+                type, // type
+            ) THEN
+                LexTokenError ( token,
+                    "This type is not directly usable as a value", 0, 0, 0 )
+            END
+        ELSE
+            // TODO check type of initializer against explicit type
         END
     END
 
@@ -1054,6 +1194,8 @@ FN PrsParseBlock (
 
             leftexpr := PrsExpression ( 0 )
 
+            // TODO check leftexpr for being a usable value type
+
             // Check for an assign operator.
 
             assigntoken : LexToken
@@ -1074,6 +1216,7 @@ FN PrsParseBlock (
                 asgnnode^.Body.Assign.Right = PrsExpression ( 0 )
 
                 // TODO: type check left and right to make sure compatible types
+                //       and that the right is a usable value type
 
                 PrsInsertNodeIntoBlock (
                     block, // block
@@ -1088,6 +1231,7 @@ FN PrsParseBlock (
                 )
 
                 // TODO: check if expression is side-effect-less and error if so
+                //   
             END
         END
     END
@@ -1123,6 +1267,8 @@ FN (PrsOperatorF) PrsParseArrayIndex (
     // bracket.
 
     node^.Body.Operator.Right = PrsExpression ( 0 )
+
+    // TODO check the expression for being a usable value type
 
     token : LexToken
 
@@ -1163,6 +1309,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
     WHILE TRUE DO
         node := PrsExpression ( 0 )
+
+        // TODO check the expression for being a usable value type
 
         node^.Next = NULLPTR
 
@@ -2127,6 +2275,8 @@ FN (PrsOperatorF) PrsParseCast (
 
     node^.Body.Operator.Left = PrsExpression ( 0 )
 
+    // TODO check for being a usable value type
+
     token : LexToken
 
     IF NOT LexMatchToken (
@@ -2326,6 +2476,8 @@ FN PrsParseFnSignature (
     //
     // (FNPTR) NAME (IN/OUT ARG : TYPE, ...)
     // NAME (IN/OUT ARG : TYPE, ...)
+
+    // TODO check that the argument types are all value types
 
     fnptrtype : ^LexSemanticType = NULLPTR
 
@@ -2589,7 +2741,8 @@ FN PrsParseFnSignature (
             END
 
             IF argtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-                LexTokenError ( &argtoken, "Identifier already in use", 0, 0, 0 )
+                LexTokenError ( &argtoken,
+                    "Identifier already in use", 0, 0, 0 )
             END
 
             argsymbol := CAST argtoken.Payload TO ^LexSymbol
@@ -2613,6 +2766,13 @@ FN PrsParseFnSignature (
                 argsymbol^.SemanticType, // type
                 0, // depth
             )
+
+            IF arg^.InOut == ARG_OUT THEN
+                IF argsymbol^.SemanticType^.Subtype != TYPE_POINTER THEN
+                    LexTokenError ( &checktoken,
+                        "OUT parameters must have pointer type", 0, 0, 0 )
+                END
+            END
 
             IF LexMatchToken (
                 &checktoken, // token
@@ -2661,6 +2821,8 @@ FN PrsParseFnSignature (
         0, // subtype
     ) THEN
         // There's a return type!
+
+        // TODO check that the return type is a value type
 
         returntype := PrsCreateType ()
 
@@ -2789,10 +2951,13 @@ FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
     RETURN symbol
 END
 
-FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
+FN PrsParseCompoundType (
+    IN subtype : LexTokenSubtype,
+    IN ispacked : UBYTE,
+) : ^LexSymbol
 
-    // Parse a STRUCT declaration.
-    // XXX remember bit fields!
+    // XXX remember bit fields, and that bit field types must only be primitive
+    //     types
     // XXX remember that non-pointer references to undeclared STRUCTs are
     //     absolutely forbidden! may require a new argument on PrsType
     // XXX remember that we want to calculate the size of the struct and its
@@ -2806,15 +2971,39 @@ FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
     //     size where applicable. where not applicable the size should be a
     //     magical value like -1 indicating that the type is not directly
     //     assignable (which means it isn't legal in a struct and union).
+    // XXX remember that struct fields must have declarable types
 
-    TlInternalError ( "TODO PrsParseStruct", 0, 0, 0 )
+    offset : TlMachineWord = 0
+
+
+END
+
+FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
+
+    // Parse a STRUCT declaration.
+
+    packedtoken : LexToken
+
+    ispacked := LexMatchToken (
+        &packedtoken, // token
+        TOKEN_OTHER, // type
+        TOKEN_PACKED, // subtype
+    )
+
+    RETURN PrsParseCompoundType (
+        TOKEN_STRUCT, // subtype
+        ispacked, // ispacked
+    )
 END
 
 FN (PrsDeclaratorF) PrsParseUnion () : ^LexSymbol
 
     // Parse a UNION declaration.
 
-    TlInternalError ( "TODO PrsParseUnion", 0, 0, 0 )
+    RETURN PrsParseCompoundType (
+        TOKEN_UNION, // subtype
+        FALSE, // ispacked
+    )
 END
 
 FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
@@ -2851,6 +3040,25 @@ FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
     )
 
     symbol^.SemanticType = type
+
+    // TYPE declarations can cause cycles. Check if that happened.
+
+    rabbit := type
+
+    WHILE rabbit^.Subtype == TYPE_NAMED DO
+        IF rabbit^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // We don't know yet.
+
+            BREAK
+        END
+
+        rabbit = rabbit^.Body.Named.Symbol^.SemanticType
+
+        IF type == rabbit THEN
+            LexTokenError ( &nametoken,
+                "TYPE declaration causes a cycle", 0, 0, 0 )
+        END
+    END
 
     RETURN symbol
 END
@@ -3090,6 +3298,8 @@ FN (PrsStatementF) PrsParseIf (
 
         cond := PrsExpression ( 0 )
 
+        // TODO check for being a usable value type
+
         thiscase^.Conditional = cond
 
         thentoken : LexToken
@@ -3267,6 +3477,8 @@ FN (PrsStatementF) PrsParseReturn (
     // Parse the return value expression.
 
     node^.Body.Statement.StatementSpecific = PrsExpression ( 0 )
+
+    // TODO check for being a usable value type
 END
 
 FN (PrsStatementF) PrsParseWhile (
@@ -3281,6 +3493,8 @@ FN (PrsStatementF) PrsParseWhile (
     )
 
     cond := PrsExpression ( 0 )
+
+    // TODO check for being a usable value type
 
     node^.Body.While.Conditional = cond
 
@@ -3393,6 +3607,8 @@ FN PrsInitialize ()
     TlInitializeDynamicBuffer ( &PrsBlockStack )
 
     // Initialize the operators.
+    // TODO replace all this stuff with static initialization once we have that
+    //      when we're compiling ourselves
 
     PrsOperators[TOKEN_DOT].Precedence = 25
     PrsOperators[TOKEN_DOT].ParseFunc = &PrsParseCompoundTypeIndex

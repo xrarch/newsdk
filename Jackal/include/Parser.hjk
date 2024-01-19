@@ -19,6 +19,8 @@ ENUM PrsAstType : UBYTE
     AST_GOTO,
     AST_CONTINUE,
     AST_IF,
+
+    AST_MAX, // MUST be at the end
 END
 
 STRUCT PrsBlock

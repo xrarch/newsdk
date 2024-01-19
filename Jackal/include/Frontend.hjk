@@ -16,6 +16,28 @@ EXTERN FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN FeInputFileHandle : ^VOID
 EXTERN FeOutputFileHandle : ^VOID
 
+EXTERN JklTargetInfo : ^JklTargetInfoRecord
+
+ENUM JklPrimitiveType : UBYTE
+    PRIM_TYPE_VOID,
+    PRIM_TYPE_UBYTE,
+    PRIM_TYPE_UINT,
+    PRIM_TYPE_ULONG,
+    PRIM_TYPE_UQUAD,
+    PRIM_TYPE_BYTE,
+    PRIM_TYPE_INT,
+    PRIM_TYPE_LONG,
+    PRIM_TYPE_QUAD,
+
+    PRIM_TYPE_MAX, // MUST be at the end
+END
+
+STRUCT JklTargetInfoRecord
+    PointerAlignment : UBYTE,
+    PrimitiveAlignment : UBYTE[64], // TODO make this bound just be PRIM_TYPE_MAX when compiler non-stupid
+    SupportedTypes : UBYTE[64],
+END
+
 // fileblock stuff
 
 STRUCT FeFileBlock

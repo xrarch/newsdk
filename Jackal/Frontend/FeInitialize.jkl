@@ -13,53 +13,9 @@ PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC FeInputFileHandle : ^VOID
 PUBLIC FeOutputFileHandle : ^VOID
 
+PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
+
 FeFileBlockHashTable : TlHashTable
-
-FN FeInitialize (
-    IN argc : ULONG,
-    IN argv : ^UBYTE[],
-)
-    
-    // Initialize the file block hash table.
-
-    TlInitializeHashTable ( &FeFileBlockHashTable )
-
-    // Initialize the preprocessor.
-
-    LexInitializePreprocessor ()
-
-    // Parse the arguments.
-
-    FeParseArguments ( argc, argv )
-
-    // Open the input and output files.
-
-    status := TlOpenSource (
-        &FeInputFile[0], // filename
-        &FeInputFileHandle, // OUT handle
-    )
-
-    IF status THEN
-        TlUserError ( "Failed to open source file.", 0, 0, 0 )
-    END
-
-    status = TlOpenDestination (
-        &FeOutputFile[0], // filename
-        &FeOutputFileHandle, // OUT handle
-    )
-
-    IF status THEN
-        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
-    END
-
-    // Initialize the lexer.
-
-    LexInitialize ()
-
-    // Initialize the parser.
-
-    PrsInitialize ()
-END
 
 FN FeIsMacroArgument (
     IN arg : ^UBYTE,
@@ -240,4 +196,87 @@ FN JklCompileProgram (
     // Call the target-specific code to finish compilation.
 
     // ...
+END
+
+TrgChostInfo : JklTargetInfoRecord
+
+FN TrgInitialize ()
+    
+    // TEMP: Just point stuff to the C host
+
+    // TODO replace all this stuff with static initialization when we have that
+
+    TrgChostInfo.PointerAlignment = 8
+
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_VOID] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_UBYTE] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_UINT] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_ULONG] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_UQUAD] = FALSE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_BYTE] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_INT] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_LONG] = TRUE
+    TrgChostInfo.SupportedTypes[PRIM_TYPE_QUAD] = FALSE
+
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_VOID] = 0
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_UBYTE] = 1
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_UINT] = 2
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_ULONG] = 4
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_UQUAD] = 8
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_BYTE] = 1
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_INT] = 2
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_LONG] = 4
+    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_QUAD] = 8
+
+    JklTargetInfo = &TrgChostInfo
+END
+
+FN FeInitialize (
+    IN argc : ULONG,
+    IN argv : ^UBYTE[],
+)
+    
+    // Initialize the file block hash table.
+
+    TlInitializeHashTable ( &FeFileBlockHashTable )
+
+    // Initialize the preprocessor.
+
+    LexInitializePreprocessor ()
+
+    // Parse the arguments.
+
+    FeParseArguments ( argc, argv )
+
+    // Open the input and output files.
+
+    status := TlOpenSource (
+        &FeInputFile[0], // filename
+        &FeInputFileHandle, // OUT handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open source file.", 0, 0, 0 )
+    END
+
+    status = TlOpenDestination (
+        &FeOutputFile[0], // filename
+        &FeOutputFileHandle, // OUT handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
+    END
+
+    // Initialize the target.
+
+    TrgInitialize ()
+
+    // Initialize the lexer.
+
+    LexInitialize ()
+
+    // Initialize the parser.
+
+    PrsInitialize ()
 END

@@ -135,16 +135,6 @@ ENUM LexCharBehavior : UBYTE
     CHAR_EOF,
 END
 
-ENUM LexPrimitiveType : UBYTE
-    PRIM_TYPE_VOID,
-    PRIM_TYPE_UBYTE,
-    PRIM_TYPE_UINT,
-    PRIM_TYPE_ULONG,
-    PRIM_TYPE_BYTE,
-    PRIM_TYPE_INT,
-    PRIM_TYPE_LONG,
-END
-
 FNPTR LexGetCharacterF () : UBYTE
 
 STRUCT LexInternedString
@@ -244,10 +234,11 @@ ENUM LexSemanticSubtype : UBYTE
     TYPE_POINTER,
     TYPE_NAMED,
     TYPE_FUNCTION,
+    TYPE_COMPOUND,
 END
 
 STRUCT LexSemanticTypePrimitiveBody
-    Type : LexPrimitiveType,
+    Type : JklPrimitiveType,
 END
 
 STRUCT LexSemanticTypeArrayBody
@@ -297,17 +288,25 @@ STRUCT LexSemanticTypeFunctionBody
     IsVarArg : UBYTE,
 END
 
+STRUCT LexSemanticTypeCompoundBody
+    FieldScope : ^TlSymbolTable,
+
+    IsPacked : UBYTE,
+END
+
 UNION LexSemanticTypeBody
     Primitive : LexSemanticTypePrimitiveBody,
     Array : LexSemanticTypeArrayBody,
     Pointer : LexSemanticTypePointerBody,
     Named : LexSemanticTypeNamedBody,
     Function : LexSemanticTypeFunctionBody,
+    Compound : LexSemanticTypeCompoundBody,
 END
 
 STRUCT LexSemanticType
     Subtype : LexSemanticSubtype,
     Body : LexSemanticTypeBody,
+    MinimumAlignment : UBYTE,
 END
 
 STRUCT LexMacro
