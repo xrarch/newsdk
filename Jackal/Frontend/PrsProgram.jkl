@@ -1142,6 +1142,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     // parenthesis. The head of the arguments list goes in the operator-specific
     // field.
 
+    // TODO check number and type of function arguments
+
     argtail : ^PrsAstNode = NULLPTR
     node^.Body.Operator.OperatorSpecific = NULLPTR
 
@@ -3052,7 +3054,13 @@ FN (PrsStatementF) PrsParseIf (
     IN token : ^LexToken,
 )
 
-    // Parse an IF statement.
+    // Parse an IF statement. This is a chain of conditional bodies plus an ELSE
+    // body. If we run into a constant conditional which evaluates truthy, we
+    // can ignore the rest of the clauses, but we still have to parse each of
+    // them to get them out of the token stream. Equivalently, if we run into a
+    // constant conditional which evaluates falsey, we can completely omit it.
+
+
 
     TlInternalError ( "TODO PrsParseIf", 0, 0, 0 )
 END
@@ -3155,18 +3163,20 @@ FN (PrsStatementF) PrsParseWhile (
 
     LexLeaveScope ()
 
-    IF NOT node^.Body.While.BodyBlock^.LabelCount THEN
-        // There are no labels in the body, which means we can completely
-        // eliminate the WHILE if it has a constant expression with a value of
-        // zero.
+    // We can completely eliminate the WHILE if it has a constant expression
+    // with a value of zero.
 
-        IF cond^.Type == AST_CONSTANT AND
-            cond^.Body.Constant.Value == 0 THEN
+    IF cond^.Type == AST_CONSTANT AND
+        cond^.Body.Constant.Value == 0 THEN
 
-            // It does! Early out before we insert it into the current block.
+        // It does! Early out before we insert it into the current block.
 
-            LEAVE
+        IF node^.Body.While.BodyBlock^.LabelCount THEN
+            LexTokenError ( &dotoken,
+                "One or more labels inside inaccessible block", 0, 0, 0 )
         END
+
+        LEAVE
     END
 
     PrsInsertNodeIntoBlock (
