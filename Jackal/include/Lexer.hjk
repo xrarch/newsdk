@@ -271,6 +271,8 @@ END
 STRUCT LexFunctionArgument
     Next : ^LexFunctionArgument,
 
+    Token : LexToken,
+
     Symbol : ^LexSymbol,
     InOut : LexFunctionArgumentTypes,
 END
@@ -285,6 +287,7 @@ STRUCT LexSemanticTypeFunctionBody
     VarArgTable : ^LexSymbol,
     VarArgCount : ^LexSymbol,
     BodyBlock : ^VOID, // actually a PrsBlock
+    ArgCount : ULONG,
     IsVarArg : UBYTE,
 END
 

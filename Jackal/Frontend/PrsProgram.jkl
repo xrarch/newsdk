@@ -231,6 +231,271 @@ FN PrsIsCompileTime (
     RETURN FALSE
 END
 
+FN PrsCheckType (
+    IN errtoken : ^LexToken,
+    IN type1 : ^LexSemanticType,
+    IN type2 : ^LexSemanticType,
+    IN errstring : ^UBYTE,
+    IN equivalence : UBYTE,
+)
+
+    // Compare the two types. type1 is taken to be a "destination" type and
+    // type2 is a "source" type. If equivalence is TRUE, then exact equivalence
+    // is tested rather than assignment compatibility.
+
+    // TODO fix to use vararg LexTokenError
+
+    // First strip away any names.
+
+    WHILE type1^.Subtype == TYPE_NAMED DO
+        IF type1^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared destination type", 0, 0, 0 )
+        END
+
+        type1 = type1^.Body.Named.Symbol^.SemanticType
+    END
+
+    WHILE type2^.Subtype == TYPE_NAMED DO
+        IF type2^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared source type", 0, 0, 0 )
+        END
+
+        type2 = type2^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type1^.Subtype != type2^.Subtype THEN
+        // Not the same type of type.
+
+        TlPrintString ( errstring )
+        LexTokenError ( errtoken, "Incompatible types", 0, 0, 0 )
+    END
+
+    IF type1^.Subtype == TYPE_PRIMITIVE THEN
+        // Both types are primitive.
+
+        primtype1 := type1^.Body.Primitive.Type
+        primtype2 := type2^.Body.Primitive.Type
+
+        IF primtype1 == primtype2 THEN
+            // They're the same, that's fine.
+
+            LEAVE
+        END
+
+        IF equivalence THEN
+            // We're checking for exact equivalence.
+
+            IF primtype1 != primtype2 THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Primitive types not equivalent", 0, 0, 0 )
+            END
+        END
+
+        // Check that we aren't crossing from unsigned to signed.
+
+        IF primtype1 > PRIM_TYPE_SIGNED AND
+            primtype1 < PRIM_TYPE_SIGNED_MAX THEN
+
+            IF primtype2 > PRIM_TYPE_UNSIGNED AND
+                primtype2 < PRIM_TYPE_UNSIGNED_MAX THEN
+
+                // We are, so we aren't compatible.
+
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Implicit cast from unsigned to signed type", 0, 0, 0 )
+            END
+        ELSEIF primtype2 > PRIM_TYPE_SIGNED AND
+            primtype2 < PRIM_TYPE_SIGNED_MAX THEN
+
+            // We're crossing from signed to unsigned, which isn't compatible.
+
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Implicit cast from signed to unsigned type", 0, 0, 0 )
+        END
+
+        IF primtype1 >= primtype2 THEN
+            // Destination type is greater than or equal to source type. That's
+            // fine.
+
+            LEAVE
+        END
+
+        // Destination type is smaller than source type. Not fine.
+
+        TlPrintString ( errstring )
+        LexTokenError ( errtoken, "Implicit cast to smaller type", 0, 0, 0 )
+    END
+
+    IF type1^.Subtype == TYPE_POINTER THEN
+        // Both types are pointers. If one is a pointer to void, this is legal.
+
+        type1base := type1^.Body.Pointer.Base
+
+        IF type1base^.Subtype == TYPE_PRIMITIVE AND
+            type1base^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+
+            LEAVE
+        END
+
+        type2base := type2^.Body.Pointer.Base
+
+        IF type2base^.Subtype == TYPE_PRIMITIVE AND
+            type2base^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+            
+            LEAVE
+        END
+
+        IF type1base^.Subtype == TYPE_FUNCTION AND
+            type2base^.Subtype == TYPE_FUNCTION THEN
+
+            // Function pointers are only compatible if it's the same FNPTR.
+
+            IF type1 != type2 THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Not the same function pointer type", 0, 0, 0 )
+            END
+        END
+
+        // Recursively check the types they point to.
+
+        PrsCheckType (
+            errtoken, // errtoken
+            type1base, // type1
+            type2base, // type2
+            errstring, // errstring
+            equivalence, // equivalence
+        )
+
+        LEAVE
+    END
+
+    IF type1^.Subtype == TYPE_COMPOUND THEN
+        // Compound types are only compatible if they're the same type.
+
+        IF type1 != type2 THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Incompatible compound types", 0, 0, 0 )
+        END
+
+        LEAVE
+    END
+
+    IF type1^.Subtype == TYPE_ARRAY THEN
+        // Both types are arrays.
+
+        IF type1^.Body.Array.HasBound != type2^.Body.Array.HasBound THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Array type bound differs", 0, 0, 0 )
+        END
+
+        IF type1^.Body.Array.HasBound THEN
+            IF type1^.Body.Array.Bound != type2^.Body.Array.Bound THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken, "Array type bound differs", 0, 0, 0 )
+            END
+        END
+
+        // Recursively check the base types.
+
+        PrsCheckType (
+            errtoken, // errtoken
+            type1^.Body.Array.Base, // type1
+            type2^.Body.Array.Base, // type2
+            errstring, // errstring
+            equivalence, // equivalence
+        )
+
+        LEAVE
+    END
+
+    IF type1^.Subtype == TYPE_FUNCTION THEN
+        // Function types are only compatible if they're structurally the same
+        // type.
+
+        // First check the easy stuff.
+
+        // Check FNPTR type.
+
+        IF type1^.Body.Function.FnPtrType != type2^.Body.Function.FnPtrType THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Not the same FNPTR type", 0, 0, 0 )
+        END
+
+        // Check return value types.
+
+        IF type1^.Body.Function.ReturnType THEN
+            IF NOT type2^.Body.Function.ReturnType THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Incompatible return value types", 0, 0, 0 )
+            END
+
+            PrsCheckType (
+                errtoken, // errtoken
+                type1^.Body.Function.ReturnType, // type1
+                type2^.Body.Function.ReturnType, // type2
+                errstring, // errstring
+                TRUE, // equivalence
+            )
+        ELSEIF type2^.Body.Function.ReturnType THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Incompatible return value types", 0, 0, 0 )
+        END
+
+        // Check vararg-ness.
+
+        IF type1^.Body.Function.IsVarArg != type2^.Body.Function.IsVarArg THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Not the same varargness", 0, 0, 0 )
+        END
+
+        // Check argument count.
+
+        IF type1^.Body.Function.ArgCount != type2^.Body.Function.ArgCount THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Wrong argument count", 0, 0, 0 )
+        END
+
+        // Check each argument for type equivalence.
+
+        arg1 := type1^.Body.Function.ArgListHead
+        arg2 := type2^.Body.Function.ArgListHead
+
+        WHILE arg1 DO
+            PrsCheckType (
+                &arg2^.Token, // errtoken
+                arg1^.Symbol^.SemanticType, // type1
+                arg2^.Symbol^.SemanticType, // type2
+                errstring, // errstring
+                TRUE, // equivalence
+            )
+
+            arg1 = arg1^.Next
+            arg2 = arg2^.Next
+        END
+
+        LEAVE
+    END
+
+    TlInternalError ( "PrsCheckType Unreachable", 0, 0, 0 )
+END
+
 FN PrsAtom () : ^PrsAstNode
 
     // Parse an atom. This is an "atomic" part of an expression, such as a
@@ -442,16 +707,6 @@ FN PrsParseInitializer () : ^PrsAstNode
     TlInternalError ( "TODO parse array initializer", 0, 0, 0 )
 
     RETURN NULLPTR
-END
-
-FN PrsCheckType (
-    IN type1 : ^LexSemanticType,
-    IN type2 : ^LexSemanticType,
-) : UBYTE
-
-    // Compare the two types.
-
-    TlInternalError ( "TODO PrsCheckType", 0, 0, 0 )
 END
 
 FN PrsEvaluateType (
@@ -803,10 +1058,13 @@ FN PrsFoundSymbol (
                 "Can't override extern from local scope.", 0, 0, 0 )
         END
 
-        IF NOT PrsCheckType ( symbol^.SemanticType, newtype ) THEN
-            LexTokenError ( token,
-                "Can't override, types don't match.", 0, 0, 0 )
-        END
+        PrsCheckType (
+            token, // errtoken
+            symbol^.SemanticType, // type1
+            newtype, // type2
+            "Can't override: ", // errstring
+            TRUE, // equivalence
+        )
     ELSE
         // Initialize the symbol.
 
@@ -2580,7 +2838,8 @@ FN PrsParseFnSignature (
     type^.Body.Function.FuncScope = LexCurrentScope
     type^.Body.Function.ArgListHead = NULLPTR
     type^.Body.Function.ReturnType = NULLPTR
-    type^.Body.Function.FnPtrType = fnptrtype
+    type^.Body.Function.FnPtrType = NULLPTR
+    type^.Body.Function.ArgCount = 0
     type^.Body.Function.IsVarArg = FALSE
 
     argtail : ^LexFunctionArgument = NULLPTR
@@ -2724,6 +2983,8 @@ FN PrsParseFnSignature (
                 BREAK
             END
 
+            type^.Body.Function.ArgCount += 1
+
             arg^.Next = NULLPTR
 
             IF NOT argtail THEN
@@ -2744,6 +3005,11 @@ FN PrsParseFnSignature (
                 LexTokenError ( &argtoken,
                     "Identifier already in use", 0, 0, 0 )
             END
+
+            LexCopyToken (
+                &arg^.Token, // dest
+                &argtoken, // src
+            )
 
             argsymbol := CAST argtoken.Payload TO ^LexSymbol
 
@@ -2843,13 +3109,15 @@ FN PrsParseFnSignature (
     END
 
     IF fnptrtype THEN
-        IF NOT PrsCheckType (
+        PrsCheckType (
+            &nametoken, // errtoken
             type, // type1
             fnptrtype, // type2
-        ) THEN
-            LexTokenError ( &nametoken,
-                "Function signature doesn't match associated FNPTR", 0, 0, 0 )
-        END
+            "FNPTR: ", // errstring
+            TRUE, // equivalence
+        )
+
+        type^.Body.Function.FnPtrType = fnptrtype
     END
 
     IF NOT fnptr THEN
@@ -2975,7 +3243,7 @@ FN PrsParseCompoundType (
 
     offset : TlMachineWord = 0
 
-
+    TlInternalError ( "TODO PrsParseCompoundType", 0, 0, 0 )
 END
 
 FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol

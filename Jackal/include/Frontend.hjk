@@ -20,14 +20,28 @@ EXTERN JklTargetInfo : ^JklTargetInfoRecord
 
 ENUM JklPrimitiveType : UBYTE
     PRIM_TYPE_VOID,
-    PRIM_TYPE_UBYTE,
-    PRIM_TYPE_UINT,
-    PRIM_TYPE_ULONG,
-    PRIM_TYPE_UQUAD,
+
+    // The order that these are declared in determines the type compatibility,
+    // such that a primitive type is only compatible with the same or a larger
+    // type.
+
+    PRIM_TYPE_SIGNED, // signed types bottom
+
     PRIM_TYPE_BYTE,
     PRIM_TYPE_INT,
     PRIM_TYPE_LONG,
     PRIM_TYPE_QUAD,
+
+    PRIM_TYPE_SIGNED_MAX, // signed types top
+
+    PRIM_TYPE_UNSIGNED, // signed types bottom
+
+    PRIM_TYPE_UBYTE,
+    PRIM_TYPE_UINT,
+    PRIM_TYPE_ULONG,
+    PRIM_TYPE_UQUAD,
+
+    PRIM_TYPE_UNSIGNED_MAX, // unsigned types top
 
     PRIM_TYPE_MAX, // MUST be at the end
 END
