@@ -18,6 +18,7 @@ ENUM PrsAstType : UBYTE
     AST_LABEL,
     AST_GOTO,
     AST_CONTINUE,
+    AST_IF,
 END
 
 STRUCT PrsBlock
@@ -52,13 +53,16 @@ STRUCT PrsAstWhile
 END
 
 STRUCT PrsIfCase
+    Next : ^PrsIfCase,
+
     Conditional : ^PrsAstNode,
     BodyBlock : ^PrsBlock,
 END
 
 STRUCT PrsAstIf
-    IfCaseListHead : ^PrsIfCase,
-    IfCaseListTail : ^PrsIfCase,
+    CaseListHead : ^PrsIfCase,
+    CaseListTail : ^PrsIfCase,
+    ElseBlock : ^PrsBlock,
 END
 
 UNION PrsAstBody

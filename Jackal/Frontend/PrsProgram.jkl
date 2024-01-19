@@ -154,6 +154,8 @@ FN PrsInsertNodeIntoBlock (
     // XXX Turn this into a macro when those work.
     // XXX Better yet, just use the circular list macros when we have those.
 
+    node^.Next = NULLPTR
+
     IF NOT block^.StatementListTail THEN
         block^.StatementListHead = node
     ELSE
@@ -3060,9 +3062,155 @@ FN (PrsStatementF) PrsParseIf (
     // them to get them out of the token stream. Equivalently, if we run into a
     // constant conditional which evaluates falsey, we can completely omit it.
 
+    node := PrsCreateAstNode (
+        AST_IF, // type
+        token, // token
+    )
 
+    node^.Body.If.CaseListHead = NULLPTR
+    node^.Body.If.CaseListTail = NULLPTR
+    node^.Body.If.ElseBlock = NULLPTR
 
-    TlInternalError ( "TODO PrsParseIf", 0, 0, 0 )
+    ignore := FALSE
+    elsenext := FALSE
+
+    WHILE TRUE DO
+        thiscase : ^PrsIfCase
+
+        status := TlBumpAlloc (
+            SIZEOF PrsIfCase, // bytes
+            &thiscase, // OUT ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate IF case", 0, 0, 0 )
+        END
+
+        // Collect the conditional expression.
+
+        cond := PrsExpression ( 0 )
+
+        thiscase^.Conditional = cond
+
+        thentoken : LexToken
+
+        IF NOT LexMatchToken (
+            &thentoken, // token
+            TOKEN_OTHER, // type
+            TOKEN_THEN, // subtype
+        ) THEN
+            LexTokenError ( &thentoken, "Expected THEN", 0, 0, 0 )
+        END
+
+        // Enter the scope and collect the body block.
+
+        LexEnterScope ( NULLPTR )
+
+        TlInsertDynamicBuffer (
+            &PrsBlockStack, // array
+            BLOCK_IF_BODY, // byte
+        )
+
+        terminator : LexTokenSubtype
+
+        thiscase^.BodyBlock = PrsParseBlock (
+            &terminator, // OUT terminator
+        )
+
+        TlPopDynamicBuffer ( &PrsBlockStack )
+
+        LexLeaveScope ()
+
+        IF ignore OR (cond^.Type == AST_CONSTANT AND
+            cond^.Body.Constant.Value == 0) THEN
+
+            // This block will be completely elided.
+
+            IF thiscase^.BodyBlock^.LabelCount THEN
+                LexTokenError ( &thentoken,
+                    "One or more labels inside inaccessible block", 0, 0, 0 )
+            END
+        ELSE
+            // Add the block.
+
+            thiscase^.Next = NULLPTR
+
+            IF NOT node^.Body.If.CaseListTail THEN
+                node^.Body.If.CaseListHead = thiscase
+            ELSE
+                node^.Body.If.CaseListTail^.Next = thiscase
+            END
+
+            node^.Body.If.CaseListTail = thiscase
+
+            // If the block has a non-zero constant value, ignore the rest, as
+            // they can never execute.
+
+            IF cond^.Type == AST_CONSTANT AND cond^.Body.Constant.Value THEN
+                ignore = TRUE
+            END
+        END
+
+        IF terminator == TOKEN_END THEN
+            // We're done!
+
+            BREAK
+        END
+
+        IF terminator == TOKEN_ELSE THEN
+            // There's just an ELSE block and then we're done.
+
+            elsenext = TRUE
+
+            BREAK
+        END
+
+        IF terminator == TOKEN_ELSEIF THEN
+            // Keep going.
+
+            CONTINUE
+        END
+
+        TlInternalError ( "PrsParseIf Unreachable", 0, 0, 0 )
+    END
+
+    IF elsenext THEN
+        // Parse the ELSE block.
+
+        LexEnterScope ( NULLPTR )
+
+        TlInsertDynamicBuffer (
+            &PrsBlockStack, // array
+            BLOCK_PLAIN_BODY, // byte
+        )
+
+        terminator : LexTokenSubtype
+
+        elseblock := PrsParseBlock (
+            &terminator, // OUT terminator
+        )
+
+        TlPopDynamicBuffer ( &PrsBlockStack )
+
+        LexLeaveScope ()
+
+        IF ignore THEN
+            // Exclude the ELSE block as it can never execute.
+
+            IF elseblock^.LabelCount THEN
+                LexTokenError ( token,
+                    "One or more labels inside inaccessible ELSE block",
+                    0, 0, 0 )
+            END
+        ELSE
+            node^.Body.If.ElseBlock = elseblock
+        END
+    END
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
 END
 
 FN (PrsStatementF) PrsParseLeave (
