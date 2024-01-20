@@ -213,6 +213,14 @@ FN LexInitialize ()
     LexInsertKeyword ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE, 0 )
     LexInsertKeyword ( "EXPORT", TOKEN_DECL, TOKEN_EXPORT, 0 )
     LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE, 0 )
+    LexInsertKeyword ( "UQUAD", TOKEN_TYPE, TOKEN_UQUAD, PRIM_TYPE_UQUAD )
+    LexInsertKeyword ( "QUAD", TOKEN_TYPE, TOKEN_QUAD, PRIM_TYPE_QUAD )
+
+    LexInsertKeyword ( "UWORD", TOKEN_TYPE, TOKEN_UWORD,
+        JklTargetInfo^.LargestPrimitive )
+
+    LexInsertKeyword ( "WORD", TOKEN_TYPE, TOKEN_WORD,
+        JklTargetInfo^.LargestSignedPrimitive )
 
     LexInsertKeyword ( ")", TOKEN_RPAREN, 0, 0 )
     LexInsertKeyword ( "]", TOKEN_RBRACKET, 0, 0 )
