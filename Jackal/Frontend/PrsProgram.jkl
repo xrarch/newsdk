@@ -1388,7 +1388,8 @@ FN PrsVariableDeclaration (
 
             IF initialnode^.Type != AST_INITIALIZER THEN
                 // It's not a fancy array/struct initializer, so check the
-                // expression against the explicit type.
+                // expression against the explicit type, and emit an error if
+                // it's a constant and is too large for the type.
 
                 // TODO check type of initial value against explicit type
             END
@@ -1748,7 +1749,9 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     // parenthesis. The head of the arguments list goes in the operator-specific
     // field.
 
-    // TODO check number and type of function arguments
+    // TODO check number and type of function arguments, and check that the left
+    //      side is indeed a function or function pointer; if it's the latter
+    //      then just unwrap it
 
     argtail : ^PrsAstNode = NULLPTR
     node^.Body.Operator.OperatorSpecific = NULLPTR
@@ -4105,70 +4108,152 @@ FN (PrsOperatorEvalF) PrsEvalArrayIndex (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalArrayIndex", 0, 0, 0 )
+    // Get the type of the left hand side, which must be an array type (else the
+    // parser would have complained to the user earlier). Then return the base
+    // of that.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        RETURN type^.Body.Array.Base
+    END
+
+    // Must have been a pointer actually. We can index those too.
+
+    RETURN type^.Body.Pointer.Base
 END
 
 FN (PrsOperatorEvalF) PrsEvalFunctionCall (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalFunctionCall", 0, 0, 0 )
+    // Get the type of the left hand side, which must be a function type (else
+    // the parser would have complained to the user earlier). Then return the
+    // return value of that.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    IF type^.Subtype == TYPE_POINTER THEN
+        // It's actually a function pointer. Get the function.
+
+        type = type^.Body.Pointer.Base
+    END
+
+    IF NOT type^.Body.Function.ReturnType THEN
+        LexTokenError ( &node^.Token,
+            "Attempt to take return type of return-less function", 0, 0, 0 )
+    END
+
+    RETURN type^.Body.Function.ReturnType
 END
 
 FN (PrsOperatorEvalF) PrsEvalPtrDereference (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalPtrDereference", 0, 0, 0 )
+    // Get the type of the left hand side, which must be a pointer type, else
+    // the parser would have complained earlier.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    RETURN type^.Body.Pointer.Base
 END
 
 FN (PrsOperatorEvalF) PrsEvalArithmetic (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalArithmetic", 0, 0, 0 )
+    // If either side is a pointer, return the pointer type.
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype == TYPE_POINTER THEN
+        RETURN lefttype
+    END
+
+    righttype := PrsEvaluateType ( right )
+
+    IF righttype^.Subtype == TYPE_POINTER THEN
+        RETURN righttype
+    END
+
+    // If either side is a constant, return the other type.
+
+    IF left^.Type == AST_CONSTANT THEN
+        RETURN righttype
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        RETURN lefttype
+    END
+
+    // Return the left type.
+
+    RETURN lefttype
 END
 
 FN (PrsOperatorEvalF) PrsEvalConditional (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalConditional", 0, 0, 0 )
+    // Return the constant type.
+
+    RETURN PrsConstantType
 END
 
 FN (PrsOperatorEvalF) PrsEvalAddrOf (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalAddrOf", 0, 0, 0 )
+    // Get the type of the left hand side and wrap it in a pointer.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    ptrtype := PrsCreateType ()
+
+    ptrtype^.Subtype = TYPE_POINTER
+    ptrtype^.Body.Pointer.Base = type
+
+    RETURN ptrtype
 END
 
 FN (PrsOperatorEvalF) PrsEvalUnaryArithmetic (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalUnaryArithmetic", 0, 0, 0 )
+    // Just forward the type of the left side.
+
+    RETURN PrsEvaluateType ( node^.Body.Operator.Left )
 END
 
 FN (PrsOperatorEvalF) PrsEvalUnaryConditional (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalUnaryConditional", 0, 0, 0 )
+    // Return the constant type.
+
+    RETURN PrsConstantType
 END
 
 FN (PrsOperatorEvalF) PrsEvalCast (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalCast", 0, 0, 0 )
+    // Return the casted-to type.
+
+    RETURN node^.Body.Operator.OperatorSpecific
 END
 
 FN (PrsOperatorEvalF) PrsEvalSizeOfValue (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalSizeOfValue", 0, 0, 0 )
+    // Return the constant type.
+
+    RETURN PrsConstantType
 END
 
 
