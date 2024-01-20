@@ -12,6 +12,10 @@ PrsCurrentFunction : ^LexSemanticType = NULLPTR
 
 PrsBlockStack : TlDynamicBuffer
 
+PrsStringType : ^LexSemanticType = NULLPTR
+PrsNullPtrType : ^LexSemanticType = NULLPTR
+PrsConstantType : ^LexSemanticType = NULLPTR
+
 ENUM PrsBlockType : UBYTE
     BLOCK_NULL,
 
@@ -31,15 +35,19 @@ PrsWhileDepth : ULONG = 0
 CONST VAR_FLAG_EXTERN := 1
 CONST VAR_FLAG_PUBLIC := 2
 CONST VAR_FLAG_EXPORT := 4
-CONST VAR_FLAG_FUNCTION := 8
 
 FNPTR PrsOperatorF (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
 )
 
+FNPTR PrsOperatorEvalF (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
 STRUCT PrsOperatorRecord
     ParseFunc : PrsOperatorF,
+    EvalFunc : PrsOperatorEvalF,
     Precedence : ULONG,
     NoRightSide : UBYTE,
 END
@@ -126,6 +134,8 @@ FN PrsCreateAstNode (
     END
 
     node^.Type = type
+
+    node^.CachedSemanticType = NULLPTR
 
     LexCopyToken (
         &node^.Token, // dest
@@ -328,6 +338,12 @@ FN PrsCheckType (
                 LexTokenError ( errtoken,
                     "Primitive types not equivalent", 0, 0, 0 )
             END
+        END
+
+        IF type2^.Body.Primitive.Inducible THEN
+            // If the source type is inducible, then it's fine.
+
+            LEAVE
         END
 
         // Check that we aren't crossing from unsigned to signed.
@@ -640,20 +656,35 @@ FN PrsAtom () : ^PrsAstNode
 
             atomnode^.Body.Constant.Value = 1
 
-        ELSEIF token.Subtype == TOKEN_FALSE THEN
+        ELSEIF token.Subtype == TOKEN_FALSE OR
+            token.Subtype == TOKEN_NULLPTR THEN
+
             atomnode = PrsCreateAstNode (
                 AST_CONSTANT,
                 &token, // token
             )
 
             atomnode^.Body.Constant.Value = 0
-
-        ELSE
-            atomnode = PrsCreateAstNode (
-                AST_PRIM_VALUE,
-                &token, // token
-            )
         END
+
+    ELSEIF token.Type == TOKEN_SIZEOF THEN
+        // We have to create a constant containing the size of the type.
+
+        type := PrsCreateType ()
+
+        PrsType (
+            type, // type
+            0, // depth
+        )
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        // atomnode^.Body.Constant.Value = PrsGetSizeOfTypeOrSomethingIdkYet ( type )
+
+        TlInternalError ( "TODO SIZEOF", 0, 0, 0 )
 
     ELSE
         LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
@@ -717,22 +748,53 @@ FN PrsExpression (
     RETURN atomnode
 END
 
-FN PrsParseInitializer () : ^PrsAstNode
+FN PrsParseInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : ^PrsAstNode
 
     // Parse an initializer. This is either of the form { ... } or it's an
-    // expression.
+    // expression, depending on the type of value we're initializing.
 
-    IF NOT LexMatchToken (
-        NULLPTR, // token
-        TOKEN_LBRACE, // type
-        0, // subtype
-    ) THEN
-        // It's an expression initializer.
+    // First strip away any type names.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    bracetoken : LexToken
+
+    IF type^.Subtype != TYPE_ARRAY AND type^.Subtype != TYPE_COMPOUND THEN
+        // Gotta be an expression initializer. Make sure there's not a brace.
+
+        IF LexMatchToken (
+            &bracetoken, // token
+            TOKEN_LBRACE, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &bracetoken,
+                "Illegal initializer, expected expression", 0, 0, 0 )
+        END
 
         RETURN PrsExpression ( 0 )
     END
 
-    // It's a fancy array or struct initializer.
+    // Gotta be a fancy array or struct initializer.
+
+    IF NOT LexMatchToken (
+        &bracetoken, // token
+        TOKEN_LBRACE, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &bracetoken, "Expected initializer", 0, 0, 0 )
+    END
 
     TlInternalError ( "TODO parse array initializer", 0, 0, 0 )
 
@@ -748,7 +810,54 @@ FN PrsEvaluateType (
     // We can memo-ize this by stashing the result in the node and returning
     // that in the future.
 
-    TlInternalError ( "TODO PrsEvaluateType", 0, 0, 0 )
+    IF node^.CachedSemanticType THEN
+        RETURN node^.CachedSemanticType
+    END
+
+    type : ^LexSemanticType
+
+    IF node^.Type == AST_IDENTIFIER THEN
+        // Get the type from the symbol.
+
+        symbol := CAST node^.Token.Payload TO ^LexSymbol
+
+        type = symbol^.SemanticType
+    
+    ELSEIF node^.Type == AST_STRING THEN
+        // Use the default pre-prepared string type, which is pointer to UBYTE.
+
+        type = PrsStringType
+
+    ELSEIF node^.Type == AST_CONSTANT THEN
+        IF node^.Token.Type == TOKEN_VALUE AND
+            node^.Token.Subtype == TOKEN_NULLPTR THEN
+
+            // Use the default pre-prepared null pointer type, which is just a
+            // pointer to VOID.
+
+            type = PrsNullPtrType
+        ELSE
+            // Use the default pre-prepared constant type, which is the largest
+            // signed primitive type for the target (i.e. LONG for 32-bits, QUAD
+            // for 64-bits), and is "inducible", a special property that lets it
+            // implicitly cast to any other primitive type.
+
+            type = PrsConstantType
+        END
+
+    ELSEIF node^.Type == AST_OPERATOR THEN
+        type = PrsOperators[node^.Token.Subtype].EvalFunc (
+            node, // node
+        )
+
+    ELSE
+        TlInternalError (
+            "PrsEvaluateType Inappropriate AST type", node^.Type, 0, 0 )
+    END
+
+    node^.CachedSemanticType = type
+
+    RETURN type
 END
 
 FN PrsTypeIsDeclarable (
@@ -924,6 +1033,7 @@ FN PrsType (
 
         type^.Subtype = TYPE_PRIMITIVE
         type^.Body.Primitive.Type = typetoken.TypeContext
+        type^.Body.Primitive.Inducible = FALSE
 
         type^.MinimumAlignment =
             JklTargetInfo^.PrimitiveAlignment[typetoken.TypeContext]
@@ -1256,10 +1366,10 @@ FN PrsVariableDeclaration (
 
         // Parse the initializer.
 
-        initialnode = PrsParseInitializer ()
-
         IF NOT type THEN
             // If the type was implicit, evaluate the type of the initial value.
+
+            initialnode = PrsExpression ( 0 )
 
             type = PrsEvaluateType ( initialnode )
 
@@ -1271,7 +1381,17 @@ FN PrsVariableDeclaration (
                     "This type is not directly usable as a value", 0, 0, 0 )
             END
         ELSE
-            // TODO check type of initializer against explicit type
+            initialnode = PrsParseInitializer (
+                token, // errtoken
+                type, // type
+            )
+
+            IF initialnode^.Type != AST_INITIALIZER THEN
+                // It's not a fancy array/struct initializer, so check the
+                // expression against the explicit type.
+
+                // TODO check type of initial value against explicit type
+            END
         END
     END
 
@@ -1315,9 +1435,6 @@ FN PrsVariableDeclaration (
         // might still leave it as a "complex" AST node if it's a pointer to
         // some other global or something because we don't know the value of
         // that immediately.
-
-        // TODO only allow initializer if the type is an array, struct, or union
-        //      type
 
         IF NOT PrsIsCompileTime ( initialnode ) THEN
             LexTokenError ( token,
@@ -1724,7 +1841,7 @@ FN PrsIsPowerOfTwo (
     END
 END
 
-FN (PrsOperatorF) PrsParseCaret (
+FN (PrsOperatorF) PrsParsePtrDereference (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
 )
@@ -3030,6 +3147,7 @@ FN PrsParseFnSignature (
 
                     voidtype^.Subtype = TYPE_PRIMITIVE
                     voidtype^.Body.Primitive.Type = PRIM_TYPE_VOID
+                    voidtype^.Body.Primitive.Inducible = FALSE
 
                     ptrtype^.Body.Pointer.Base = voidtype
 
@@ -3064,6 +3182,7 @@ FN PrsParseFnSignature (
 
                     varargcounttype^.Subtype = TYPE_PRIMITIVE
                     varargcounttype^.Body.Primitive.Type = PRIM_TYPE_ULONG
+                    voidtype^.Body.Primitive.Inducible = FALSE
 
                     varargcountsymbol^.SemanticType = varargcounttype
                 END
@@ -3973,11 +4092,125 @@ FN (PrsStatementF) PrsParseLabel (
     PrsCurrentBlock^.LabelCount += 1
 END
 
+// Type evaluation functions.
+
+FN (PrsOperatorEvalF) PrsEvalCompoundTypeIndex (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalCompoundTypeIndex", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalArrayIndex (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalArrayIndex", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalFunctionCall (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalFunctionCall", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalPtrDereference (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalPtrDereference", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalArithmetic (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalArithmetic", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalConditional (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalConditional", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalAddrOf (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalAddrOf", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalUnaryArithmetic (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalUnaryArithmetic", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalUnaryConditional (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalUnaryConditional", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalCast (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalCast", 0, 0, 0 )
+END
+
+FN (PrsOperatorEvalF) PrsEvalSizeOfValue (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    TlInternalError ( "TODO PrsEvalSizeOfValue", 0, 0, 0 )
+END
+
+
 FN PrsInitialize ()
 
     // Initialize the parser.
 
     TlInitializeDynamicBuffer ( &PrsBlockStack )
+
+    // Set up the cached pre-built types.
+
+    // Set up the string type as pointer to UBYTE.
+
+    PrsStringType = PrsCreateType ()
+    primtype := PrsCreateType ()
+
+    primtype^.Subtype = TYPE_PRIMITIVE
+    primtype^.Body.Primitive.Type = PRIM_TYPE_UBYTE
+    primtype^.Body.Primitive.Inducible = FALSE
+
+    PrsStringType^.Subtype = TYPE_POINTER
+    PrsStringType^.Body.Pointer.Base = primtype
+
+    // Set up the NULLPTR type as pointer to VOID.
+
+    PrsNullPtrType = PrsCreateType ()
+    primtype = PrsCreateType ()
+
+    primtype^.Subtype = TYPE_PRIMITIVE
+    primtype^.Body.Primitive.Type = PRIM_TYPE_VOID
+    primtype^.Body.Primitive.Inducible = FALSE
+
+    PrsNullPtrType^.Subtype = TYPE_POINTER
+    PrsNullPtrType^.Body.Pointer.Base = primtype
+
+    // Set up the constant type as the largest signed primitive.
+
+    PrsConstantType = PrsCreateType ()
+
+    PrsConstantType^.Subtype = TYPE_PRIMITIVE
+    PrsConstantType^.Body.Primitive.Type = JklTargetInfo^.LargestSignedPrimitive
+    PrsConstantType^.Body.Primitive.Inducible = TRUE
 
     // Initialize the operators.
     // TODO replace all this stuff with static initialization once we have that
@@ -3985,94 +4218,122 @@ FN PrsInitialize ()
 
     PrsOperators[TOKEN_DOT].Precedence = 25
     PrsOperators[TOKEN_DOT].ParseFunc = &PrsParseCompoundTypeIndex
+    PrsOperators[TOKEN_DOT].EvalFunc = &PrsEvalCompoundTypeIndex
     PrsOperators[TOKEN_DOT].NoRightSide = TRUE
 
     PrsOperators[TOKEN_LBRACKET].Precedence = 25
     PrsOperators[TOKEN_LBRACKET].ParseFunc = &PrsParseArrayIndex
+    PrsOperators[TOKEN_LBRACKET].EvalFunc = &PrsEvalArrayIndex
     PrsOperators[TOKEN_LBRACKET].NoRightSide = TRUE
 
     PrsOperators[TOKEN_LPAREN].Precedence = 25
     PrsOperators[TOKEN_LPAREN].ParseFunc = &PrsParseFunctionCall
+    PrsOperators[TOKEN_LPAREN].EvalFunc = &PrsEvalFunctionCall
     PrsOperators[TOKEN_LPAREN].NoRightSide = TRUE
 
     PrsOperators[TOKEN_CARET].Precedence = 25
-    PrsOperators[TOKEN_CARET].ParseFunc = &PrsParseCaret
+    PrsOperators[TOKEN_CARET].ParseFunc = &PrsParsePtrDereference
+    PrsOperators[TOKEN_CARET].EvalFunc = &PrsEvalPtrDereference
     PrsOperators[TOKEN_CARET].NoRightSide = TRUE
 
     PrsOperators[TOKEN_MUL].Precedence = 20
     PrsOperators[TOKEN_MUL].ParseFunc = &PrsParseMul
+    PrsOperators[TOKEN_MUL].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_DIVIDE].Precedence = 20
     PrsOperators[TOKEN_DIVIDE].ParseFunc = &PrsParseDivide
+    PrsOperators[TOKEN_DIVIDE].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_MODULO].Precedence = 20
     PrsOperators[TOKEN_MODULO].ParseFunc = &PrsParseModulo
+    PrsOperators[TOKEN_MODULO].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_PLUS].Precedence = 19
     PrsOperators[TOKEN_PLUS].ParseFunc = &PrsParsePlus
+    PrsOperators[TOKEN_PLUS].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_MINUS].Precedence = 19
     PrsOperators[TOKEN_MINUS].ParseFunc = &PrsParseMinus
+    PrsOperators[TOKEN_MINUS].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_LEFTSHIFT].Precedence = 18
     PrsOperators[TOKEN_LEFTSHIFT].ParseFunc = &PrsParseLeftShift
+    PrsOperators[TOKEN_LEFTSHIFT].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_RIGHTSHIFT].Precedence = 18
     PrsOperators[TOKEN_RIGHTSHIFT].ParseFunc = &PrsParseRightShift
+    PrsOperators[TOKEN_RIGHTSHIFT].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_BITAND].Precedence = 17
     PrsOperators[TOKEN_BITAND].ParseFunc = &PrsParseBitAnd
+    PrsOperators[TOKEN_BITAND].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_BITXOR].Precedence = 16
     PrsOperators[TOKEN_BITXOR].ParseFunc = &PrsParseBitXor
+    PrsOperators[TOKEN_BITXOR].EvalFunc = &PrsEvalArithmetic
 
     PrsOperators[TOKEN_BITOR].Precedence = 15
     PrsOperators[TOKEN_BITOR].ParseFunc = &PrsParseBitOr
+    PrsOperators[TOKEN_BITOR].EvalFunc = &PrsEvalArithmetic
     
     PrsOperators[TOKEN_LESSTHAN].Precedence = 14
     PrsOperators[TOKEN_LESSTHAN].ParseFunc = &PrsParseLessThan
+    PrsOperators[TOKEN_LESSTHAN].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_GREATERTHAN].Precedence = 14
     PrsOperators[TOKEN_GREATERTHAN].ParseFunc = &PrsParseGreaterThan
+    PrsOperators[TOKEN_GREATERTHAN].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_LTEQ].Precedence = 14
     PrsOperators[TOKEN_LTEQ].ParseFunc = &PrsParseLtEq
+    PrsOperators[TOKEN_LTEQ].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_GTEQ].Precedence = 14
     PrsOperators[TOKEN_GTEQ].ParseFunc = &PrsParseGtEq
+    PrsOperators[TOKEN_GTEQ].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_EQUIV].Precedence = 13
     PrsOperators[TOKEN_EQUIV].ParseFunc = &PrsParseEquiv
+    PrsOperators[TOKEN_EQUIV].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_NOTEQUIV].Precedence = 13
     PrsOperators[TOKEN_NOTEQUIV].ParseFunc = &PrsParseNotEquiv
+    PrsOperators[TOKEN_NOTEQUIV].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_AND].Precedence = 12
     PrsOperators[TOKEN_AND].ParseFunc = &PrsParseAnd
+    PrsOperators[TOKEN_AND].EvalFunc = &PrsEvalConditional
 
     PrsOperators[TOKEN_OR].Precedence = 11
     PrsOperators[TOKEN_OR].ParseFunc = &PrsParseOr
+    PrsOperators[TOKEN_OR].EvalFunc = &PrsEvalConditional
 
     // Initialize the left-operators.
 
     PrsLeftOperators[TOKEN_BITAND].Precedence = 24
     PrsLeftOperators[TOKEN_BITAND].ParseFunc = &PrsParseAddrOf
+    PrsOperators[TOKEN_ADDROF].EvalFunc = &PrsEvalAddrOf
 
     PrsLeftOperators[TOKEN_MINUS].Precedence = 24
     PrsLeftOperators[TOKEN_MINUS].ParseFunc = &PrsParseInverse
+    PrsOperators[TOKEN_INVERSE].EvalFunc = &PrsEvalUnaryArithmetic
 
     PrsLeftOperators[TOKEN_NOT].Precedence = 24
     PrsLeftOperators[TOKEN_NOT].ParseFunc = &PrsParseNot
+    PrsLeftOperators[TOKEN_NOT].EvalFunc = &PrsEvalUnaryConditional
 
     PrsLeftOperators[TOKEN_BITNOT].Precedence = 24
     PrsLeftOperators[TOKEN_BITNOT].ParseFunc = &PrsParseBitNot
+    PrsLeftOperators[TOKEN_BITNOT].EvalFunc = &PrsEvalUnaryArithmetic
 
     PrsLeftOperators[TOKEN_CAST].Precedence = 24
     PrsLeftOperators[TOKEN_CAST].ParseFunc = &PrsParseCast
+    PrsLeftOperators[TOKEN_CAST].EvalFunc = &PrsEvalCast
     PrsLeftOperators[TOKEN_CAST].NoRightSide = TRUE
 
     PrsLeftOperators[TOKEN_SIZEOFVALUE].Precedence = 24
     PrsLeftOperators[TOKEN_SIZEOFVALUE].ParseFunc = &PrsParseSizeOfValue
+    PrsLeftOperators[TOKEN_SIZEOFVALUE].EvalFunc = &PrsEvalSizeOfValue
 
     // Initialize the declarators.
 

@@ -10,7 +10,6 @@ ENUM PrsAstType : UBYTE
     AST_OPERATOR,
     AST_CONSTANT,
     AST_STRING,
-    AST_PRIM_VALUE,
     AST_INITIALIZER,
     AST_BREAK,
     AST_RETURN,
@@ -83,4 +82,6 @@ STRUCT PrsAstNode
 
     Type : PrsAstType,
     Body : PrsAstBody,
+
+    CachedSemanticType : ^LexSemanticType,
 END

@@ -50,6 +50,7 @@ STRUCT JklTargetInfoRecord
     PointerAlignment : UBYTE,
     PrimitiveAlignment : UBYTE[64], // TODO make this bound just be PRIM_TYPE_MAX when compiler non-stupid
     SupportedTypes : UBYTE[64],
+    LargestSignedPrimitive : JklPrimitiveType,
 END
 
 // fileblock stuff

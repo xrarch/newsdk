@@ -59,7 +59,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_LEAVE,       // statement
     TOKEN_LONG,        // type
     TOKEN_NOT,         // operator
-    TOKEN_NULL,        // value
     TOKEN_NULLPTR,     // value
     TOKEN_OR,          // operator
     TOKEN_OUT,         // argspec
@@ -239,6 +238,7 @@ END
 
 STRUCT LexSemanticTypePrimitiveBody
     Type : JklPrimitiveType,
+    Inducible : UBYTE,
 END
 
 STRUCT LexSemanticTypeArrayBody
