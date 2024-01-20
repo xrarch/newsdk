@@ -228,7 +228,7 @@ FN TrgInitialize ()
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_LONG] = 4
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_QUAD] = 8
 
-    TrgCHostInfo.LargestSignedPrimitive = PRIM_TYPE_LONG
+    TrgCHostInfo.LargestPrimitive = PRIM_TYPE_ULONG
 
     JklTargetInfo = &TrgCHostInfo
 END

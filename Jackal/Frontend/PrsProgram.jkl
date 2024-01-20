@@ -4276,7 +4276,7 @@ FN PrsInitialize ()
     PrsConstantType = PrsCreateType ()
 
     PrsConstantType^.Subtype = TYPE_PRIMITIVE
-    PrsConstantType^.Body.Primitive.Type = JklTargetInfo^.LargestSignedPrimitive
+    PrsConstantType^.Body.Primitive.Type = JklTargetInfo^.LargestPrimitive
     PrsConstantType^.Body.Primitive.Inducible = TRUE
 
     // Initialize the operators.
