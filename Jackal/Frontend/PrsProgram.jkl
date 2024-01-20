@@ -1369,6 +1369,9 @@ FN PrsVariableDeclaration (
         // TODO: if the right side is a constant, check to make sure it fits in
         //       the left side's type
 
+        // TODO: if there's an implicit cast in the assignment, make it explicit
+        //       in the AST
+
         IF NOT type THEN
             // If the type was implicit, evaluate the type of the initial value.
 
