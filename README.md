@@ -10,12 +10,14 @@ Expect only very gradual progress on this.
 
 - [x] Jackal -> C bootstrap transpiler.
 - [ ] Self-hosted Jackal compiler w/ C backend.
+- [ ] Fox32 backend.
 - [ ] XR/17032 backend.
-- [ ] fox32 backend.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.
-- [ ] i486 port.
-- [ ] MINTIA port of new compiler.
-- [ ] New generic assembler written in Jackal with XR/17032, fox32, and i486 support.
-- [ ] New linker written in Jackal with XR/17032, fox32, and i486 support.
+- [ ] MINTIA port of the new compiler.
+- [ ] New generic assembler written in Jackal with XR/17032 and Fox32 support.
+- [ ] New linker written in Jackal with XR/17032 and Fox32 support.
 - [ ] Native build system "xrbuild" to replace make.
 - [ ] MINTIA build system replaced with xrbuild and made completely self-hosting, except for version control.
+- [ ] RISCV64 assembler and linker support.
+- [ ] RISCV64 compiler backend.
+- [ ] MINTIA port to RISCV64.
