@@ -198,7 +198,7 @@ FN JklCompileProgram (
     // ...
 END
 
-TrgChostInfo : JklTargetInfoRecord
+TrgCHostInfo : JklTargetInfoRecord
 
 FN TrgInitialize ()
     
@@ -206,31 +206,31 @@ FN TrgInitialize ()
 
     // TODO replace all this stuff with static initialization when we have that
 
-    TrgChostInfo.PointerAlignment = 8
+    TrgCHostInfo.PointerAlignment = 8
 
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_VOID] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_UBYTE] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_UINT] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_ULONG] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_UQUAD] = FALSE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_BYTE] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_INT] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_LONG] = TRUE
-    TrgChostInfo.SupportedTypes[PRIM_TYPE_QUAD] = FALSE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_VOID] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UBYTE] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UINT] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_ULONG] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UQUAD] = FALSE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_BYTE] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_INT] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_LONG] = TRUE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_QUAD] = FALSE
 
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_VOID] = 0
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_UBYTE] = 1
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_UINT] = 2
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_ULONG] = 4
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_UQUAD] = 8
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_BYTE] = 1
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_INT] = 2
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_LONG] = 4
-    TrgChostInfo.PrimitiveAlignment[PRIM_TYPE_QUAD] = 8
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_VOID] = 0
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UBYTE] = 1
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UINT] = 2
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_ULONG] = 4
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UQUAD] = 8
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_BYTE] = 1
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_INT] = 2
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_LONG] = 4
+    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_QUAD] = 8
 
-    TrgChostInfo.LargestSignedPrimitive = PRIM_TYPE_LONG
+    TrgCHostInfo.LargestSignedPrimitive = PRIM_TYPE_LONG
 
-    JklTargetInfo = &TrgChostInfo
+    JklTargetInfo = &TrgCHostInfo
 END
 
 FN FeInitialize (
