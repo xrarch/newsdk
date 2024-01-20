@@ -3446,6 +3446,9 @@ FN PrsParseCompoundType (
     //     magical value like -1 indicating that the type is not directly
     //     assignable (which means it isn't legal in a struct and union).
     // XXX remember that struct fields must have declarable types
+    // XXX remember that struct fields should be aligned unless packed and that
+    //     the minimum alignment of the compound type must be the maximum of the
+    //     required alignments for each field type
 
     offset : TlMachineWord = 0
 
