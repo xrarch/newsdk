@@ -1366,6 +1366,9 @@ FN PrsVariableDeclaration (
 
         // Parse the initializer.
 
+        // TODO: if the right side is a constant, check to make sure it fits in
+        //       the left side's type
+
         IF NOT type THEN
             // If the type was implicit, evaluate the type of the initial value.
 
@@ -1674,6 +1677,9 @@ FN PrsParseBlock (
                 // TODO: type check left and right to make sure compatible types
                 //       and that the right is a usable value type
 
+                // TODO: if the right side is a constant, check to make sure it
+                //       fits in the left side's type
+
                 PrsInsertNodeIntoBlock (
                     block, // block
                     asgnnode, // node
@@ -1817,33 +1823,6 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     END
 END
 
-FN PrsIsPowerOfTwo (
-    IN constant : TlMachineWord,
-) : ULONG
-
-    // Check if the constant is a power of two. If it is, return which Nth power
-    // of two it is. This is used for some basic strength reduction.
-
-    IF constant == 0 THEN
-        RETURN -1
-    END
-
-    bitpos := 0
-
-    WHILE TRUE DO
-        IF constant & 1 THEN
-            IF constant != 1 THEN
-                RETURN -1
-            END
-
-            RETURN bitpos
-        END
-
-        constant >>= 1
-        bitpos += 1
-    END
-END
-
 FN (PrsOperatorF) PrsParsePtrDereference (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -1914,7 +1893,7 @@ FN (PrsOperatorF) PrsParseMul (
             LEAVE
         END
 
-        pwrtwo := PrsIsPowerOfTwo ( right^.Body.Constant.Value )
+        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
 
         IF pwrtwo != -1 THEN
             // Cool, it's a power of two, we can reduce this into a left shift.
@@ -1970,7 +1949,7 @@ FN (PrsOperatorF) PrsParseDivide (
             LEAVE
         END
 
-        pwrtwo := PrsIsPowerOfTwo ( right^.Body.Constant.Value )
+        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
 
         IF pwrtwo != -1 THEN
             // Cool, it's a power of two, we can reduce this into a right shift.
@@ -2024,7 +2003,7 @@ FN (PrsOperatorF) PrsParseModulo (
             LEAVE
         END
 
-        pwrtwo := PrsIsPowerOfTwo ( right^.Body.Constant.Value )
+        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
 
         IF pwrtwo != -1 THEN
             // Cool, it's a power of two, we can reduce this into a bit mask.

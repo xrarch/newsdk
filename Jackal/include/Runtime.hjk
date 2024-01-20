@@ -331,3 +331,11 @@ EXTERN FN TlFreeToZone (
     IN zone : ^TlZone,
     IN block : ^VOID,
 )
+
+
+// math stuff
+
+
+EXTERN FN TlIsPowerOfTwo (
+    IN constant : TlMachineWord,
+) : ULONG
