@@ -80,6 +80,9 @@ FN PrsCreateType () : ^LexSemanticType
         TlInternalError ( "Failed to create type", 0, 0, 0 )
     END
 
+    type^.CachedIsDeclarable = FALSE
+    type^.CachedIsValue = FALSE
+
     RETURN type
 END
 
@@ -388,7 +391,7 @@ FN PrsCheckType (
 
             // Function pointers are only compatible if it's the same FNPTR.
 
-            IF type1 != type2 THEN
+            IF type1base != type2base THEN
                 TlPrintString ( errstring )
                 LexTokenError ( errtoken,
                     "Not the same function pointer type", 0, 0, 0 )
@@ -742,6 +745,9 @@ FN PrsEvaluateType (
 
     // Evaluate the type that will be produced by an AST expression.
 
+    // We can memo-ize this by stashing the result in the node and returning
+    // that in the future.
+
     TlInternalError ( "TODO PrsEvaluateType", 0, 0, 0 )
 END
 
@@ -751,6 +757,12 @@ FN PrsTypeIsDeclarable (
 ) : UBYTE
 
     // Returns TRUE if the type can be directly declarable, FALSE otherwise.
+
+    IF type^.CachedIsDeclarable THEN
+        RETURN TRUE
+    END
+
+    originaltype := type
 
     // Skip past all the names first.
 
@@ -779,6 +791,8 @@ FN PrsTypeIsDeclarable (
         RETURN FALSE
     END
 
+    originaltype^.CachedIsDeclarable = TRUE
+
     RETURN TRUE
 END
 
@@ -789,6 +803,12 @@ FN PrsTypeIsValue (
 
     // Returns TRUE if the type is directly usable as an Rvalue, FALSE
     // otherwise.
+
+    IF type^.CachedIsValue THEN
+        RETURN TRUE
+    END
+
+    originaltype := type
 
     // Skip past all the names first.
 
@@ -828,6 +848,8 @@ FN PrsTypeIsValue (
 
         RETURN FALSE
     END
+
+    originaltype^.CachedIsValue = TRUE
 
     RETURN TRUE
 END
@@ -1586,7 +1608,8 @@ FN (PrsOperatorF) PrsParseArrayIndex (
 
     node^.Body.Operator.Right = PrsExpression ( 0 )
 
-    // TODO check the expression for being a usable value type
+    // TODO check the expression for being a usable value type and check the
+    //      left side for being an array type
 
     token : LexToken
 

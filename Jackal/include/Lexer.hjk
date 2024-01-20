@@ -310,6 +310,8 @@ STRUCT LexSemanticType
     Subtype : LexSemanticSubtype,
     Body : LexSemanticTypeBody,
     MinimumAlignment : UBYTE,
+    CachedIsDeclarable : UBYTE,
+    CachedIsValue : UBYTE,
 END
 
 STRUCT LexMacro
