@@ -285,6 +285,12 @@ FN PrsCheckType (
 
     // TODO fix to use vararg LexTokenError
 
+    IF type1 == type2 THEN
+        // They're identical, literally the same type object.
+
+        LEAVE
+    END
+
     // First strip away any names.
 
     WHILE type1^.Subtype == TYPE_NAMED DO
@@ -309,6 +315,12 @@ FN PrsCheckType (
         END
 
         type2 = type2^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type1 == type2 THEN
+        // They're identical, literally the same type object.
+
+        LEAVE
     END
 
     IF type1^.Subtype != type2^.Subtype THEN
@@ -370,17 +382,7 @@ FN PrsCheckType (
                 "Implicit cast from signed to unsigned type", 0, 0, 0 )
         END
 
-        IF primtype1 >= primtype2 THEN
-            // Destination type is greater than or equal to source type. That's
-            // fine.
-
-            LEAVE
-        END
-
-        // Destination type is smaller than source type. Not fine.
-
-        TlPrintString ( errstring )
-        LexTokenError ( errtoken, "Implicit cast to smaller type", 0, 0, 0 )
+        LEAVE
     END
 
     IF type1^.Subtype == TYPE_POINTER THEN
@@ -407,11 +409,29 @@ FN PrsCheckType (
 
             // Function pointers are only compatible if it's the same FNPTR.
 
-            IF type1base != type2base THEN
+            IF type1base^.Body.Function.IsFnPtr THEN
+                IF type2base^.Body.Function.FnPtrType != type1base THEN
+                    TlPrintString ( errstring )
+                    LexTokenError ( errtoken,
+                        "Not the same function pointer type", 0, 0, 0 )
+                END
+
+            ELSEIF type2base^.Body.Function.IsFnPtr THEN
+                IF type1base^.Body.Function.FnPtrType != type2base THEN
+                    TlPrintString ( errstring )
+                    LexTokenError ( errtoken,
+                        "Not the same function pointer type", 0, 0, 0 )
+                END
+
+            ELSEIF type1base^.Body.Function.FnPtrType !=
+                type2base^.Body.Function.FnPtrType THEN
+
                 TlPrintString ( errstring )
                 LexTokenError ( errtoken,
                     "Not the same function pointer type", 0, 0, 0 )
             END
+
+            LEAVE
         END
 
         // Recursively check the types they point to.
@@ -518,12 +538,18 @@ FN PrsCheckType (
                 "Wrong argument count", 0, 0, 0 )
         END
 
-        // Check each argument for type equivalence.
+        // Check each argument for type and name equivalence.
 
         arg1 := type1^.Body.Function.ArgListHead
         arg2 := type2^.Body.Function.ArgListHead
 
         WHILE arg1 DO
+            IF TlCompareString ( arg1^.Symbol^.Name, arg2^.Symbol^.Name ) THEN
+                TlPrintString ( errstring )
+                LexTokenError ( &arg2^.Token,
+                    "Argument name mismatch", 0, 0, 0 )
+            END
+
             PrsCheckType (
                 &arg2^.Token, // errtoken
                 arg1^.Symbol^.SemanticType, // type1
@@ -910,8 +936,7 @@ FN PrsTypeIsValue (
     IN type : ^LexSemanticType,
 ) : UBYTE
 
-    // Returns TRUE if the type is directly usable as an Rvalue, FALSE
-    // otherwise.
+    // Returns TRUE if the type represents some kind of datum, FALSE otherwise.
 
     IF type^.CachedIsValue THEN
         RETURN TRUE
@@ -961,6 +986,23 @@ FN PrsTypeIsValue (
     originaltype^.CachedIsValue = TRUE
 
     RETURN TRUE
+END
+
+FN PrsCheckNodeIsValue (
+    IN node : ^PrsAstNode,
+)
+
+    // Check if an AST node evaluates to a value type, and error if not.
+
+    type := PrsEvaluateType ( node )
+
+    IF NOT PrsTypeIsValue (
+        &node^.Token, // errtoken
+        type, // type
+    ) THEN
+        LexTokenError ( &node^.Token,
+            "This type is not directly usable as a value", 0, 0, 0 )
+    END
 END
 
 FN PrsTypeGetMinimumAlignment (
@@ -1380,10 +1422,10 @@ FN PrsVariableDeclaration (
             type = PrsEvaluateType ( initialnode )
 
             IF NOT PrsTypeIsValue (
-                token, // errtoken
+                &initialnode^.Token, // errtoken
                 type, // type
             ) THEN
-                LexTokenError ( token,
+                LexTokenError ( &initialnode^.Token,
                     "This type is not directly usable as a value", 0, 0, 0 )
             END
         ELSE
@@ -1397,7 +1439,15 @@ FN PrsVariableDeclaration (
                 // expression against the explicit type, and emit an error if
                 // it's a constant and is too large for the type.
 
-                // TODO check type of initial value against explicit type
+                initialtype := PrsEvaluateType ( initialnode )
+
+                PrsCheckType (
+                    &initialnode^.Token, // errtoken
+                    type, // type1
+                    initialtype, // type2
+                    "Initial value doesn't match explicit type: ", // errstring
+                    FALSE, // equivalence
+                )
             END
         END
     END
@@ -1651,8 +1701,6 @@ FN PrsParseBlock (
 
             leftexpr := PrsExpression ( 0 )
 
-            // TODO check leftexpr for being a usable value type
-
             // Check for an assign operator.
 
             assigntoken : LexToken
@@ -1674,11 +1722,45 @@ FN PrsParseBlock (
                         "Not a valid L-value", 0, 0, 0 )
                 END
 
-                asgnnode^.Body.Assign.Left = leftexpr
-                asgnnode^.Body.Assign.Right = PrsExpression ( 0 )
+                lefttype := PrsEvaluateType ( leftexpr )
 
-                // TODO: type check left and right to make sure compatible types
-                //       and that the right is a usable value type
+                TlPrintNumber ( lefttype )
+                TlPrintString ( "\n" )
+
+                IF NOT PrsTypeIsValue (
+                    &leftexpr^.Token, // errtoken
+                    lefttype, // type
+                ) THEN
+                    LexTokenError ( &leftexpr^.Token,
+                        "This type is not directly usable as a vealue", 0, 0, 0 )
+                END
+
+                asgnnode^.Body.Assign.Left = leftexpr
+
+                rightexpr := PrsExpression ( 0 )
+
+                righttype := PrsEvaluateType ( rightexpr )
+
+                TlPrintNumber ( righttype )
+                TlPrintString ( "\n" )
+
+                IF NOT PrsTypeIsValue (
+                    &rightexpr^.Token, // errtoken
+                    righttype, // type
+                ) THEN
+                    LexTokenError ( &rightexpr^.Token,
+                        "This type is not directly usable as a valuee", 0, 0, 0 )
+                END
+
+                asgnnode^.Body.Assign.Right = rightexpr
+
+                PrsCheckType (
+                    &token, // errtoken
+                    lefttype, // type1
+                    righttype, // type2
+                    "Assign: ", // errstring
+                    FALSE, // equivalence
+                )
 
                 // TODO: if the right side is a constant, check to make sure it
                 //       fits in the left side's type
@@ -1733,10 +1815,22 @@ FN (PrsOperatorF) PrsParseArrayIndex (
     // Parse an array index. We have to collect the index itself and the right
     // bracket.
 
-    node^.Body.Operator.Right = PrsExpression ( 0 )
+    left := node^.Body.Operator.Left
 
-    // TODO check the expression for being a usable value type and check the
-    //      left side for being an array type
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype != TYPE_ARRAY AND
+        lefttype^.Subtype != TYPE_POINTER THEN
+
+        LexTokenError ( &node^.Token,
+            "Can only index an array type or a pointer type", 0, 0, 0 )
+    END
+
+    right := PrsExpression ( 0 )
+
+    PrsCheckNodeIsValue ( right )
+
+    node^.Body.Operator.Right = right
 
     token : LexToken
 
@@ -1746,6 +1840,18 @@ FN (PrsOperatorF) PrsParseArrayIndex (
         0, // subtype
     ) THEN
         LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+    END
+
+    IF lefttype^.Subtype == TYPE_ARRAY AND
+        lefttype^.Body.Array.HasBound AND
+        right^.Type == AST_CONSTANT THEN
+
+        // Check the constant against the array bound.
+
+        IF right^.Body.Constant.Value >= lefttype^.Body.Array.Bound THEN
+            LexTokenError ( &node^.Token,
+                "Constant exceeds array bound", 0, 0, 0 )
+        END
     END
 END
 
@@ -1762,8 +1868,50 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     //      side is indeed a function or function pointer; if it's the latter
     //      then just unwrap it
 
+    left := node^.Body.Operator.Left
+
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype != TYPE_FUNCTION AND
+        lefttype^.Subtype != TYPE_POINTER THEN
+
+        LexTokenError ( &node^.Token,
+            "Expected function or function pointer", 0, 0, 0 )
+    END
+
+    IF lefttype^.Subtype == TYPE_POINTER THEN
+        // We have to unwrap the function pointer. First check that it's really
+        // a function pointer.
+
+        lefttype = lefttype^.Body.Pointer.Base
+
+        IF lefttype^.Subtype != TYPE_FUNCTION THEN
+            LexTokenError ( &node^.Token,
+                "Unexpected non-function pointer", 0, 0, 0 )
+        END
+
+        // Create a new AST node.
+
+        newnode := PrsCreateAstNode (
+            AST_OPERATOR, // type
+            &node^.Token, // token
+        )
+
+        // Fib the new node into being a pointer deref.
+
+        newnode^.Token.Subtype = TOKEN_CARET
+        newnode^.Body.Operator.Left = left
+
+        // Now fib our node into pointing to the pointer deref.
+
+        node^.Body.Operator.Left = newnode
+    END
+
+
+    argcount := 0
     argtail : ^PrsAstNode = NULLPTR
     node^.Body.Operator.OperatorSpecific = NULLPTR
+    refarg := lefttype^.Body.Function.ArgListHead
 
     IF LexMatchToken (
         &token, // token
@@ -1772,25 +1920,60 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     ) THEN
         // No arguments.
 
+        IF lefttype^.Body.Function.ArgCount THEN
+            LexTokenError ( &node^.Token, "Too few arguments", 0, 0, 0 )
+        END
+
         LEAVE
     END
 
     token : LexToken
 
     WHILE TRUE DO
-        node := PrsExpression ( 0 )
+        argcount += 1
 
-        // TODO check the expression for being a usable value type
+        IF NOT lefttype^.Body.Function.IsVarArg AND
+            argcount > lefttype^.Body.Function.ArgCount THEN
 
-        node^.Next = NULLPTR
-
-        IF NOT argtail THEN
-            node^.Body.Operator.OperatorSpecific = node
-        ELSE
-            argtail^.Next = node
+            LexTokenError ( &node^.Token, "Too many arguments", 0, 0, 0 )
         END
 
-        argtail = node
+        argnode := PrsExpression ( 0 )
+
+        argtype := PrsEvaluateType ( argnode )
+
+        IF NOT PrsTypeIsValue (
+            &argnode^.Token, // errtoken
+            argtype, // type
+        ) THEN
+            LexTokenError ( &argnode^.Token,
+                "This type is not directly usable as a valuee", 0, 0, 0 )
+        END
+
+        argnode^.Next = NULLPTR
+
+        IF NOT argtail THEN
+            node^.Body.Operator.OperatorSpecific = argnode
+        ELSE
+            argtail^.Next = argnode
+        END
+
+        argtail = argnode
+
+        // If refarg became null, that means that we walked off into the varargs
+        // part of the function arguments. Only check types before that happens.
+
+        IF refarg THEN
+            PrsCheckType (
+                &argnode^.Token, // errtoken
+                refarg^.Symbol^.SemanticType, // type1
+                argtype, // type2
+                "Function argument: ", // errstring
+                FALSE, // equivalence
+            )
+
+            refarg = refarg^.Next
+        END
 
         IF LexMatchToken (
             &token, // token
@@ -1824,6 +2007,10 @@ FN (PrsOperatorF) PrsParseFunctionCall (
             BREAK
         END
     END
+
+    IF argcount < lefttype^.Body.Function.ArgCount THEN
+        LexTokenError ( &node^.Token, "Too few arguments", 0, 0, 0 )
+    END
 END
 
 FN (PrsOperatorF) PrsParsePtrDereference (
@@ -1835,7 +2022,11 @@ FN (PrsOperatorF) PrsParsePtrDereference (
 
     // Check that the left side is a pointer type.
 
-    // TODO that
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype != TYPE_POINTER THEN
+        LexTokenError ( &node^.Token, "Expected a pointer type", 0, 0, 0 )
+    END
 END
 
 FN (PrsOperatorF) PrsParseMul (
@@ -3042,6 +3233,7 @@ FN PrsParseFnSignature (
     type^.Body.Function.FnPtrType = NULLPTR
     type^.Body.Function.ArgCount = 0
     type^.Body.Function.IsVarArg = FALSE
+    type^.Body.Function.IsFnPtr = fnptr
 
     argtail : ^LexFunctionArgument = NULLPTR
 
@@ -3320,8 +3512,8 @@ FN PrsParseFnSignature (
     IF fnptrtype THEN
         PrsCheckType (
             &nametoken, // errtoken
-            type, // type1
-            fnptrtype, // type2
+            fnptrtype, // type1
+            type, // type2
             "FNPTR: ", // errstring
             TRUE, // equivalence
         )
@@ -3452,6 +3644,18 @@ FN PrsParseCompoundType (
     // XXX remember that struct fields should be aligned unless packed and that
     //     the minimum alignment of the compound type must be the maximum of the
     //     required alignments for each field type
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+
 
     offset : TlMachineWord = 0
 
@@ -4118,12 +4322,6 @@ FN (PrsOperatorEvalF) PrsEvalFunctionCall (
 
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
-    IF type^.Subtype == TYPE_POINTER THEN
-        // It's actually a function pointer. Get the function.
-
-        type = type^.Body.Pointer.Base
-    END
-
     IF NOT type^.Body.Function.ReturnType THEN
         LexTokenError ( &node^.Token,
             "Attempt to take return type of return-less function", 0, 0, 0 )
@@ -4390,20 +4588,20 @@ FN PrsInitialize ()
 
     PrsLeftOperators[TOKEN_NOT].Precedence = 24
     PrsLeftOperators[TOKEN_NOT].ParseFunc = &PrsParseNot
-    PrsLeftOperators[TOKEN_NOT].EvalFunc = &PrsEvalUnaryConditional
+    PrsOperators[TOKEN_NOT].EvalFunc = &PrsEvalUnaryConditional
 
     PrsLeftOperators[TOKEN_BITNOT].Precedence = 24
     PrsLeftOperators[TOKEN_BITNOT].ParseFunc = &PrsParseBitNot
-    PrsLeftOperators[TOKEN_BITNOT].EvalFunc = &PrsEvalUnaryArithmetic
+    PrsOperators[TOKEN_BITNOT].EvalFunc = &PrsEvalUnaryArithmetic
 
     PrsLeftOperators[TOKEN_CAST].Precedence = 24
     PrsLeftOperators[TOKEN_CAST].ParseFunc = &PrsParseCast
-    PrsLeftOperators[TOKEN_CAST].EvalFunc = &PrsEvalCast
+    PrsOperators[TOKEN_CAST].EvalFunc = &PrsEvalCast
     PrsLeftOperators[TOKEN_CAST].NoRightSide = TRUE
 
     PrsLeftOperators[TOKEN_SIZEOFVALUE].Precedence = 24
     PrsLeftOperators[TOKEN_SIZEOFVALUE].ParseFunc = &PrsParseSizeOfValue
-    PrsLeftOperators[TOKEN_SIZEOFVALUE].EvalFunc = &PrsEvalSizeOfValue
+    PrsOperators[TOKEN_SIZEOFVALUE].EvalFunc = &PrsEvalSizeOfValue
 
     // Initialize the declarators.
 

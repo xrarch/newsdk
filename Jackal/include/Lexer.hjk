@@ -294,6 +294,7 @@ STRUCT LexSemanticTypeFunctionBody
     BodyBlock : ^VOID, // actually a PrsBlock
     ArgCount : ULONG,
     IsVarArg : UBYTE,
+    IsFnPtr : UBYTE,
 END
 
 STRUCT LexSemanticTypeCompoundBody
