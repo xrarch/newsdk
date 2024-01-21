@@ -223,6 +223,14 @@ FN PrsIsLvalue (
     // Return whether the node is a valid l-value or not.
 
     IF node^.Type == AST_IDENTIFIER THEN
+        symbol := CAST node^.Token.Payload TO ^LexSymbol
+
+        IF symbol^.SemanticType^.Subtype == TYPE_ARRAY THEN
+            // Arrays aren't directly valid as l-values.
+
+            RETURN FALSE
+        END
+
         RETURN TRUE
     END
 
@@ -1724,15 +1732,12 @@ FN PrsParseBlock (
 
                 lefttype := PrsEvaluateType ( leftexpr )
 
-                TlPrintNumber ( lefttype )
-                TlPrintString ( "\n" )
-
                 IF NOT PrsTypeIsValue (
                     &leftexpr^.Token, // errtoken
                     lefttype, // type
                 ) THEN
                     LexTokenError ( &leftexpr^.Token,
-                        "This type is not directly usable as a vealue", 0, 0, 0 )
+                        "This type is not directly assignable", 0, 0, 0 )
                 END
 
                 asgnnode^.Body.Assign.Left = leftexpr
@@ -1741,15 +1746,12 @@ FN PrsParseBlock (
 
                 righttype := PrsEvaluateType ( rightexpr )
 
-                TlPrintNumber ( righttype )
-                TlPrintString ( "\n" )
-
                 IF NOT PrsTypeIsValue (
                     &rightexpr^.Token, // errtoken
                     righttype, // type
                 ) THEN
                     LexTokenError ( &rightexpr^.Token,
-                        "This type is not directly usable as a valuee", 0, 0, 0 )
+                        "This type is not directly usable", 0, 0, 0 )
                 END
 
                 asgnnode^.Body.Assign.Right = rightexpr
@@ -1864,10 +1866,6 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     // parenthesis. The head of the arguments list goes in the operator-specific
     // field.
 
-    // TODO check number and type of function arguments, and check that the left
-    //      side is indeed a function or function pointer; if it's the latter
-    //      then just unwrap it
-
     left := node^.Body.Operator.Left
 
     lefttype := PrsEvaluateType ( left )
@@ -1906,7 +1904,6 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
         node^.Body.Operator.Left = newnode
     END
-
 
     argcount := 0
     argtail : ^PrsAstNode = NULLPTR
@@ -2037,6 +2034,9 @@ FN (PrsOperatorF) PrsParseMul (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
         // No opportunities for simplification.
 
@@ -2109,6 +2109,9 @@ FN (PrsOperatorF) PrsParseDivide (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
         // No opportunities for simplification.
 
@@ -2165,6 +2168,9 @@ FN (PrsOperatorF) PrsParseModulo (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
         // No opportunities for simplification.
 
@@ -2218,6 +2224,9 @@ FN (PrsOperatorF) PrsParsePlus (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
 
     IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
         // No opportunities for simplification.
@@ -2318,6 +2327,9 @@ FN (PrsOperatorF) PrsParseMinus (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
 
     IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
         // No opportunities for simplification.
@@ -2447,6 +2459,9 @@ FN (PrsOperatorF) PrsParseLeftShift (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2477,6 +2492,9 @@ FN (PrsOperatorF) PrsParseRightShift (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2506,6 +2524,9 @@ FN (PrsOperatorF) PrsParseBitAnd (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
 
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
@@ -2559,6 +2580,9 @@ FN (PrsOperatorF) PrsParseBitXor (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2611,6 +2635,9 @@ FN (PrsOperatorF) PrsParseBitOr (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2652,6 +2679,9 @@ FN (PrsOperatorF) PrsParseLessThan (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2669,6 +2699,9 @@ FN (PrsOperatorF) PrsParseGreaterThan (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
 
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
@@ -2688,6 +2721,9 @@ FN (PrsOperatorF) PrsParseLtEq (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2706,6 +2742,9 @@ FN (PrsOperatorF) PrsParseGtEq (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2723,6 +2762,9 @@ FN (PrsOperatorF) PrsParseEquiv (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
 
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
@@ -2755,6 +2797,9 @@ FN (PrsOperatorF) PrsParseNotEquiv (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2786,6 +2831,9 @@ FN (PrsOperatorF) PrsParseAnd (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2805,6 +2853,9 @@ FN (PrsOperatorF) PrsParseOr (
 
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
 
     IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
@@ -2845,6 +2896,8 @@ FN (PrsOperatorF) PrsParseInverse (
 
     left := node^.Body.Operator.Left
 
+    PrsCheckNodeIsValue ( left )
+
     IF left^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
@@ -2866,6 +2919,8 @@ FN (PrsOperatorF) PrsParseNot (
 )
 
     left := node^.Body.Operator.Left
+
+    PrsCheckNodeIsValue ( left )
 
     IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_NOT THEN
         // Get rid of the redundant NOTs by copying the left side of our left
@@ -2894,6 +2949,8 @@ FN (PrsOperatorF) PrsParseBitNot (
 )
 
     left := node^.Body.Operator.Left
+
+    PrsCheckNodeIsValue ( left )
 
     IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_BITNOT THEN
         // Get rid of the redundant NOTs by copying the left side of our left
@@ -2925,7 +2982,7 @@ FN (PrsOperatorF) PrsParseCast (
 
     node^.Body.Operator.Left = PrsExpression ( 0 )
 
-    // TODO check for being a usable value type
+    PrsCheckNodeIsValue ( node^.Body.Operator.Left )
 
     token : LexToken
 
