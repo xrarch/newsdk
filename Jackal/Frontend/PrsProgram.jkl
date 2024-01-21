@@ -3184,8 +3184,6 @@ FN PrsParseFnSignature (
     // (FNPTR) NAME (IN/OUT ARG : TYPE, ...)
     // NAME (IN/OUT ARG : TYPE, ...)
 
-    // TODO check that the argument types are all value types
-
     fnptrtype : ^LexSemanticType = NULLPTR
 
     IF LexMatchToken (
@@ -3484,6 +3482,14 @@ FN PrsParseFnSignature (
                 argsymbol^.SemanticType, // type
                 0, // depth
             )
+
+            IF NOT PrsTypeIsValue (
+                &argtoken, // errtoken
+                argsymbol^.SemanticType, // type
+            ) THEN
+                LexTokenError (  &argtoken,
+                    "Argument type is not directly usable as a value", 0, 0, 0 )
+            END
 
             IF arg^.InOut == ARG_OUT THEN
                 IF argsymbol^.SemanticType^.Subtype != TYPE_POINTER THEN
@@ -4039,7 +4045,7 @@ FN (PrsStatementF) PrsParseIf (
 
         cond := PrsExpression ( 0 )
 
-        // TODO check for being a usable value type
+        PrsCheckNodeIsValue ( cond )
 
         thiscase^.Conditional = cond
 
@@ -4217,9 +4223,11 @@ FN (PrsStatementF) PrsParseReturn (
 
     // Parse the return value expression.
 
-    node^.Body.Statement.StatementSpecific = PrsExpression ( 0 )
+    retexpr := PrsExpression ( 0 )
 
-    // TODO check for being a usable value type
+    PrsCheckNodeIsValue ( retexpr )
+
+    node^.Body.Statement.StatementSpecific = retexpr
 END
 
 FN (PrsStatementF) PrsParseWhile (
@@ -4235,7 +4243,7 @@ FN (PrsStatementF) PrsParseWhile (
 
     cond := PrsExpression ( 0 )
 
-    // TODO check for being a usable value type
+    PrsCheckNodeIsValue ( cond )
 
     node^.Body.While.Conditional = cond
 
