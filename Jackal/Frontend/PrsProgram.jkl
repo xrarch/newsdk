@@ -15,6 +15,7 @@ PrsBlockStack : TlDynamicBuffer
 PrsStringType : ^LexSemanticType = NULLPTR
 PrsNullPtrType : ^LexSemanticType = NULLPTR
 PrsConstantType : ^LexSemanticType = NULLPTR
+PrsVarArgType : ^LexSemanticType = NULLPTR
 
 ENUM PrsBlockType : UBYTE
     BLOCK_NULL,
@@ -887,6 +888,19 @@ FN PrsEvaluateType (
     ELSE
         TlInternalError (
             "PrsEvaluateType Inappropriate AST type", node^.Type, 0, 0 )
+    END
+
+    // Skip any names.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( &node^.Token,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
     END
 
     node^.CachedSemanticType = type
@@ -2022,7 +2036,7 @@ FN (PrsOperatorF) PrsParsePtrDereference (
     lefttype := PrsEvaluateType ( left )
 
     IF lefttype^.Subtype != TYPE_POINTER THEN
-        LexTokenError ( &node^.Token, "Expected a pointer type", 0, 0, 0 )
+        LexTokenError ( &node^.Token, "Expected a pointer type", lefttype^.Subtype, 0, 0 )
     END
 END
 
@@ -3363,27 +3377,9 @@ FN PrsParseFnSignature (
                     type^.Body.Function.VarArgTable = varargtablesymbol
 
                     // The type of the vararg table is boundless array of
-                    // pointer to void. Slap that together ugly-ly.
+                    // pointer to void.
 
-                    varargtabletype := PrsCreateType ()
-
-                    varargtabletype^.Subtype = TYPE_ARRAY
-                    varargtabletype^.Body.Array.HasBound = FALSE
-
-                    ptrtype := PrsCreateType ()
-
-                    ptrtype^.Subtype = TYPE_POINTER
-                    varargtabletype^.Body.Array.Base = ptrtype
-
-                    voidtype := PrsCreateType ()
-
-                    voidtype^.Subtype = TYPE_PRIMITIVE
-                    voidtype^.Body.Primitive.Type = PRIM_TYPE_VOID
-                    voidtype^.Body.Primitive.Inducible = FALSE
-
-                    ptrtype^.Body.Pointer.Base = voidtype
-
-                    varargtablesymbol^.SemanticType = varargtabletype
+                    varargtablesymbol^.SemanticType = PrsVarArgType
 
                     // Now yoink the count.
 
@@ -3408,15 +3404,10 @@ FN PrsParseFnSignature (
 
                     type^.Body.Function.VarArgCount = varargcountsymbol
 
-                    // The type of the vararg count is ULONG.
+                    // The type of the vararg count is the constant type, which
+                    // is the largest unsigned type supported by the target.
 
-                    varargcounttype := PrsCreateType ()
-
-                    varargcounttype^.Subtype = TYPE_PRIMITIVE
-                    varargcounttype^.Body.Primitive.Type = PRIM_TYPE_ULONG
-                    voidtype^.Body.Primitive.Inducible = FALSE
-
-                    varargcountsymbol^.SemanticType = varargcounttype
+                    varargcountsymbol^.SemanticType = PrsConstantType
                 END
 
                 // No more arguments are allowed after the vararg specifier.
@@ -4544,6 +4535,14 @@ FN PrsInitialize ()
     PrsConstantType^.Subtype = TYPE_PRIMITIVE
     PrsConstantType^.Body.Primitive.Type = JklTargetInfo^.LargestPrimitive
     PrsConstantType^.Body.Primitive.Inducible = TRUE
+
+    // Set up the vararg table type as array of pointer to VOID.
+
+    PrsVarArgType = PrsCreateType ()
+
+    PrsVarArgType^.Subtype = TYPE_ARRAY
+    PrsVarArgType^.Body.Array.HasBound = FALSE
+    PrsVarArgType^.Body.Array.Base = PrsNullPtrType
 
     // Initialize the operators.
     // TODO replace all this stuff with static initialization once we have that
