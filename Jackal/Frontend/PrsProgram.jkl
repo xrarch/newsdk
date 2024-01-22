@@ -1864,7 +1864,7 @@ FN (PrsOperatorF) PrsParseArrayIndex (
         // Check the constant against the array bound.
 
         IF right^.Body.Constant.Value >= lefttype^.Body.Array.Bound THEN
-            LexTokenError ( &node^.Token,
+            LexTokenError ( &right^.Token,
                 "Constant exceeds array bound", 0, 0, 0 )
         END
     END
