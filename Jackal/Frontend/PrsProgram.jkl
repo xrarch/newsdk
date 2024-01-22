@@ -1784,7 +1784,11 @@ FN PrsParseBlock (
                     asgnnode, // node
                 )
             ELSE
-                // Free floating expression.
+                // Free floating expression. These are assumed to be the result
+                // of a macro expansion and are elided from the AST completely
+                // if they aren't either a load from a pointer, or a function
+                // call. Containing either of these things nested within the
+                // expression doesn't count.
                 
                 IF PrsHasSideEffect ( leftexpr ) THEN
                     PrsInsertNodeIntoBlock (
