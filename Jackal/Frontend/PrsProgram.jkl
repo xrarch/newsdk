@@ -1085,8 +1085,6 @@ FN PrsType (
 
     LexGetToken ( &typetoken )
 
-    // First check if it's a primitive type.
-
     IF typetoken.Type == TOKEN_PTYPE THEN
         // It's a primitive type, that was easy!
 
@@ -1787,15 +1785,12 @@ FN PrsParseBlock (
                 )
             ELSE
                 // Free floating expression.
-
-                PrsInsertNodeIntoBlock (
-                    block, // block
-                    leftexpr, // node
-                )
                 
-                IF NOT PrsHasSideEffect ( leftexpr ) THEN
-                    LexTokenError ( &leftexpr^.Token,
-                    "Free-floating expressions must have side effects", 0, 0, 0 )
+                IF PrsHasSideEffect ( leftexpr ) THEN
+                    PrsInsertNodeIntoBlock (
+                        block, // block
+                        leftexpr, // node
+                    )
                 END
             END
         END
