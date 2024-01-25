@@ -172,6 +172,8 @@ FN FeCopyPathFileBlock (
     )
 END
 
+EXTERN FN IrGenerate ()
+
 FN JklCompileProgram (
     IN argc : ULONG,
     IN argv : ^UBYTE[],
@@ -205,7 +207,7 @@ FN JklCompileProgram (
 
     // Generate IR for each function.
 
-    // IrGenerate ()
+    IrGenerate ()
 
     // Call the target-specific code to finish compilation.
 

@@ -1,0 +1,28 @@
+//
+// Converts the abstract syntax tree for each function into straight-line IR.
+//
+
+#INCLUDE "Be.hjk"
+
+FN IrGenerateForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Generate IR for a function definition.
+
+    TlPrintString ( funcsym^.Name )
+    TlPrintString ( "\n" )
+END
+
+FN IrGenerate ()
+
+    // For each function definition, generate IR.
+
+    funcsym := PrsFunctionListHead
+
+    WHILE funcsym DO
+        IrGenerateForFunction ( funcsym )
+
+        funcsym = funcsym^.NextFunction
+    END
+END

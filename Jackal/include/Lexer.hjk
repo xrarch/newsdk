@@ -219,6 +219,8 @@ STRUCT LexSymbol
     Next : ^LexSymbol,
     Prev : ^LexSymbol,
 
+    NextFunction : ^LexSymbol,
+
     Value : TlMachineWord,
 
     // Unfortunately the initial value has to be a void pointer but it's

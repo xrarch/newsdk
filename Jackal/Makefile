@@ -1,5 +1,6 @@
 COMPONENTS := Library \
-			  Frontend
+			  Frontend \
+			  Backend
 
 OUTPUTFILE := jkl
 

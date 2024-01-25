@@ -4,6 +4,10 @@ EXTERN FN PrsProgram ()
 
 EXTERN FN PrsInitialize ()
 
+EXTERN PrsGlobalListHead : ^LexSymbol
+
+EXTERN PrsFunctionListHead : ^LexSymbol
+
 ENUM PrsAstType : UBYTE
     AST_IDENTIFIER,
     AST_ASSIGN,

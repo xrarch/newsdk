@@ -5,7 +5,10 @@
 #INCLUDE "<inc>/Parser.hjk"
 
 PUBLIC PrsGlobalListHead : ^LexSymbol = NULLPTR
-PUBLIC PrsGlobalListTail : ^LexSymbol = NULLPTR
+PrsGlobalListTail : ^LexSymbol = NULLPTR
+
+PUBLIC PrsFunctionListHead : ^LexSymbol = NULLPTR
+PrsFunctionListTail : ^LexSymbol = NULLPTR
 
 PrsCurrentBlock : ^PrsBlock = NULLPTR
 PrsCurrentFunction : ^LexSemanticType = NULLPTR
@@ -4074,6 +4077,16 @@ FN PrsParseFnDeclaration (
     TlPopDynamicBuffer ( &PrsBlockStack )
 
     LexResetScope ( oldscope )
+
+    symbol^.NextFunction = NULLPTR
+
+    IF PrsFunctionListTail THEN
+        PrsFunctionListTail^.NextFunction = symbol
+    ELSE
+        PrsFunctionListHead = symbol
+    END
+
+    PrsFunctionListTail = symbol
 
     RETURN symbol
 END
