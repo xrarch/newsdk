@@ -46,6 +46,8 @@ ENUM JklPrimitiveType : UBYTE
     PRIM_TYPE_MAX, // MUST be at the end
 END
 
+EXTERN JklPrimitiveTypeMasks : TlMachineWord[PRIM_TYPE_MAX]
+
 STRUCT JklTargetInfoRecord
     PointerAlignment : UBYTE,
     PointerSize : UBYTE,

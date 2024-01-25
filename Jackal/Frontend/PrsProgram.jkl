@@ -818,7 +818,9 @@ FN PrsParseArrayInitializer (
     // VALUE,
     // [INDEX] = VALUE,
 
+    index := 0
 
+    // TODO
 END
 
 FN PrsParseStructInitializer (
@@ -829,6 +831,8 @@ FN PrsParseStructInitializer (
     // A struct initializer's fields are of the following form:
     //
     // [FIELD_NAME] = VALUE,
+
+    // TODO
 END
 
 FN PrsParseInitializer (
@@ -1444,6 +1448,25 @@ FN PrsFoundSymbol (
     END
 END
 
+FN PrsCheckConstant (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN value : TlMachineWord,
+)
+
+    // Make sure the value fits in the type.
+
+    IF type^.Subtype != TYPE_PRIMITIVE THEN
+        LEAVE
+    END
+
+    masked := value & JklPrimitiveTypeMasks[type^.Body.Primitive.Type]
+
+    IF masked != value THEN
+        LexTokenError ( errtoken, "Constant doesn't fit in type", 0, 0, 0 )
+    END
+END
+
 FN PrsVariableDeclaration (
     IN token : ^LexToken,
     IN flags : ULONG,
@@ -1569,6 +1592,16 @@ FN PrsVariableDeclaration (
                     castnode^.Body.Operator.OperatorSpecific = type
 
                     initialnode = castnode
+                END
+
+                IF beforecastnode^.Type == AST_CONSTANT THEN
+                    // Check if the constant fits in the type.
+
+                    PrsCheckConstant (
+                        &initialnode^.Token, // errtoken
+                        type, // type
+                        beforecastnode^.Body.Constant.Value, // value
+                    )
                 END
             END
         END
@@ -1869,26 +1902,39 @@ FN PrsParseBlock (
 
                 asgnnode^.Body.Assign.Right = rightexpr
 
-                IF PrsCheckType (
-                    &token, // errtoken
-                    lefttype, // type1
-                    righttype, // type2
-                    "Assign: ", // errstring
-                    FALSE, // equivalence
-                ) THEN
-                    // There's an implicit cast, make it explicit in the AST.
+                IF assigntoken.Subtype == TOKEN_EQUALS THEN
+                    IF PrsCheckType (
+                        &token, // errtoken
+                        lefttype, // type1
+                        righttype, // type2
+                        "Assign: ", // errstring
+                        FALSE, // equivalence
+                    ) THEN
+                        // There's an implicit cast, make it explicit in the
+                        // AST.
 
-                    castnode := PrsCreateAstNode (
-                        AST_OPERATOR, // type
-                        &rightexpr^.Token, // token
-                    )
+                        castnode := PrsCreateAstNode (
+                            AST_OPERATOR, // type
+                            &rightexpr^.Token, // token
+                        )
 
-                    castnode^.Token.Subtype = TOKEN_CAST
+                        castnode^.Token.Subtype = TOKEN_CAST
 
-                    castnode^.Body.Operator.Left = rightexpr
-                    castnode^.Body.Operator.OperatorSpecific = lefttype
+                        castnode^.Body.Operator.Left = rightexpr
+                        castnode^.Body.Operator.OperatorSpecific = lefttype
 
-                    asgnnode^.Body.Assign.Right = castnode
+                        asgnnode^.Body.Assign.Right = castnode
+                    END
+
+                    IF rightexpr^.Type == AST_CONSTANT THEN
+                        // Check if the constant fits in the type.
+
+                        PrsCheckConstant (
+                            &rightexpr^.Token, // errtoken
+                            lefttype, // type
+                            rightexpr^.Body.Constant.Value, // body
+                        )
+                    END
                 END
 
                 PrsInsertNodeIntoBlock (
