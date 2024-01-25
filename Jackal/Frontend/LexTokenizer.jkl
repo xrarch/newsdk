@@ -213,13 +213,13 @@ FN LexInitialize ()
     LexInsertKeyword ( "WHILE", TOKEN_STATEMENT, TOKEN_WHILE, 0 )
     LexInsertKeyword ( "EXPORT", TOKEN_DECL, TOKEN_EXPORT, 0 )
     LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE, 0 )
-    LexInsertKeyword ( "UQUAD", TOKEN_TYPE, TOKEN_UQUAD, PRIM_TYPE_UQUAD )
-    LexInsertKeyword ( "QUAD", TOKEN_TYPE, TOKEN_QUAD, PRIM_TYPE_QUAD )
+    LexInsertKeyword ( "UQUAD", TOKEN_PTYPE, TOKEN_UQUAD, PRIM_TYPE_UQUAD )
+    LexInsertKeyword ( "QUAD", TOKEN_PTYPE, TOKEN_QUAD, PRIM_TYPE_QUAD )
 
-    LexInsertKeyword ( "UWORD", TOKEN_TYPE, TOKEN_UWORD,
+    LexInsertKeyword ( "UWORD", TOKEN_PTYPE, TOKEN_UWORD,
         JklTargetInfo^.LargestPrimitive )
 
-    LexInsertKeyword ( "WORD", TOKEN_TYPE, TOKEN_WORD,
+    LexInsertKeyword ( "WORD", TOKEN_PTYPE, TOKEN_WORD,
         JklTargetInfo^.LargestSignedPrimitive )
 
     LexInsertKeyword ( ")", TOKEN_RPAREN, 0, 0 )
@@ -731,7 +731,10 @@ FN LexNextToken (
         // tokens.
 
         token^.Type = TOKEN_NUMBER
-        token^.Payload = LexCrunchCharacterLiteral ( &buffer[0] )
+        token^.Payload = LexCrunchCharacterLiteral (
+            token, // token
+            &buffer[0], // buffer
+        )
 
         LEAVE
     END
@@ -811,15 +814,29 @@ FN LexNextToken (
 END
 
 FN LexCrunchCharacterLiteral (
+    IN token : ^LexToken,
     IN buffer : ^UBYTE,
-) : ULONG
+) : TlMachineWord
 
-    num : ULONG = 0
+    num : TlMachineWord = 0
     i := 0
 
     WHILE buffer[i] DO
+        lastnum := num
+
         num *= 256
+
+        IF lastnum != 0 AND num / lastnum != 256 THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
         num += buffer[i]
+
+        IF num < lastnum THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
 
         i += 1
     END
@@ -860,7 +877,7 @@ FN LexCrunchNumber (
 
                 // Check for overflow.
 
-                IF num < lastnum THEN
+                IF lastnum != 0 AND num / lastnum != 16 THEN
                     LexTokenError ( token,
                         "Number does not fit in machine word.", 0, 0, 0 )
                 END
@@ -906,7 +923,7 @@ FN LexCrunchNumber (
 
             // Check for overflow.
 
-            IF num < lastnum THEN
+            IF lastnum != 0 AND num / lastnum != 8 THEN
                 LexTokenError ( token,
                     "Number does not fit in machine word.", 0, 0, 0 )
             END
@@ -939,7 +956,7 @@ FN LexCrunchNumber (
 
         // Check for overflow.
 
-        IF num < lastnum THEN
+        IF lastnum != 0 AND num / lastnum != 10 THEN
             LexTokenError ( token,
                 "Number does not fit in machine word.", 0, 0, 0 )
         END
