@@ -254,6 +254,10 @@ STRUCT LexSemanticTypeArrayBody
     Bound : TlMachineWord,
 
     HasBound : UBYTE,
+
+    // This "parent" link is only used at type parsing time.
+
+    Parent : ^LexSemanticSubtype,
 END
 
 STRUCT LexSemanticTypePointerBody
@@ -313,8 +317,9 @@ UNION LexSemanticTypeBody
 END
 
 STRUCT LexSemanticType
-    Subtype : LexSemanticSubtype,
     Body : LexSemanticTypeBody,
+    Size : TlMachineWord,
+    Subtype : LexSemanticSubtype,
     MinimumAlignment : UBYTE,
     CachedIsDeclarable : UBYTE,
     CachedIsValue : UBYTE,

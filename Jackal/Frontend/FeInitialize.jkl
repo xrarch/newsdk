@@ -189,7 +189,7 @@ FN JklCompileProgram (
 
     PrsProgram ()
 
-    // Generate IR for each function, in the form of control flow graphs.
+    // Generate IR for each function.
 
     // IrGenerate ()
 
@@ -207,6 +207,7 @@ FN TrgInitialize ()
     // TODO replace all this stuff with static initialization when we have that
 
     TrgCHostInfo.PointerAlignment = 8
+    TrgCHostInfo.PointerSize = 8
 
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_VOID] = TRUE
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_UBYTE] = TRUE
@@ -227,6 +228,16 @@ FN TrgInitialize ()
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_INT] = 2
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_LONG] = 4
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_QUAD] = 8
+
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_VOID] = 0
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_UBYTE] = 1
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_UINT] = 2
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_ULONG] = 4
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_UQUAD] = 8
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_BYTE] = 1
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_INT] = 2
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_LONG] = 4
+    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_QUAD] = 8
 
     TrgCHostInfo.LargestPrimitive = PRIM_TYPE_ULONG
     TrgCHostInfo.LargestSignedPrimitive = PRIM_TYPE_LONG

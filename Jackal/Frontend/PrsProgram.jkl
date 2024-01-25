@@ -37,6 +37,8 @@ CONST VAR_FLAG_EXTERN := 1
 CONST VAR_FLAG_PUBLIC := 2
 CONST VAR_FLAG_EXPORT := 4
 
+CONST TYPE_SIZE_UNINIT := 0xFFFFFFFF
+
 FNPTR PrsOperatorF (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -91,6 +93,7 @@ FN PrsCreateType () : ^LexSemanticType
 
     type^.CachedIsDeclarable = FALSE
     type^.CachedIsValue = FALSE
+    type^.Size = TYPE_SIZE_UNINIT
 
     RETURN type
 END
@@ -247,6 +250,12 @@ FN PrsIsLvalue (
 
             RETURN TRUE
         END
+
+        IF node^.Token.Subtype == TOKEN_DOT THEN
+            // Compound type references are l-values.
+
+            RETURN TRUE
+        END
     END
 
     RETURN FALSE
@@ -286,18 +295,19 @@ FN PrsCheckType (
     IN type2 : ^LexSemanticType,
     IN errstring : ^UBYTE,
     IN equivalence : UBYTE,
-)
+) : UBYTE
 
     // Compare the two types. type1 is taken to be a "destination" type and
     // type2 is a "source" type. If equivalence is TRUE, then exact equivalence
-    // is tested rather than assignment compatibility.
+    // is tested rather than assignment compatibility. Returns TRUE if there is
+    // an implicit cast.
 
     // TODO fix to use vararg LexTokenError
 
     IF type1 == type2 THEN
         // They're identical, literally the same type object.
 
-        LEAVE
+        RETURN FALSE
     END
 
     // First strip away any names.
@@ -329,7 +339,7 @@ FN PrsCheckType (
     IF type1 == type2 THEN
         // They're identical, literally the same type object.
 
-        LEAVE
+        RETURN FALSE
     END
 
     IF type1^.Subtype != type2^.Subtype THEN
@@ -348,7 +358,7 @@ FN PrsCheckType (
         IF primtype1 == primtype2 THEN
             // They're the same, that's fine.
 
-            LEAVE
+            RETURN FALSE
         END
 
         IF equivalence THEN
@@ -364,7 +374,7 @@ FN PrsCheckType (
         IF type2^.Body.Primitive.Inducible THEN
             // If the source type is inducible, then it's fine.
 
-            LEAVE
+            RETURN TRUE
         END
 
         // Check that we aren't crossing from unsigned to signed.
@@ -391,7 +401,7 @@ FN PrsCheckType (
                 "Implicit cast from signed to unsigned type", 0, 0, 0 )
         END
 
-        LEAVE
+        RETURN TRUE
     END
 
     IF type1^.Subtype == TYPE_POINTER THEN
@@ -402,7 +412,7 @@ FN PrsCheckType (
         IF type1base^.Subtype == TYPE_PRIMITIVE AND
             type1base^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
 
-            LEAVE
+            RETURN FALSE
         END
 
         type2base := type2^.Body.Pointer.Base
@@ -410,7 +420,7 @@ FN PrsCheckType (
         IF type2base^.Subtype == TYPE_PRIMITIVE AND
             type2base^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
             
-            LEAVE
+            RETURN FALSE
         END
 
         IF type1base^.Subtype == TYPE_FUNCTION AND
@@ -440,7 +450,7 @@ FN PrsCheckType (
                     "Not the same function pointer type", 0, 0, 0 )
             END
 
-            LEAVE
+            RETURN FALSE
         END
 
         // Recursively check the types they point to.
@@ -453,7 +463,7 @@ FN PrsCheckType (
             equivalence, // equivalence
         )
 
-        LEAVE
+        RETURN FALSE
     END
 
     IF type1^.Subtype == TYPE_COMPOUND THEN
@@ -464,7 +474,7 @@ FN PrsCheckType (
             LexTokenError ( errtoken, "Incompatible compound types", 0, 0, 0 )
         END
 
-        LEAVE
+        RETURN FALSE
     END
 
     IF type1^.Subtype == TYPE_ARRAY THEN
@@ -492,7 +502,7 @@ FN PrsCheckType (
             equivalence, // equivalence
         )
 
-        LEAVE
+        RETURN FALSE
     END
 
     IF type1^.Subtype == TYPE_FUNCTION THEN
@@ -505,8 +515,7 @@ FN PrsCheckType (
 
         IF type1^.Body.Function.FnPtrType != type2^.Body.Function.FnPtrType THEN
             TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Not the same FNPTR type", 0, 0, 0 )
+            LexTokenError ( errtoken, "Not the same FNPTR type", 0, 0, 0 )
         END
 
         // Check return value types.
@@ -535,16 +544,14 @@ FN PrsCheckType (
 
         IF type1^.Body.Function.IsVarArg != type2^.Body.Function.IsVarArg THEN
             TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Not the same varargness", 0, 0, 0 )
+            LexTokenError ( errtoken, "Not the same varargness", 0, 0, 0 )
         END
 
         // Check argument count.
 
         IF type1^.Body.Function.ArgCount != type2^.Body.Function.ArgCount THEN
             TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Wrong argument count", 0, 0, 0 )
+            LexTokenError ( errtoken, "Wrong argument count", 0, 0, 0 )
         END
 
         // Check each argument for type and name equivalence.
@@ -571,10 +578,12 @@ FN PrsCheckType (
             arg2 = arg2^.Next
         END
 
-        LEAVE
+        RETURN FALSE
     END
 
     TlInternalError ( "PrsCheckType Unreachable", 0, 0, 0 )
+
+    RETURN FALSE
 END
 
 FN PrsAtom () : ^PrsAstNode
@@ -712,14 +721,30 @@ FN PrsAtom () : ^PrsAstNode
             0, // depth
         )
 
+        // Skip the names.
+
+        WHILE type^.Subtype == TYPE_NAMED DO
+            IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                // Forward declared type that we don't know anything about yet.
+
+                LexTokenError ( &token,
+                    "Illegal use of undeclared type", 0, 0, 0 )
+            END
+
+            type = type^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF type^.Size == TYPE_SIZE_UNINIT THEN
+            LexTokenError ( &token,
+                "Can't take the size of this type", 0, 0, 0 )
+        END
+
         atomnode = PrsCreateAstNode (
             AST_CONSTANT,
             &token, // token
         )
 
-        // atomnode^.Body.Constant.Value = PrsGetSizeOfTypeOrSomethingIdkYet ( type )
-
-        TlInternalError ( "TODO SIZEOF", 0, 0, 0 )
+        atomnode^.Body.Constant.Value = type^.Size
 
     ELSE
         LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
@@ -783,6 +808,29 @@ FN PrsExpression (
     RETURN atomnode
 END
 
+FN PrsParseArrayInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : ^PrsAstNode
+
+    // An array initializer's fields are of one of the following forms:
+    //
+    // VALUE,
+    // [INDEX] = VALUE,
+
+
+END
+
+FN PrsParseStructInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : ^PrsAstNode
+
+    // A struct initializer's fields are of the following form:
+    //
+    // [FIELD_NAME] = VALUE,
+END
+
 FN PrsParseInitializer (
     IN errtoken : ^LexToken,
     IN type : ^LexSemanticType,
@@ -831,7 +879,17 @@ FN PrsParseInitializer (
         LexTokenError ( &bracetoken, "Expected initializer", 0, 0, 0 )
     END
 
-    TlInternalError ( "TODO parse array initializer", 0, 0, 0 )
+    IF type^.Subtype == TYPE_ARRAY THEN
+        RETURN PrsParseArrayInitializer (
+            errtoken, // errtoken
+            type, // type
+        )
+    ELSE
+        RETURN PrsParseStructInitializer (
+            errtoken, // errtoken
+            type, // type
+        )
+    END
 
     RETURN NULLPTR
 END
@@ -1027,27 +1085,6 @@ FN PrsCheckNodeIsValue (
     END
 END
 
-FN PrsTypeGetMinimumAlignment (
-    IN errtoken : ^LexToken,
-    IN type : ^LexSemanticType,
-) : UBYTE
-
-    // Skip past all the names first.
-
-    WHILE type^.Subtype == TYPE_NAMED DO
-        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-            // Forward declared type that we don't know anything about yet.
-
-            LexTokenError ( errtoken,
-                "Illegal use of undeclared type", 0, 0, 0 )
-        END
-
-        type = type^.Body.Named.Symbol^.SemanticType
-    END
-
-    RETURN type^.MinimumAlignment
-END
-
 FN PrsHasSideEffect (
     IN node : ^PrsAstNode,
 ) : UBYTE
@@ -1100,6 +1137,9 @@ FN PrsType (
         type^.MinimumAlignment =
             JklTargetInfo^.PrimitiveAlignment[typetoken.TypeContext]
 
+        type^.Size =
+            JklTargetInfo^.PrimitiveSize[typetoken.TypeContext]
+
     ELSEIF typetoken.Type == TOKEN_OPER AND typetoken.Subtype == TOKEN_CARET THEN
         // It's a pointer type! Allocate a base type.
 
@@ -1115,6 +1155,7 @@ FN PrsType (
         type^.Subtype = TYPE_POINTER
         type^.Body.Pointer.Base = basetype
         type^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+        type^.Size = JklTargetInfo^.PointerSize
 
     ELSEIF typetoken.Type == TOKEN_IDENTIFIER THEN
         // It's a named type!
@@ -1139,7 +1180,6 @@ FN PrsType (
 
         type^.Subtype = TYPE_NAMED
         type^.Body.Named.Symbol = symbol
-        type^.MinimumAlignment = 0
 
     ELSE
         // Type didn't match with anything we expected.
@@ -1183,12 +1223,43 @@ FN PrsType (
         SIZEOF LexSemanticType, // sz
     )
 
-    elementalign := PrsTypeGetMinimumAlignment (
+    skippedtype := basetype
+
+    WHILE skippedtype^.Subtype == TYPE_NAMED DO
+        IF skippedtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( &typetoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        skippedtype = skippedtype^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF NOT PrsTypeIsDeclarable (
         &typetoken, // errtoken
-        basetype, // type
-    )
+        skippedtype, // type
+    ) THEN
+        LexTokenError ( &typetoken,
+            "This type is not directly declarable", 0, 0, 0 )
+    END
+
+    IF skippedtype^.Size == TYPE_SIZE_UNINIT THEN
+        LexTokenError ( &typetoken,
+            "This type is not suitable as a base for an array", 0, 0, 0 )
+    END
+
+    elementalign := skippedtype^.MinimumAlignment
+    size := skippedtype^.Size
+
+    // Make sure the size of the array elements is aligned to the minimum
+    // alignment of the element type.
+
+    size += elementalign - 1
+    size &= ~(elementalign - 1)
 
     arraytype := type
+    arraytype^.Size = TYPE_SIZE_UNINIT
 
     arraytail : ^LexSemanticType = NULLPTR
 
@@ -1199,6 +1270,8 @@ FN PrsType (
         IF arraytail THEN
             arraytail^.Body.Array.Base = arraytype
         END
+
+        arraytype^.Body.Array.Parent = arraytail
 
         arraytail = arraytype
 
@@ -1223,6 +1296,11 @@ FN PrsType (
             IF boundnode^.Type != AST_CONSTANT THEN
                 LexTokenError ( &typetoken,
                     "Expected a constant array bound", 0, 0, 0 )
+            END
+
+            IF boundnode^.Body.Constant.Value == 0 THEN
+                LexTokenError ( &typetoken,
+                    "Array bound must not be zero", 0, 0, 0 )
             END
 
             arraytype^.Body.Array.Bound = boundnode^.Body.Constant.Value
@@ -1261,6 +1339,20 @@ FN PrsType (
     END
 
     arraytail^.Body.Array.Base = basetype
+
+    IF NOT boundless THEN
+        // Walk the chain of array types from the tail up to set the sizes.
+
+        walkptr := arraytail
+
+        WHILE walkptr DO
+            size *= walkptr^.Body.Array.Bound
+
+            walkptr^.Size = size
+
+            walkptr = walkptr^.Body.Array.Parent
+        END
+    END
 END
 
 FN PrsFoundSymbol (
@@ -1428,12 +1520,6 @@ FN PrsVariableDeclaration (
 
         // Parse the initializer.
 
-        // TODO: if the right side is a constant, check to make sure it fits in
-        //       the left side's type
-
-        // TODO: if there's an implicit cast in the assignment, make it explicit
-        //       in the AST
-
         IF NOT type THEN
             // If the type was implicit, evaluate the type of the initial value.
 
@@ -1461,13 +1547,29 @@ FN PrsVariableDeclaration (
 
                 initialtype := PrsEvaluateType ( initialnode )
 
-                PrsCheckType (
+                beforecastnode := initialnode
+
+                IF PrsCheckType (
                     &initialnode^.Token, // errtoken
                     type, // type1
                     initialtype, // type2
                     "Initial value doesn't match explicit type: ", // errstring
                     FALSE, // equivalence
-                )
+                ) AND NOT global THEN
+                    // There was an implicit cast, make it explicit in the AST.
+
+                    castnode := PrsCreateAstNode (
+                        AST_OPERATOR, // type
+                        &initialnode^.Token, // token
+                    )
+
+                    castnode^.Token.Subtype = TOKEN_CAST
+
+                    castnode^.Body.Operator.Left = initialnode
+                    castnode^.Body.Operator.OperatorSpecific = type
+
+                    initialnode = castnode
+                END
             END
         END
     END
@@ -1518,9 +1620,8 @@ FN PrsVariableDeclaration (
                 "Globals require a compile-time initial value.", 0, 0, 0 )
         END
 
-        TlPrintNumber ( initialnode^.Body.Constant.Value )
-
         symbol^.InitialValue = initialnode
+
     ELSE
         // Uninitialized globals have a value of zero, always.
         // Backend may place this in BSS.
@@ -1768,16 +1869,27 @@ FN PrsParseBlock (
 
                 asgnnode^.Body.Assign.Right = rightexpr
 
-                PrsCheckType (
+                IF PrsCheckType (
                     &token, // errtoken
                     lefttype, // type1
                     righttype, // type2
                     "Assign: ", // errstring
                     FALSE, // equivalence
-                )
+                ) THEN
+                    // There's an implicit cast, make it explicit in the AST.
 
-                // TODO: if the right side is a constant, check to make sure it
-                //       fits in the left side's type
+                    castnode := PrsCreateAstNode (
+                        AST_OPERATOR, // type
+                        &rightexpr^.Token, // token
+                    )
+
+                    castnode^.Token.Subtype = TOKEN_CAST
+
+                    castnode^.Body.Operator.Left = rightexpr
+                    castnode^.Body.Operator.OperatorSpecific = lefttype
+
+                    asgnnode^.Body.Assign.Right = castnode
+                END
 
                 PrsInsertNodeIntoBlock (
                     block, // block
@@ -1819,7 +1931,37 @@ FN (PrsOperatorF) PrsParseCompoundTypeIndex (
     // UNION). Then, we set the lexical scope to the one for the compound type's
     // field names, and collect the field name.
 
-    TlInternalError ( "TODO PrsParseCompoundTypeIndex", 0, 0, 0 )
+    left := node^.Body.Operator.Left
+
+    type := PrsEvaluateType ( left )
+
+    IF type^.Subtype != TYPE_COMPOUND THEN
+        LexTokenError ( &node^.Token, "Not a compound type", 0, 0, 0 )
+    END
+
+    scope := type^.Body.Compound.FieldScope
+
+    oldscope := LexEnterScope ( scope )
+
+    fieldtoken : LexToken
+
+    IF NOT LexMatchToken (
+        &fieldtoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &fieldtoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    IF fieldtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+        LexTokenError ( &fieldtoken, "Non-existent field name", 0, 0, 0 )
+    END
+
+    fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
+
+    node^.Body.Operator.OperatorSpecific = fieldsymbol
+
+    LexResetScope ( oldscope )
 END
 
 FN (PrsOperatorF) PrsParseArrayIndex (
@@ -1923,23 +2065,19 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     node^.Body.Operator.OperatorSpecific = NULLPTR
     refarg := lefttype^.Body.Function.ArgListHead
 
-    IF LexMatchToken (
-        &token, // token
-        TOKEN_RPAREN, // type
-        0, // subtype
-    ) THEN
-        // No arguments.
-
-        IF lefttype^.Body.Function.ArgCount THEN
-            LexTokenError ( &node^.Token, "Too few arguments", 0, 0, 0 )
-        END
-
-        LEAVE
-    END
-
     token : LexToken
 
     WHILE TRUE DO
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
         argcount += 1
 
         IF NOT lefttype^.Body.Function.IsVarArg AND
@@ -2004,17 +2142,6 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
             LexTokenError ( &token,
                 "Expected a comma or right parenthesis", 0, 0, 0 )
-        END
-
-        IF LexMatchToken (
-            &token, // token
-            TOKEN_RPAREN, // type
-            0, // subtype
-        ) THEN
-            // Done with the argument list. This isn't redundant, it's to
-            // allow the ,) case.
-
-            BREAK
         END
     END
 
@@ -3027,7 +3154,15 @@ FN (PrsOperatorF) PrsParseSizeOfValue (
     // We have to figure out the size of the type of the value, and convert our
     // node to a constant node containing this size.
 
-    TlInternalError ( "TODO PrsParseSizeOfValue", 0, 0, 0 )
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    IF type^.Size == TYPE_SIZE_UNINIT THEN
+        LexTokenError ( &node^.Token,
+            "Can't take the size of this type", 0, 0, 0 )
+    END
+
+    node^.Type = AST_CONSTANT
+    node^.Body.Constant.Value = type^.Size
 END
 
 // Declarator parse routines.
@@ -3096,21 +3231,21 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
     // NAME
     // NAME = NewPosition
 
-    IF LexMatchToken (
-        NULLPTR, // token
-        TOKEN_TERMINATOR, // type
-        TOKEN_END, // subtype
-    ) THEN
-        // Empty list, we're done.
-
-        RETURN symbol
-    END
-
     token : LexToken
 
     value : TlMachineWord = 0
 
     WHILE TRUE DO
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the constant list.
+
+            BREAK
+        END
+
         IF NOT LexMatchToken (
             &token, // token
             TOKEN_IDENTIFIER, // type
@@ -3167,17 +3302,6 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
 
             LexTokenError ( &token,
                 "Expected a comma or END", 0, 0, 0 )
-        END
-
-        IF LexMatchToken (
-            &token, // token
-            TOKEN_TERMINATOR, // type
-            TOKEN_END, // subtype
-        ) THEN
-            // Done with the constant list. This isn't redundant, it's to
-            // allow the , END case.
-
-            BREAK
         END
     END
 
@@ -3311,214 +3435,208 @@ FN PrsParseFnSignature (
     // IN NAME : TYPE
     // OUT NAME : TYPE
 
-    IF NOT LexMatchToken (
-        NULLPTR, // token
-        TOKEN_RPAREN, // type
-        0, // subtype
-    ) THEN
-        WHILE TRUE DO
-            arg : ^LexFunctionArgument
+    checktoken : LexToken
 
-            status := TlBumpAlloc (
-                SIZEOF LexFunctionArgument, // bytes
-                &arg, // OUT ptr
-            )
+    WHILE TRUE DO
+        IF LexMatchToken (
+            &checktoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
 
-            IF status THEN
-                TlInternalError ( "Failed to allocate arg", 0, 0, 0 )
-            END
+            BREAK
+        END
 
-            checktoken : LexToken
-            argtoken : LexToken
+        arg : ^LexFunctionArgument
 
-            LexGetToken ( &checktoken )
+        status := TlBumpAlloc (
+            SIZEOF LexFunctionArgument, // bytes
+            &arg, // OUT ptr
+        )
 
-            IF checktoken.Type != TOKEN_ARGSPEC THEN
-                LexTokenError ( &checktoken,
-                    "Expected an argument specifier IN/OUT", 0, 0, 0 )
-            END
+        IF status THEN
+            TlInternalError ( "Failed to allocate arg", 0, 0, 0 )
+        END
 
-            IF checktoken.Subtype == TOKEN_IN THEN
-                arg^.InOut = ARG_IN
+        argtoken : LexToken
 
-            ELSEIF checktoken.Subtype == TOKEN_OUT THEN
-                arg^.InOut = ARG_OUT
+        LexGetToken ( &checktoken )
 
-            ELSEIF checktoken.Subtype == TOKEN_VARARG THEN
-                type^.Body.Function.IsVarArg = TRUE
+        IF checktoken.Type != TOKEN_ARGSPEC THEN
+            LexTokenError ( &checktoken,
+                "Expected an argument specifier IN/OUT", 0, 0, 0 )
+        END
 
-                IF NOT fnptr THEN
-                    // The next two identifier tokens are the name of the vararg
-                    // array and the count respectively. We have to collect
-                    // those and set them up.
+        IF checktoken.Subtype == TOKEN_IN THEN
+            arg^.InOut = ARG_IN
 
-                    varargtoken : LexToken
+        ELSEIF checktoken.Subtype == TOKEN_OUT THEN
+            arg^.InOut = ARG_OUT
 
-                    IF NOT LexMatchToken (
-                        &varargtoken, // token
-                        TOKEN_IDENTIFIER, // type
-                        0, // subtype
-                    ) THEN
-                        LexTokenError ( &varargtoken,
-                            "Expected identifier", 0, 0, 0 )
-                    END
+        ELSEIF checktoken.Subtype == TOKEN_VARARG THEN
+            type^.Body.Function.IsVarArg = TRUE
 
-                    IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-                        LexTokenError ( &varargtoken,
-                            "Identifier already in use", 0, 0, 0 )
-                    END
+            IF NOT fnptr THEN
+                // The next two identifier tokens are the name of the vararg
+                // array and the count respectively. We have to collect
+                // those and set them up.
 
-                    varargtablesymbol := CAST varargtoken.Payload TO ^LexSymbol
-
-                    varargtablesymbol^.Type = SYM_VAR
-                    varargtablesymbol^.Flags = 0
-
-                    type^.Body.Function.VarArgTable = varargtablesymbol
-
-                    // The type of the vararg table is boundless array of
-                    // pointer to void.
-
-                    varargtablesymbol^.SemanticType = PrsVarArgType
-
-                    // Now yoink the count.
-
-                    IF NOT LexMatchToken (
-                        &varargtoken, // token
-                        TOKEN_IDENTIFIER, // type
-                        0, // subtype
-                    ) THEN
-                        LexTokenError ( &varargtoken,
-                            "Expected identifier", 0, 0, 0 )
-                    END
-
-                    IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-                        LexTokenError ( &varargtoken,
-                            "Identifier already in use", 0, 0, 0 )
-                    END
-
-                    varargcountsymbol := CAST varargtoken.Payload TO ^LexSymbol
-
-                    varargcountsymbol^.Type = SYM_VAR
-                    varargcountsymbol^.Flags = 0
-
-                    type^.Body.Function.VarArgCount = varargcountsymbol
-
-                    // The type of the vararg count is the constant type, which
-                    // is the largest unsigned type supported by the target.
-
-                    varargcountsymbol^.SemanticType = PrsConstantType
-                END
-
-                // No more arguments are allowed after the vararg specifier.
+                varargtoken : LexToken
 
                 IF NOT LexMatchToken (
-                    &checktoken, // token
-                    TOKEN_RPAREN, // type
+                    &varargtoken, // token
+                    TOKEN_IDENTIFIER, // type
                     0, // subtype
                 ) THEN
-                    LexTokenError ( &checktoken,
-                        "Expected right parenthesis", 0, 0, 0 )
+                    LexTokenError ( &varargtoken,
+                        "Expected identifier", 0, 0, 0 )
                 END
 
-                BREAK
+                IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                    LexTokenError ( &varargtoken,
+                        "Identifier already in use", 0, 0, 0 )
+                END
+
+                varargtablesymbol := CAST varargtoken.Payload TO ^LexSymbol
+
+                varargtablesymbol^.Type = SYM_VAR
+                varargtablesymbol^.Flags = 0
+
+                type^.Body.Function.VarArgTable = varargtablesymbol
+
+                // The type of the vararg table is boundless array of
+                // pointer to void.
+
+                varargtablesymbol^.SemanticType = PrsVarArgType
+
+                // Now yoink the count.
+
+                IF NOT LexMatchToken (
+                    &varargtoken, // token
+                    TOKEN_IDENTIFIER, // type
+                    0, // subtype
+                ) THEN
+                    LexTokenError ( &varargtoken,
+                        "Expected identifier", 0, 0, 0 )
+                END
+
+                IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                    LexTokenError ( &varargtoken,
+                        "Identifier already in use", 0, 0, 0 )
+                END
+
+                varargcountsymbol := CAST varargtoken.Payload TO ^LexSymbol
+
+                varargcountsymbol^.Type = SYM_VAR
+                varargcountsymbol^.Flags = 0
+
+                type^.Body.Function.VarArgCount = varargcountsymbol
+
+                // The type of the vararg count is the constant type, which
+                // is the largest unsigned type supported by the target.
+
+                varargcountsymbol^.SemanticType = PrsConstantType
             END
 
-            type^.Body.Function.ArgCount += 1
-
-            arg^.Next = NULLPTR
-
-            IF NOT argtail THEN
-                type^.Body.Function.ArgListHead = arg
-            ELSE
-                argtail^.Next = arg
-            END
-
-            argtail = arg
-
-            LexGetToken ( &argtoken )
-
-            IF argtoken.Type != TOKEN_IDENTIFIER THEN
-                LexTokenError ( &argtoken, "Expected an identifier", 0, 0, 0)
-            END
-
-            IF argtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-                LexTokenError ( &argtoken,
-                    "Identifier already in use", 0, 0, 0 )
-            END
-
-            LexCopyToken (
-                &arg^.Token, // dest
-                &argtoken, // src
-            )
-
-            argsymbol := CAST argtoken.Payload TO ^LexSymbol
-
-            argsymbol^.Type = SYM_VAR
-            argsymbol^.Flags = 0
-
-            arg^.Symbol = argsymbol
+            // No more arguments are allowed after the vararg specifier.
 
             IF NOT LexMatchToken (
-                &checktoken, // token
-                TOKEN_COLON, // type
-                0, // subtype
-            ) THEN
-                LexTokenError ( &checktoken, "Expected a type", 0, 0, 0 )
-            END
-
-            argsymbol^.SemanticType = PrsCreateType ()
-
-            PrsType (
-                argsymbol^.SemanticType, // type
-                0, // depth
-            )
-
-            IF NOT PrsTypeIsValue (
-                &argtoken, // errtoken
-                argsymbol^.SemanticType, // type
-            ) THEN
-                LexTokenError (  &argtoken,
-                    "Argument type is not directly usable as a value", 0, 0, 0 )
-            END
-
-            IF arg^.InOut == ARG_OUT THEN
-                IF argsymbol^.SemanticType^.Subtype != TYPE_POINTER THEN
-                    LexTokenError ( &checktoken,
-                        "OUT parameters must have pointer type", 0, 0, 0 )
-                END
-            END
-
-            IF LexMatchToken (
                 &checktoken, // token
                 TOKEN_RPAREN, // type
                 0, // subtype
             ) THEN
-                // Done with the argument list.
-
-                BREAK
-            END
-
-            IF NOT LexMatchToken (
-                &checktoken, // token
-                TOKEN_COMMA, // type
-                0, // subtype
-            ) THEN
-                // Bad.
-
                 LexTokenError ( &checktoken,
-                    "Expected a comma or right parenthesis", 0, 0, 0 )
+                    "Expected right parenthesis", 0, 0, 0 )
             END
 
-            IF LexMatchToken (
-                &checktoken, // token
-                TOKEN_RPAREN, // type
-                0, // subtype
-            ) THEN
-                // Done with the argument list. This isn't redundant, it's to
-                // allow the , ) case.
+            BREAK
+        END
 
-                BREAK
+        type^.Body.Function.ArgCount += 1
+
+        arg^.Next = NULLPTR
+
+        IF NOT argtail THEN
+            type^.Body.Function.ArgListHead = arg
+        ELSE
+            argtail^.Next = arg
+        END
+
+        argtail = arg
+
+        LexGetToken ( &argtoken )
+
+        IF argtoken.Type != TOKEN_IDENTIFIER THEN
+            LexTokenError ( &argtoken, "Expected an identifier", 0, 0, 0)
+        END
+
+        IF argtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &argtoken,
+                "Identifier already in use", 0, 0, 0 )
+        END
+
+        LexCopyToken (
+            &arg^.Token, // dest
+            &argtoken, // src
+        )
+
+        argsymbol := CAST argtoken.Payload TO ^LexSymbol
+
+        argsymbol^.Type = SYM_VAR
+        argsymbol^.Flags = 0
+
+        arg^.Symbol = argsymbol
+
+        IF NOT LexMatchToken (
+            &checktoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &checktoken, "Expected a type", 0, 0, 0 )
+        END
+
+        argsymbol^.SemanticType = PrsCreateType ()
+
+        PrsType (
+            argsymbol^.SemanticType, // type
+            0, // depth
+        )
+
+        IF NOT PrsTypeIsValue (
+            &argtoken, // errtoken
+            argsymbol^.SemanticType, // type
+        ) THEN
+            LexTokenError (  &argtoken,
+                "Argument type is not directly usable as a value", 0, 0, 0 )
+        END
+
+        IF arg^.InOut == ARG_OUT THEN
+            IF argsymbol^.SemanticType^.Subtype != TYPE_POINTER THEN
+                LexTokenError ( &checktoken,
+                    "OUT parameters must have pointer type", 0, 0, 0 )
             END
+        END
+
+        IF LexMatchToken (
+            &checktoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &checktoken, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &checktoken,
+                "Expected a comma or right parenthesis", 0, 0, 0 )
         END
     END
 
@@ -3698,6 +3816,13 @@ FN PrsParseCompoundType (
     //     the minimum alignment of the compound type must be the maximum of the
     //     required alignments for each field type
 
+    // We keep track of all of the struct field names in their own symbol table.
+
+    fieldscope := TlCreateSymbolTable (
+        NULLPTR, // outerscope
+        NULLPTR, // deletefunc
+    )
+
     nametoken : LexToken
 
     IF NOT LexMatchToken (
@@ -3708,11 +3833,155 @@ FN PrsParseCompoundType (
         LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
     END
 
+    symbol := PrsCreateNamedType ( &nametoken )
 
+    type := PrsCreateType ()
+
+    type^.Subtype = TYPE_COMPOUND
+
+    type^.Body.Compound.FieldScope = fieldscope
+    type^.Body.Compound.IsPacked = ispacked
+
+    symbol^.SemanticType = type
+
+    minalignment := 0
 
     offset : TlMachineWord = 0
 
-    TlInternalError ( "TODO PrsParseCompoundType", 0, 0, 0 )
+    WHILE TRUE DO
+        oldscope := LexEnterScope ( fieldscope )
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            LexResetScope ( oldscope )
+
+            // We're done with the struct.
+
+            BREAK
+        END
+
+        fieldtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &fieldtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &fieldtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF fieldtoken.Subtype != TOKEN_IDENTIFIER_NEW THEN
+            LexTokenError ( &fieldtoken, "Field name already in use", 0, 0, 0 )
+        END
+
+        fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
+
+        LexResetScope ( oldscope )
+
+        colontoken : LexToken
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+        END
+
+        fieldtype := PrsCreateType ()
+
+        fieldsymbol^.SemanticType = fieldtype
+
+        PrsType (
+            fieldtype, // type
+            0, // depth
+        )
+
+        // Skip names.
+
+        WHILE fieldtype^.Subtype == TYPE_NAMED DO
+            IF fieldtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                // Forward declared type that we don't know anything about yet.
+
+                LexTokenError ( &fieldtoken,
+                    "Illegal use of undeclared type", 0, 0, 0 )
+            END
+
+            fieldtype = fieldtype^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF NOT PrsTypeIsDeclarable (
+            &fieldtoken, // errtoken
+            fieldtype, // type
+        ) THEN
+            LexTokenError ( &fieldtoken,
+                "This type is not directly declarable", 0, 0, 0 )
+        END
+
+        IF fieldtype^.Size == TYPE_SIZE_UNINIT THEN
+            LexTokenError ( &fieldtoken,
+                "This type is not suitable as a field in a compound type",
+                0, 0, 0 )
+        END
+
+        IF fieldtype^.MinimumAlignment > minalignment THEN
+            minalignment = fieldtype^.MinimumAlignment
+        END
+
+        IF subtype == TOKEN_STRUCT THEN
+            IF NOT ispacked THEN
+                // Align the offset.
+
+                offset += fieldtype^.MinimumAlignment - 1
+                offset &= ~(fieldtype^.MinimumAlignment - 1)
+            END
+
+            // Save the offset.
+
+            fieldsymbol^.Value = offset
+
+            // Increment the offset by the size of this field.
+
+            offset += fieldtype^.Size
+        ELSE
+            // This is a union, the offset of all fields is zero.
+
+            fieldsymbol^.Value = 0
+
+            IF fieldtype^.Size > offset THEN
+                offset = fieldtype^.Size
+            END
+        END
+
+        IF LexMatchToken (
+            &colontoken, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the constant list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &colontoken,
+                "Expected a comma or END", 0, 0, 0 )
+        END
+    END
+
+    type^.MinimumAlignment = minalignment
+    type^.Size = offset
+
+    RETURN symbol
 END
 
 FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
@@ -4345,7 +4614,9 @@ FN (PrsOperatorEvalF) PrsEvalCompoundTypeIndex (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType
 
-    TlInternalError ( "TODO PrsEvalCompoundTypeIndex", 0, 0, 0 )
+    fieldsymbol := CAST node^.Body.Operator.OperatorSpecific TO ^LexSymbol
+
+    RETURN fieldsymbol^.SemanticType
 END
 
 FN (PrsOperatorEvalF) PrsEvalArrayIndex (
@@ -4512,8 +4783,17 @@ FN PrsInitialize ()
     primtype^.Body.Primitive.Type = PRIM_TYPE_UBYTE
     primtype^.Body.Primitive.Inducible = FALSE
 
+    primtype^.Size =
+        JklTargetInfo^.PrimitiveSize[PRIM_TYPE_UBYTE]
+
+    primtype^.MinimumAlignment =
+        JklTargetInfo^.PrimitiveAlignment[PRIM_TYPE_UBYTE]
+
     PrsStringType^.Subtype = TYPE_POINTER
     PrsStringType^.Body.Pointer.Base = primtype
+
+    PrsStringType^.Size = JklTargetInfo^.PointerSize
+    PrsStringType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
 
     // Set up the NULLPTR type as pointer to VOID.
 
@@ -4527,6 +4807,9 @@ FN PrsInitialize ()
     PrsNullPtrType^.Subtype = TYPE_POINTER
     PrsNullPtrType^.Body.Pointer.Base = primtype
 
+    PrsNullPtrType^.Size = JklTargetInfo^.PointerSize
+    PrsNullPtrType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+
     // Set up the constant type as the largest signed primitive.
 
     PrsConstantType = PrsCreateType ()
@@ -4534,6 +4817,12 @@ FN PrsInitialize ()
     PrsConstantType^.Subtype = TYPE_PRIMITIVE
     PrsConstantType^.Body.Primitive.Type = JklTargetInfo^.LargestPrimitive
     PrsConstantType^.Body.Primitive.Inducible = TRUE
+
+    PrsConstantType^.Size =
+        JklTargetInfo^.PrimitiveSize[JklTargetInfo^.LargestPrimitive]
+
+    PrsConstantType^.MinimumAlignment =
+        JklTargetInfo^.PrimitiveAlignment[JklTargetInfo^.LargestPrimitive]
 
     // Set up the vararg table type as array of pointer to VOID.
 
