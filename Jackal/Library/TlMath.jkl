@@ -30,3 +30,20 @@ FN TlIsPowerOfTwo (
         bitpos += 1
     END
 END
+
+FN TlPunchValue (
+    IN ptr : ^UBYTE,
+    IN value : TlMachineWord,
+    IN bytes : ULONG,
+)
+
+    // Punch a value into a byte array. Note: always little-endian.
+
+    WHILE bytes DO
+        ptr^ = value
+
+        ptr += 1
+        value >>= 8
+        bytes -= 1
+    END
+END

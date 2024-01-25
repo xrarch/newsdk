@@ -257,7 +257,7 @@ STRUCT LexSemanticTypeArrayBody
 
     // This "parent" link is only used at type parsing time.
 
-    Parent : ^LexSemanticSubtype,
+    Parent : ^LexSemanticType,
 END
 
 STRUCT LexSemanticTypePointerBody

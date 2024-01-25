@@ -339,3 +339,9 @@ EXTERN FN TlFreeToZone (
 EXTERN FN TlIsPowerOfTwo (
     IN constant : TlMachineWord,
 ) : ULONG
+
+EXTERN FN TlPunchValue (
+    IN ptr : ^UBYTE,
+    IN value : TlMachineWord,
+    IN bytes : ULONG,
+)

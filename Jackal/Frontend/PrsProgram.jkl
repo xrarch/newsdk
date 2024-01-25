@@ -275,15 +275,16 @@ FN PrsIsCompileTime (
         RETURN TRUE
     END
 
-    IF node^.Type == AST_OPERATOR AND
-        node^.Token.Subtype == TOKEN_ADDROF AND
-        node^.Body.Operator.Left^.Type == AST_IDENTIFIER THEN
-
+    IF node^.Type == AST_INITIALIZER THEN
         RETURN TRUE
     END
 
-    IF node^.Type == AST_INITIALIZER THEN
-        RETURN TRUE
+    IF node^.Type == AST_OPERATOR AND node^.Token.Subtype == TOKEN_ADDROF THEN
+        left := node^.Body.Operator.Left
+
+        IF left^.Type == AST_IDENTIFIER THEN
+            RETURN TRUE
+        END
     END
 
     RETURN FALSE
@@ -811,50 +812,212 @@ END
 FN PrsParseArrayInitializer (
     IN errtoken : ^LexToken,
     IN type : ^LexSemanticType,
-) : ^PrsAstNode
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+)
 
+    // Parse the array initializer into the byte array.
+    //
     // An array initializer's fields are of one of the following forms:
     //
-    // VALUE,
-    // [INDEX] = VALUE,
+    // INITIALIZER,
+    // [INDEX] = INITIALIZER,
 
+    basetype := type^.Body.Array.Base
+    elementsize := basetype^.Size
+    bound := type^.Body.Array.Bound
     index := 0
+    offset := 0
 
-    // TODO
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF index >= bound THEN
+            LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
+        END
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            // Set new index.
+
+            expr := PrsExpression ( 0 )
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_RBRACKET, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+            END
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_ASSIGN, // type
+                TOKEN_EQUALS, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+            END
+
+            IF expr^.Type != AST_CONSTANT THEN
+                LexTokenError ( &expr^.Token,
+                    "Expected a constant value", 0, 0, 0 )
+            END
+
+            index = expr^.Body.Constant.Value
+
+            IF index >= bound THEN
+                LexTokenError ( &expr^.Token,
+                    "Index exceeds array bound", 0, 0, 0 )
+            END
+
+            offset = index * elementsize
+        END
+
+        // Parse the initializer for this element.
+
+        PrsParseInitializer (
+            &token, // errtoken
+            basetype, // type
+            &bytearray[offset], // bytearray
+            &bparray[offset], // bparray
+        )
+
+        index += 1
+        offset += elementsize
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+        END
+    END
 END
 
 FN PrsParseStructInitializer (
     IN errtoken : ^LexToken,
     IN type : ^LexSemanticType,
-) : ^PrsAstNode
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+)
 
+    // Parse the struct initializer into the byte array.
+    //
     // A struct initializer's fields are of the following form:
     //
-    // [FIELD_NAME] = VALUE,
+    // [FIELD_NAME] = INITIALIZER,
 
-    // TODO
+    fieldscope := type^.Body.Compound.FieldScope
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a left bracket", 0, 0, 0 )
+        END
+
+        oldscope := LexEnterScope ( fieldscope )
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &token, "Non-existent field name", 0, 0, 0 )
+        END
+
+        fieldsymbol := CAST token.Payload TO ^LexSymbol
+
+        LexResetScope ( oldscope )
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RBRACKET, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+        END
+
+        offset := fieldsymbol^.Value
+
+        PrsParseInitializer (
+            &token, // errtoken
+            fieldsymbol^.SemanticType, // type
+            &bytearray[offset], // bytearray
+            &bparray[offset], // bparray
+        )
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+        END
+    END
 END
 
 FN PrsParseInitializer (
     IN errtoken : ^LexToken,
     IN type : ^LexSemanticType,
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
 ) : ^PrsAstNode
 
     // Parse an initializer. This is either of the form { ... } or it's an
     // expression, depending on the type of value we're initializing.
-
-    // First strip away any type names.
-
-    WHILE type^.Subtype == TYPE_NAMED DO
-        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-            // Forward declared type that we don't know anything about yet.
-
-            LexTokenError ( errtoken,
-                "Illegal use of undeclared type", 0, 0, 0 )
-        END
-
-        type = type^.Body.Named.Symbol^.SemanticType
-    END
 
     bracetoken : LexToken
 
@@ -870,7 +1033,47 @@ FN PrsParseInitializer (
                 "Illegal initializer, expected expression", 0, 0, 0 )
         END
 
-        RETURN PrsExpression ( 0 )
+        expr := PrsExpression ( 0 )
+
+        IF expr^.Type == AST_CONSTANT THEN
+            // Check that the constant fits in the type.
+
+            PrsCheckConstant (
+                &expr^.Token, // errtoken
+                type, // type
+                expr^.Body.Constant.Value, // value
+            )
+        END
+
+        IF NOT bytearray THEN
+            RETURN expr
+        END
+
+        IF NOT PrsIsCompileTime ( expr ) THEN
+            LexTokenError ( &expr^.Token,
+                "Expected a compile time value", 0, 0, 0 )
+        END
+
+        IF expr^.Type == AST_CONSTANT THEN
+            // Punch the constant into the byte array.
+
+            TlPunchValue (
+                bytearray, // ptr
+                expr^.Body.Constant.Value, // value
+                type^.Size, // bytes
+            )
+        ELSE
+            IF type^.Size < JklTargetInfo^.PointerSize THEN
+                LexTokenError ( &expr^.Token,
+                    "This field is smaller than a pointer", 0, 0, 0 )
+            END
+
+            // Add to the backpatch array.
+
+            bparray^ = expr
+        END
+
+        RETURN NULLPTR
     END
 
     // Gotta be a fancy array or struct initializer.
@@ -883,19 +1086,74 @@ FN PrsParseInitializer (
         LexTokenError ( &bracetoken, "Expected initializer", 0, 0, 0 )
     END
 
-    IF type^.Subtype == TYPE_ARRAY THEN
-        RETURN PrsParseArrayInitializer (
-            errtoken, // errtoken
-            type, // type
+    IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+        LexTokenError ( &bracetoken,
+            "Can't initialize a boundless array", 0, 0, 0 )
+    END
+
+    node : ^PrsAstNode = NULLPTR
+
+    IF NOT bytearray THEN
+        status := TlBumpAlloc (
+            type^.Size, // bytes
+            &bytearray, // OUT ptr
         )
-    ELSE
-        RETURN PrsParseStructInitializer (
-            errtoken, // errtoken
-            type, // type
+
+        IF status THEN
+            LexTokenError ( errtoken,
+                "Failed to allocate initializer byte array", type^.Size, 0, 0 )
+        END
+
+        status = TlBumpAlloc (
+            type^.Size * SIZEOF ^PrsAstNode, // bytes
+            &bparray, // OUT ptr
+        )
+
+        IF status THEN
+            LexTokenError ( errtoken,
+                "Failed to allocate initializer bp array", type^.Size, 0, 0 )
+        END
+
+        node = PrsCreateAstNode (
+            AST_INITIALIZER, // type
+            errtoken, // token
+        )
+
+        node^.Body.Initializer.ByteArray = bytearray
+        node^.Body.Initializer.BpArray = bparray
+
+        // Make sure that any uninitialized locations are zeroed.
+
+        TlFillMemoryWithByte (
+            bytearray, // ptr
+            type^.Size, // sz
+            0, // byte
+        )
+
+        TlFillMemoryWithByte (
+            bparray, // ptr
+            type^.Size * SIZEOF ^PrsAstNode, // sz
+            0, // byte
         )
     END
 
-    RETURN NULLPTR
+    IF type^.Subtype == TYPE_ARRAY THEN
+        PrsParseArrayInitializer (
+            errtoken, // errtoken
+            type, // type
+            bytearray, // bytearray
+            bparray, // bparray
+        )
+    ELSE
+        PrsParseStructInitializer (
+            errtoken, // errtoken
+            type, // type
+            bytearray, // bytearray
+            bparray, // bparray
+        )
+    END
+
+    RETURN node
 END
 
 FN PrsEvaluateType (
@@ -1558,9 +1816,27 @@ FN PrsVariableDeclaration (
                     "This type is not directly usable as a value", 0, 0, 0 )
             END
         ELSE
+            striptype := type
+
+            // First strip away any type names.
+
+            WHILE striptype^.Subtype == TYPE_NAMED DO
+                IF striptype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                    // Forward declared type that we don't know anything about
+                    // yet.
+
+                    LexTokenError ( &initialnode^.Token,
+                        "Illegal use of undeclared type", 0, 0, 0 )
+                END
+
+                striptype = striptype^.Body.Named.Symbol^.SemanticType
+            END
+
             initialnode = PrsParseInitializer (
                 token, // errtoken
-                type, // type
+                striptype, // type
+                NULLPTR, // bytearray
+                NULLPTR, // bparray
             )
 
             IF initialnode^.Type != AST_INITIALIZER THEN
@@ -1569,8 +1845,6 @@ FN PrsVariableDeclaration (
                 // it's a constant and is too large for the type.
 
                 initialtype := PrsEvaluateType ( initialnode )
-
-                beforecastnode := initialnode
 
                 IF PrsCheckType (
                     &initialnode^.Token, // errtoken
@@ -1592,16 +1866,6 @@ FN PrsVariableDeclaration (
                     castnode^.Body.Operator.OperatorSpecific = type
 
                     initialnode = castnode
-                END
-
-                IF beforecastnode^.Type == AST_CONSTANT THEN
-                    // Check if the constant fits in the type.
-
-                    PrsCheckConstant (
-                        &initialnode^.Token, // errtoken
-                        type, // type
-                        beforecastnode^.Body.Constant.Value, // value
-                    )
                 END
             END
         END
@@ -1659,14 +1923,7 @@ FN PrsVariableDeclaration (
         // Uninitialized globals have a value of zero, always.
         // Backend may place this in BSS.
 
-        initialnode = PrsCreateAstNode (
-            AST_CONSTANT, // type
-            token, // token
-        )
-
-        initialnode^.Body.Constant.Value = 0
-
-        symbol^.InitialValue = initialnode
+        symbol^.InitialValue = NULLPTR
     END
 
     RETURN symbol
@@ -2144,6 +2401,38 @@ FN (PrsOperatorF) PrsParseFunctionCall (
                 "This type is not directly usable as a valuee", 0, 0, 0 )
         END
 
+        // If refarg became null, that means that we walked off into the varargs
+        // part of the function arguments. Only check types before that happens.
+
+        IF refarg THEN
+            IF PrsCheckType (
+                &argnode^.Token, // errtoken
+                refarg^.Symbol^.SemanticType, // type1
+                argtype, // type2
+                "Function argument: ", // errstring
+                FALSE, // equivalence
+            ) THEN
+                // There's an implicit cast. We have to make it explicit in the
+                // AST.
+
+                castnode := PrsCreateAstNode (
+                    AST_OPERATOR, // type
+                    &argnode^.Token, // token
+                )
+
+                castnode^.Token.Subtype = TOKEN_CAST
+
+                castnode^.Body.Operator.Left = argnode
+
+                castnode^.Body.Operator.OperatorSpecific =
+                    refarg^.Symbol^.SemanticType
+
+                argnode = castnode
+            END
+
+            refarg = refarg^.Next
+        END
+
         argnode^.Next = NULLPTR
 
         IF NOT argtail THEN
@@ -2153,21 +2442,6 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         END
 
         argtail = argnode
-
-        // If refarg became null, that means that we walked off into the varargs
-        // part of the function arguments. Only check types before that happens.
-
-        IF refarg THEN
-            PrsCheckType (
-                &argnode^.Token, // errtoken
-                refarg^.Symbol^.SemanticType, // type1
-                argtype, // type2
-                "Function argument: ", // errstring
-                FALSE, // equivalence
-            )
-
-            refarg = refarg^.Next
-        END
 
         IF LexMatchToken (
             &token, // token

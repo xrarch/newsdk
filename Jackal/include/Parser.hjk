@@ -66,6 +66,11 @@ STRUCT PrsAstIf
     ElseBlock : ^PrsBlock,
 END
 
+STRUCT PrsAstInitializer
+    ByteArray : ^UBYTE,
+    BpArray : ^^PrsAstNode,
+END
+
 UNION PrsAstBody
     Assign : PrsAstAssign,
     Operator : PrsAstOperator,
@@ -73,6 +78,7 @@ UNION PrsAstBody
     Statement : PrsAstStatement,
     While : PrsAstWhile,
     If : PrsAstIf,
+    Initializer : PrsAstInitializer,
 END
 
 STRUCT PrsAstNode
