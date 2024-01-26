@@ -31,6 +31,8 @@ FN IrCreateInstruction (
         TlInternalError ( "Failed to create IR instruction", 0, 0, 0 )
     END
 
+    inst^.Defines = NULLPTR
+
     RETURN inst
 END
 

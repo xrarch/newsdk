@@ -29,6 +29,7 @@ STRUCT IrInstruction
     Block : ^IrFunction,
     Next : ^IrInstruction,
     Prev : ^IrInstruction,
+    Defines : ^IrVariable,
 
     Type : IrInstructionType,
 END
