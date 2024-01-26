@@ -792,8 +792,8 @@ FN LexNextToken (
         END
 
         symbol^.Name = symbol + SIZEOF LexSymbol
-
         symbol^.Type = SYM_UNINITIALIZED
+        symbol^.IrContext = NULLPTR
 
         TlCopyMemory (
             symbol^.Name, // dest

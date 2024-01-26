@@ -223,8 +223,8 @@ STRUCT LexSymbol
 
     Value : TlMachineWord,
 
-    // Unfortunately the initial value has to be a void pointer but it's
-    // actually a pointer to an AST node.
+    // Unfortunately the initial value has to be a void pointer; it's actually a
+    // pointer to an AST node, or in the case of a function, an IR block.
 
     InitialValue : ^VOID,
 
@@ -232,6 +232,10 @@ STRUCT LexSymbol
 
     Flags : ULONG,
     Type : LexSymbolType,
+
+    // Backend private stuff.
+
+    IrContext : ^VOID,
 END
 
 ENUM LexSemanticSubtype : UBYTE

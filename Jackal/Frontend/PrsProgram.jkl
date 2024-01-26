@@ -171,8 +171,9 @@ FN PrsInsertNodeIntoBlock (
 )
 
     // Insert the node into the given block.
-    // XXX Turn this into a macro when those work.
-    // XXX Better yet, just use the circular list macros when we have those.
+
+    // TODO Turn this into a macro when those work.
+    //      Better yet, just use the circular list macros when we have those.
 
     node^.Next = NULLPTR
 

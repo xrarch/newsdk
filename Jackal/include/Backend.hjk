@@ -1,2 +1,41 @@
 #INCLUDE "<inc>/Parser.hjk"
 
+ENUM IrInstructionType : UBYTE
+    IR_LABEL,
+    IR_JUMP,
+END
+
+STRUCT IrVariable
+    Symbol : ^LexSymbol,
+END
+
+STRUCT IrLabelBody
+    References : ULONG,
+END
+
+STRUCT IrJumpBody
+    // Actually a pointer to an IrInstruction (TODO GRR BOOTSTRAP TRANSPILER!!)
+    Label : ^VOID,
+END
+
+UNION IrInstructionBody
+    Label : IrLabelBody,
+    Jump : IrJumpBody,
+END
+
+STRUCT IrInstruction
+    Body : IrInstructionBody,
+
+    Block : ^IrFunction,
+    Next : ^IrInstruction,
+    Prev : ^IrInstruction,
+
+    Type : IrInstructionType,
+END
+
+STRUCT IrFunction
+    EpilogueLabel : ^IrInstruction,
+
+    Head : ^IrInstruction,
+    Tail : ^IrInstruction,
+END

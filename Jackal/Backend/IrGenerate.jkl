@@ -4,14 +4,415 @@
 
 #INCLUDE "Be.hjk"
 
+FNPTR IrStatementGenerationF (
+    IN node : ^PrsAstNode,
+)
+
+FNPTR IrExpressionGenerationF (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+IrCurrentFunction : ^IrFunction
+
+FN IrCreateInstruction (
+    IN type : IrInstructionType,
+) : ^IrInstruction
+
+    inst : ^IrInstruction
+
+    status := TlBumpAlloc (
+        SIZEOF IrInstruction, // bytes
+        &inst, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create IR instruction", 0, 0, 0 )
+    END
+
+    RETURN inst
+END
+
+FN IrCreateVariable () : ^IrVariable
+
+    var : ^IrVariable
+
+    status := TlBumpAlloc (
+        SIZEOF IrVariable, // bytes
+        &var, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create IR variable", 0, 0, 0 )
+    END
+
+    RETURN var
+END
+
+FN IrInsertInstructionTail (
+    IN inst : ^IrInstruction,
+)
+
+    // Insert the instruction at the end of the current chain.
+
+    // TODO Turn this into a macro when those work.
+    //      Better yet, just use the circular list macros when we have those.
+
+    inst^.Block = IrCurrentFunction
+    inst^.Next = NULLPTR
+    inst^.Prev = IrCurrentFunction^.Tail
+
+    IF NOT IrCurrentFunction^.Tail THEN
+        IrCurrentFunction^.Head = inst
+    ELSE
+        IrCurrentFunction^.Tail^.Next = inst
+    END
+
+    IrCurrentFunction^.Tail = inst
+END
+
+FN IrRemoveInstruction (
+    IN inst : ^IrInstruction,
+)
+
+    // Remove the instruction from the chain.
+
+    block := inst^.Block
+
+    p := inst^.Prev
+
+    IF p THEN
+        p^.Next = inst^.Next
+    ELSE // no prev means we were the head
+        block^.Head = inst^.Next
+    END
+
+    p = inst^.Next
+
+    IF p THEN
+        p^.Prev = inst^.Prev
+    ELSE // no next means we were the tail
+        block^.Tail = inst^.Prev
+    END
+END
+
+FN IrGenerateLoad (
+    IN var : ^IrVariable,
+) : ^IrVariable
+
+    // Generate a load of a pointer into another variable.
+
+    TlInternalError ( "TODO IrGenerateLoad", 0, 0, 0 )
+END
+
+EXTERN FN IrGenerateExpression (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+FN (IrExpressionGenerationF) IrGenerateIdentifier (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR to put an identifier into a variable.
+
+    TlInternalError ( "TODO IrGenerateIdentifier", 0, 0, 0 )
+END
+
+FN (IrExpressionGenerationF) IrGenerateOperatorExpression (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR to put an operator expression into a variable.
+
+    TlInternalError ( "TODO IrGenerateOperatorExpression", 0, 0, 0 )
+END
+
+FN (IrExpressionGenerationF) IrGenerateConstant (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR to put a constant into a variable.
+
+    TlInternalError ( "TODO IrGenerateConstant", 0, 0, 0 )
+END
+
+FN (IrExpressionGenerationF) IrGenerateString (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR to put a string pointer into a variable.
+
+    TlInternalError ( "TODO IrGenerateString", 0, 0, 0 )
+END
+
+FN (IrExpressionGenerationF) IrGenerateInitializer (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR to initialize a structure.
+
+    TlInternalError ( "TODO IrGenerateInitializer", 0, 0, 0 )
+END
+
+IrExpressionGenerationTable : IrExpressionGenerationF[AST_MAX] = {
+    [AST_IDENTIFIER] = &IrGenerateIdentifier,
+    [AST_OPERATOR] = &IrGenerateOperatorExpression,
+    [AST_CONSTANT] = &IrGenerateConstant,
+    [AST_STRING] = &IrGenerateString,
+    [AST_INITIALIZER] = &IrGenerateInitializer,
+}
+
+FN IrGenerateExpression (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for an expression. The result is in the virtual variable, or
+    // by control flow to the true or false label if provided.
+
+    RETURN IrExpressionGenerationTable[node^.Type] (
+        node, // node
+        truelabel, // truelabel,
+        falselabel, // falselabel,
+    )
+END
+
+FN IrGenerateRvalue (
+    IN node : ^PrsAstNode,
+) : ^IrVariable
+
+    // Generate IR for an expression, as an Rvalue, i.e., a load is performed if
+    // relevant.
+
+    var := IrGenerateExpression (
+        node, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    IF node^.Type == AST_OPERATOR THEN
+        subtype := node^.Token.Subtype
+
+        IF subtype == TOKEN_LBRACKET OR
+            subtype == TOKEN_DOT OR
+            subtype == TOKEN_CARET THEN
+
+            var = IrGenerateLoad ( var )
+        END
+    ELSEIF node^.Type == AST_IDENTIFIER THEN
+        var = IrGenerateLoad ( var )
+    END
+
+    RETURN var
+END
+
+FN (IrStatementGenerationF) IrGenerateAssign (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for an assignment.
+
+    TlInternalError ( "TODO IrGenerateAssign", 0, 0, 0 )
+END
+
+FN (IrStatementGenerationF) IrGenerateOperator (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for an operator.
+
+    TlInternalError ( "TODO IrGenerateOperator", 0, 0, 0 )
+END
+
+FN (IrStatementGenerationF) IrGenerateBreak (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a break statement.
+
+    TlInternalError ( "TODO IrGenerateBreak", 0, 0, 0 )
+END
+
+FN (IrStatementGenerationF) IrGenerateReturn (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a return or leave statement.
+
+    // TODO get return value
+
+    inst := IrCreateInstruction (
+        IR_JUMP, // type
+    )
+
+    inst^.Body.Jump.Label = IrCurrentFunction^.EpilogueLabel
+
+    IrInsertInstructionTail ( inst )
+END
+
+FN (IrStatementGenerationF) IrGenerateWhile (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a while loop.
+
+    TlInternalError ( "TODO IrGenerateWhile", 0, 0, 0 )
+END
+
+FN (IrStatementGenerationF) IrGenerateLabel (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a label.
+
+    labelsym := CAST node^.Body.Statement.StatementSpecific TO ^LexSymbol
+
+    IF NOT labelsym^.Value THEN
+        // The label was never used anyway.
+
+        LEAVE
+    END
+
+    inst := CAST labelsym^.IrContext TO ^IrInstruction
+
+    IF NOT inst THEN
+        inst = IrCreateInstruction (
+            IR_LABEL, // type
+        )
+
+        labelsym^.IrContext = inst
+    END
+
+    IrInsertInstructionTail ( inst )
+END
+
+FN (IrStatementGenerationF) IrGenerateGoTo (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a goto statement.
+
+    labelsym := CAST node^.Body.Statement.StatementSpecific TO ^LexSymbol
+
+    IF labelsym^.Type == SYM_FORWARD_LABEL THEN
+        // The symbol was never actually defined :(
+
+        LexTokenError ( &node^.Token,
+            "Use of label that is never defined", 0, 0, 0 )
+    END
+
+    labelinst := CAST labelsym^.IrContext TO ^IrInstruction
+
+    IF NOT labelinst THEN
+        labelinst = IrCreateInstruction (
+            IR_LABEL, // type
+        )
+
+        labelsym^.IrContext = labelinst
+    END
+
+    inst := IrCreateInstruction (
+        IR_JUMP, // type
+    )
+
+    inst^.Body.Jump.Label = labelinst
+
+    IrInsertInstructionTail ( inst )
+END
+
+FN (IrStatementGenerationF) IrGenerateContinue (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a continue statement.
+
+    TlInternalError ( "TODO IrGenerateContinue", 0, 0, 0 )
+END
+
+FN (IrStatementGenerationF) IrGenerateIf (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for an if statement.
+
+    TlInternalError ( "TODO IrGenerateIf", 0, 0, 0 )
+END
+
+IrStatementGenerationTable : IrStatementGenerationF[AST_MAX] = {
+    [AST_ASSIGN] = &IrGenerateAssign,
+    [AST_OPERATOR] = &IrGenerateOperator,
+    [AST_BREAK] = &IrGenerateBreak,
+    [AST_RETURN] = &IrGenerateReturn,
+    [AST_WHILE] = &IrGenerateWhile,
+    [AST_LABEL] = &IrGenerateLabel,
+    [AST_GOTO] = &IrGenerateGoTo,
+    [AST_CONTINUE] = &IrGenerateContinue,
+    [AST_IF] = &IrGenerateIf,
+}
+
+FN IrGenerateBlock (
+    IN block : ^PrsBlock,
+)
+
+    // Generate IR for a single block, which is a sequence of statements.
+
+    node := block^.StatementListHead
+
+    WHILE node DO
+        func := IrStatementGenerationTable[node^.Type]
+
+        IF func THEN
+            func ( node )
+        END
+
+        node = node^.Next
+    END
+END
+
 FN IrGenerateForFunction (
     IN funcsym : ^LexSymbol,
 )
 
     // Generate IR for a function definition.
 
-    TlPrintString ( funcsym^.Name )
-    TlPrintString ( "\n" )
+    // First create an IR function.
+
+    status := TlBumpAlloc (
+        SIZEOF IrFunction, // sizeof
+        &IrCurrentFunction, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create IR block", 0, 0, 0 )
+    END
+
+    epiloguelabel := IrCreateInstruction (
+        IR_LABEL, // type
+    )
+
+    IrCurrentFunction^.EpilogueLabel = epiloguelabel
+    IrCurrentFunction^.Head = NULLPTR
+    IrCurrentFunction^.Tail = NULLPTR
+
+    funcsym^.InitialValue = IrCurrentFunction
+
+    IrGenerateBlock ( funcsym^.SemanticType^.Body.Function.BodyBlock )
+
+    IrInsertInstructionTail ( epiloguelabel )
 END
 
 FN IrGenerate ()
