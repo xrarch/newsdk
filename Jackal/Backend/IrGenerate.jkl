@@ -16,6 +16,9 @@ FNPTR IrExpressionGenerationF (
 
 IrCurrentFunction : ^IrFunction
 
+IrWhileEndLabel : ^IrInstruction = NULLPTR
+IrWhileBeginLabel : ^IrInstruction = NULLPTR
+
 FN IrCreateInstruction (
     IN type : IrInstructionType,
 ) : ^IrInstruction
@@ -32,11 +35,24 @@ FN IrCreateInstruction (
     END
 
     inst^.Defines = NULLPTR
+    inst^.Source1 = NULLPTR
+    inst^.Source2 = NULLPTR
 
     RETURN inst
 END
 
-FN IrCreateVariable () : ^IrVariable
+FN IrCreateLabel () : ^IrInstruction
+
+    // Create a label instruction.
+
+    RETURN IrCreateInstruction (
+        IR_LABEL, // type
+    )
+END
+
+FN IrCreateVariable (
+    IN definedby : ^IrInstruction,
+) : ^IrVariable
 
     var : ^IrVariable
 
@@ -48,6 +64,9 @@ FN IrCreateVariable () : ^IrVariable
     IF status THEN
         TlInternalError ( "Failed to create IR variable", 0, 0, 0 )
     END
+
+    var^.DefinedBy = definedby
+    var^.Annotation = IR_VAR_UNINITIALIZED
 
     RETURN var
 END
@@ -101,11 +120,165 @@ END
 
 FN IrGenerateLoad (
     IN var : ^IrVariable,
+    IN type : ^LexSemanticType,
 ) : ^IrVariable
 
-    // Generate a load of a pointer into another variable.
+    // Generate a load of a pointer into another variable. The variable is not
+    // annotated.
 
-    TlInternalError ( "TODO IrGenerateLoad", 0, 0, 0 )
+    inst := IrCreateInstruction (
+        IR_LOAD,
+    )
+
+    retvar := IrCreateVariable (
+        inst, // definedby
+    )
+
+    IF type^.Subtype == TYPE_PRIMITIVE THEN
+        inst^.Body.Load.Type = type^.Body.Primitive.Type
+
+    ELSEIF type^.Subtype == TYPE_POINTER THEN
+        inst^.Body.Load.Type = PRIM_TYPE_POINTER
+
+    ELSE
+        TlInternalError ( "Illegal IR load", type^.Subtype, 0, 0 )
+    END
+
+    inst^.Defines = retvar
+    inst^.Source1 = var
+
+    IrInsertInstructionTail ( inst )
+
+    RETURN retvar
+END
+
+FN IrGenerateBranch (
+    IN node : ^PrsAstNode,
+    IN var1 : ^IrVariable,
+    IN var2 : ^IrVariable,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+    IN type : IrInstructionType,
+)
+
+    // Generate a branch instruction based on a property of two variables.
+
+    IF var1^.Annotation == IR_VAR_ADDRESS_CALC THEN
+        var1 = IrGenerateLoad (
+            var1, // var
+            PrsEvaluateType ( node ), // type
+        )
+    END
+
+    IF var2 AND var2^.Annotation == IR_VAR_ADDRESS_CALC THEN
+        var2 = IrGenerateLoad (
+            var2, // var
+            PrsEvaluateType ( node ), // type
+        )
+    END
+
+    inst := IrCreateInstruction (
+        type,
+    )
+
+    inst^.Body.Branch.TrueLabel = truelabel
+    inst^.Body.Branch.FalseLabel = falselabel
+    inst^.Source1 = var1
+    inst^.Source2 = var2
+
+    IrInsertInstructionTail ( inst )
+END
+
+FN IrGenerateUnconditionalJump (
+    IN label : ^IrInstruction,
+)
+
+    // Generate an unconditional jump.
+
+    inst := IrCreateInstruction (
+        IR_JUMP, // type
+    )
+
+    inst^.Body.Jump.Label = label
+
+    IrInsertInstructionTail ( inst )
+END
+
+FN IrCreateConstantVariable (
+    IN value : TlMachineWord,
+) : ^IrVariable
+
+    // Create a variable with a constant value.
+
+    inst := IrCreateInstruction (
+        IR_CONSTANT, // type
+    )
+
+    var := IrCreateVariable (
+        inst, // definedby
+    )
+
+    inst^.Defines = var
+    inst^.Body.Constant.Constant = value
+
+    IrInsertInstructionTail ( inst )
+
+    RETURN var
+END
+
+FN IrGenerateMove (
+    IN destvar : ^IrVariable,
+    IN srcvar : ^IrVariable,
+)
+
+    // Generate a move from the source variable into the destination variable.
+
+    inst := IrCreateInstruction (
+        IR_MOVE, // type
+    )
+
+    inst^.Defines = destvar
+    inst^.Source1 = srcvar
+
+    IrInsertInstructionTail ( inst )
+END
+
+FN IrGenerateConstantMove (
+    IN destvar : ^IrVariable,
+    IN constant : TlMachineWord,
+)
+
+    // Generate a move of a constant into the destination variable.
+
+    constvar := IrCreateConstantVariable ( constant )
+
+    IrGenerateMove (
+        destvar, // destvar
+        constvar, // srcvar
+    )
+END
+
+FN IrGenerateOperatorInst (
+    IN type : IrInstructionType,
+    IN src1 : ^IrVariable,
+    IN src2 : ^IrVariable,
+) : ^IrVariable
+
+    inst := IrCreateInstruction (
+        type, // type
+    )
+
+    var := IrCreateVariable (
+        inst, // definedby
+    )
+
+    inst^.Defines = var
+    inst^.Source1 = src1
+    inst^.Source2 = src2
+
+    IrInsertInstructionTail ( inst )
+
+    RETURN var
 END
 
 EXTERN FN IrGenerateExpression (
@@ -120,10 +293,1110 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
     IN falselabel : ^IrInstruction,
 ) : ^IrVariable
 
-    // Generate IR to put an identifier into a variable.
+    // Generate IR to put an identifier into an IR variable.
 
-    TlInternalError ( "TODO IrGenerateIdentifier", 0, 0, 0 )
+    // If the identifier is a global variable, we will load the pointer to it
+    // into the IR variable.
+
+    // If it's a local variable, and it's compound (an array or struct), we
+    // generate an expression that loads the pointer within the stack frame into
+    // the IR variable.
+
+    // If it's a local variable and it's a datum (i.e. ULONG), we just return
+    // the IR variable that it maps to.
+
+    symbol := CAST node^.Token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_VAR THEN
+        TlInternalError ( "Unexpected symbol type", symbol^.Type, 0, 0 )
+    END
+
+    type := symbol^.SemanticType
+
+    var : ^IrVariable
+
+    IF symbol^.Entry.HashTable != &LexRootScope^.HashTable THEN
+        // It's a local.
+
+        IF symbol^.IrContext THEN
+            // It's a local datum variable and we've already given it an IR
+            // variable.
+
+            var = CAST symbol^.IrContext TO ^IrVariable
+        ELSEIF type^.Subtype == TYPE_PRIMITIVE OR type^.Subtype == TYPE_POINTER THEN
+            // It's a datum. Create a variable to represent this local
+            // variable.
+
+            var = IrCreateVariable (
+                NULLPTR, // definedby
+            )
+
+            symbol^.IrContext = var
+
+            var^.Symbol = symbol
+
+            var^.Annotation = IR_VAR_LOCAL
+        ELSE
+            // It must be compound.
+
+            inst := IrCreateInstruction (
+                IR_STACK_ADDR, // type
+            )
+
+            var = IrCreateVariable (
+                inst, // definedby
+            )
+
+            inst^.Defines = var
+            inst^.Body.Addr.Symbol = symbol
+
+            IrInsertInstructionTail ( inst )
+
+            var^.Annotation = IR_VAR_ADDRESS_CALC
+        END
+    ELSE
+        // It's a global.
+
+        inst := IrCreateInstruction (
+            IR_ADDR, // type
+        )
+
+        var = IrCreateVariable (
+            inst, // definedby
+        )
+
+        var^.Annotation = IR_VAR_ADDRESS_CALC
+
+        inst^.Defines = var
+        inst^.Body.Addr.Symbol = symbol
+
+        IrInsertInstructionTail ( inst )
+    END
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            var, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN var
 END
+
+FN (IrExpressionGenerationF) IrGenerateCast (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a cast.
+
+    // Do nothing!
+
+    RETURN IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateAnd (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for logical AND.
+
+    IF truelabel != NULLPTR THEN
+        // This AND does control flow.
+
+        secondlabel := IrCreateLabel ()
+
+        IrGenerateExpression (
+            node^.Body.Operator.Left, // node
+            secondlabel, // truelabel
+            falselabel, // falselabel
+        )
+
+        IrInsertInstructionTail ( secondlabel )
+
+        IrGenerateExpression (
+            node^.Body.Operator.Right, // node
+            truelabel, // truelabel
+            falselabel, // falselabel
+        )
+
+        RETURN NULLPTR
+    END
+
+    // This AND has to produce a value, but still needs to respect short
+    // circuiting. We don't need to worry about identity law (i.e. x AND TRUE)
+    // because the parser already helpfully dealt with that for us.
+
+    retvar := IrCreateVariable (
+        NULLPTR, // definedby
+    )
+
+    secondlabel := IrCreateLabel ()
+    truelabel = IrCreateLabel ()
+    falselabel = IrCreateLabel ()
+    donelabel := IrCreateLabel ()
+
+    IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        secondlabel, // truelabel
+        falselabel, // falselabel
+    )
+
+    IrInsertInstructionTail ( secondlabel )
+
+    IrGenerateExpression (
+        node^.Body.Operator.Right, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+
+    IrInsertInstructionTail ( truelabel )
+
+    IrGenerateConstantMove (
+        retvar, // destvar
+        1, // constant
+    )
+
+    IrGenerateUnconditionalJump ( donelabel )
+
+    IrInsertInstructionTail ( falselabel )
+
+    IrGenerateConstantMove (
+        retvar, // destvar
+        0, // constant
+    )
+
+    IrInsertInstructionTail ( donelabel )
+
+    RETURN retvar
+END
+
+FN (IrExpressionGenerationF) IrGenerateOr (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for logical OR.
+
+    IF truelabel != NULLPTR THEN
+        // This OR does control flow.
+
+        secondlabel := IrCreateLabel ()
+
+        IrGenerateExpression (
+            node^.Body.Operator.Left, // node
+            truelabel, // truelabel
+            secondlabel, // falselabel
+        )
+
+        IrInsertInstructionTail ( secondlabel )
+
+        IrGenerateExpression (
+            node^.Body.Operator.Right, // node
+            truelabel, // truelabel
+            falselabel, // falselabel
+        )
+
+        RETURN NULLPTR
+    END
+
+    // This OR has to produce a value, but still needs to respect short
+    // circuiting. We don't need to worry about identity law (i.e. x OR TRUE)
+    // because the parser already helpfully dealt with that for us.
+
+    retvar := IrCreateVariable (
+        NULLPTR, // definedby
+    )
+
+    secondlabel := IrCreateLabel ()
+    truelabel = IrCreateLabel ()
+    falselabel = IrCreateLabel ()
+    donelabel := IrCreateLabel ()
+
+    IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        truelabel, // truelabel
+        secondlabel, // falselabel
+    )
+
+    IrInsertInstructionTail ( secondlabel )
+
+    IrGenerateExpression (
+        node^.Body.Operator.Right, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+
+    IrInsertInstructionTail ( truelabel )
+
+    IrGenerateConstantMove (
+        retvar, // destvar
+        1, // constant
+    )
+
+    IrGenerateUnconditionalJump ( donelabel )
+
+    IrInsertInstructionTail ( falselabel )
+
+    IrGenerateConstantMove (
+        retvar, // destvar
+        0, // constant
+    )
+
+    IrInsertInstructionTail ( donelabel )
+
+    RETURN retvar
+END
+
+FN (IrExpressionGenerationF) IrGenerateNot (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for logical NOT.
+
+    IF truelabel THEN
+        // This NOT does control flow.
+
+        IrGenerateExpression (
+            node^.Body.Operator.Left, // node
+            falselabel, // truelabel
+            truelabel, // falselabel
+        )
+
+        RETURN NULLPTR
+    END
+
+    // This NOT has to produce a value.
+
+    var := IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    RETURN IrGenerateOperatorInst (
+        IR_NOT, // type
+        var, // src1
+        NULLPTR, // src2
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateEquiv (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for equivalence.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    IF truelabel THEN
+        // This equivalence does control flow.
+
+        IrGenerateBranch (
+            node, // node
+            var1, // var1
+            var2, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_EQUALS, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN IrGenerateOperatorInst (
+        IR_COMPARE_EQUALS, // type
+        var1, // src1
+        var2, // src2
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateNotEquiv (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for non-equivalence.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    IF truelabel THEN
+        // This operator does control flow.
+
+        IrGenerateBranch (
+            node, // node
+            var1, // var1
+            var2, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NOT_EQUALS, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN IrGenerateOperatorInst (
+        IR_COMPARE_NOT_EQUALS, // type
+        var1, // src1
+        var2, // src2
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateLessThan (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for less-than.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    IF truelabel THEN
+        // This operator does control flow.
+
+        IrGenerateBranch (
+            node, // node
+            var1, // var1
+            var2, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_LESS_THAN, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN IrGenerateOperatorInst (
+        IR_COMPARE_LESS_THAN, // type
+        var1, // src1
+        var2, // src2
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateGreaterThan (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for greater-than.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    IF truelabel THEN
+        // This operator does control flow.
+
+        IrGenerateBranch (
+            node, // node
+            var1, // var1
+            var2, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_GREATER_THAN, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN IrGenerateOperatorInst (
+        IR_COMPARE_GREATER_THAN, // type
+        var1, // src1
+        var2, // src2
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateLtEq (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for less than or equal to.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    IF truelabel THEN
+        // This operator does control flow.
+
+        IrGenerateBranch (
+            node, // node
+            var1, // var1
+            var2, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_LTEQ, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN IrGenerateOperatorInst (
+        IR_COMPARE_LTEQ, // type
+        var1, // src1
+        var2, // src2
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateGtEq (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for greater than or equal to.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    IF truelabel THEN
+        // This operator does control flow.
+
+        IrGenerateBranch (
+            node, // node
+            var1, // var1
+            var2, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_GTEQ, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN IrGenerateOperatorInst (
+        IR_COMPARE_GTEQ, // type
+        var1, // src1
+        var2, // src2
+    )
+END
+
+FN IrGenerateArithmetic (
+    IN node : ^PrsAstNode,
+    IN type : IrInstructionType,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for arithmetic.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var2 := IrGenerateRvalue (
+        node^.Body.Operator.Right, // node
+    )
+
+    retvar := IrGenerateOperatorInst (
+        type, // type
+        var1, // src1
+        var2, // src2
+    )
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            retvar, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN retvar
+END
+
+FN IrGenerateUnaryArithmetic (
+    IN node : ^PrsAstNode,
+    IN type : IrInstructionType,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for unary arithmetic.
+
+    var1 := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    retvar := IrGenerateOperatorInst (
+        type, // type
+        var1, // src1
+        NULLPTR, // src2
+    )
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            retvar, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN retvar
+END
+
+FN (IrExpressionGenerationF) IrGenerateBitAnd (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for bitwise AND.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_BIT_AND, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateBitOr (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for bitwise OR.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_BIT_OR, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGeneratePlus (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for addition.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_ADD, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateMinus (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for subtraction.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_SUBTRACT, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateDivide (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for division.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_DIVIDE, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateModulo (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for modulo.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_MODULO, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateBitXor (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for bit-wise XOR.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_BIT_XOR, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateLeftShift (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for left-shift.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_LEFT_SHIFT, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateRightShift (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for right-shift.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_RIGHT_SHIFT, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateMul (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for multiply.
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        IR_MULTIPLY, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateBitNot (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for bitwise NOT.
+
+    RETURN IrGenerateUnaryArithmetic (
+        node, // node
+        IR_BIT_NOT, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateInverse (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for inverse.
+
+    RETURN IrGenerateUnaryArithmetic (
+        node, // node
+        IR_INVERSE, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
+
+FN (IrExpressionGenerationF) IrGenerateAddrOf (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for taking an address.
+
+    IF truelabel THEN
+        IrGenerateUnconditionalJump ( truelabel )
+
+        RETURN NULLPTR
+    END
+
+    var := IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    IF var^.Annotation == IR_VAR_ADDRESS_CALC THEN
+        // This variable already contained an address. Clear the annotation so
+        // that it doesn't get loaded erroneously.
+
+        var^.Annotation = IR_VAR_UNINITIALIZED
+    ELSE
+        // This was a local. Wrap it in an IR_STACK_ADDR; the code generator
+        // will worry about giving it a stack location and spilling it there.
+
+        IF var^.Annotation != IR_VAR_LOCAL THEN
+            TlInternalError ( "Weird variable at AddrOf", 0, 0, 0 )
+        END
+
+        inst := IrCreateInstruction (
+            IR_STACK_ADDR, // type
+        )
+
+        retvar := IrCreateVariable (
+            inst, // definedby
+        )
+
+        inst^.Defines = retvar
+        inst^.Body.Addr.Symbol = var^.Symbol
+
+        IrInsertInstructionTail ( inst )
+
+        var = retvar
+    END
+
+    RETURN var
+END
+
+FN (IrExpressionGenerationF) IrGenerateCompoundTypeIndex (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for indexing a compound type.
+
+    var := IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    // Load the offset of the field.
+
+    fieldsymbol := CAST node^.Body.Operator.OperatorSpecific TO ^LexSymbol
+
+    constvar := IrCreateConstantVariable ( fieldsymbol^.Value )
+
+    // Generate an addition to calculate the field pointer.
+
+    retvar := IrGenerateOperatorInst (
+        IR_ADD, // type
+        var, // src1
+        constvar, // src2
+    )
+
+    retvar^.Annotation = IR_VAR_ADDRESS_CALC
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            retvar, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN retvar
+END
+
+FN (IrExpressionGenerationF) IrGenerateArrayIndex (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for indexing an array.
+
+    var := IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    indexvar := IrGenerateRvalue ( node^.Body.Operator.Right )
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    stride : TlMachineWord
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        stride = type^.Body.Array.Base^.Size
+    ELSE
+        // Must be a pointer.
+
+        stride = type^.Body.Pointer.Base^.Size
+    END
+
+    stridevar := IrCreateConstantVariable ( stride )
+
+    // Generate a multiplication to calculate the offset.
+
+    offsetvar := IrGenerateOperatorInst (
+        IR_MULTIPLY, // type
+        indexvar, // src1
+        stridevar, // src2
+    )
+
+    // Generate an addition to calculate the element pointer.
+
+    retvar := IrGenerateOperatorInst (
+        IR_ADD, // type
+        var, // src1
+        offsetvar, // src2
+    )
+
+    retvar^.Annotation = IR_VAR_ADDRESS_CALC
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            retvar, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN retvar
+END
+
+FN (IrExpressionGenerationF) IrGeneratePtrDereference (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for dereferencing a pointer.
+
+    var := IrGenerateRvalue (
+        node^.Body.Operator.Left, // node
+    )
+
+    var^.Annotation = IR_VAR_ADDRESS_CALC
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            var, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN var
+END
+
+FN (IrExpressionGenerationF) IrGenerateFunctionCall (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a function call.
+    // Essentially we need to create a list of temporaries containing the value
+    // of each argument. We don't care if they're varargs or not, sorting that
+    // out is the province of the code generator.
+
+    inst := IrCreateInstruction (
+        IR_CALL, // type
+    )
+
+    var := IrCreateVariable (
+        inst, // definedby
+    )
+
+    inst^.Defines = var
+    inst^.Body.Call.ArgListHead = NULLPTR
+
+    arglisttail : ^IrArgument = NULLPTR
+
+    argnode := CAST node^.Body.Operator.OperatorSpecific TO ^PrsAstNode
+
+    WHILE argnode DO
+        irarg : ^IrArgument
+
+        status := TlBumpAlloc (
+            SIZEOF IrArgument, // bytes
+            &irarg, // OUT ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate IR argument", 0, 0, 0 )
+        END
+
+        irarg^.Variable = IrGenerateRvalue ( argnode )
+
+        irarg^.Next = NULLPTR
+
+        IF arglisttail THEN
+            arglisttail^.Next = irarg
+        ELSE
+            inst^.Body.Call.ArgListHead = irarg
+        END
+
+        arglisttail = irarg
+
+        argnode = argnode^.Next
+    END
+
+    IrInsertInstructionTail ( inst )
+
+    IF truelabel THEN
+        IrGenerateBranch (
+            node, // node
+            var, // var1
+            NULLPTR, // var2
+            truelabel, // truelabel
+            falselabel, // falselabel
+            IR_BRANCH_NONZERO, // type
+        )
+
+        RETURN NULLPTR
+    END
+
+    RETURN var
+END
+
+IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_AND] = &IrGenerateAnd,
+    [TOKEN_CAST] = &IrGenerateCast,
+    [TOKEN_NOT] = &IrGenerateNot,
+    [TOKEN_OR] = &IrGenerateOr,
+    [TOKEN_EQUIV] = &IrGenerateEquiv,
+    [TOKEN_NOTEQUIV] = &IrGenerateNotEquiv,
+    [TOKEN_BITAND] = &IrGenerateBitAnd,
+    [TOKEN_BITOR] = &IrGenerateBitOr,
+    [TOKEN_LESSTHAN] = &IrGenerateLessThan,
+    [TOKEN_GREATERTHAN] = &IrGenerateGreaterThan,
+    [TOKEN_LTEQ] = &IrGenerateLtEq,
+    [TOKEN_GTEQ] = &IrGenerateGtEq,
+    [TOKEN_PLUS] = &IrGeneratePlus,
+    [TOKEN_MINUS] = &IrGenerateMinus,
+    [TOKEN_DIVIDE] = &IrGenerateDivide,
+    [TOKEN_MODULO] = &IrGenerateModulo,
+    [TOKEN_DOT] = &IrGenerateCompoundTypeIndex,
+    [TOKEN_BITXOR] = &IrGenerateBitXor,
+    [TOKEN_LEFTSHIFT] = &IrGenerateLeftShift,
+    [TOKEN_RIGHTSHIFT] = &IrGenerateRightShift,
+    [TOKEN_BITNOT] = &IrGenerateBitNot,
+    [TOKEN_MUL] = &IrGenerateMul,
+    [TOKEN_LBRACKET] = &IrGenerateArrayIndex,
+    [TOKEN_CARET] = &IrGeneratePtrDereference,
+    [TOKEN_LPAREN] = &IrGenerateFunctionCall,
+    [TOKEN_ADDROF] = &IrGenerateAddrOf,
+    [TOKEN_INVERSE] = &IrGenerateInverse,
+
+    // Use the same table to squirrel away the assignment operators.
+
+//    [TOKEN_EQUALS] = &IrGenerateEqualsAssign,
+//    [TOKEN_PLUSEQUALS] = &IrGeneratePlusAssign,
+//    [TOKEN_MINUSEQUALS] = &IrGenerateMinusAssign,
+//    [TOKEN_MULEQUALS] = &IrGenerateMulAssign,
+//    [TOKEN_DIVEQUALS] = &IrGenerateDivAssign,
+//    [TOKEN_MODEQUALs] = &IrGenerateModAssign,
+//    [TOKEN_ANDEQUALS] = &IrGenerateAndAssign,
+//    [TOKEN_OREQUALS] = &IrGenerateOrAssign,
+//    [TOKEN_XOREQUALS] = &IrGenerateXorAssign,
+//    [TOKEN_LSHEQUALS] = &IrGenerateLshAssign,
+//    [TOKEN_RSHEQUALS] = &IrGenerateRshAssign,
+}
 
 FN (IrExpressionGenerationF) IrGenerateOperatorExpression (
     IN node : ^PrsAstNode,
@@ -133,7 +1406,13 @@ FN (IrExpressionGenerationF) IrGenerateOperatorExpression (
 
     // Generate IR to put an operator expression into a variable.
 
-    TlInternalError ( "TODO IrGenerateOperatorExpression", 0, 0, 0 )
+    subtype := node^.Token.Subtype
+
+    RETURN IrOperatorGenerationTable[node^.Token.Subtype] (
+        node, // node
+        truelabel, // truelabel,
+        falselabel, // falselabel,
+    )
 END
 
 FN (IrExpressionGenerationF) IrGenerateConstant (
@@ -144,7 +1423,21 @@ FN (IrExpressionGenerationF) IrGenerateConstant (
 
     // Generate IR to put a constant into a variable.
 
-    TlInternalError ( "TODO IrGenerateConstant", 0, 0, 0 )
+    IF truelabel THEN
+        IF node^.Body.Constant.Value THEN
+            IrGenerateUnconditionalJump ( truelabel )
+        ELSE
+            IrGenerateUnconditionalJump ( falselabel )
+        END
+
+        RETURN NULLPTR
+    END
+
+    var := IrCreateConstantVariable (
+        node^.Body.Constant.Value, // value
+    )
+
+    RETURN var
 END
 
 FN (IrExpressionGenerationF) IrGenerateString (
@@ -155,18 +1448,36 @@ FN (IrExpressionGenerationF) IrGenerateString (
 
     // Generate IR to put a string pointer into a variable.
 
-    TlInternalError ( "TODO IrGenerateString", 0, 0, 0 )
+    IF truelabel THEN
+        IrGenerateUnconditionalJump ( truelabel )
+
+        RETURN NULLPTR
+    END
+
+    inst := IrCreateInstruction (
+        IR_STRING_ADDR, // type
+    )
+
+    var := IrCreateVariable (
+        inst, // definedby
+    )
+
+    inst^.Defines = var
+    inst^.Body.String.String = CAST node^.Token.Payload TO ^LexInternedString
+
+    IrInsertInstructionTail ( inst )
+
+    RETURN var
 END
 
-FN (IrExpressionGenerationF) IrGenerateInitializer (
+FN IrGenerateInitializer (
     IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
 ) : ^IrVariable
 
     // Generate IR to initialize a structure.
 
-    TlInternalError ( "TODO IrGenerateInitializer", 0, 0, 0 )
+    LexTokenError ( &node^.Token,
+        "I didn't feel like implementing runtime initializers yet", 0, 0, 0 )
 END
 
 IrExpressionGenerationTable : IrExpressionGenerationF[AST_MAX] = {
@@ -174,7 +1485,6 @@ IrExpressionGenerationTable : IrExpressionGenerationF[AST_MAX] = {
     [AST_OPERATOR] = &IrGenerateOperatorExpression,
     [AST_CONSTANT] = &IrGenerateConstant,
     [AST_STRING] = &IrGenerateString,
-    [AST_INITIALIZER] = &IrGenerateInitializer,
 }
 
 FN IrGenerateExpression (
@@ -206,17 +1516,11 @@ FN IrGenerateRvalue (
         NULLPTR, // falselabel
     )
 
-    IF node^.Type == AST_OPERATOR THEN
-        subtype := node^.Token.Subtype
-
-        IF subtype == TOKEN_LBRACKET OR
-            subtype == TOKEN_DOT OR
-            subtype == TOKEN_CARET THEN
-
-            var = IrGenerateLoad ( var )
-        END
-    ELSEIF node^.Type == AST_IDENTIFIER THEN
-        var = IrGenerateLoad ( var )
+    IF var^.Annotation == IR_VAR_ADDRESS_CALC THEN
+        var = IrGenerateLoad (
+            var, // var
+            PrsEvaluateType ( node ), // type
+        )
     END
 
     RETURN var
@@ -235,9 +1539,10 @@ FN (IrStatementGenerationF) IrGenerateOperator (
     IN node : ^PrsAstNode,
 )
 
-    // Generate IR for an operator.
+    // Generate IR for an operator statement (such as a function call or an
+    // address probe).
 
-    TlInternalError ( "TODO IrGenerateOperator", 0, 0, 0 )
+    IrGenerateRvalue ( node )
 END
 
 FN (IrStatementGenerationF) IrGenerateBreak (
@@ -246,7 +1551,7 @@ FN (IrStatementGenerationF) IrGenerateBreak (
 
     // Generate IR for a break statement.
 
-    TlInternalError ( "TODO IrGenerateBreak", 0, 0, 0 )
+    IrGenerateUnconditionalJump ( IrWhileEndLabel )
 END
 
 FN (IrStatementGenerationF) IrGenerateReturn (
@@ -255,13 +1560,19 @@ FN (IrStatementGenerationF) IrGenerateReturn (
 
     // Generate IR for a return or leave statement.
 
-    // TODO get return value
+    retnode := CAST node^.Body.Statement.StatementSpecific TO ^PrsAstNode
+
+    var : ^IrVariable = NULLPTR
+
+    IF retnode THEN
+        var = IrGenerateRvalue ( retnode )
+    END
 
     inst := IrCreateInstruction (
-        IR_JUMP, // type
+        IR_RETURN, // type
     )
 
-    inst^.Body.Jump.Label = IrCurrentFunction^.EpilogueLabel
+    inst^.Source1 = var
 
     IrInsertInstructionTail ( inst )
 END
@@ -272,7 +1583,72 @@ FN (IrStatementGenerationF) IrGenerateWhile (
 
     // Generate IR for a while loop.
 
-    TlInternalError ( "TODO IrGenerateWhile", 0, 0, 0 )
+    cond := node^.Body.While.Conditional
+    body := node^.Body.While.BodyBlock
+
+    truelabel := IrCreateLabel ()
+    falselabel := IrCreateLabel ()
+
+    oldtruelabel := IrWhileBeginLabel
+    oldfalselabel := IrWhileEndLabel
+
+    IrWhileBeginLabel = truelabel
+    IrWhileEndLabel = falselabel
+
+    IF cond^.Type == AST_CONSTANT OR cond^.Type == AST_STRING THEN
+        // Must be a non-zero constant. Create a simple infinite loop.
+
+        IrInsertInstructionTail ( truelabel )
+
+        IrGenerateBlock ( body )
+
+        IrGenerateUnconditionalJump ( truelabel )
+
+        IrInsertInstructionTail ( falselabel )
+
+        IrWhileBeginLabel = oldtruelabel
+        IrWhileEndLabel = oldfalselabel
+
+        LEAVE
+    END
+
+    // To reduce branches, we want to turn:
+    //
+    // WHILE x DO
+    //     ...
+    // END
+    //
+    // Into:
+    //
+    // IF x THEN
+    //     WHILE TRUE DO
+    //         ...
+    //         IF NOT x THEN
+    //             BREAK
+    //         END
+    //     END
+    // END
+
+    IrGenerateExpression (
+        cond, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+
+    IrInsertInstructionTail ( truelabel )
+
+    IrGenerateBlock ( body )
+
+    IrGenerateExpression (
+        cond, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+
+    IrInsertInstructionTail ( falselabel )
+
+    IrWhileBeginLabel = oldtruelabel
+    IrWhileEndLabel = oldfalselabel
 END
 
 FN (IrStatementGenerationF) IrGenerateLabel (
@@ -292,9 +1668,7 @@ FN (IrStatementGenerationF) IrGenerateLabel (
     inst := CAST labelsym^.IrContext TO ^IrInstruction
 
     IF NOT inst THEN
-        inst = IrCreateInstruction (
-            IR_LABEL, // type
-        )
+        inst = IrCreateLabel ()
 
         labelsym^.IrContext = inst
     END
@@ -312,6 +1686,8 @@ FN (IrStatementGenerationF) IrGenerateGoTo (
 
     IF labelsym^.Type == SYM_FORWARD_LABEL THEN
         // The symbol was never actually defined :(
+        // This is one of the few source text errors that we wait until IR gen
+        // to catch.
 
         LexTokenError ( &node^.Token,
             "Use of label that is never defined", 0, 0, 0 )
@@ -320,20 +1696,12 @@ FN (IrStatementGenerationF) IrGenerateGoTo (
     labelinst := CAST labelsym^.IrContext TO ^IrInstruction
 
     IF NOT labelinst THEN
-        labelinst = IrCreateInstruction (
-            IR_LABEL, // type
-        )
+        labelinst = IrCreateLabel ()
 
         labelsym^.IrContext = labelinst
     END
 
-    inst := IrCreateInstruction (
-        IR_JUMP, // type
-    )
-
-    inst^.Body.Jump.Label = labelinst
-
-    IrInsertInstructionTail ( inst )
+    IrGenerateUnconditionalJump ( labelinst )
 END
 
 FN (IrStatementGenerationF) IrGenerateContinue (
@@ -342,7 +1710,7 @@ FN (IrStatementGenerationF) IrGenerateContinue (
 
     // Generate IR for a continue statement.
 
-    TlInternalError ( "TODO IrGenerateContinue", 0, 0, 0 )
+    IrGenerateUnconditionalJump ( IrWhileBeginLabel )
 END
 
 FN (IrStatementGenerationF) IrGenerateIf (
@@ -351,7 +1719,57 @@ FN (IrStatementGenerationF) IrGenerateIf (
 
     // Generate IR for an if statement.
 
-    TlInternalError ( "TODO IrGenerateIf", 0, 0, 0 )
+    ifcase := node^.Body.If.CaseListHead
+    elseblock := node^.Body.If.ElseBlock
+
+    donelabel := IrCreateLabel ()
+
+    WHILE ifcase DO
+        body := ifcase^.BodyBlock
+        cond := ifcase^.Conditional
+
+        IF ifcase^.Conditional^.Type == AST_CONSTANT THEN
+            // Must be a non-zero constant. We can assume the ELSE block was
+            // completely elided by the parser.
+
+            IrGenerateBlock ( body )
+
+            BREAK
+        END
+
+        truelabel := IrCreateLabel ()
+        falselabel : ^IrInstruction
+
+        IF ifcase^.Next OR elseblock THEN
+            falselabel = IrCreateLabel ()
+        ELSE
+            falselabel = donelabel
+        END
+
+        IrGenerateExpression (
+            cond, // node
+            truelabel, // truelabel
+            falselabel, // falselabel
+        )
+
+        IrInsertInstructionTail ( truelabel )
+
+        IrGenerateBlock ( body )
+
+        IF ifcase^.Next OR elseblock THEN
+            IrGenerateUnconditionalJump ( donelabel )
+
+            IrInsertInstructionTail ( falselabel )
+        END
+
+        ifcase = ifcase^.Next
+    END
+
+    IF elseblock THEN
+        IrGenerateBlock ( elseblock )
+    END
+
+    IrInsertInstructionTail ( donelabel )
 END
 
 IrStatementGenerationTable : IrStatementGenerationF[AST_MAX] = {
@@ -402,19 +1820,12 @@ FN IrGenerateForFunction (
         TlInternalError ( "Failed to create IR block", 0, 0, 0 )
     END
 
-    epiloguelabel := IrCreateInstruction (
-        IR_LABEL, // type
-    )
-
-    IrCurrentFunction^.EpilogueLabel = epiloguelabel
     IrCurrentFunction^.Head = NULLPTR
     IrCurrentFunction^.Tail = NULLPTR
 
     funcsym^.InitialValue = IrCurrentFunction
 
     IrGenerateBlock ( funcsym^.SemanticType^.Body.Function.BodyBlock )
-
-    IrInsertInstructionTail ( epiloguelabel )
 END
 
 FN IrGenerate ()

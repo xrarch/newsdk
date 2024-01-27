@@ -1850,27 +1850,13 @@ FN PrsVariableDeclaration (
 
                 initialtype := PrsEvaluateType ( initialnode )
 
-                IF PrsCheckType (
+                PrsCheckType (
                     &initialnode^.Token, // errtoken
                     type, // type1
                     initialtype, // type2
                     "Initial value doesn't match explicit type: ", // errstring
                     FALSE, // equivalence
-                ) AND NOT global THEN
-                    // There was an implicit cast, make it explicit in the AST.
-
-                    castnode := PrsCreateAstNode (
-                        AST_OPERATOR, // type
-                        &initialnode^.Token, // token
-                    )
-
-                    castnode^.Token.Subtype = TOKEN_CAST
-
-                    castnode^.Body.Operator.Left = initialnode
-                    castnode^.Body.Operator.OperatorSpecific = type
-
-                    initialnode = castnode
-                END
+                )
             END
         END
     END
@@ -2164,28 +2150,13 @@ FN PrsParseBlock (
                 asgnnode^.Body.Assign.Right = rightexpr
 
                 IF assigntoken.Subtype == TOKEN_EQUALS THEN
-                    IF PrsCheckType (
+                    PrsCheckType (
                         &token, // errtoken
                         lefttype, // type1
                         righttype, // type2
                         "Assign: ", // errstring
                         FALSE, // equivalence
-                    ) THEN
-                        // There's an implicit cast, make it explicit in the
-                        // AST.
-
-                        castnode := PrsCreateAstNode (
-                            AST_OPERATOR, // type
-                            &rightexpr^.Token, // token
-                        )
-
-                        castnode^.Token.Subtype = TOKEN_CAST
-
-                        castnode^.Body.Operator.Left = rightexpr
-                        castnode^.Body.Operator.OperatorSpecific = lefttype
-
-                        asgnnode^.Body.Assign.Right = castnode
-                    END
+                    )
 
                     IF rightexpr^.Type == AST_CONSTANT THEN
                         // Check if the constant fits in the type.
@@ -2409,29 +2380,22 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         // part of the function arguments. Only check types before that happens.
 
         IF refarg THEN
-            IF PrsCheckType (
+            PrsCheckType (
                 &argnode^.Token, // errtoken
                 refarg^.Symbol^.SemanticType, // type1
                 argtype, // type2
                 "Function argument: ", // errstring
                 FALSE, // equivalence
-            ) THEN
-                // There's an implicit cast. We have to make it explicit in the
-                // AST.
+            )
 
-                castnode := PrsCreateAstNode (
-                    AST_OPERATOR, // type
-                    &argnode^.Token, // token
+            IF argnode^.Type == AST_CONSTANT THEN
+                // Check if the constant fits in the type.
+
+                PrsCheckConstant (
+                    &argnode^.Token, // errtoken
+                    refarg^.Symbol^.SemanticType, // type
+                    argnode^.Body.Constant.Value, // body
                 )
-
-                castnode^.Token.Subtype = TOKEN_CAST
-
-                castnode^.Body.Operator.Left = argnode
-
-                castnode^.Body.Operator.OperatorSpecific =
-                    refarg^.Symbol^.SemanticType
-
-                argnode = castnode
             END
 
             refarg = refarg^.Next
@@ -4796,7 +4760,9 @@ FN (PrsStatementF) PrsParseReturn (
 
     // Parse a RETURN statement.
 
-    IF NOT PrsCurrentFunction^.Body.Function.ReturnType THEN
+    returntype := PrsCurrentFunction^.Body.Function.ReturnType
+
+    IF NOT returntype THEN
         LexTokenError ( token,
             "Can't RETURN from a function with no return value, use LEAVE",
             0, 0, 0 )
@@ -4818,7 +4784,33 @@ FN (PrsStatementF) PrsParseReturn (
 
     retexpr := PrsExpression ( 0 )
 
-    PrsCheckNodeIsValue ( retexpr )
+    retexprtype := PrsEvaluateType ( retexpr )
+
+    IF NOT PrsTypeIsValue (
+        &retexpr^.Token, // errtoken
+        retexprtype, // type
+    ) THEN
+        LexTokenError ( &retexpr^.Token,
+            "This type is not directly usable as a value", 0, 0, 0 )
+    END
+
+    PrsCheckType (
+        &retexpr^.Token, // errtoken
+        returntype, // type1
+        retexprtype, // type2
+        "Return value: ", // errstring
+        FALSE, // equivalence
+    )
+
+    IF retexpr^.Type == AST_CONSTANT THEN
+        // Check if the constant fits in the type.
+
+        PrsCheckConstant (
+            &retexpr^.Token, // errtoken
+            returntype, // type
+            retexpr^.Body.Constant.Value, // body
+        )
+    END
 
     node^.Body.Statement.StatementSpecific = retexpr
 END
@@ -4859,9 +4851,13 @@ FN (PrsStatementF) PrsParseWhile (
 
     terminator : LexTokenSubtype
 
+    PrsWhileDepth += 1
+
     node^.Body.While.BodyBlock = PrsParseBlock (
         &terminator, // OUT terminator
     )
+
+    PrsWhileDepth -= 1
 
     TlPopDynamicBuffer ( &PrsBlockStack )
 

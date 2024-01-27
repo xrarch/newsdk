@@ -3,10 +3,53 @@
 ENUM IrInstructionType : UBYTE
     IR_LABEL,
     IR_JUMP,
+    IR_LOAD,
+    IR_ADDR,
+    IR_STACK_ADDR,
+    IR_STRING_ADDR,
+    IR_CONSTANT,
+    IR_BRANCH_NONZERO,
+    IR_RETURN,
+    IR_MOVE,
+    IR_NOT,
+    IR_BRANCH_EQUALS,
+    IR_COMPARE_EQUALS,
+    IR_BRANCH_NOT_EQUALS,
+    IR_COMPARE_NOT_EQUALS,
+    IR_BRANCH_LESS_THAN,
+    IR_COMPARE_LESS_THAN,
+    IR_BRANCH_GREATER_THAN,
+    IR_COMPARE_GREATER_THAN,
+    IR_BRANCH_LTEQ,
+    IR_COMPARE_LTEQ,
+    IR_BRANCH_GTEQ,
+    IR_COMPARE_GTEQ,
+    IR_BIT_AND,
+    IR_BIT_OR,
+    IR_ADD,
+    IR_SUBTRACT,
+    IR_DIVIDE,
+    IR_MODULO,
+    IR_BIT_XOR,
+    IR_LEFT_SHIFT,
+    IR_RIGHT_SHIFT,
+    IR_BIT_NOT,
+    IR_MULTIPLY,
+    IR_INVERSE,
+    IR_CALL,
+END
+
+ENUM IrVariableAnnotation : UBYTE
+    IR_VAR_UNINITIALIZED,
+    IR_VAR_ADDRESS_CALC,
+    IR_VAR_LOCAL,
 END
 
 STRUCT IrVariable
     Symbol : ^LexSymbol,
+    DefinedBy : ^IrInstruction,
+
+    Annotation : IrVariableAnnotation,
 END
 
 STRUCT IrLabelBody
@@ -18,9 +61,46 @@ STRUCT IrJumpBody
     Label : ^VOID,
 END
 
+STRUCT IrLoadBody
+    Type : JklPrimitiveType,
+END
+
+STRUCT IrAddrBody
+    Symbol : ^LexSymbol,
+END
+
+STRUCT IrStringBody
+    String : ^LexInternedString,
+END
+
+STRUCT IrConstantBody
+    Constant : TlMachineWord,
+END
+
+STRUCT IrBranchBody
+    // Actually a pointer to IrInstructions (TODO GRR BOOTSTRAP TRANSPILER!!)
+    TrueLabel : ^VOID,
+    FalseLabel : ^VOID,
+END
+
+STRUCT IrArgument
+    Next : ^IrArgument,
+    Variable : ^IrVariable,
+END
+
+STRUCT IrCallBody
+    ArgListHead : ^IrArgument,
+END
+
 UNION IrInstructionBody
     Label : IrLabelBody,
     Jump : IrJumpBody,
+    Load : IrLoadBody,
+    Addr : IrAddrBody,
+    String : IrStringBody,
+    Constant : IrConstantBody,
+    Branch : IrBranchBody,
+    Call : IrCallBody,
 END
 
 STRUCT IrInstruction
@@ -29,14 +109,15 @@ STRUCT IrInstruction
     Block : ^IrFunction,
     Next : ^IrInstruction,
     Prev : ^IrInstruction,
+
     Defines : ^IrVariable,
+    Source1 : ^IrVariable,
+    Source2 : ^IrVariable,
 
     Type : IrInstructionType,
 END
 
 STRUCT IrFunction
-    EpilogueLabel : ^IrInstruction,
-
     Head : ^IrInstruction,
     Tail : ^IrInstruction,
 END
