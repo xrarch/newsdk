@@ -1,6 +1,7 @@
 COMPONENTS := Library \
 			  Frontend \
-			  Backend
+			  Backend \
+			  CTranspiler
 
 OUTPUTFILE := jkl
 

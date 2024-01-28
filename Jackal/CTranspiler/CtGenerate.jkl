@@ -2,7 +2,7 @@
 // Implements the IR-to-C transpilation backend.
 //
 
-#INCLUDE "Be.hjk"
+#INCLUDE "<inc>/Backend.hjk"
 
 CtBigBuffer : TlDynamicBuffer
 

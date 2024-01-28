@@ -7,6 +7,7 @@ Directory structure:
 
   Frontend/ - Lexer and parser.
   Backend/ - Optimizer and generic backend algorithms.
+  CTranspiler/ - C transpiler backend.
 
   xr17032/ - XR/17032 target specific code.
   fox32/ - Fox32 target specific code.
