@@ -701,13 +701,34 @@ FN (IrExpressionGenerationF) IrGenerateNotEquiv (
     )
 END
 
-FN (IrExpressionGenerationF) IrGenerateLessThan (
+FN IrIsSignedType (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Helper routine.
+
+    type := PrsEvaluateType ( node )
+
+    IF type^.Subtype != TYPE_PRIMITIVE THEN
+        RETURN FALSE
+    END
+
+    primtype := type^.Body.Primitive.Type
+
+    RETURN primtype > PRIM_TYPE_SIGNED AND primtype < PRIM_TYPE_SIGNED_MAX
+END
+
+FN IrGenerateComparison (
     IN node : ^PrsAstNode,
     IN truelabel : ^IrInstruction,
     IN falselabel : ^IrInstruction,
+    IN signedbranchtype : IrInstructionType,
+    IN unsignedbranchtype : IrInstructionType,
+    IN signedcmptype : IrInstructionType,
+    IN unsignedcmptype : IrInstructionType,
 ) : ^IrVariable
 
-    // Generate IR for less-than.
+    // Generate IR for a comparison.
 
     var1 := IrGenerateRvalue (
         node^.Body.Operator.Left, // node
@@ -717,25 +738,65 @@ FN (IrExpressionGenerationF) IrGenerateLessThan (
         node^.Body.Operator.Right, // node
     )
 
+    issigned := IrIsSignedType ( node^.Body.Operator.Left )
+
     IF truelabel THEN
         // This operator does control flow.
 
-        IrGenerateBranch (
-            node, // node
-            var1, // var1
-            var2, // var2
-            truelabel, // truelabel
-            falselabel, // falselabel
-            IR_BRANCH_LESS_THAN, // type
-        )
+        IF issigned THEN
+            IrGenerateBranch (
+                node, // node
+                var1, // var1
+                var2, // var2
+                truelabel, // truelabel
+                falselabel, // falselabel
+                signedbranchtype, // type
+            )
+        ELSE
+            IrGenerateBranch (
+                node, // node
+                var1, // var1
+                var2, // var2
+                truelabel, // truelabel
+                falselabel, // falselabel
+                unsignedbranchtype, // type
+            )
+        END
 
         RETURN NULLPTR
     END
 
-    RETURN IrGenerateOperatorInst (
-        IR_COMPARE_LESS_THAN, // type
-        var1, // src1
-        var2, // src2
+    IF issigned THEN
+        RETURN IrGenerateOperatorInst (
+            signedcmptype, // type
+            var1, // src1
+            var2, // src2
+        )
+    ELSE
+        RETURN IrGenerateOperatorInst (
+            unsignedcmptype, // type
+            var1, // src1
+            var2, // src2
+        )
+    END
+END
+
+FN (IrExpressionGenerationF) IrGenerateLessThan (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for less-than.
+
+    RETURN IrGenerateComparison (
+        node, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+        IR_BRANCH_LESS_THAN_SIGNED, // signedbranchtype
+        IR_BRANCH_LESS_THAN, // unsignedbranchtype
+        IR_COMPARE_LESS_THAN_SIGNED, // signedcmptype
+        IR_COMPARE_LESS_THAN, // unsignedcmptype
     )
 END
 
@@ -747,33 +808,14 @@ FN (IrExpressionGenerationF) IrGenerateGreaterThan (
 
     // Generate IR for greater-than.
 
-    var1 := IrGenerateRvalue (
-        node^.Body.Operator.Left, // node
-    )
-
-    var2 := IrGenerateRvalue (
-        node^.Body.Operator.Right, // node
-    )
-
-    IF truelabel THEN
-        // This operator does control flow.
-
-        IrGenerateBranch (
-            node, // node
-            var1, // var1
-            var2, // var2
-            truelabel, // truelabel
-            falselabel, // falselabel
-            IR_BRANCH_GREATER_THAN, // type
-        )
-
-        RETURN NULLPTR
-    END
-
-    RETURN IrGenerateOperatorInst (
-        IR_COMPARE_GREATER_THAN, // type
-        var1, // src1
-        var2, // src2
+    RETURN IrGenerateComparison (
+        node, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+        IR_BRANCH_GREATER_THAN_SIGNED, // signedbranchtype
+        IR_BRANCH_GREATER_THAN, // unsignedbranchtype
+        IR_COMPARE_GREATER_THAN_SIGNED, // signedcmptype
+        IR_COMPARE_GREATER_THAN, // unsignedcmptype
     )
 END
 
@@ -785,33 +827,14 @@ FN (IrExpressionGenerationF) IrGenerateLtEq (
 
     // Generate IR for less than or equal to.
 
-    var1 := IrGenerateRvalue (
-        node^.Body.Operator.Left, // node
-    )
-
-    var2 := IrGenerateRvalue (
-        node^.Body.Operator.Right, // node
-    )
-
-    IF truelabel THEN
-        // This operator does control flow.
-
-        IrGenerateBranch (
-            node, // node
-            var1, // var1
-            var2, // var2
-            truelabel, // truelabel
-            falselabel, // falselabel
-            IR_BRANCH_LTEQ, // type
-        )
-
-        RETURN NULLPTR
-    END
-
-    RETURN IrGenerateOperatorInst (
-        IR_COMPARE_LTEQ, // type
-        var1, // src1
-        var2, // src2
+    RETURN IrGenerateComparison (
+        node, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+        IR_BRANCH_LTEQ_SIGNED, // signedbranchtype
+        IR_BRANCH_LTEQ, // unsignedbranchtype
+        IR_COMPARE_LTEQ_SIGNED, // signedcmptype
+        IR_COMPARE_LTEQ, // unsignedcmptype
     )
 END
 
@@ -823,33 +846,14 @@ FN (IrExpressionGenerationF) IrGenerateGtEq (
 
     // Generate IR for greater than or equal to.
 
-    var1 := IrGenerateRvalue (
-        node^.Body.Operator.Left, // node
-    )
-
-    var2 := IrGenerateRvalue (
-        node^.Body.Operator.Right, // node
-    )
-
-    IF truelabel THEN
-        // This operator does control flow.
-
-        IrGenerateBranch (
-            node, // node
-            var1, // var1
-            var2, // var2
-            truelabel, // truelabel
-            falselabel, // falselabel
-            IR_BRANCH_GTEQ, // type
-        )
-
-        RETURN NULLPTR
-    END
-
-    RETURN IrGenerateOperatorInst (
-        IR_COMPARE_GTEQ, // type
-        var1, // src1
-        var2, // src2
+    RETURN IrGenerateComparison (
+        node, // node
+        truelabel, // truelabel
+        falselabel, // falselabel
+        IR_BRANCH_GTEQ_SIGNED, // signedbranchtype
+        IR_BRANCH_GTEQ, // unsignedbranchtype
+        IR_COMPARE_GTEQ_SIGNED, // signedcmptype
+        IR_COMPARE_GTEQ, // unsignedcmptype
     )
 END
 
@@ -999,12 +1003,21 @@ FN (IrExpressionGenerationF) IrGenerateDivide (
 
     // Generate IR for division.
 
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_DIVIDE, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
+    IF IrIsSignedType ( node^.Body.Operator.Left ) THEN
+        RETURN IrGenerateArithmetic (
+            node, // node
+            IR_DIVIDE_SIGNED, // type
+            truelabel, // truelabel
+            falselabel, // falselabel
+        )
+    ELSE
+        RETURN IrGenerateArithmetic (
+            node, // node
+            IR_DIVIDE, // type
+            truelabel, // truelabel
+            falselabel, // falselabel
+        )
+    END
 END
 
 FN (IrExpressionGenerationF) IrGenerateModulo (
