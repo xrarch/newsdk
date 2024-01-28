@@ -37,6 +37,7 @@ ENUM IrInstructionType : UBYTE
     IR_MULTIPLY,
     IR_INVERSE,
     IR_CALL,
+    IR_STORE,
 END
 
 ENUM IrVariableAnnotation : UBYTE
@@ -61,7 +62,7 @@ STRUCT IrJumpBody
     Label : ^VOID,
 END
 
-STRUCT IrLoadBody
+STRUCT IrLoadStoreBody
     Type : JklPrimitiveType,
 END
 
@@ -95,7 +96,7 @@ END
 UNION IrInstructionBody
     Label : IrLabelBody,
     Jump : IrJumpBody,
-    Load : IrLoadBody,
+    LoadStore : IrLoadStoreBody,
     Addr : IrAddrBody,
     String : IrStringBody,
     Constant : IrConstantBody,

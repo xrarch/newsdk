@@ -1882,6 +1882,8 @@ FN PrsVariableDeclaration (
                 token, // token
             )
 
+            asgnnode^.Token.Subtype = TOKEN_EQUALS
+
             asgnnode^.Body.Assign.Left = idnode
             asgnnode^.Body.Assign.Right = initialnode
 
@@ -2115,7 +2117,7 @@ FN PrsParseBlock (
 
                 asgnnode := PrsCreateAstNode (
                     AST_ASSIGN, // type
-                    &token, // token
+                    &assigntoken, // token
                 )
 
                 IF NOT PrsIsLvalue ( leftexpr ) THEN

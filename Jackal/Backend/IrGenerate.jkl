@@ -135,10 +135,10 @@ FN IrGenerateLoad (
     )
 
     IF type^.Subtype == TYPE_PRIMITIVE THEN
-        inst^.Body.Load.Type = type^.Body.Primitive.Type
+        inst^.Body.LoadStore.Type = type^.Body.Primitive.Type
 
     ELSEIF type^.Subtype == TYPE_POINTER THEN
-        inst^.Body.Load.Type = PRIM_TYPE_POINTER
+        inst^.Body.LoadStore.Type = PRIM_TYPE_POINTER
 
     ELSE
         TlInternalError ( "Illegal IR load", type^.Subtype, 0, 0 )
@@ -150,6 +150,34 @@ FN IrGenerateLoad (
     IrInsertInstructionTail ( inst )
 
     RETURN retvar
+END
+
+FN IrGenerateStore (
+    IN destvar : ^IrVariable,
+    IN srcvar : ^IrVariable,
+    IN type : ^LexSemanticType,
+)
+
+    // Generate a memory store where destvar contains the address.
+
+    inst := IrCreateInstruction (
+        IR_STORE, // type
+    )
+
+    IF type^.Subtype == TYPE_PRIMITIVE THEN
+        inst^.Body.LoadStore.Type = type^.Body.Primitive.Type
+
+    ELSEIF type^.Subtype == TYPE_POINTER THEN
+        inst^.Body.LoadStore.Type = PRIM_TYPE_POINTER
+
+    ELSE
+        TlInternalError ( "Illegal IR store", type^.Subtype, 0, 0 )
+    END
+
+    inst^.Source1 = destvar
+    inst^.Source2 = srcvar
+
+    IrInsertInstructionTail ( inst )
 END
 
 FN IrGenerateBranch (
@@ -1354,6 +1382,267 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
     RETURN var
 END
 
+FN IrGenerateAssignment (
+    IN destvar : ^IrVariable,
+    IN srcvar : ^IrVariable,
+    IN type : ^LexSemanticType,
+)
+
+    // Generate a store into a variable.
+
+    IF destvar^.Annotation == IR_VAR_ADDRESS_CALC THEN
+        // Actually generate a memory store.
+
+        IrGenerateStore (
+            destvar, // destvar
+            srcvar, // srcvar
+            type, // type
+        )
+    ELSEIF destvar^.Annotation == IR_VAR_LOCAL THEN
+        // Generate a move.
+        // XXX Remember that code generation should notice a cast here.
+
+        IrGenerateMove (
+            destvar, // destvar
+            srcvar, // srcvar
+        )
+    ELSE
+        TlInternalError ( "Unexpected IR variable", destvar^.Annotation, 0, 0 )
+    END
+END
+
+FN (IrExpressionGenerationF) IrGenerateEqualsAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a plain equals assignment.
+
+    var := IrGenerateRvalue (
+        node^.Body.Assign.Right, // node
+    )
+
+    dest := IrGenerateExpression (
+        node^.Body.Assign.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    IrGenerateAssignment (
+        dest, // destvar
+        var, // srcvar
+        PrsEvaluateType ( node^.Body.Assign.Left ), // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN IrGenerateModificationAssign (
+    IN node : ^PrsAstNode,
+    IN type : IrInstructionType,
+)
+
+    // Generic code for generating IR for a modification assignment.
+
+    desttype := PrsEvaluateType ( node^.Body.Assign.Left )
+
+    valvar := IrGenerateRvalue (
+        node^.Body.Assign.Right, // node
+    )
+
+    destvar := IrGenerateExpression (
+        node^.Body.Assign.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
+    contentsvar : ^IrVariable
+
+    IF destvar^.Annotation == IR_VAR_ADDRESS_CALC THEN
+        contentsvar = IrGenerateLoad (
+            destvar, // var
+            desttype, // type
+        )
+    ELSE
+        contentsvar = destvar
+    END
+
+    // Generate the modification instruction.
+
+    newvar := IrGenerateOperatorInst (
+        type, // type
+        contentsvar, // src1
+        valvar, // src2
+    )
+
+    IrGenerateAssignment (
+        destvar, // destvar
+        newvar, // srcvar
+        PrsEvaluateType ( node^.Body.Assign.Left ), // type
+    )
+END
+
+FN (IrExpressionGenerationF) IrGeneratePlusAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a plus-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_ADD, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateMinusAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a minus-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_SUBTRACT, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateMulAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a mul-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_MULTIPLY, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateDivAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a div-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_DIVIDE, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateModAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a mod-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_MODULO, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateAndAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for an and-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_BIT_AND, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateOrAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for an or-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_BIT_OR, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateXorAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for an xor-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_BIT_XOR, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateLshAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a left-shift-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_LEFT_SHIFT, // type
+    )
+
+    RETURN NULLPTR
+END
+
+FN (IrExpressionGenerationF) IrGenerateRshAssign (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for a right-shift-equals assignment.
+
+    IrGenerateModificationAssign (
+        node, // node
+        IR_RIGHT_SHIFT, // type
+    )
+
+    RETURN NULLPTR
+END
+
 IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_AND] = &IrGenerateAnd,
     [TOKEN_CAST] = &IrGenerateCast,
@@ -1385,17 +1674,17 @@ IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
 
     // Use the same table to squirrel away the assignment operators.
 
-//    [TOKEN_EQUALS] = &IrGenerateEqualsAssign,
-//    [TOKEN_PLUSEQUALS] = &IrGeneratePlusAssign,
-//    [TOKEN_MINUSEQUALS] = &IrGenerateMinusAssign,
-//    [TOKEN_MULEQUALS] = &IrGenerateMulAssign,
-//    [TOKEN_DIVEQUALS] = &IrGenerateDivAssign,
-//    [TOKEN_MODEQUALs] = &IrGenerateModAssign,
-//    [TOKEN_ANDEQUALS] = &IrGenerateAndAssign,
-//    [TOKEN_OREQUALS] = &IrGenerateOrAssign,
-//    [TOKEN_XOREQUALS] = &IrGenerateXorAssign,
-//    [TOKEN_LSHEQUALS] = &IrGenerateLshAssign,
-//    [TOKEN_RSHEQUALS] = &IrGenerateRshAssign,
+    [TOKEN_EQUALS] = &IrGenerateEqualsAssign,
+    [TOKEN_PLUSEQUALS] = &IrGeneratePlusAssign,
+    [TOKEN_MINUSEQUALS] = &IrGenerateMinusAssign,
+    [TOKEN_MULEQUALS] = &IrGenerateMulAssign,
+    [TOKEN_DIVEQUALS] = &IrGenerateDivAssign,
+    [TOKEN_MODEQUALS] = &IrGenerateModAssign,
+    [TOKEN_ANDEQUALS] = &IrGenerateAndAssign,
+    [TOKEN_OREQUALS] = &IrGenerateOrAssign,
+    [TOKEN_XOREQUALS] = &IrGenerateXorAssign,
+    [TOKEN_LSHEQUALS] = &IrGenerateLshAssign,
+    [TOKEN_RSHEQUALS] = &IrGenerateRshAssign,
 }
 
 FN (IrExpressionGenerationF) IrGenerateOperatorExpression (
@@ -1478,6 +1767,8 @@ FN IrGenerateInitializer (
 
     LexTokenError ( &node^.Token,
         "I didn't feel like implementing runtime initializers yet", 0, 0, 0 )
+
+    RETURN NULLPTR
 END
 
 IrExpressionGenerationTable : IrExpressionGenerationF[AST_MAX] = {
@@ -1532,7 +1823,13 @@ FN (IrStatementGenerationF) IrGenerateAssign (
 
     // Generate IR for an assignment.
 
-    TlInternalError ( "TODO IrGenerateAssign", 0, 0, 0 )
+    subtype := node^.Token.Subtype
+
+    IrOperatorGenerationTable[node^.Token.Subtype] (
+        node, // node
+        NULLPTR, // truelabel,
+        NULLPTR, // falselabel,
+    )
 END
 
 FN (IrStatementGenerationF) IrGenerateOperator (
