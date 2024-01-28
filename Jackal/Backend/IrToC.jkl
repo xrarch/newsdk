@@ -4,17 +4,76 @@
 
 #INCLUDE "Be.hjk"
 
+CtBigBuffer : TlDynamicBuffer
+
+FN CtCopyBytes (
+    IN srcbuf : ^UBYTE,
+    IN length : ULONG,
+)
+
+    // Copy a buffer into the big buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &CtBigBuffer, // array
+        srcbuf, // srcbuf
+        length, // length
+    )
+END
+
+FN CtInsertString (
+    IN string : ^UBYTE,
+)
+
+    // Insert a string into the big buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &CtBigBuffer, // array
+        string, // srcbuf
+        TlMeasureString ( string ), // length
+    )
+END
+
+FN CtInsertByte (
+    IN byte : UBYTE,
+)
+    
+    // Insert a single byte into the big buffer.
+
+    TlInsertDynamicBuffer (
+        &CtBigBuffer, // array
+        byte, // byte
+    )
+END
+
+FN CtInsertNumber (
+    IN number : ULONG,
+)
+
+    // Insert a number into the big buffer.
+
+    TlInsertNumberDynamicBuffer (
+        &CtBigBuffer, // array
+        number, // number
+        10, // base
+    )
+END
+
 FN CtGenerateGlobal (
     IN sym : ^LexSymbol,
 )
 
     // Generate C for a global definition.
 
-    TlPrintString ( sym^.Name )
-    TlPrintString ( "\n" )
+    // TEST TEST
+    CtInsertString ( sym^.Name )
+    CtInsertByte ( '\n' )
 END
 
 FN CtTranspile ()
+
+    // Initialize the dynamic buffer that will contain the output text.
+
+    TlInitializeDynamicBuffer ( &CtBigBuffer )
 
     // For each global, generate C.
 
@@ -25,4 +84,12 @@ FN CtTranspile ()
 
         sym = sym^.Next
     END
+
+    // Output the contents of the buffer to the destination file.
+
+    TlWriteFile (
+        FeOutputFileHandle, // handle
+        CtBigBuffer.Count, // bytes
+        CtBigBuffer.Buffer, // buffer
+    )
 END
