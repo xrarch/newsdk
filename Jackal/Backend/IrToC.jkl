@@ -1,0 +1,28 @@
+//
+// Implements the IR-to-C transpilation backend.
+//
+
+#INCLUDE "Be.hjk"
+
+FN CtGenerateGlobal (
+    IN sym : ^LexSymbol,
+)
+
+    // Generate C for a global definition.
+
+    TlPrintString ( sym^.Name )
+    TlPrintString ( "\n" )
+END
+
+FN CtTranspile ()
+
+    // For each global, generate C.
+
+    sym := PrsGlobalListHead
+
+    WHILE sym DO
+        CtGenerateGlobal ( sym )
+
+        sym = sym^.Next
+    END
+END

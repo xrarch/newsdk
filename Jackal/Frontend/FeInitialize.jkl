@@ -17,6 +17,8 @@ PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
 
 PUBLIC JklPrimitiveTypeMasks : TlMachineWord[PRIM_TYPE_MAX]
 
+PUBLIC JklCHost := FALSE
+
 FeFileBlockHashTable : TlHashTable
 
 FN FeIsMacroArgument (
@@ -78,6 +80,12 @@ FN FeParseArguments (
                 &argv[i][7], // src
                 FE_PATH_BUFFER_SIZE, // bufsize
             )
+
+            IF TlCompareString ( &FeTargetString[0], "CHost" ) == 0 THEN
+                JklCHost = TRUE
+            ELSE
+                JklCHost = FALSE
+            END
 
             foundtarget = TRUE
 
@@ -173,6 +181,7 @@ FN FeCopyPathFileBlock (
 END
 
 EXTERN FN IrGenerate ()
+EXTERN FN CtTranspile ()
 
 FN JklCompileProgram (
     IN argc : ULONG,
@@ -208,6 +217,14 @@ FN JklCompileProgram (
     // Generate IR for each function.
 
     IrGenerate ()
+
+    IF JklCHost THEN
+        // We're transpiling for the C host, so generate the C and return.
+
+        CtTranspile ()
+
+        LEAVE
+    END
 
     // Call the target-specific code to finish compilation.
 
