@@ -58,15 +58,288 @@ FN CtInsertNumber (
     )
 END
 
+CtTypeNames : ^UBYTE[PRIM_TYPE_MAX] = {
+    [PRIM_TYPE_BYTE] = "int8_t",
+    [PRIM_TYPE_INT] = "int16_t",
+    [PRIM_TYPE_LONG] = "int32_t",
+    [PRIM_TYPE_QUAD] = "int64_t",
+
+    [PRIM_TYPE_UBYTE] = "uint8_t",
+    [PRIM_TYPE_UINT] = "uint16_t",
+    [PRIM_TYPE_ULONG] = "uint32_t",
+    [PRIM_TYPE_UQUAD] = "uint64_t",
+
+    [PRIM_TYPE_POINTER] = "uint64_t",
+}
+
+FN CtGenerateCompoundInitializer (
+    IN node : ^PrsAstNode,
+    IN count : ULONG,
+)
+
+    // Generate a compound data type initializer.
+
+    bytearray := node^.Body.Initializer.ByteArray
+    bparray := node^.Body.Initializer.BpArray
+
+    i := 0
+
+    CtInsertString ( "{\n" )
+
+    WHILE i < count DO
+        // For each 8 bytes we want to insert a quad into the array.
+        // Note that the parser rounds up the byte array and bp array to the
+        // next multiple of 8.
+
+        IF bparray[i] THEN
+            CtInsertString ( "    " )
+
+            CtGenerateInitializer (
+                bparray[i], // value
+                PRIM_TYPE_POINTER, // primtype
+                0, // count
+            )
+        ELSE
+            CtInsertString ( "    0x" )
+
+            j := 8
+
+            WHILE j DO
+                j -= 1
+
+                byte : UBYTE = bytearray[i + j]
+
+                TlPrintNumber ( bytearray[i + j] )
+                TlPrintString ( "\n" )
+
+                lonibble := byte & 0xF
+                hinibble := byte >> 4
+
+                IF hinibble < 10 THEN
+                    CtInsertByte ( '0' + hinibble )
+                ELSE
+                    CtInsertByte ( 'A' + hinibble - 10 )
+                END
+
+                IF lonibble < 10 THEN
+                    CtInsertByte ( '0' + lonibble )
+                ELSE
+                    CtInsertByte ( 'A' + lonibble - 10 )
+                END
+            END
+        END
+
+        CtInsertString ( ",\n" )
+
+        i += 8
+    END
+
+    CtInsertString ( "}" )
+END
+
+FN CtGenerateString (
+    IN string : ^LexInternedString,
+)
+
+    // Generate a string.
+
+    buffer := string^.DynamicBuffer.Buffer
+    count := string^.DynamicBuffer.Count - 1
+    i := 0
+
+    CtInsertByte ( '"' )
+
+    WHILE i < count DO
+        IF buffer[i] == '\n' THEN
+            CtInsertByte ( 92 )
+            CtInsertByte ( 'n' )
+
+        ELSEIF buffer[i] == '\t' THEN
+            CtInsertByte ( 92 )
+            CtInsertByte ( 't' )
+
+        ELSEIF buffer[i] == '\r' THEN
+            CtInsertByte ( 92 )
+            CtInsertByte ( 'r' )
+
+        ELSEIF buffer[i] == '\b' THEN
+            CtInsertByte ( 92 )
+            CtInsertByte ( 'b' )
+
+        ELSEIF buffer[i] == '"' THEN
+            CtInsertByte ( 92 )
+            CtInsertByte ( '"' )
+
+        ELSEIF buffer[i] == '\\' THEN
+            CtInsertByte ( 92 )
+            CtInsertByte ( 92 )
+
+        ELSEIF buffer[i] == '\[' THEN
+            CtInsertByte ( 92 )
+            CtInsertString ( "x1B" )
+
+        ELSE
+            CtInsertByte ( buffer[i] )
+        END
+
+        i += 1
+    END
+
+    CtInsertByte ( '"' )
+END
+
+FN CtGenerateInitializer (
+    IN value : ^PrsAstNode,
+    IN primtype : JklPrimitiveType,
+    IN count : ULONG,
+)
+
+    // Generate C for an initializer.
+
+    // First skip any casts.
+
+    WHILE value^.Type == AST_OPERATOR AND value^.Token.Subtype == TOKEN_CAST DO
+        value = value^.Body.Operator.Left
+    END
+
+    // Because the value has to be known at compile time, there are only a
+    // handful of options for what this could be.
+
+    // 1. A constant.
+
+    IF value^.Type == AST_CONSTANT THEN
+        CtInsertNumber ( value^.Body.Constant.Value )
+
+        LEAVE
+    END
+
+    // 2. A string.
+
+    IF value^.Type == AST_STRING THEN
+        CtInsertByte ( '(' )
+
+        CtInsertString ( CtTypeNames[primtype] )
+
+        CtInsertString ( ")(&" )
+
+        CtGenerateString (
+            CAST value^.Token.Payload TO ^LexInternedString, // string
+        )
+
+        CtInsertByte ( ')' )
+
+        LEAVE
+    END
+
+    // 3. A fancy initializer.
+
+    IF value^.Type == AST_INITIALIZER THEN
+        CtGenerateCompoundInitializer (
+            value, // node
+            count, // count
+        )
+
+        LEAVE
+    END
+
+    // 4. An address of an identifier.
+
+    IF value^.Type == AST_OPERATOR AND
+        value^.Token.Subtype == TOKEN_ADDROF THEN
+
+        CtInsertByte ( '(' )
+
+        CtInsertString ( CtTypeNames[primtype] )
+
+        CtInsertString ( ")(&" )
+
+        id := CAST value^.Body.Operator.Left^.Token.Payload TO ^LexSymbol
+
+        CtInsertString ( id^.Name )
+
+        CtInsertByte ( ')' )
+
+        LEAVE
+    END
+
+    TlInternalError ( "Didn't expect this value here", value^.Type, 0, 0 )
+END
+
+FN CtGenerateFunction (
+    IN sym : ^LexSymbol,
+)
+
+    // Generate C for a function.
+
+
+END
+
 FN CtGenerateGlobal (
     IN sym : ^LexSymbol,
 )
 
     // Generate C for a global definition.
 
-    // TEST TEST
+    IF sym^.Flags == VAR_FLAG_EXTERN THEN
+        CtInsertString ( "extern " )
+    END
+
+    type := sym^.SemanticType
+
+    // Skip names.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    primtype : JklPrimitiveType
+    bound := 0
+
+    IF type^.Subtype == TYPE_FUNCTION THEN
+        CtGenerateFunction ( sym )
+
+        LEAVE
+    END
+
+    IF type^.Subtype == TYPE_ARRAY OR type^.Subtype == TYPE_COMPOUND THEN
+        bound = type^.Size
+        primtype = PRIM_TYPE_POINTER
+
+    ELSEIF type^.Subtype == TYPE_POINTER THEN
+        primtype = PRIM_TYPE_POINTER
+
+    ELSEIF type^.Subtype == TYPE_PRIMITIVE THEN
+        primtype = type^.Body.Primitive.Type
+
+    ELSE
+        TlInternalError ( "Didn't expect this type here", type^.Subtype, 0, 0 )
+    END
+
+    CtInsertString ( CtTypeNames[primtype] )
+
+    CtInsertByte ( ' ' )
+
     CtInsertString ( sym^.Name )
-    CtInsertByte ( '\n' )
+
+    IF bound THEN
+        CtInsertByte ( '[' )
+
+        CtInsertNumber ( ((bound + 7) & ~7) / 8 )
+
+        CtInsertByte ( ']' )
+    END
+
+    IF sym^.InitialValue THEN
+        CtInsertString ( " = " )
+
+        CtGenerateInitializer (
+            CAST sym^.InitialValue TO ^PrsAstNode, // value
+            primtype, // primtype
+            (bound + 7) & ~7, // count
+        )
+    END
+
+    CtInsertString ( ";\n" )
 END
 
 FN CtTranspile ()
@@ -74,6 +347,10 @@ FN CtTranspile ()
     // Initialize the dynamic buffer that will contain the output text.
 
     TlInitializeDynamicBuffer ( &CtBigBuffer )
+
+    // Include the header that gives us standard sizes like uint8_t.
+
+    CtInsertString ( "#include <stdint.h>\n" )
 
     // For each global, generate C.
 

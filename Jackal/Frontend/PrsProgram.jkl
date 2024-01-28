@@ -36,12 +36,6 @@ END
 
 PrsWhileDepth : ULONG = 0
 
-CONST VAR_FLAG_EXTERN := 1
-CONST VAR_FLAG_PUBLIC := 2
-CONST VAR_FLAG_EXPORT := 4
-
-CONST TYPE_SIZE_UNINIT := 0xFFFFFFFF
-
 FNPTR PrsOperatorF (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -270,6 +264,12 @@ FN PrsIsCompileTime (
 ) : UBYTE
 
     // Evaluates whether the value of a node can be known at compile time.
+
+    // Skip casts, they shouldn't hurt this.
+
+    WHILE node^.Type == AST_OPERATOR AND node^.Token.Subtype == TOKEN_CAST DO
+        node = node^.Body.Operator.Left
+    END
 
     IF node^.Type == AST_CONSTANT THEN
         RETURN TRUE
@@ -1099,7 +1099,7 @@ FN PrsParseInitializer (
 
     IF NOT bytearray THEN
         status := TlBumpAlloc (
-            type^.Size, // bytes
+            (type^.Size + 7) & ~7, // bytes
             &bytearray, // OUT ptr
         )
 
@@ -1109,7 +1109,7 @@ FN PrsParseInitializer (
         END
 
         status = TlBumpAlloc (
-            type^.Size * SIZEOF ^PrsAstNode, // bytes
+            ((type^.Size + 7) & ~7) * SIZEOF ^PrsAstNode, // bytes
             &bparray, // OUT ptr
         )
 
@@ -1130,13 +1130,13 @@ FN PrsParseInitializer (
 
         TlFillMemoryWithByte (
             bytearray, // ptr
-            type^.Size, // sz
+            (type^.Size + 7) & ~7, // sz
             0, // byte
         )
 
         TlFillMemoryWithByte (
             bparray, // ptr
-            type^.Size * SIZEOF ^PrsAstNode, // sz
+            ((type^.Size + 7) & ~7) * SIZEOF ^PrsAstNode, // sz
             0, // byte
         )
     END
@@ -1897,25 +1897,32 @@ FN PrsVariableDeclaration (
             )
         END
 
-    ELSEIF initialnode THEN
-        // Statically evaluate the initial value. If it can't be statically
-        // evaluated, that's an error, since this is a global. Note that we
-        // might still leave it as a "complex" AST node if it's a pointer to
-        // some other global or something because we don't know the value of
-        // that immediately.
-
-        IF NOT PrsIsCompileTime ( initialnode ) THEN
+    ELSE
+        IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
             LexTokenError ( token,
-                "Globals require a compile-time initial value.", 0, 0, 0 )
+                "Can't declare a boundless global array", 0, 0, 0 )
         END
 
-        symbol^.InitialValue = initialnode
+        IF initialnode THEN
+            // Statically evaluate the initial value. If it can't be statically
+            // evaluated, that's an error, since this is a global. Note that we
+            // might still leave it as a "complex" AST node if it's a pointer to
+            // some other global or something because we don't know the value of
+            // that immediately.
 
-    ELSE
-        // Uninitialized globals have a value of zero, always.
-        // Backend may place this in BSS.
+            IF NOT PrsIsCompileTime ( initialnode ) THEN
+                LexTokenError ( token,
+                    "Globals require a compile-time initial value.", 0, 0, 0 )
+            END
 
-        symbol^.InitialValue = NULLPTR
+            symbol^.InitialValue = initialnode
+
+        ELSE
+            // Uninitialized globals have a value of zero, always.
+            // Backend may place this in BSS.
+
+            symbol^.InitialValue = NULLPTR
+        END
     END
 
     RETURN symbol
