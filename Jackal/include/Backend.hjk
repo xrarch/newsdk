@@ -47,6 +47,8 @@ ENUM IrInstructionType : UBYTE
     IR_INVERSE,
     IR_CALL,
     IR_STORE,
+
+    IR_MAX, // MUST be at the end
 END
 
 ENUM IrVariableAnnotation : UBYTE
@@ -60,10 +62,13 @@ STRUCT IrVariable
     DefinedBy : ^IrInstruction,
 
     Annotation : IrVariableAnnotation,
+
+    Number : ULONG,
 END
 
 STRUCT IrLabelBody
-    References : ULONG,
+    Symbol : ^LexSymbol,
+    Number : ULONG,
 END
 
 STRUCT IrJumpBody
@@ -93,13 +98,9 @@ STRUCT IrBranchBody
     FalseLabel : ^VOID,
 END
 
-STRUCT IrArgument
-    Next : ^IrArgument,
-    Variable : ^IrVariable,
-END
-
 STRUCT IrCallBody
     ArgListHead : ^IrArgument,
+    FunctionType : ^LexSemanticType,
 END
 
 UNION IrInstructionBody
@@ -111,6 +112,11 @@ UNION IrInstructionBody
     Constant : IrConstantBody,
     Branch : IrBranchBody,
     Call : IrCallBody,
+END
+
+STRUCT IrArgument
+    Next : ^IrArgument,
+    Variable : ^IrVariable,
 END
 
 STRUCT IrInstruction

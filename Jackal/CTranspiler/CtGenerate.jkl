@@ -6,6 +6,12 @@
 
 CtBigBuffer : TlDynamicBuffer
 
+CtFuncBuffer : TlDynamicBuffer
+
+FNPTR CtInsertByteF (
+    IN byte : UBYTE,
+)
+
 FN CtCopyBytes (
     IN srcbuf : ^UBYTE,
     IN length : ULONG,
@@ -33,7 +39,7 @@ FN CtInsertString (
     )
 END
 
-FN CtInsertByte (
+FN (CtInsertByteF) CtInsertByte (
     IN byte : UBYTE,
 )
     
@@ -58,6 +64,58 @@ FN CtInsertNumber (
     )
 END
 
+FN CtCopyBytesFunc (
+    IN srcbuf : ^UBYTE,
+    IN length : ULONG,
+)
+
+    // Copy a buffer into the func buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &CtFuncBuffer, // array
+        srcbuf, // srcbuf
+        length, // length
+    )
+END
+
+FN CtInsertStringFunc (
+    IN string : ^UBYTE,
+)
+
+    // Insert a string into the func buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &CtFuncBuffer, // array
+        string, // srcbuf
+        TlMeasureString ( string ), // length
+    )
+END
+
+FN (CtInsertByteF) CtInsertByteFunc (
+    IN byte : UBYTE,
+)
+    
+    // Insert a single byte into the func buffer.
+
+    TlInsertDynamicBuffer (
+        &CtFuncBuffer, // array
+        byte, // byte
+    )
+END
+
+FN CtInsertNumberFunc (
+    IN number : ULONG,
+)
+
+    // Insert a number into the func buffer.
+
+    TlInsertNumberDynamicBuffer (
+        &CtFuncBuffer, // array
+        number, // number
+        10, // base
+    )
+END
+
 CtTypeNames : ^UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_BYTE] = "int8_t",
     [PRIM_TYPE_INT] = "int16_t",
@@ -71,6 +129,1040 @@ CtTypeNames : ^UBYTE[PRIM_TYPE_MAX] = {
 
     [PRIM_TYPE_POINTER] = "uint64_t",
 }
+
+CtIrVariableNumber := 1
+
+FN CtOutputSymbolName (
+    IN sym : ^LexSymbol,
+)
+
+    // Output the mangled name of a local symbol.
+
+    IF NOT sym^.TrgContext THEN
+        // Declare the local.
+
+        sym^.TrgContext = CAST TRUE TO ^VOID
+
+        type := sym^.SemanticType
+
+        // Skip names.
+
+        WHILE type^.Subtype == TYPE_NAMED DO
+            type = type^.Body.Named.Symbol^.SemanticType
+        END
+
+        primtype : JklPrimitiveType
+        bound := 0
+
+        IF type^.Subtype == TYPE_ARRAY OR type^.Subtype == TYPE_COMPOUND THEN
+            bound = type^.Size
+            primtype = PRIM_TYPE_POINTER
+
+        ELSEIF type^.Subtype == TYPE_POINTER THEN
+            primtype = PRIM_TYPE_POINTER
+
+        ELSEIF type^.Subtype == TYPE_PRIMITIVE THEN
+            primtype = type^.Body.Primitive.Type
+
+        ELSE
+            TlInternalError ( "Didn't expect this type here", type^.Subtype, 0, 0 )
+        END
+
+        CtInsertString ( "    " )
+        CtInsertString ( CtTypeNames[primtype] )
+        CtInsertString ( " _mng_" )
+        CtInsertString ( sym^.Name )
+
+        IF bound THEN
+            CtInsertByte ( '[' )
+            CtInsertNumber ( ((bound + 7) & ~7) / 8 )
+            CtInsertByte ( ']' )
+        END
+
+        CtInsertString ( ";\n" )
+    END
+
+    CtInsertStringFunc ( "_mng_" )
+    CtInsertStringFunc ( sym^.Name )
+END
+
+FN CtOutputVariableName (
+    IN var : ^IrVariable,
+)
+
+    // Output the name of an IR variable.
+
+    IF var^.Symbol THEN
+        CtOutputSymbolName ( var^.Symbol )
+
+        LEAVE
+    END
+
+    IF var^.Number THEN
+        CtInsertStringFunc ( "__twr_v" )
+        CtInsertNumberFunc ( var^.Number )
+
+        LEAVE
+    END
+
+    var^.Number = CtIrVariableNumber
+    CtIrVariableNumber += 1
+
+    // Generate a declaration for the variable.
+
+    CtInsertString ( "    uint64_t __twr_v" )
+    CtInsertNumber ( var^.Number )
+    CtInsertString ( ";\n" )
+
+    CtInsertStringFunc ( "__twr_v" )
+    CtInsertNumberFunc ( var^.Number )
+END
+
+FN CtOutputLabelName (
+    IN label : ^IrInstruction,
+)
+
+    // Output the name of a label.
+
+    IF label^.Body.Label.Symbol THEN
+        CtInsertStringFunc ( "__twr_l" )
+        CtInsertStringFunc ( label^.Body.Label.Symbol^.Name )
+
+        LEAVE
+    END
+
+    CtInsertStringFunc ( "__twr_l" )
+    CtInsertNumberFunc ( label^.Body.Label.Number )
+END
+
+FN CtOutputEnd ()
+
+    // Output the end of a C statement.
+
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN CtGenerateString (
+    IN func : UBYTE,
+    IN string : ^LexInternedString,
+)
+
+    // Generate a string.
+
+    buffer := string^.DynamicBuffer.Buffer
+    count := string^.DynamicBuffer.Count - 1
+    i := 0
+
+    insbyte := &CtInsertByte
+
+    IF func THEN
+        insbyte = &CtInsertByteFunc
+    END
+
+    insbyte ( '"' )
+
+    WHILE i < count DO
+        IF buffer[i] == '\n' THEN
+            insbyte ( 92 )
+            insbyte ( 'n' )
+
+        ELSEIF buffer[i] == '\t' THEN
+            insbyte ( 92 )
+            insbyte ( 't' )
+
+        ELSEIF buffer[i] == '\r' THEN
+            insbyte ( 92 )
+            insbyte ( 'r' )
+
+        ELSEIF buffer[i] == '\b' THEN
+            insbyte ( 92 )
+            insbyte ( 'b' )
+
+        ELSEIF buffer[i] == '"' THEN
+            insbyte ( 92 )
+            insbyte ( '"' )
+
+        ELSEIF buffer[i] == '\\' THEN
+            insbyte ( 92 )
+            insbyte ( 92 )
+
+        ELSEIF buffer[i] == '\[' THEN
+            insbyte ( 92 )
+            insbyte ( 'x' )
+            insbyte ( '1' )
+            insbyte ( 'B' )
+
+        ELSE
+            insbyte ( buffer[i] )
+        END
+
+        i += 1
+    END
+
+    insbyte ( '"' )
+END
+
+FNPTR CtGenerateF (
+    IN inst : ^IrInstruction,
+)
+
+FN (CtGenerateF) CtGenerateLabel (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputLabelName ( inst )
+    CtInsertStringFunc ( ":;\n" )
+END
+
+FN (CtGenerateF) CtGenerateJump (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    goto " )
+    CtOutputLabelName ( inst^.Body.Jump.Label )
+    CtOutputEnd ()
+END
+
+FN (CtGenerateF) CtGenerateLoad (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = *(" )
+    CtInsertStringFunc ( CtTypeNames[inst^.Body.LoadStore.Type] )
+    CtInsertStringFunc ( "*)(" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN (CtGenerateF) CtGenerateAddr (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = (uint64_t)(&" )
+    CtInsertStringFunc ( inst^.Body.Addr.Symbol^.Name )
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN (CtGenerateF) CtGenerateStackAddr (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = (uint64_t)(&" )
+    CtOutputSymbolName ( inst^.Body.Addr.Symbol )
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN (CtGenerateF) CtGenerateStringAddr (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = (uint64_t)(&" )
+    CtGenerateString ( TRUE, inst^.Body.String.String )
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN (CtGenerateF) CtGenerateConstant (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = " )
+    CtInsertNumberFunc ( inst^.Body.Constant.Constant )
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN (CtGenerateF) CtGenerateBranchNonZero (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    if (" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ") { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.TrueLabel )
+    CtInsertStringFunc ( "; } else { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.FalseLabel )
+    CtInsertStringFunc ( "; }\n" )
+END
+
+FN (CtGenerateF) CtGenerateReturn (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    return" )
+
+    IF inst^.Source1 THEN
+        CtInsertStringFunc ( " " )
+        CtOutputVariableName ( inst^.Source1 )
+    END
+
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN (CtGenerateF) CtGenerateMove (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = " )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN (CtGenerateF) CtGenerateNot (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = !" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN CtGenerateBranch (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    // Generate a branch.
+
+    CtInsertStringFunc ( "    if (" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( " " )
+    CtInsertStringFunc ( string )
+    CtInsertStringFunc ( " " )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( ") { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.TrueLabel )
+    CtInsertStringFunc ( "; } else { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.FalseLabel )
+    CtInsertStringFunc ( "; }\n" )
+END
+
+FN CtGenerateCmp (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    // Generate a comparison.
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = (" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( " " )
+    CtInsertStringFunc ( string )
+    CtInsertStringFunc ( " " )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN CtGenerateSignedBranch (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    // Generate a signed branch.
+
+    CtInsertStringFunc ( "    if ((int64_t)(" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ") " )
+    CtInsertStringFunc ( string )
+    CtInsertStringFunc ( " (int64_t)(" )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( ")) { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.TrueLabel )
+    CtInsertStringFunc ( "; } else { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.FalseLabel )
+    CtInsertStringFunc ( "; }\n" )
+END
+
+FN CtGenerateSignedCmp (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    // Generate a signed comparison.
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = ((int64_t)(" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ") " )
+    CtInsertStringFunc ( string )
+    CtInsertStringFunc ( " (int64_t)(" )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( "));\n" )
+END
+
+FN (CtGenerateF) CtGenerateBranchEquals (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateBranch (
+        inst, // inst
+        "==", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpEquals (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateCmp (
+        inst, // inst
+        "==", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchNotEquals (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateBranch (
+        inst, // inst
+        "!=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpNotEquals (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateCmp (
+        inst, // inst
+        "!=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchLessThan (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateBranch (
+        inst, // inst
+        "<", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpLessThan (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateCmp (
+        inst, // inst
+        "<", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchGreaterThan (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateBranch (
+        inst, // inst
+        ">", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpGreaterThan (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateCmp (
+        inst, // inst
+        ">", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchLtEq (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateBranch (
+        inst, // inst
+        "<=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpLtEq (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateCmp (
+        inst, // inst
+        "<=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchGtEq (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateBranch (
+        inst, // inst
+        ">=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpGtEq (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateCmp (
+        inst, // inst
+        ">=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchLtSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedBranch (
+        inst, // inst
+        "<", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpLtSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedCmp (
+        inst, // inst
+        "<", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchGtSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedBranch (
+        inst, // inst
+        ">", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpGtSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedCmp (
+        inst, // inst
+        ">", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchLtEqSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedBranch (
+        inst, // inst
+        "<=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpLtEqSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedCmp (
+        inst, // inst
+        "<=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBranchGtEqSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedBranch (
+        inst, // inst
+        ">=", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateCmpGtEqSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedCmp (
+        inst, // inst
+        ">=", // string
+    )
+END
+
+FN CtGenerateArithmetic (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = " )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( " " )
+    CtInsertStringFunc ( string )
+    CtInsertStringFunc ( " " )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN CtGenerateSignedArithmetic (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = (int64_t)(" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ") " )
+    CtInsertStringFunc ( string )
+    CtInsertStringFunc ( " (int64_t)(" )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN CtGenerateUnaryArithmetic (
+    IN inst : ^IrInstruction,
+    IN string : ^UBYTE,
+)
+
+    CtInsertStringFunc ( "    " )
+    CtOutputVariableName ( inst^.Defines )
+    CtInsertStringFunc ( " = " )
+    CtInsertStringFunc ( string )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ";\n" )
+END
+
+FN (CtGenerateF) CtGenerateBitAnd (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "&", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBitOr (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "|", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateAdd (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "+", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateSubtract (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "-", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateDivide (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "/", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateDivideSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedArithmetic (
+        inst, // inst
+        "/", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateModulo (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "%", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBitXor (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "^", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateLeftShift (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "<<", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateRightShift (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        ">>", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateBitNot (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateUnaryArithmetic (
+        inst, // inst
+        "~", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateMul (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateArithmetic (
+        inst, // inst
+        "*", // string
+    )
+END
+
+FN (CtGenerateF) CtGenerateInverse (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateUnaryArithmetic (
+        inst, // inst
+        "-", // string
+    )
+END
+
+CtVarArrayNumber := 0
+
+FN (CtGenerateF) CtGenerateCall (
+    IN inst : ^IrInstruction,
+)
+
+    // Generate a function call.
+
+    // This is mostly straightforward except for one little thing which is
+    // varargs. We implement them simply by creating an array of uint64_t to
+    // contain the variadic part, and passing a pointer to that, along with a
+    // count, as the last two arguments of the function call.
+
+    type := inst^.Body.Call.FunctionType
+    arg := inst^.Body.Call.ArgListHead
+    count := type^.Body.Function.ArgCount
+    cargcount := count
+    varargcount := 0
+
+    IF type^.Body.Function.IsVarArg THEN
+        firstvararg : ^IrArgument = NULLPTR
+
+        cargcount += 2
+        
+        i := 0
+
+        vararg := arg
+
+        WHILE vararg DO
+            IF i >= count THEN
+                IF NOT firstvararg THEN
+                    firstvararg = vararg
+                END
+
+                varargcount += 1
+            END
+
+            i += 1
+            vararg = vararg^.Next
+        END
+
+        IF firstvararg THEN
+            CtVarArrayNumber += 1
+
+            CtInsertStringFunc ( "    uint64_t __twr_vrg" )
+            CtInsertNumberFunc ( CtVarArrayNumber )
+            CtInsertByteFunc ( '[' )
+            CtInsertNumberFunc ( varargcount )
+            CtInsertStringFunc ( "] = {\n" )
+
+            WHILE firstvararg DO
+                CtInsertStringFunc ( "        " )
+                CtOutputVariableName ( firstvararg^.Variable )
+                CtInsertStringFunc ( ",\n" )
+
+                firstvararg = firstvararg^.Next
+            END
+
+            CtInsertStringFunc ( "    };\n" )
+        END
+    END
+
+    CtInsertStringFunc ( "    " )
+
+    IF type^.Body.Function.ReturnType THEN
+        CtOutputVariableName ( inst^.Defines )
+        CtInsertStringFunc ( " = " )
+    END
+
+    // Now we have to do something kind of evil which is to cast the function
+    // pointer according to the number of arguments, and then call through it.
+
+    CtInsertStringFunc ( "((" )
+
+    IF type^.Body.Function.ReturnType THEN
+        CtInsertStringFunc ( "uint64_t " )
+    ELSE
+        CtInsertStringFunc ( "void " )
+    END
+
+    CtInsertStringFunc ( "(*)(" )
+
+    WHILE cargcount DO
+        CtInsertStringFunc ( "uint64_t" )
+
+        cargcount -= 1
+
+        IF cargcount THEN
+            CtInsertStringFunc ( ", " )
+        END
+    END
+
+    CtInsertStringFunc ( "))" )
+
+    CtOutputVariableName ( inst^.Source1 )
+
+    CtInsertStringFunc ( ")(" )
+
+    WHILE count DO
+        CtOutputVariableName ( arg^.Variable )
+
+        arg = arg^.Next
+
+        IF arg OR varargcount THEN
+            CtInsertStringFunc ( ", " )
+        END
+
+        count -= 1
+    END
+
+    IF varargcount THEN
+        CtInsertStringFunc ( "(uint64_t)(&__twr_vrg" )
+        CtInsertNumberFunc ( CtVarArrayNumber )
+        CtInsertStringFunc ( "), " )
+        CtInsertNumberFunc ( varargcount )
+    END
+
+    CtInsertStringFunc ( ");\n" )
+END
+
+FN (CtGenerateF) CtGenerateStore (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    *(" )
+    CtInsertStringFunc ( CtTypeNames[inst^.Body.LoadStore.Type] )
+    CtInsertStringFunc ( "*)(" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ") = " )
+    CtOutputVariableName ( inst^.Source2 )
+    CtInsertStringFunc ( ";\n" )
+END
+
+CtGenerateInstructionFunctions : CtGenerateF[IR_MAX] = {
+    [IR_LABEL] = &CtGenerateLabel,
+    [IR_JUMP] = &CtGenerateJump,
+    [IR_LOAD] = &CtGenerateLoad,
+    [IR_ADDR] = &CtGenerateAddr,
+    [IR_STACK_ADDR] = &CtGenerateStackAddr,
+    [IR_STRING_ADDR] = &CtGenerateStringAddr,
+    [IR_CONSTANT] = &CtGenerateConstant,
+    [IR_BRANCH_NONZERO] = &CtGenerateBranchNonZero,
+    [IR_RETURN] = &CtGenerateReturn,
+    [IR_MOVE] = &CtGenerateMove,
+    [IR_NOT] = &CtGenerateNot,
+    [IR_BRANCH_EQUALS] = &CtGenerateBranchEquals,
+    [IR_COMPARE_EQUALS] = &CtGenerateCmpEquals,
+    [IR_BRANCH_NOT_EQUALS] = &CtGenerateBranchNotEquals,
+    [IR_COMPARE_NOT_EQUALS] = &CtGenerateCmpNotEquals,
+    [IR_BRANCH_LESS_THAN] = &CtGenerateBranchLessThan,
+    [IR_COMPARE_LESS_THAN] = &CtGenerateCmpLessThan,
+    [IR_BRANCH_GREATER_THAN] = &CtGenerateBranchGreaterThan,
+    [IR_COMPARE_GREATER_THAN] = &CtGenerateCmpGreaterThan,
+    [IR_BRANCH_LTEQ] = &CtGenerateBranchLtEq,
+    [IR_COMPARE_LTEQ] = &CtGenerateCmpLtEq,
+    [IR_BRANCH_GTEQ] = &CtGenerateBranchGtEq,
+    [IR_COMPARE_GTEQ] = &CtGenerateCmpGtEq,
+    [IR_BRANCH_LESS_THAN_SIGNED] = &CtGenerateBranchLtSigned,
+    [IR_COMPARE_LESS_THAN_SIGNED] = &CtGenerateCmpLtSigned,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = &CtGenerateBranchGtSigned,
+    [IR_COMPARE_GREATER_THAN_SIGNED] = &CtGenerateCmpGtSigned,
+    [IR_BRANCH_LTEQ_SIGNED] = &CtGenerateBranchLtEqSigned,
+    [IR_COMPARE_LTEQ_SIGNED] = &CtGenerateCmpLtEqSigned,
+    [IR_BRANCH_GTEQ_SIGNED] = &CtGenerateBranchGtEqSigned,
+    [IR_COMPARE_GTEQ_SIGNED] = &CtGenerateCmpGtEqSigned,
+    [IR_BIT_AND] = &CtGenerateBitAnd,
+    [IR_BIT_OR] = &CtGenerateBitOr,
+    [IR_ADD] = &CtGenerateAdd,
+    [IR_SUBTRACT] = &CtGenerateSubtract,
+    [IR_DIVIDE] = &CtGenerateDivide,
+    [IR_DIVIDE_SIGNED] = &CtGenerateDivideSigned,
+    [IR_MODULO] = &CtGenerateModulo,
+    [IR_BIT_XOR] = &CtGenerateBitXor,
+    [IR_LEFT_SHIFT] = &CtGenerateLeftShift,
+    [IR_RIGHT_SHIFT] = &CtGenerateRightShift,
+    [IR_BIT_NOT] = &CtGenerateBitNot,
+    [IR_MULTIPLY] = &CtGenerateMul,
+    [IR_INVERSE] = &CtGenerateInverse,
+    [IR_CALL] = &CtGenerateCall,
+    [IR_STORE] = &CtGenerateStore,
+}
+
+FN CtGenerateIrInst (
+    IN inst : ^IrInstruction,
+)
+
+    // Generate C for an IR instruction.
+
+    CtGenerateInstructionFunctions[inst^.Type] (
+        inst, // inst
+    )
+END
+
+FN CtGenerateFromIr (
+    IN irfunc : ^IrFunction,
+)
+
+    // Generate C for an IR function.
+
+    TlUninitializeDynamicBuffer ( &CtFuncBuffer )
+    TlInitializeDynamicBuffer ( &CtFuncBuffer )
+
+    inst := irfunc^.Head
+
+    WHILE inst DO
+        CtGenerateIrInst ( inst )
+
+        inst = inst^.Next
+    END
+
+    CtCopyBytes (
+        CtFuncBuffer.Buffer, // srcbuf
+        CtFuncBuffer.Count, // length
+    )
+END
+
+FN CtGenerateFunction (
+    IN sym : ^LexSymbol,
+)
+
+    // Generate C for a function.
+
+    type := sym^.SemanticType
+
+    returntype := type^.Body.Function.ReturnType
+
+    IF returntype THEN
+        CtInsertString ( "uint64_t " )
+
+    ELSE
+        CtInsertString ( "void " )
+    END
+
+    CtInsertString ( sym^.Name )
+
+    CtInsertString ( "(" )
+
+    arg := type^.Body.Function.ArgListHead
+
+    WHILE arg DO
+        arg^.Symbol^.TrgContext = CAST TRUE TO ^VOID
+
+        CtInsertString ( "uint64_t _mng_" )
+
+        CtInsertString ( arg^.Symbol^.Name )
+
+        arg = arg^.Next
+
+        IF arg OR type^.Body.Function.IsVarArg THEN
+            CtInsertString ( ", " )
+        END
+    END
+
+    IF type^.Body.Function.IsVarArg THEN
+        type^.Body.Function.VarArgTable^.TrgContext = CAST TRUE TO ^VOID
+        type^.Body.Function.VarArgCount^.TrgContext = CAST TRUE TO ^VOID
+
+        CtInsertString ( "uint64_t _mng_" )
+        CtInsertString ( type^.Body.Function.VarArgTable^.Name )
+
+        CtInsertString ( ", uint64_t _mng_" )
+        CtInsertString ( type^.Body.Function.VarArgCount^.Name )
+    END
+
+    CtInsertString ( ")" )
+
+    body := type^.Body.Function.BodyBlock
+
+    IF NOT body THEN
+        CtInsertString ( ";\n" )
+
+        LEAVE
+    END
+
+    CtInsertString ( " {\n" )
+
+    CtGenerateFromIr (
+        CAST sym^.InitialValue TO ^IrFunction, // irfunc
+    )
+
+    CtInsertString ( "}\n" )
+END
 
 FN CtGenerateCompoundInitializer (
     IN node : ^PrsAstNode,
@@ -109,9 +1201,6 @@ FN CtGenerateCompoundInitializer (
 
                 byte : UBYTE = bytearray[i + j]
 
-                TlPrintNumber ( bytearray[i + j] )
-                TlPrintString ( "\n" )
-
                 lonibble := byte & 0xF
                 hinibble := byte >> 4
 
@@ -135,57 +1224,6 @@ FN CtGenerateCompoundInitializer (
     END
 
     CtInsertString ( "}" )
-END
-
-FN CtGenerateString (
-    IN string : ^LexInternedString,
-)
-
-    // Generate a string.
-
-    buffer := string^.DynamicBuffer.Buffer
-    count := string^.DynamicBuffer.Count - 1
-    i := 0
-
-    CtInsertByte ( '"' )
-
-    WHILE i < count DO
-        IF buffer[i] == '\n' THEN
-            CtInsertByte ( 92 )
-            CtInsertByte ( 'n' )
-
-        ELSEIF buffer[i] == '\t' THEN
-            CtInsertByte ( 92 )
-            CtInsertByte ( 't' )
-
-        ELSEIF buffer[i] == '\r' THEN
-            CtInsertByte ( 92 )
-            CtInsertByte ( 'r' )
-
-        ELSEIF buffer[i] == '\b' THEN
-            CtInsertByte ( 92 )
-            CtInsertByte ( 'b' )
-
-        ELSEIF buffer[i] == '"' THEN
-            CtInsertByte ( 92 )
-            CtInsertByte ( '"' )
-
-        ELSEIF buffer[i] == '\\' THEN
-            CtInsertByte ( 92 )
-            CtInsertByte ( 92 )
-
-        ELSEIF buffer[i] == '\[' THEN
-            CtInsertByte ( 92 )
-            CtInsertString ( "x1B" )
-
-        ELSE
-            CtInsertByte ( buffer[i] )
-        END
-
-        i += 1
-    END
-
-    CtInsertByte ( '"' )
 END
 
 FN CtGenerateInitializer (
@@ -223,6 +1261,7 @@ FN CtGenerateInitializer (
         CtInsertString ( ")(&" )
 
         CtGenerateString (
+            FALSE, // func
             CAST value^.Token.Payload TO ^LexInternedString, // string
         )
 
@@ -263,15 +1302,6 @@ FN CtGenerateInitializer (
     END
 
     TlInternalError ( "Didn't expect this value here", value^.Type, 0, 0 )
-END
-
-FN CtGenerateFunction (
-    IN sym : ^LexSymbol,
-)
-
-    // Generate C for a function.
-
-
 END
 
 FN CtGenerateGlobal (
@@ -323,9 +1353,7 @@ FN CtGenerateGlobal (
 
     IF bound THEN
         CtInsertByte ( '[' )
-
         CtInsertNumber ( ((bound + 7) & ~7) / 8 )
-
         CtInsertByte ( ']' )
     END
 
@@ -347,6 +1375,8 @@ FN CtTranspile ()
     // Initialize the dynamic buffer that will contain the output text.
 
     TlInitializeDynamicBuffer ( &CtBigBuffer )
+
+    TlInitializeDynamicBuffer ( &CtFuncBuffer )
 
     // Include the header that gives us standard sizes like uint8_t.
 

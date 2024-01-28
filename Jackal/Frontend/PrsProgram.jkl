@@ -20,6 +20,8 @@ PrsNullPtrType : ^LexSemanticType = NULLPTR
 PrsConstantType : ^LexSemanticType = NULLPTR
 PrsVarArgType : ^LexSemanticType = NULLPTR
 
+CONST TYPE_SIZE_UNINIT := 0xFFFFFFFF
+
 ENUM PrsBlockType : UBYTE
     BLOCK_NULL,
 
@@ -173,6 +175,7 @@ FN PrsInsertNodeIntoBlock (
 
     IF NOT block^.StatementListTail THEN
         block^.StatementListHead = node
+
     ELSE
         block^.StatementListTail^.Next = node
     END
@@ -210,6 +213,7 @@ FN PrsPrintType (
         IF type^.Body.Array.HasBound THEN
             TlPrintNumber ( type^.Body.Array.Bound )
             TlPrintString ( ", of:\n" )
+
         ELSE
             TlPrintString ( "Boundless, of:\n" )
         END
@@ -396,6 +400,7 @@ FN PrsCheckType (
                 LexTokenError ( errtoken,
                     "Implicit cast from unsigned to signed type", 0, 0, 0 )
             END
+
         ELSEIF primtype2 > PRIM_TYPE_SIGNED AND
             primtype2 < PRIM_TYPE_SIGNED_MAX THEN
 
@@ -539,6 +544,7 @@ FN PrsCheckType (
                 errstring, // errstring
                 TRUE, // equivalence
             )
+
         ELSEIF type2^.Body.Function.ReturnType THEN
             TlPrintString ( errstring )
             LexTokenError ( errtoken,
@@ -1066,6 +1072,7 @@ FN PrsParseInitializer (
                 expr^.Body.Constant.Value, // value
                 type^.Size, // bytes
             )
+
         ELSE
             IF type^.Size < JklTargetInfo^.PointerSize THEN
                 LexTokenError ( &expr^.Token,
@@ -1148,6 +1155,7 @@ FN PrsParseInitializer (
             bytearray, // bytearray
             bparray, // bparray
         )
+
     ELSE
         PrsParseStructInitializer (
             errtoken, // errtoken
@@ -1195,6 +1203,7 @@ FN PrsEvaluateType (
             // pointer to VOID.
 
             type = PrsNullPtrType
+
         ELSE
             // Use the default pre-prepared constant type, which is the largest
             // signed primitive type for the target (i.e. LONG for 32-bits, QUAD
@@ -1438,6 +1447,7 @@ FN PrsType (
 
                 LexTokenError ( &typetoken, "Symbol isn't a type", 0, 0, 0 )
             END
+
         ELSE
             // This is a new type, so forward declare it for now.
 
@@ -1556,6 +1566,7 @@ FN PrsType (
             boundless = TRUE
 
             arraytype^.Body.Array.HasBound = FALSE
+
         ELSE
             boundnode := PrsExpression ( 0 )
 
@@ -1670,6 +1681,41 @@ FN PrsFoundSymbol (
             "Can't override: ", // errstring
             TRUE, // equivalence
         )
+
+        IF global THEN
+            // Remove from list of globals and re-add at new position.
+
+            p := symbol^.Prev
+
+            IF p THEN
+                p^.Next = symbol^.Next
+            ELSE // no prev means we were the head
+                PrsGlobalListHead = symbol^.Next
+            END
+
+            p = symbol^.Next
+
+            IF p THEN
+                p^.Prev = symbol^.Prev
+            ELSE // no next means we were the tail
+                PrsGlobalListTail = symbol^.Prev
+            END
+
+            tail := PrsGlobalListTail
+
+            symbol^.Next = NULLPTR
+            symbol^.Prev = tail
+
+            IF tail THEN
+                tail^.Next = symbol
+
+            ELSE
+                PrsGlobalListHead = symbol
+            END
+
+            PrsGlobalListTail = symbol
+        END
+
     ELSE
         // Initialize the symbol.
 
@@ -1685,6 +1731,7 @@ FN PrsFoundSymbol (
 
             IF tail THEN
                 tail^.Next = symbol
+
             ELSE
                 PrsGlobalListHead = symbol
             END
@@ -1705,6 +1752,7 @@ FN PrsFoundSymbol (
 
         symbol^.Section = LexNextSymbolSection
         LexNextSymbolSection = NULLPTR
+
     ELSE
         symbol^.Section = LexCurrentSection
     END
@@ -1819,6 +1867,7 @@ FN PrsVariableDeclaration (
                 LexTokenError ( &initialnode^.Token,
                     "This type is not directly usable as a value", 0, 0, 0 )
             END
+            
         ELSE
             striptype := type
 
@@ -1861,6 +1910,11 @@ FN PrsVariableDeclaration (
         END
     END
 
+    IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+        LexTokenError ( token,
+            "Can't declare a boundless array", 0, 0, 0 )
+    END
+
     // Do general declaration processing of the symbol.
 
     PrsFoundSymbol (
@@ -1897,32 +1951,25 @@ FN PrsVariableDeclaration (
             )
         END
 
-    ELSE
-        IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+    ELSEIF initialnode THEN
+        // Statically evaluate the initial value. If it can't be statically
+        // evaluated, that's an error, since this is a global. Note that we
+        // might still leave it as a "complex" AST node if it's a pointer to
+        // some other global or something because we don't know the value of
+        // that immediately.
+
+        IF NOT PrsIsCompileTime ( initialnode ) THEN
             LexTokenError ( token,
-                "Can't declare a boundless global array", 0, 0, 0 )
+                "Globals require a compile-time initial value.", 0, 0, 0 )
         END
 
-        IF initialnode THEN
-            // Statically evaluate the initial value. If it can't be statically
-            // evaluated, that's an error, since this is a global. Note that we
-            // might still leave it as a "complex" AST node if it's a pointer to
-            // some other global or something because we don't know the value of
-            // that immediately.
+        symbol^.InitialValue = initialnode
 
-            IF NOT PrsIsCompileTime ( initialnode ) THEN
-                LexTokenError ( token,
-                    "Globals require a compile-time initial value.", 0, 0, 0 )
-            END
+    ELSE
+        // Uninitialized globals have a value of zero, always.
+        // Backend may place this in BSS.
 
-            symbol^.InitialValue = initialnode
-
-        ELSE
-            // Uninitialized globals have a value of zero, always.
-            // Backend may place this in BSS.
-
-            symbol^.InitialValue = NULLPTR
-        END
+        symbol^.InitialValue = NULLPTR
     END
 
     RETURN symbol
@@ -3723,6 +3770,9 @@ FN PrsParseFnSignature (
     type^.Body.Function.ArgCount = 0
     type^.Body.Function.IsVarArg = FALSE
     type^.Body.Function.IsFnPtr = fnptr
+    type^.Body.Function.VarArgCount = NULLPTR
+    type^.Body.Function.VarArgTable = NULLPTR
+    type^.Body.Function.BodyBlock = NULLPTR
 
     argtail : ^LexFunctionArgument = NULLPTR
 
@@ -3856,6 +3906,7 @@ FN PrsParseFnSignature (
 
         IF NOT argtail THEN
             type^.Body.Function.ArgListHead = arg
+
         ELSE
             argtail^.Next = arg
         END
@@ -4056,6 +4107,7 @@ FN PrsParseFnDeclaration (
 
     IF PrsFunctionListTail THEN
         PrsFunctionListTail^.NextFunction = symbol
+
     ELSE
         PrsFunctionListHead = symbol
     END
@@ -4092,6 +4144,8 @@ FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
 
     ptrtype^.Subtype = TYPE_POINTER
     ptrtype^.Body.Pointer.Base = type
+    ptrtype^.Size = JklTargetInfo^.PointerSize
+    ptrtype^.MinimumAlignment = JklTargetInfo^.PointerAlignment
 
     symbol^.SemanticType = ptrtype
 
@@ -4253,6 +4307,7 @@ FN PrsParseCompoundType (
             // Increment the offset by the size of this field.
 
             offset += fieldtype^.Size
+
         ELSE
             // This is a union, the offset of all fields is zero.
 
@@ -4392,6 +4447,7 @@ FN PrsParseStorageClassSpecifier (
         symbol = PrsParseFnDeclaration (
             flags, // flags
         )
+
     ELSE
         token : LexToken
 
@@ -4542,6 +4598,7 @@ FN (PrsStatementF) PrsParseGoTo (
         IF symbol^.Type != SYM_FORWARD_LABEL AND symbol^.Type != SYM_LABEL THEN
             LexTokenError ( &labeltoken, "Expected a label name", 0, 0, 0 )
         END
+
     ELSE
         // New symbol, which means this is a forward declared label. Set that
         // up. Note that unlike most other stuff, the code generator needs to
@@ -4653,6 +4710,7 @@ FN (PrsStatementF) PrsParseIf (
                 LexTokenError ( &thentoken,
                     "One or more labels inside inaccessible block", 0, 0, 0 )
             END
+
         ELSE
             // Add the block.
 
@@ -4661,6 +4719,7 @@ FN (PrsStatementF) PrsParseIf (
             IF NOT node^.Body.If.CaseListTail THEN
                 node^.Body.If.CaseListHead = thiscase
             ELSE
+
                 node^.Body.If.CaseListTail^.Next = thiscase
             END
 
@@ -4725,6 +4784,7 @@ FN (PrsStatementF) PrsParseIf (
                     "One or more labels inside inaccessible ELSE block",
                     0, 0, 0 )
             END
+
         ELSE
             node^.Body.If.ElseBlock = elseblock
         END
@@ -4923,6 +4983,7 @@ FN (PrsStatementF) PrsParseLabel (
         IF symbol^.Type != SYM_FORWARD_LABEL THEN
             LexTokenError ( &labeltoken, "Identifier already in use", 0, 0, 0 )
         END
+
     ELSE
         // New symbol, set it up.
         // Initialize the refcount of the label.

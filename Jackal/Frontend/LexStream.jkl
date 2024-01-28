@@ -47,6 +47,12 @@ FN LexInitializeStream (
     stream^.LastWasNewline = FALSE
     stream^.LastScope = NULLPTR
     stream^.LastMacroScope = NULLPTR
+
+    stream^.Backslash = FALSE
+    stream^.InString = FALSE
+    stream^.InLiteral = FALSE
+    stream^.Putback = 0
+    stream^.CoalescePutback = 0
 END
 
 FN LexUninitializeStream (
@@ -171,7 +177,15 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
         byte : UBYTE
 
-        IF stream^.BufferPosition < stream^.ValidLength THEN
+        IF stream^.CoalescePutback THEN
+            byte = LexCurrentStream^.CoalescePutback
+            LexCurrentStream^.CoalescePutback = 0
+
+        ELSEIF stream^.Putback THEN
+            byte = LexCurrentStream^.Putback
+            LexCurrentStream^.Putback = 0
+
+        ELSEIF stream^.BufferPosition < stream^.ValidLength THEN
             // There is at least one character in the buffer, so return it.
 
             byte = stream^.Buffer[stream^.BufferPosition]

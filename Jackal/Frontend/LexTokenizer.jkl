@@ -267,12 +267,6 @@ FN LexInitialize ()
     LexInsertKeyword ( ">>=", TOKEN_ASSIGN, TOKEN_RSHEQUALS, 0 )
 END
 
-LexCharacterBackslash := FALSE
-LexCharacterInString := FALSE
-LexCharacterInLiteral := FALSE
-LexCharacterPutback : UBYTE = 0
-LexCharacterCoalescePutback : UBYTE = 0
-
 FN (LexGetCharacterF) LexGetCharacter () : UBYTE
 
     // Return the next character in the source stream. Omits comments and text
@@ -284,22 +278,12 @@ FN (LexGetCharacterF) LexGetCharacter () : UBYTE
     comment := FALSE
 
     WHILE TRUE DO
-        IF LexCharacterCoalescePutback THEN
-            byte = LexCharacterCoalescePutback
-            LexCharacterCoalescePutback = 0
+        byte = LexStreamNextCharacter ()
 
-        ELSEIF LexCharacterPutback THEN
-            byte = LexCharacterPutback
-            LexCharacterPutback = 0
+        IF NOT byte THEN
+            // EOF has been reached.
 
-        ELSE
-            byte = LexStreamNextCharacter ()
-
-            IF NOT byte THEN
-                // EOF has been reached.
-
-                BREAK
-            END
+            BREAK
         END
 
         // We care about backslashes and about knowing whether we're in a
@@ -317,17 +301,17 @@ FN (LexGetCharacterF) LexGetCharacter () : UBYTE
             // otherwise a token that is immediately followed by a comment
             // with no interfering whitespace may not terminate properly.
 
-        ELSEIF LexCharacterBackslash THEN
-            LexCharacterBackslash = FALSE
+        ELSEIF LexCurrentStream^.Backslash THEN
+            LexCurrentStream^.Backslash = FALSE
 
         ELSEIF byte == '\\' THEN
-            LexCharacterBackslash = TRUE
+            LexCurrentStream^.Backslash = TRUE
 
-        ELSEIF LexCharacterInString THEN
-            LexCharacterInString = NOT (byte == '\"')
+        ELSEIF LexCurrentStream^.InString THEN
+            LexCurrentStream^.InString = NOT (byte == '\"')
 
-        ELSEIF LexCharacterInLiteral THEN
-            LexCharacterInLiteral = NOT (byte == 0x27) // single-quote
+        ELSEIF LexCurrentStream^.InLiteral THEN
+            LexCurrentStream^.InLiteral = NOT (byte == 0x27) // single-quote
 
         ELSEIF byte == '/' THEN
             // We have to figure out if this is a comment or not. This
@@ -345,13 +329,13 @@ FN (LexGetCharacterF) LexGetCharacter () : UBYTE
                 CONTINUE
             END
 
-            LexCharacterPutback = nextbyte
+            LexCurrentStream^.Putback = nextbyte
 
         ELSEIF byte == '\"' THEN
-            LexCharacterInString = TRUE
+            LexCurrentStream^.InString = TRUE
 
         ELSEIF byte == 0x27 THEN // single-quote
-            LexCharacterInLiteral = TRUE
+            LexCurrentStream^.InLiteral = TRUE
 
         ELSEIF byte == '#' THEN
             // We found a preprocessor directive! We dispatch to
@@ -535,7 +519,7 @@ FN LexGetTokenContents (
             // Set the putback character to the last one we saw, since that is part
             // of the next token.
 
-            LexCharacterCoalescePutback = byte
+            LexCurrentStream^.CoalescePutback = byte
         END
 
         RETURN TOKEN_FLAG_COALESCE
@@ -571,7 +555,7 @@ FN LexGetTokenContents (
     IF LexCharTreatment[byte] == CHAR_SPLIT OR
         LexCharTreatment[byte] == CHAR_COALESCE THEN
 
-        LexCharacterCoalescePutback = byte
+        LexCurrentStream^.CoalescePutback = byte
     END
 
     IF uppercaseonly AND len > 1 THEN
@@ -794,6 +778,7 @@ FN LexNextToken (
         symbol^.Name = symbol + SIZEOF LexSymbol
         symbol^.Type = SYM_UNINITIALIZED
         symbol^.IrContext = NULLPTR
+        symbol^.TrgContext = NULLPTR
 
         TlCopyMemory (
             symbol^.Name, // dest

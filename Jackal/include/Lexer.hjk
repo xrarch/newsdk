@@ -191,6 +191,12 @@ STRUCT LexStream
 
     LastScope : ^TlSymbolTable,
     LastMacroScope : ^TlSymbolTable,
+
+    Backslash : UBYTE,
+    InString : UBYTE,
+    InLiteral : UBYTE,
+    Putback : UBYTE,
+    CoalescePutback : UBYTE,
 END
 
 ENUM LexSymbolType : UBYTE
@@ -236,6 +242,10 @@ STRUCT LexSymbol
     // Backend private stuff.
 
     IrContext : ^VOID,
+
+    // Target private stuff.
+
+    TrgContext : ^VOID,
 END
 
 ENUM LexSemanticSubtype : UBYTE

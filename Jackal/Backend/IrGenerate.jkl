@@ -34,6 +34,7 @@ FN IrCreateInstruction (
         TlInternalError ( "Failed to create IR instruction", 0, 0, 0 )
     END
 
+    inst^.Type = type
     inst^.Defines = NULLPTR
     inst^.Source1 = NULLPTR
     inst^.Source2 = NULLPTR
@@ -41,13 +42,21 @@ FN IrCreateInstruction (
     RETURN inst
 END
 
+IrLabelNumber := 1
+
 FN IrCreateLabel () : ^IrInstruction
 
     // Create a label instruction.
 
-    RETURN IrCreateInstruction (
+    label := IrCreateInstruction (
         IR_LABEL, // type
     )
+
+    label^.Body.Label.Symbol = NULLPTR
+    label^.Body.Label.Number = IrLabelNumber
+    IrLabelNumber += 1
+
+    RETURN label
 END
 
 FN IrCreateVariable (
@@ -67,6 +76,8 @@ FN IrCreateVariable (
 
     var^.DefinedBy = definedby
     var^.Annotation = IR_VAR_UNINITIALIZED
+    var^.Symbol = NULLPTR
+    var^.Number = 0
 
     RETURN var
 END
@@ -351,6 +362,7 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
             // variable.
 
             var = CAST symbol^.IrContext TO ^IrVariable
+
         ELSEIF type^.Subtype == TYPE_PRIMITIVE OR type^.Subtype == TYPE_POINTER THEN
             // It's a datum. Create a variable to represent this local
             // variable.
@@ -364,6 +376,7 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
             var^.Symbol = symbol
 
             var^.Annotation = IR_VAR_LOCAL
+
         ELSE
             // It must be compound.
 
@@ -382,6 +395,7 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
 
             var^.Annotation = IR_VAR_ADDRESS_CALC
         END
+
     ELSE
         // It's a global.
 
@@ -752,6 +766,7 @@ FN IrGenerateComparison (
                 falselabel, // falselabel
                 signedbranchtype, // type
             )
+
         ELSE
             IrGenerateBranch (
                 node, // node
@@ -772,6 +787,7 @@ FN IrGenerateComparison (
             var1, // src1
             var2, // src2
         )
+
     ELSE
         RETURN IrGenerateOperatorInst (
             unsignedcmptype, // type
@@ -1010,6 +1026,7 @@ FN (IrExpressionGenerationF) IrGenerateDivide (
             truelabel, // truelabel
             falselabel, // falselabel
         )
+
     ELSE
         RETURN IrGenerateArithmetic (
             node, // node
@@ -1157,6 +1174,7 @@ FN (IrExpressionGenerationF) IrGenerateAddrOf (
         // that it doesn't get loaded erroneously.
 
         var^.Annotation = IR_VAR_UNINITIALIZED
+
     ELSE
         // This was a local. Wrap it in an IR_STACK_ADDR; the code generator
         // will worry about giving it a stack location and spilling it there.
@@ -1252,6 +1270,7 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
 
     IF type^.Subtype == TYPE_ARRAY THEN
         stride = type^.Body.Array.Base^.Size
+
     ELSE
         // Must be a pointer.
 
@@ -1335,6 +1354,8 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
     // of each argument. We don't care if they're varargs or not, sorting that
     // out is the province of the code generator.
 
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
     inst := IrCreateInstruction (
         IR_CALL, // type
     )
@@ -1343,8 +1364,16 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
         inst, // definedby
     )
 
+    funcvar := IrGenerateExpression (
+        node^.Body.Operator.Left, // node
+        NULLPTR, // truelabel
+        NULLPTR, // falselabel
+    )
+
     inst^.Defines = var
+    inst^.Source1 = funcvar
     inst^.Body.Call.ArgListHead = NULLPTR
+    inst^.Body.Call.FunctionType = type
 
     arglisttail : ^IrArgument = NULLPTR
 
@@ -1368,6 +1397,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
         IF arglisttail THEN
             arglisttail^.Next = irarg
+
         ELSE
             inst^.Body.Call.ArgListHead = irarg
         END
@@ -1411,6 +1441,7 @@ FN IrGenerateAssignment (
             srcvar, // srcvar
             type, // type
         )
+
     ELSEIF destvar^.Annotation == IR_VAR_LOCAL THEN
         // Generate a move.
         // XXX Remember that code generation should notice a cast here.
@@ -1419,6 +1450,7 @@ FN IrGenerateAssignment (
             destvar, // destvar
             srcvar, // srcvar
         )
+
     ELSE
         TlInternalError ( "Unexpected IR variable", destvar^.Annotation, 0, 0 )
     END
@@ -1477,6 +1509,7 @@ FN IrGenerateModificationAssign (
             destvar, // var
             desttype, // type
         )
+
     ELSE
         contentsvar = destvar
     END
@@ -1728,6 +1761,7 @@ FN (IrExpressionGenerationF) IrGenerateConstant (
     IF truelabel THEN
         IF node^.Body.Constant.Value THEN
             IrGenerateUnconditionalJump ( truelabel )
+
         ELSE
             IrGenerateUnconditionalJump ( falselabel )
         END
@@ -1983,6 +2017,8 @@ FN (IrStatementGenerationF) IrGenerateLabel (
         labelsym^.IrContext = inst
     END
 
+    inst^.Body.Label.Symbol = labelsym
+
     IrInsertInstructionTail ( inst )
 END
 
@@ -2052,6 +2088,7 @@ FN (IrStatementGenerationF) IrGenerateIf (
 
         IF ifcase^.Next OR elseblock THEN
             falselabel = IrCreateLabel ()
+
         ELSE
             falselabel = donelabel
         END
