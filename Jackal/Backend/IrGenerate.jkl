@@ -88,9 +88,6 @@ FN IrInsertInstructionTail (
 
     // Insert the instruction at the end of the current chain.
 
-    // TODO Turn this into a macro when those work.
-    //      Better yet, just use the circular list macros when we have those.
-
     inst^.Block = IrCurrentFunction
     inst^.Next = NULLPTR
     inst^.Prev = IrCurrentFunction^.Tail
