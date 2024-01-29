@@ -835,7 +835,6 @@ void FeInitialize(uint64_t _mng_argc403, uint64_t _mng_argv404) {
     ((void (*)())__twr_v438)();
 }
 extern void IrGenerate();
-extern void CtTranspile();
 void JklCompileProgram(uint64_t _mng_argc439, uint64_t _mng_argv440) {
     uint64_t __twr_v441;
     uint64_t __twr_v442;

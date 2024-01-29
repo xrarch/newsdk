@@ -272,7 +272,6 @@ FN FeInitialize (
 END
 
 EXTERN FN IrGenerate ()
-EXTERN FN CtTranspile ()
 
 FN JklCompileProgram (
     IN argc : ULONG,
