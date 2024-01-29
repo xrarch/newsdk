@@ -53,4 +53,10 @@ cleanup:
 	done
 
 bootstrap: $(BUILDROOT)
+ifneq ("$(wildcard $(REPO)/build/bsjkl.bak)","")
+	cp $(REPO)/build/bsjkl.bak $(REPO)/build/bsjkl.1.bak
+endif
+ifneq ("$(wildcard $(REPO)/build/bsjkl)","")
+	cp $(REPO)/build/bsjkl $(REPO)/build/bsjkl.bak
+endif
 	$(JCC) Jackal/Precompiled/*.c.j -o $(REPO)/build/bsjkl

@@ -53,6 +53,8 @@ PUBLIC LexRootScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexCurrentScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexFalseCount : ULONG = 0
 
+LexCurrentOverlayScope : ^TlSymbolTable = NULLPTR
+
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 LexPutbackStackPtr : ULONG = 0
 
@@ -922,10 +924,20 @@ FN LexNextToken (
     token^.Type = TOKEN_IDENTIFIER
     token^.Subtype = TOKEN_IDENTIFIER_FOUND
 
-    symbol := CAST TlLookupSymbolTable (
-        LexCurrentScope, // symboltable
-        &buffer[0], // name
-    ) TO ^LexSymbol
+    symbol : ^LexSymbol
+
+    IF LexCurrentOverlayScope THEN
+        symbol = CAST TlLookupSymbolTable (
+            LexCurrentOverlayScope, // symboltable
+            &buffer[0], // name
+        ) TO ^LexSymbol
+
+    ELSE
+        symbol = CAST TlLookupSymbolTable (
+            LexCurrentScope, // symboltable
+            &buffer[0], // name
+        ) TO ^LexSymbol
+    END
 
     IF NOT symbol THEN
         // Create new symbol from bump allocator.
@@ -950,11 +962,20 @@ FN LexNextToken (
             length + 1, // sz (plus one for null terminator)
         )
 
-        TlInsertSymbolTable (
-            LexCurrentScope, // symboltable
-            CAST symbol TO ^TlHashTableEntry, // entry
-            symbol^.Name, // name
-        )
+        IF LexCurrentOverlayScope THEN
+            TlInsertSymbolTable (
+                LexCurrentOverlayScope, // symboltable
+                CAST symbol TO ^TlHashTableEntry, // entry
+                symbol^.Name, // name
+            )
+
+        ELSE
+            TlInsertSymbolTable (
+                LexCurrentScope, // symboltable
+                CAST symbol TO ^TlHashTableEntry, // entry
+                symbol^.Name, // name
+            )
+        END
 
         token^.Subtype = TOKEN_IDENTIFIER_NEW
     END
@@ -998,6 +1019,22 @@ FN LexLeaveScope ()
     // Leave the current scope.
 
     LexCurrentScope = TlDeleteSymbolTable ( LexCurrentScope )
+END
+
+FN LexEnterOverlayScope (
+    IN scope : ^TlSymbolTable,
+)
+
+    // Overlay the scope.
+
+    LexCurrentOverlayScope = scope
+END
+
+FN LexExitOverlayScope ()
+
+    // Un-overlay the scope.
+
+    LexCurrentOverlayScope = NULLPTR
 END
 
 FN LexCopyToken (

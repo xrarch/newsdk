@@ -199,7 +199,8 @@ TrgInfoRecords : ^JklTargetInfoRecord[8] = {
 #IF TRG_CT
     &CtTargetInfo,
 #END
-    NULLPTR,
+
+    NULLPTR, // MUST be here, as a sentinel
 }
 
 FN TrgInitialize ()
@@ -225,7 +226,7 @@ FN FeInitialize (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
 )
-    
+
     // Initialize the file block hash table.
 
     TlInitializeHashTable ( &FeFileBlockHashTable )

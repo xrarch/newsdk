@@ -29,37 +29,41 @@ END
 #END
 
 #MACRO TlInitializeList ( head ) [
-  listhead := &(head)
+    listhead := &(head)
 
-  listhead^.Prev = head
-  listhead^.Next = head
+    listhead^.Prev = listhead
+    listhead^.Next = listhead
 ]
 
 #MACRO TlInsertAtTailList ( head, entry ) [
-  listhead := &(head)
-  last := listhead^.Prev
+    listhead := &(head)
+    listentry := &(entry)
+    last := listhead^.Prev
 
-  (entry).Prev = last
-  (entry).Next = listhead
-  last^.Next = &(entry)
-  listhead^.Prev = &(entry)
+    listentry^.Prev = last
+    listentry^.Next = listhead
+    last^.Next = listentry
+    listhead^.Prev = listentry
 ]
 
 #MACRO TlInsertAtHeadList ( head, entry ) [
-  listhead := &(head)
-  first := listhead^.Next
+    listhead := &(head)
+    listentry := &(entry)
+    first := listhead^.Next
 
-  (entry).Next = first
-  (entry).Prev = listhead
-  first^.Prev = &(entry)
-  listhead^.Next = &(entry)
+    listentry^.Next = first
+    listentry^.Prev = listhead
+    first^.Prev = listentry
+    listhead^.Next = listentry
 ]
 
 #MACRO TlRemoveEntryList ( entry ) [
-  prev := (entry).Prev
-  next := (entry).Next
-  prev^.Next = next
-  next^.Prev = prev
+    listentry := &(entry)
+
+    prev := listentry^.Prev
+    next := listentry^.Next
+    prev^.Next = next
+    next^.Prev = prev
 ]
 
 STRUCT TlListEntry

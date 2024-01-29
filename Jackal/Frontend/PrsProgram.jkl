@@ -801,7 +801,7 @@ FN PrsAtom () : ^PrsAstNode
             LexTokenError ( &idtoken, "Expected a dot", 0, 0, 0 )
         END
 
-        oldscope := LexEnterScope ( type^.Body.Compound.FieldScope )
+        LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
 
         IF NOT LexMatchToken (
             &idtoken, // token
@@ -811,7 +811,7 @@ FN PrsAtom () : ^PrsAstNode
             LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
         END
 
-        LexResetScope ( oldscope )
+        LexExitOverlayScope ()
 
         IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
             LexTokenError ( &idtoken, "Expected a field name", 0, 0, 0 )
@@ -1063,7 +1063,7 @@ FN PrsParseStructInitializer (
             LexTokenError ( &token, "Expected a left bracket", 0, 0, 0 )
         END
 
-        oldscope := LexEnterScope ( fieldscope )
+        LexEnterOverlayScope ( fieldscope )
 
         IF NOT LexMatchToken (
             &token, // token
@@ -1079,7 +1079,7 @@ FN PrsParseStructInitializer (
 
         fieldsymbol := CAST token.Payload TO ^LexSymbol
 
-        LexResetScope ( oldscope )
+        LexExitOverlayScope ()
 
         IF NOT LexMatchToken (
             &token, // token
@@ -2391,7 +2391,7 @@ FN (PrsOperatorF) PrsParseCompoundTypeIndex (
 
     scope := type^.Body.Compound.FieldScope
 
-    oldscope := LexEnterScope ( scope )
+    LexEnterOverlayScope ( scope )
 
     fieldtoken : LexToken
 
@@ -2411,7 +2411,7 @@ FN (PrsOperatorF) PrsParseCompoundTypeIndex (
 
     node^.Body.Operator.OperatorSpecific = fieldsymbol
 
-    LexResetScope ( oldscope )
+    LexExitOverlayScope ()
 END
 
 FN (PrsOperatorF) PrsParseArrayIndex (
@@ -4325,14 +4325,14 @@ FN PrsParseCompoundType (
     offset : UWORD = 0
 
     WHILE TRUE DO
-        oldscope := LexEnterScope ( fieldscope )
+        LexEnterOverlayScope ( fieldscope )
 
         IF LexMatchToken (
             NULLPTR, // token
             TOKEN_TERMINATOR, // type
             TOKEN_END, // subtype
         ) THEN
-            LexResetScope ( oldscope )
+            LexExitOverlayScope ()
 
             // We're done with the struct.
 
@@ -4355,7 +4355,7 @@ FN PrsParseCompoundType (
 
         fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
 
-        LexResetScope ( oldscope )
+        LexExitOverlayScope ()
 
         colontoken : LexToken
 
@@ -4693,7 +4693,7 @@ FN (PrsStatementF) PrsParseGoTo (
     // Before collecting the label identifier, drop to function scope, since
     // that's where labels live.
 
-    oldscope := LexEnterScope ( PrsCurrentFunction^.Body.Function.FuncScope )
+    LexEnterOverlayScope ( PrsCurrentFunction^.Body.Function.FuncScope )
 
     labeltoken : LexToken
 
@@ -4705,7 +4705,7 @@ FN (PrsStatementF) PrsParseGoTo (
         LexTokenError ( &labeltoken, "Expected identifier", 0, 0, 0 )
     END
 
-    LexResetScope ( oldscope )
+    LexExitOverlayScope ()
 
     symbol := CAST labeltoken.Payload TO ^LexSymbol
 
@@ -5078,7 +5078,7 @@ FN (PrsStatementF) PrsParseLabel (
     // Before collecting the label identifier, drop to function scope, since
     // that's where labels live.
 
-    oldscope := LexEnterScope ( PrsCurrentFunction^.Body.Function.FuncScope )
+    LexEnterOverlayScope ( PrsCurrentFunction^.Body.Function.FuncScope )
 
     labeltoken : LexToken
 
@@ -5090,7 +5090,7 @@ FN (PrsStatementF) PrsParseLabel (
         LexTokenError ( &labeltoken, "Expected identifier", 0, 0, 0 )
     END
 
-    LexResetScope ( oldscope )
+    LexExitOverlayScope ()
 
     symbol := CAST labeltoken.Payload TO ^LexSymbol
 

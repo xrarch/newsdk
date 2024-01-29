@@ -481,6 +481,12 @@ EXTERN FN LexResetScope (
 
 EXTERN FN LexLeaveScope ()
 
+EXTERN FN LexEnterOverlayScope (
+    IN scope : ^TlSymbolTable,
+)
+
+EXTERN FN LexExitOverlayScope ()
+
 EXTERN FN LexCopyToken (
     IN dest : ^LexToken,
     IN src : ^LexToken,
