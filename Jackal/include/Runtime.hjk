@@ -196,8 +196,6 @@ STRUCT TlHashTableEntry
     HashTable : ^TlHashTable,
 
     Key : ^UBYTE,
-
-    Hash : UBYTE,
 END
 
 FNPTR TlHashTableEnumeratorF (
@@ -248,12 +246,12 @@ EXTERN FN TlEnumerateHashTable (
 EXTERN FN TlLookupHashTableByHash (
     IN hashtable : ^TlHashTable,
     IN key : ^UBYTE,
-    IN hash : ULONG,
+    IN hash : UWORD,
 ) : ^TlHashTableEntry
 
 EXTERN FN TlHashString (
     IN str : ^UBYTE,
-) : ULONG
+) : UWORD
 
 
 // symbol table stuff

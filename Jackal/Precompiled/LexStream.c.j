@@ -70,7 +70,7 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[213];
+extern uint64_t LexDefaultSection[212];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -690,7 +690,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v335 = _mng_stream271 + __twr_v334;
     __twr_v336 = *(uint64_t*)(__twr_v335);
     _mng_macro337 = __twr_v336;
-    __twr_v338 = 265ULL;
+    __twr_v338 = 257ULL;
     __twr_v339 = _mng_macro337 + __twr_v338;
     __twr_v340 = *(uint8_t*)(__twr_v339);
     if (__twr_v340) { goto __twr_l19; } else { goto __twr_l20; }

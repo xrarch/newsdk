@@ -126,7 +126,7 @@ uint64_t TlDeleteSymbolTable(uint64_t _mng_symboltable123) {
 uint64_t TlLookupSymbolTable(uint64_t _mng_symboltable136, uint64_t _mng_name137) {
     uint64_t __twr_v138;
     uint64_t __twr_v139;
-    uint32_t _mng_hash140;
+    uint64_t _mng_hash140;
     uint64_t __twr_v141;
     uint64_t __twr_v142;
     uint64_t __twr_v143;

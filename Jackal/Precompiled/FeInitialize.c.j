@@ -70,7 +70,7 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[213];
+extern uint64_t LexDefaultSection[212];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -618,14 +618,14 @@ uint64_t FeCreateFileBlock(uint64_t _mng_includename337, uint64_t _mng_created33
     uint64_t __twr_v362;
     __twr_v339 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
     __twr_v340 = (uint64_t)(&FeFileBlockHashTable);
-    __twr_v341 = 561ULL;
+    __twr_v341 = 560ULL;
     __twr_v342 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v339)(__twr_v340, __twr_v341, _mng_includename337, _mng_created338);
     _mng_fileblock343 = __twr_v342;
     __twr_v344 = *(uint8_t*)(_mng_created338);
     if (__twr_v344) { goto __twr_l32; } else { goto __twr_l31; }
     __twr_l32:;
     __twr_v345 = (uint64_t)(&TlCopyString);
-    __twr_v346 = 305ULL;
+    __twr_v346 = 304ULL;
     __twr_v347 = _mng_fileblock343 + __twr_v346;
     __twr_v348 = 0ULL;
     __twr_v349 = 1ULL;
@@ -633,7 +633,7 @@ uint64_t FeCreateFileBlock(uint64_t _mng_includename337, uint64_t _mng_created33
     __twr_v351 = __twr_v347 + __twr_v350;
     __twr_v352 = 256ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v345)(__twr_v351, _mng_includename337, __twr_v352);
-    __twr_v353 = 305ULL;
+    __twr_v353 = 304ULL;
     __twr_v354 = _mng_fileblock343 + __twr_v353;
     __twr_v355 = 0ULL;
     __twr_v356 = 1ULL;
@@ -657,7 +657,7 @@ void FeCopyPathFileBlock(uint64_t _mng_fileblock363, uint64_t _mng_filepath364) 
     uint64_t __twr_v371;
     uint64_t __twr_v372;
     __twr_v365 = (uint64_t)(&TlCopyString);
-    __twr_v366 = 49ULL;
+    __twr_v366 = 48ULL;
     __twr_v367 = _mng_fileblock363 + __twr_v366;
     __twr_v368 = 0ULL;
     __twr_v369 = 1ULL;

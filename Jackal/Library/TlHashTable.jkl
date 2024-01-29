@@ -60,7 +60,6 @@ FN TlInsertHashTableByHash (
 
     entry^.HashTable = hashtable
     entry^.Key = key
-    entry^.Hash = hash
 
     // Insert entry into doubly linked hash bucket list, at the head.
 
@@ -188,7 +187,7 @@ END
 FN TlLookupHashTableByHash (
     IN hashtable : ^TlHashTable,
     IN key : ^UBYTE,
-    IN hash : ULONG,
+    IN hash : UWORD,
 ) : ^TlHashTableEntry
 
     head := &hashtable^.BucketHeads[hash]
@@ -262,9 +261,9 @@ END
 
 FN TlHashString (
     IN str : ^UBYTE,
-) : ULONG
+) : UWORD
 
-    hash : ULONG = 0
+    hash := 0
 
     WHILE str^ DO
         hash += str^

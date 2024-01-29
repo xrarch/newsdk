@@ -70,7 +70,7 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[213];
+extern uint64_t LexDefaultSection[212];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -139,7 +139,7 @@ void LexStreamError(uint64_t _mng_str153, uint64_t _mng_err1154, uint64_t _mng_e
     __twr_v161 = 8ULL;
     __twr_v162 = _mng_stream159 + __twr_v161;
     __twr_v163 = *(uint64_t*)(__twr_v162);
-    __twr_v164 = 305ULL;
+    __twr_v164 = 304ULL;
     __twr_v165 = __twr_v163 + __twr_v164;
     __twr_v166 = 0ULL;
     __twr_v167 = 1ULL;
@@ -177,7 +177,7 @@ void LexTokenError(uint64_t _mng_token177, uint64_t _mng_str178, uint64_t _mng_e
     __twr_v183 = 8ULL;
     __twr_v184 = _mng_token177 + __twr_v183;
     __twr_v185 = *(uint64_t*)(__twr_v184);
-    __twr_v186 = 305ULL;
+    __twr_v186 = 304ULL;
     __twr_v187 = __twr_v185 + __twr_v186;
     __twr_v188 = 0ULL;
     __twr_v189 = 1ULL;

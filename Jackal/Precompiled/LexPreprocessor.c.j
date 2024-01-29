@@ -70,7 +70,7 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[213];
+extern uint64_t LexDefaultSection[212];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -120,7 +120,7 @@ uint64_t LexOperatorHashTable[196];
 uint64_t LexIfStack[11];
 uint64_t LexMacroZone[2];
 uint64_t LexDirectiveToken[4];
-uint64_t LexDirectiveBumpArray[128];
+uint64_t LexDirectiveBumpArray[112];
 uint64_t LexDirectiveBumpIndex = 0ULL;
 void LexInsertDirective(uint64_t _mng_name146, uint64_t _mng_parsefunc147) {
     uint64_t __twr_v148;
@@ -145,7 +145,7 @@ void LexInsertDirective(uint64_t _mng_name146, uint64_t _mng_parsefunc147) {
     __twr_v148 = (uint64_t)(&LexDirectiveBumpArray);
     __twr_v149 = (uint64_t)(&LexDirectiveBumpIndex);
     __twr_v150 = *(uint64_t*)(__twr_v149);
-    __twr_v151 = 64ULL;
+    __twr_v151 = 56ULL;
     __twr_v152 = __twr_v150 * __twr_v151;
     __twr_v153 = __twr_v148 + __twr_v152;
     _mng_directive154 = __twr_v153;
@@ -156,7 +156,7 @@ void LexInsertDirective(uint64_t _mng_name146, uint64_t _mng_parsefunc147) {
     *(uint64_t*)(__twr_v156) = __twr_v158;
     __twr_v159 = (uint64_t)(&_mng_parsefunc147);
     __twr_v160 = *(uint64_t*)(__twr_v159);
-    __twr_v161 = 56ULL;
+    __twr_v161 = 48ULL;
     __twr_v162 = _mng_directive154 + __twr_v161;
     *(uint64_t*)(__twr_v162) = __twr_v160;
     __twr_v163 = (uint64_t)(&TlInsertHashTable);
@@ -165,7 +165,7 @@ void LexInsertDirective(uint64_t _mng_name146, uint64_t _mng_parsefunc147) {
     __twr_v166 = _mng_directive154 + __twr_v165;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v163)(__twr_v164, __twr_v166, _mng_name146);
 }
-uint64_t LexOperatorBumpArray[256];
+uint64_t LexOperatorBumpArray[224];
 uint64_t LexOperatorBumpIndex = 0ULL;
 void LexInsertOperator(uint64_t _mng_name167, uint64_t _mng_parsefunc168) {
     uint64_t __twr_v169;
@@ -190,7 +190,7 @@ void LexInsertOperator(uint64_t _mng_name167, uint64_t _mng_parsefunc168) {
     __twr_v169 = (uint64_t)(&LexOperatorBumpArray);
     __twr_v170 = (uint64_t)(&LexOperatorBumpIndex);
     __twr_v171 = *(uint64_t*)(__twr_v170);
-    __twr_v172 = 64ULL;
+    __twr_v172 = 56ULL;
     __twr_v173 = __twr_v171 * __twr_v172;
     __twr_v174 = __twr_v169 + __twr_v173;
     _mng_operator175 = __twr_v174;
@@ -201,7 +201,7 @@ void LexInsertOperator(uint64_t _mng_name167, uint64_t _mng_parsefunc168) {
     *(uint64_t*)(__twr_v177) = __twr_v179;
     __twr_v180 = (uint64_t)(&_mng_parsefunc168);
     __twr_v181 = *(uint64_t*)(__twr_v180);
-    __twr_v182 = 56ULL;
+    __twr_v182 = 48ULL;
     __twr_v183 = _mng_operator175 + __twr_v182;
     *(uint64_t*)(__twr_v183) = __twr_v181;
     __twr_v184 = (uint64_t)(&TlInsertHashTable);
@@ -219,7 +219,7 @@ void LexMacroDelete(uint64_t _mng_entry188) {
     uint64_t __twr_v194;
     _mng_macro189 = _mng_entry188;
     __twr_v190 = (uint64_t)(&TlUninitializeDynamicBuffer);
-    __twr_v191 = 88ULL;
+    __twr_v191 = 80ULL;
     __twr_v192 = _mng_macro189 + __twr_v191;
     ((void (*)(uint64_t))__twr_v190)(__twr_v192);
     __twr_v193 = (uint64_t)(&TlFreeToZone);
@@ -1232,7 +1232,7 @@ void LexCollectValue(uint64_t _mng_token467, uint64_t _mng_buffer468, uint64_t _
     __twr_v505 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v500)(__twr_v501, __twr_v502, __twr_v503, __twr_v504, __twr_v505);
     __twr_l118:;
-    __twr_v506 = 56ULL;
+    __twr_v506 = 48ULL;
     __twr_v507 = _mng_operator499 + __twr_v506;
     __twr_v508 = *(uint64_t*)(__twr_v507);
     ((void (*)(uint64_t, uint64_t))__twr_v508)(_mng_buffer468, _mng_ignore469);
@@ -1362,7 +1362,7 @@ void LexCollectValue(uint64_t _mng_token467, uint64_t _mng_buffer468, uint64_t _
     __twr_v599 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v595)(_mng_token467, __twr_v596, __twr_v597, __twr_v598, __twr_v599);
     __twr_l130:;
-    __twr_v600 = 264ULL;
+    __twr_v600 = 256ULL;
     __twr_v601 = _mng_macro592 + __twr_v600;
     __twr_v602 = *(uint8_t*)(__twr_v601);
     if (__twr_v602) { goto __twr_l133; } else { goto __twr_l132; }
@@ -1375,7 +1375,7 @@ void LexCollectValue(uint64_t _mng_token467, uint64_t _mng_buffer468, uint64_t _
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v603)(_mng_token467, __twr_v604, __twr_v605, __twr_v606, __twr_v607);
     __twr_l132:;
     __twr_v608 = (uint64_t)(&TlCopyIntoDynamicBuffer);
-    __twr_v609 = 88ULL;
+    __twr_v609 = 80ULL;
     __twr_v610 = _mng_macro592 + __twr_v609;
     __twr_v611 = 16ULL;
     __twr_v612 = __twr_v610 + __twr_v611;
@@ -1384,7 +1384,7 @@ void LexCollectValue(uint64_t _mng_token467, uint64_t _mng_buffer468, uint64_t _
     __twr_v615 = 1ULL;
     __twr_v616 = __twr_v614 * __twr_v615;
     __twr_v617 = __twr_v613 + __twr_v616;
-    __twr_v618 = 88ULL;
+    __twr_v618 = 80ULL;
     __twr_v619 = _mng_macro592 + __twr_v618;
     __twr_v620 = 0ULL;
     __twr_v621 = __twr_v619 + __twr_v620;
@@ -1594,7 +1594,7 @@ void LexDefineMacroFromArgumentString(uint64_t _mng_arg683) {
     __twr_v686 = ((uint64_t (*)(uint64_t))__twr_v684)(__twr_v685);
     _mng_macro687 = __twr_v686;
     __twr_v688 = (uint64_t)(&TlInitializeDynamicBuffer);
-    __twr_v689 = 88ULL;
+    __twr_v689 = 80ULL;
     __twr_v690 = _mng_macro687 + __twr_v689;
     ((void (*)(uint64_t))__twr_v688)(__twr_v690);
     __twr_v691 = (uint64_t)(&FeIsMacroArgument);
@@ -1605,7 +1605,7 @@ void LexDefineMacroFromArgumentString(uint64_t _mng_arg683) {
     if (_mng_arg683 < _mng_equalsptr693) { goto __twr_l141; } else { goto __twr_l142; }
     __twr_l141:;
     __twr_v696 = *(uint8_t*)(_mng_arg683);
-    __twr_v697 = 176ULL;
+    __twr_v697 = 168ULL;
     __twr_v698 = _mng_macro687 + __twr_v697;
     __twr_v699 = 1ULL;
     __twr_v700 = _mng_j695 * __twr_v699;
@@ -1621,7 +1621,7 @@ void LexDefineMacroFromArgumentString(uint64_t _mng_arg683) {
     if (_mng_arg683 < _mng_equalsptr693) { goto __twr_l141; } else { goto __twr_l142; }
     __twr_l142:;
     __twr_v706 = 0ULL;
-    __twr_v707 = 176ULL;
+    __twr_v707 = 168ULL;
     __twr_v708 = _mng_macro687 + __twr_v707;
     __twr_v709 = 1ULL;
     __twr_v710 = _mng_j695 * __twr_v709;
@@ -1636,7 +1636,7 @@ void LexDefineMacroFromArgumentString(uint64_t _mng_arg683) {
     if (__twr_v715) { goto __twr_l144; } else { goto __twr_l145; }
     __twr_l144:;
     __twr_v716 = (uint64_t)(&TlInsertDynamicBuffer);
-    __twr_v717 = 88ULL;
+    __twr_v717 = 80ULL;
     __twr_v718 = _mng_macro687 + __twr_v717;
     __twr_v719 = *(uint8_t*)(_mng_equalsptr693);
     ((void (*)(uint64_t, uint64_t))__twr_v716)(__twr_v718, __twr_v719);
@@ -1648,16 +1648,16 @@ void LexDefineMacroFromArgumentString(uint64_t _mng_arg683) {
     if (__twr_v722) { goto __twr_l144; } else { goto __twr_l145; }
     __twr_l145:;
     __twr_v723 = (uint64_t)(&TlInsertDynamicBuffer);
-    __twr_v724 = 88ULL;
+    __twr_v724 = 80ULL;
     __twr_v725 = _mng_macro687 + __twr_v724;
     __twr_v726 = 0ULL;
     ((void (*)(uint64_t, uint64_t))__twr_v723)(__twr_v725, __twr_v726);
     __twr_v727 = 0ULL;
-    __twr_v728 = 264ULL;
+    __twr_v728 = 256ULL;
     __twr_v729 = _mng_macro687 + __twr_v728;
     *(uint8_t*)(__twr_v729) = __twr_v727;
     __twr_v730 = 0ULL;
-    __twr_v731 = 265ULL;
+    __twr_v731 = 257ULL;
     __twr_v732 = _mng_macro687 + __twr_v731;
     *(uint8_t*)(__twr_v732) = __twr_v730;
     __twr_v733 = (uint64_t)(&TlInsertSymbolTable);
@@ -1665,7 +1665,7 @@ void LexDefineMacroFromArgumentString(uint64_t _mng_arg683) {
     __twr_v735 = *(uint64_t*)(__twr_v734);
     __twr_v736 = 0ULL;
     __twr_v737 = _mng_macro687 + __twr_v736;
-    __twr_v738 = 176ULL;
+    __twr_v738 = 168ULL;
     __twr_v739 = _mng_macro687 + __twr_v738;
     __twr_v740 = 0ULL;
     __twr_v741 = 1ULL;
@@ -1875,17 +1875,17 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v761 = (uint64_t)(&LexCurrentMacroScope);
     __twr_v762 = *(uint64_t*)(__twr_v761);
     _mng_oldmacroscope763 = __twr_v762;
-    __twr_v764 = 265ULL;
+    __twr_v764 = 257ULL;
     __twr_v765 = _mng_macro744 + __twr_v764;
     __twr_v766 = *(uint8_t*)(__twr_v765);
     if (__twr_v766) { goto __twr_l150; } else { goto __twr_l151; }
     __twr_l150:;
-    __twr_v767 = 240ULL;
+    __twr_v767 = 232ULL;
     __twr_v768 = _mng_macro744 + __twr_v767;
     __twr_v769 = *(uint64_t*)(__twr_v768);
     __twr_v770 = (uint64_t)(&LexCurrentScope);
     *(uint64_t*)(__twr_v770) = __twr_v769;
-    __twr_v771 = 248ULL;
+    __twr_v771 = 240ULL;
     __twr_v772 = _mng_macro744 + __twr_v771;
     __twr_v773 = *(uint64_t*)(__twr_v772);
     __twr_v774 = (uint64_t)(&LexCurrentMacroScope);
@@ -1927,7 +1927,7 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v799 = 44ULL;
     __twr_v800 = _mng_stream789 + __twr_v799;
     *(uint32_t*)(__twr_v800) = __twr_v798;
-    __twr_v801 = 88ULL;
+    __twr_v801 = 80ULL;
     __twr_v802 = _mng_macro744 + __twr_v801;
     __twr_v803 = 16ULL;
     __twr_v804 = __twr_v802 + __twr_v803;
@@ -1935,7 +1935,7 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v806 = 24ULL;
     __twr_v807 = _mng_stream789 + __twr_v806;
     *(uint64_t*)(__twr_v807) = __twr_v805;
-    __twr_v808 = 88ULL;
+    __twr_v808 = 80ULL;
     __twr_v809 = _mng_macro744 + __twr_v808;
     __twr_v810 = 0ULL;
     __twr_v811 = __twr_v809 + __twr_v810;
@@ -1951,7 +1951,7 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v819 = 80ULL;
     __twr_v820 = _mng_stream789 + __twr_v819;
     *(uint64_t*)(__twr_v820) = _mng_oldmacroscope763;
-    __twr_v821 = 264ULL;
+    __twr_v821 = 256ULL;
     __twr_v822 = _mng_macro744 + __twr_v821;
     __twr_v823 = *(uint8_t*)(__twr_v822);
     if (__twr_v823) { goto __twr_l155; } else { goto __twr_l154; }
@@ -1971,7 +1971,7 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v835 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v830)(__twr_v831, __twr_v832, __twr_v833, __twr_v834, __twr_v835);
     __twr_l156:;
-    __twr_v836 = 256ULL;
+    __twr_v836 = 248ULL;
     __twr_v837 = _mng_macro744 + __twr_v836;
     __twr_v838 = *(uint64_t*)(__twr_v837);
     _mng_arg839 = __twr_v838;
@@ -1981,20 +1981,20 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v841 = (uint64_t)(&LexMacroZone);
     __twr_v842 = ((uint64_t (*)(uint64_t))__twr_v840)(__twr_v841);
     _mng_argmacro843 = __twr_v842;
-    __twr_v844 = 240ULL;
+    __twr_v844 = 232ULL;
     __twr_v845 = _mng_argmacro843 + __twr_v844;
     *(uint64_t*)(__twr_v845) = _mng_oldscope760;
-    __twr_v846 = 248ULL;
+    __twr_v846 = 240ULL;
     __twr_v847 = _mng_argmacro843 + __twr_v846;
     *(uint64_t*)(__twr_v847) = _mng_oldmacroscope763;
     __twr_v848 = (uint64_t)(&TlCopyString);
-    __twr_v849 = 176ULL;
+    __twr_v849 = 168ULL;
     __twr_v850 = _mng_argmacro843 + __twr_v849;
     __twr_v851 = 0ULL;
     __twr_v852 = 1ULL;
     __twr_v853 = __twr_v851 * __twr_v852;
     __twr_v854 = __twr_v850 + __twr_v853;
-    __twr_v855 = 64ULL;
+    __twr_v855 = 56ULL;
     __twr_v856 = _mng_arg839 + __twr_v855;
     __twr_v857 = 0ULL;
     __twr_v858 = 1ULL;
@@ -2003,15 +2003,15 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v861 = 64ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v848)(__twr_v854, __twr_v860, __twr_v861);
     __twr_v862 = 0ULL;
-    __twr_v863 = 264ULL;
+    __twr_v863 = 256ULL;
     __twr_v864 = _mng_argmacro843 + __twr_v863;
     *(uint8_t*)(__twr_v864) = __twr_v862;
     __twr_v865 = 1ULL;
-    __twr_v866 = 265ULL;
+    __twr_v866 = 257ULL;
     __twr_v867 = _mng_argmacro843 + __twr_v866;
     *(uint8_t*)(__twr_v867) = __twr_v865;
     __twr_v868 = (uint64_t)(&TlInitializeDynamicBuffer);
-    __twr_v869 = 88ULL;
+    __twr_v869 = 80ULL;
     __twr_v870 = _mng_argmacro843 + __twr_v869;
     ((void (*)(uint64_t))__twr_v868)(__twr_v870);
     __twr_v871 = 0ULL;
@@ -2033,9 +2033,9 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v877)(__twr_v878, __twr_v879, __twr_v880, __twr_v881, __twr_v882);
     __twr_l164:;
     __twr_v883 = (uint64_t)(&LexCollectMacroArgumentContents);
-    __twr_v884 = 56ULL;
+    __twr_v884 = 48ULL;
     __twr_v885 = _mng_argmacro843 + __twr_v884;
-    __twr_v886 = 88ULL;
+    __twr_v886 = 80ULL;
     __twr_v887 = _mng_argmacro843 + __twr_v886;
     __twr_v888 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v883)(__twr_v885, __twr_v887);
     _mng_foundclose872 = __twr_v888;
@@ -2045,7 +2045,7 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     if (__twr_v890) { goto __twr_l162; } else { goto __twr_l161; }
     __twr_l162:;
     __twr_v891 = (uint64_t)(&TlInsertDynamicBuffer);
-    __twr_v892 = 88ULL;
+    __twr_v892 = 80ULL;
     __twr_v893 = _mng_argmacro843 + __twr_v892;
     __twr_v894 = 0ULL;
     ((void (*)(uint64_t, uint64_t))__twr_v891)(__twr_v893, __twr_v894);
@@ -2054,14 +2054,14 @@ void LexExpandMacro(uint64_t _mng_macro744, uint64_t _mng_token745) {
     __twr_v897 = *(uint64_t*)(__twr_v896);
     __twr_v898 = 0ULL;
     __twr_v899 = _mng_argmacro843 + __twr_v898;
-    __twr_v900 = 176ULL;
+    __twr_v900 = 168ULL;
     __twr_v901 = _mng_argmacro843 + __twr_v900;
     __twr_v902 = 0ULL;
     __twr_v903 = 1ULL;
     __twr_v904 = __twr_v902 * __twr_v903;
     __twr_v905 = __twr_v901 + __twr_v904;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v895)(__twr_v897, __twr_v899, __twr_v905);
-    __twr_v906 = 56ULL;
+    __twr_v906 = 48ULL;
     __twr_v907 = _mng_arg839 + __twr_v906;
     __twr_v908 = *(uint64_t*)(__twr_v907);
     _mng_arg839 = __twr_v908;
@@ -2362,7 +2362,7 @@ void LexParseInclude() {
     __twr_v1006 = 8ULL;
     __twr_v1007 = __twr_v1005 + __twr_v1006;
     __twr_v1008 = *(uint64_t*)(__twr_v1007);
-    __twr_v1009 = 49ULL;
+    __twr_v1009 = 48ULL;
     __twr_v1010 = __twr_v1008 + __twr_v1009;
     __twr_v1011 = 0ULL;
     __twr_v1012 = 1ULL;
@@ -2557,13 +2557,13 @@ void LexParseDefine() {
     __twr_v1097 = ((uint64_t (*)(uint64_t))__twr_v1095)(__twr_v1096);
     _mng_macro1098 = __twr_v1097;
     __twr_v1099 = (uint64_t)(&TlInitializeDynamicBuffer);
-    __twr_v1100 = 88ULL;
+    __twr_v1100 = 80ULL;
     __twr_v1101 = _mng_macro1098 + __twr_v1100;
     ((void (*)(uint64_t))__twr_v1099)(__twr_v1101);
     __twr_v1102 = (uint64_t)(&LexCollectDirectiveToken);
-    __twr_v1103 = 56ULL;
+    __twr_v1103 = 48ULL;
     __twr_v1104 = _mng_macro1098 + __twr_v1103;
-    __twr_v1105 = 176ULL;
+    __twr_v1105 = 168ULL;
     __twr_v1106 = _mng_macro1098 + __twr_v1105;
     __twr_v1107 = 0ULL;
     __twr_v1108 = 1ULL;
@@ -2573,7 +2573,7 @@ void LexParseDefine() {
     __twr_v1111 = (uint64_t)(&TlLookupSymbolTable);
     __twr_v1112 = (uint64_t)(&LexCurrentMacroScope);
     __twr_v1113 = *(uint64_t*)(__twr_v1112);
-    __twr_v1114 = 176ULL;
+    __twr_v1114 = 168ULL;
     __twr_v1115 = _mng_macro1098 + __twr_v1114;
     __twr_v1116 = 0ULL;
     __twr_v1117 = 1ULL;
@@ -2584,7 +2584,7 @@ void LexParseDefine() {
     if (_mng_oldmacro1121) { goto __twr_l194; } else { goto __twr_l193; }
     __twr_l194:;
     __twr_v1122 = (uint64_t)(&LexTokenError);
-    __twr_v1123 = 56ULL;
+    __twr_v1123 = 48ULL;
     __twr_v1124 = _mng_macro1098 + __twr_v1123;
     __twr_v1125 = (uint64_t)(&"Macro already defined");
     __twr_v1126 = 0ULL;
@@ -2593,17 +2593,17 @@ void LexParseDefine() {
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1122)(__twr_v1124, __twr_v1125, __twr_v1126, __twr_v1127, __twr_v1128);
     __twr_l193:;
     __twr_v1129 = 0ULL;
-    __twr_v1130 = 264ULL;
+    __twr_v1130 = 256ULL;
     __twr_v1131 = _mng_macro1098 + __twr_v1130;
     *(uint8_t*)(__twr_v1131) = __twr_v1129;
     __twr_v1132 = 0ULL;
-    __twr_v1133 = 265ULL;
+    __twr_v1133 = 257ULL;
     __twr_v1134 = _mng_macro1098 + __twr_v1133;
     *(uint8_t*)(__twr_v1134) = __twr_v1132;
     __twr_v1135 = (uint64_t)(&LexCollectValue);
-    __twr_v1136 = 56ULL;
+    __twr_v1136 = 48ULL;
     __twr_v1137 = _mng_macro1098 + __twr_v1136;
-    __twr_v1138 = 88ULL;
+    __twr_v1138 = 80ULL;
     __twr_v1139 = _mng_macro1098 + __twr_v1138;
     __twr_v1140 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1135)(__twr_v1137, __twr_v1139, __twr_v1140);
@@ -2612,7 +2612,7 @@ void LexParseDefine() {
     __twr_v1143 = *(uint64_t*)(__twr_v1142);
     __twr_v1144 = 0ULL;
     __twr_v1145 = _mng_macro1098 + __twr_v1144;
-    __twr_v1146 = 176ULL;
+    __twr_v1146 = 168ULL;
     __twr_v1147 = _mng_macro1098 + __twr_v1146;
     __twr_v1148 = 0ULL;
     __twr_v1149 = 1ULL;
@@ -2901,7 +2901,7 @@ void LexCollectMacroArgumentList(uint64_t _mng_ignore1222, uint64_t _mng_arglist
     __twr_l220:;
     __twr_v1245 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
     __twr_v1246 = (uint64_t)(&_mng_hashtable1229);
-    __twr_v1247 = 128ULL;
+    __twr_v1247 = 120ULL;
     __twr_v1248 = (uint64_t)(&_mng_buffer1236);
     __twr_v1249 = 0ULL;
     __twr_v1250 = 1ULL;
@@ -2921,7 +2921,7 @@ void LexCollectMacroArgumentList(uint64_t _mng_ignore1222, uint64_t _mng_arglist
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1257)(__twr_v1258, __twr_v1259, __twr_v1260, __twr_v1261, __twr_v1262);
     __twr_l222:;
     __twr_v1263 = (uint64_t)(&TlCopyString);
-    __twr_v1264 = 64ULL;
+    __twr_v1264 = 56ULL;
     __twr_v1265 = _mng_arg1256 + __twr_v1264;
     __twr_v1266 = 0ULL;
     __twr_v1267 = 1ULL;
@@ -2939,12 +2939,12 @@ void LexCollectMacroArgumentList(uint64_t _mng_ignore1222, uint64_t _mng_arglist
     __twr_v1278 = __twr_v1277 + __twr_v1276;
     *(uint32_t*)(_mng_length1224) = __twr_v1278;
     __twr_v1279 = 0ULL;
-    __twr_v1280 = 56ULL;
+    __twr_v1280 = 48ULL;
     __twr_v1281 = _mng_arg1256 + __twr_v1280;
     *(uint64_t*)(__twr_v1281) = __twr_v1279;
     if (_mng_arglisttail1226) { goto __twr_l225; } else { goto __twr_l226; }
     __twr_l225:;
-    __twr_v1282 = 56ULL;
+    __twr_v1282 = 48ULL;
     __twr_v1283 = _mng_arglisttail1226 + __twr_v1282;
     *(uint64_t*)(__twr_v1283) = _mng_arg1256;
     goto __twr_l224;
@@ -3067,13 +3067,13 @@ void LexParseMacro() {
     __twr_v1288 = ((uint64_t (*)(uint64_t))__twr_v1286)(__twr_v1287);
     _mng_macro1289 = __twr_v1288;
     __twr_v1290 = (uint64_t)(&TlInitializeDynamicBuffer);
-    __twr_v1291 = 88ULL;
+    __twr_v1291 = 80ULL;
     __twr_v1292 = _mng_macro1289 + __twr_v1291;
     ((void (*)(uint64_t))__twr_v1290)(__twr_v1292);
     __twr_v1293 = (uint64_t)(&LexCollectDirectiveToken);
-    __twr_v1294 = 56ULL;
+    __twr_v1294 = 48ULL;
     __twr_v1295 = _mng_macro1289 + __twr_v1294;
-    __twr_v1296 = 176ULL;
+    __twr_v1296 = 168ULL;
     __twr_v1297 = _mng_macro1289 + __twr_v1296;
     __twr_v1298 = 0ULL;
     __twr_v1299 = 1ULL;
@@ -3101,7 +3101,7 @@ void LexParseMacro() {
     __twr_l232:;
     __twr_v1316 = (uint64_t)(&LexCollectMacroArgumentList);
     __twr_v1317 = 1ULL;
-    __twr_v1318 = 256ULL;
+    __twr_v1318 = 248ULL;
     __twr_v1319 = _mng_macro1289 + __twr_v1318;
     __twr_v1320 = (uint64_t)(&_mng_length1321);
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1316)(__twr_v1317, __twr_v1319, __twr_v1320);
@@ -3120,7 +3120,7 @@ void LexParseMacro() {
     __twr_l231:;
     __twr_v1331 = (uint64_t)(&LexCollectMacroArgumentList);
     __twr_v1332 = 0ULL;
-    __twr_v1333 = 256ULL;
+    __twr_v1333 = 248ULL;
     __twr_v1334 = _mng_macro1289 + __twr_v1333;
     __twr_v1335 = (uint64_t)(&_mng_length1321);
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1331)(__twr_v1332, __twr_v1334, __twr_v1335);
@@ -3128,7 +3128,7 @@ void LexParseMacro() {
     if (_mng_length1321 == __twr_v1336) { goto __twr_l234; } else { goto __twr_l233; }
     __twr_l234:;
     __twr_v1337 = (uint64_t)(&LexTokenError);
-    __twr_v1338 = 56ULL;
+    __twr_v1338 = 48ULL;
     __twr_v1339 = _mng_macro1289 + __twr_v1338;
     __twr_v1340 = (uint64_t)(&"Must have at least 1 argument");
     __twr_v1341 = 0ULL;
@@ -3139,7 +3139,7 @@ void LexParseMacro() {
     __twr_v1344 = (uint64_t)(&TlLookupSymbolTable);
     __twr_v1345 = (uint64_t)(&LexCurrentMacroScope);
     __twr_v1346 = *(uint64_t*)(__twr_v1345);
-    __twr_v1347 = 176ULL;
+    __twr_v1347 = 168ULL;
     __twr_v1348 = _mng_macro1289 + __twr_v1347;
     __twr_v1349 = 0ULL;
     __twr_v1350 = 1ULL;
@@ -3150,7 +3150,7 @@ void LexParseMacro() {
     if (_mng_oldmacro1354) { goto __twr_l236; } else { goto __twr_l235; }
     __twr_l236:;
     __twr_v1355 = (uint64_t)(&LexTokenError);
-    __twr_v1356 = 56ULL;
+    __twr_v1356 = 48ULL;
     __twr_v1357 = _mng_macro1289 + __twr_v1356;
     __twr_v1358 = (uint64_t)(&"Macro already defined");
     __twr_v1359 = 0ULL;
@@ -3159,17 +3159,17 @@ void LexParseMacro() {
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1355)(__twr_v1357, __twr_v1358, __twr_v1359, __twr_v1360, __twr_v1361);
     __twr_l235:;
     __twr_v1362 = 1ULL;
-    __twr_v1363 = 264ULL;
+    __twr_v1363 = 256ULL;
     __twr_v1364 = _mng_macro1289 + __twr_v1363;
     *(uint8_t*)(__twr_v1364) = __twr_v1362;
     __twr_v1365 = 0ULL;
-    __twr_v1366 = 265ULL;
+    __twr_v1366 = 257ULL;
     __twr_v1367 = _mng_macro1289 + __twr_v1366;
     *(uint8_t*)(__twr_v1367) = __twr_v1365;
     __twr_v1368 = (uint64_t)(&LexCollectValue);
-    __twr_v1369 = 56ULL;
+    __twr_v1369 = 48ULL;
     __twr_v1370 = _mng_macro1289 + __twr_v1369;
-    __twr_v1371 = 88ULL;
+    __twr_v1371 = 80ULL;
     __twr_v1372 = _mng_macro1289 + __twr_v1371;
     __twr_v1373 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1368)(__twr_v1370, __twr_v1372, __twr_v1373);
@@ -3178,7 +3178,7 @@ void LexParseMacro() {
     __twr_v1376 = *(uint64_t*)(__twr_v1375);
     __twr_v1377 = 0ULL;
     __twr_v1378 = _mng_macro1289 + __twr_v1377;
-    __twr_v1379 = 176ULL;
+    __twr_v1379 = 168ULL;
     __twr_v1380 = _mng_macro1289 + __twr_v1379;
     __twr_v1381 = 0ULL;
     __twr_v1382 = 1ULL;
@@ -4897,7 +4897,7 @@ void LexParseDirective() {
     __twr_v2157 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v2152)(__twr_v2153, __twr_v2154, __twr_v2155, __twr_v2156, __twr_v2157);
     __twr_l290:;
-    __twr_v2158 = 56ULL;
+    __twr_v2158 = 48ULL;
     __twr_v2159 = _mng_directive2151 + __twr_v2158;
     __twr_v2160 = *(uint64_t*)(__twr_v2159);
     ((void (*)())__twr_v2160)();
@@ -5041,7 +5041,7 @@ void LexInitializePreprocessor() {
     *(uint64_t*)(__twr_v2173) = __twr_v2172;
     __twr_v2174 = (uint64_t)(&TlInitializeZone);
     __twr_v2175 = (uint64_t)(&LexMacroZone);
-    __twr_v2176 = 266ULL;
+    __twr_v2176 = 258ULL;
     ((void (*)(uint64_t, uint64_t))__twr_v2174)(__twr_v2175, __twr_v2176);
     __twr_v2177 = (uint64_t)(&LexInsertDirective);
     __twr_v2178 = (uint64_t)(&"INCLUDE");

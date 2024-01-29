@@ -70,7 +70,7 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[213];
+extern uint64_t LexDefaultSection[212];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -117,7 +117,7 @@ uint64_t LexSectionListTail = 0ULL;
 uint64_t LexSectionStackElementZone[2];
 uint64_t LexSectionHashTable[196];
 uint64_t LexSectionStackTop;
-uint64_t LexDefaultSection[213];
+uint64_t LexDefaultSection[212];
 void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     uint64_t __twr_v148;
     uint64_t __twr_v149;
@@ -152,7 +152,7 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     uint64_t __twr_v178;
     uint64_t __twr_v179;
     __twr_v148 = (uint64_t)(&TlCopyString);
-    __twr_v149 = 49ULL;
+    __twr_v149 = 48ULL;
     __twr_v150 = _mng_section146 + __twr_v149;
     __twr_v151 = 0ULL;
     __twr_v152 = 1ULL;
@@ -160,7 +160,7 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     __twr_v154 = __twr_v150 + __twr_v153;
     __twr_v155 = 64ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v148)(__twr_v154, _mng_name147, __twr_v155);
-    __twr_v156 = 49ULL;
+    __twr_v156 = 48ULL;
     __twr_v157 = _mng_section146 + __twr_v156;
     __twr_v158 = 0ULL;
     __twr_v159 = 1ULL;
@@ -172,11 +172,11 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     __twr_v165 = __twr_v163 + __twr_v164;
     *(uint64_t*)(__twr_v165) = __twr_v161;
     __twr_v166 = (uint64_t)(&TlInitializeHashTable);
-    __twr_v167 = 128ULL;
+    __twr_v167 = 120ULL;
     __twr_v168 = _mng_section146 + __twr_v167;
     ((void (*)(uint64_t))__twr_v166)(__twr_v168);
     __twr_v169 = 0ULL;
-    __twr_v170 = 120ULL;
+    __twr_v170 = 112ULL;
     __twr_v171 = _mng_section146 + __twr_v170;
     *(uint64_t*)(__twr_v171) = __twr_v169;
     __twr_v172 = (uint64_t)(&LexSectionListTail);
@@ -185,7 +185,7 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     __twr_l2:;
     __twr_v174 = (uint64_t)(&LexSectionListTail);
     __twr_v175 = *(uint64_t*)(__twr_v174);
-    __twr_v176 = 120ULL;
+    __twr_v176 = 112ULL;
     __twr_v177 = __twr_v175 + __twr_v176;
     *(uint64_t*)(__twr_v177) = _mng_section146;
     goto __twr_l1;
@@ -251,7 +251,7 @@ uint64_t LexLookupSection(uint64_t _mng_name190) {
     __twr_l4:;
     __twr_v198 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
     __twr_v199 = (uint64_t)(&LexSectionHashTable);
-    __twr_v200 = 1704ULL;
+    __twr_v200 = 1696ULL;
     __twr_v201 = (uint64_t)(&_mng_created202);
     __twr_v203 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v198)(__twr_v199, __twr_v200, _mng_name190, __twr_v201);
     _mng_section204 = __twr_v203;
