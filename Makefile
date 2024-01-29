@@ -44,4 +44,4 @@ cleanup:
 	done
 
 bootstrap: $(BUILDROOT)
-	$(JCC) Jackal/Precompiled/*.jc Jackal/Precompiled/*.c -o $(REPO)/build/bsjkl
+	$(JCC) Jackal/Precompiled/*.c.j -o $(REPO)/build/bsjkl
