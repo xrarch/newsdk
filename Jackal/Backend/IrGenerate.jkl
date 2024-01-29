@@ -1275,11 +1275,11 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
 
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
-    basetype : ^LexSemanticType
     var : ^IrVariable
+    stride : UWORD
 
     IF type^.Subtype == TYPE_ARRAY THEN
-        basetype = type^.Body.Array.Base
+        stride = type^.Body.Array.ElementSize
 
         var = IrGenerateExpression (
             node^.Body.Operator.Left, // node
@@ -1290,7 +1290,15 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
     ELSE
         // Must be a pointer.
 
-        basetype = type^.Body.Pointer.Base
+        basetype := type^.Body.Pointer.Base
+
+        // Skip type names.
+
+        WHILE basetype^.Subtype == TYPE_NAMED DO
+            basetype = basetype^.Body.Named.Symbol^.SemanticType
+        END
+
+        stride = basetype^.Size
 
         var = IrGenerateRvalue (
             node^.Body.Operator.Left, // node
@@ -1299,13 +1307,7 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
 
     indexvar := IrGenerateRvalue ( node^.Body.Operator.Right )
 
-    // Skip type names.
-
-    WHILE basetype^.Subtype == TYPE_NAMED DO
-        basetype = basetype^.Body.Named.Symbol^.SemanticType
-    END
-
-    stridevar := IrCreateConstantVariable ( basetype^.Size )
+    stridevar := IrCreateConstantVariable ( stride )
 
     // Generate a multiplication to calculate the offset.
 

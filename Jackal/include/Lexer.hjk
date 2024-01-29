@@ -266,9 +266,8 @@ STRUCT LexSemanticTypeArrayBody
     // The base points to the "underlying type". I.e., "array of [base]".
 
     Base : ^LexSemanticType,
-
     Bound : UWORD,
-
+    ElementSize : UWORD,
     HasBound : UBYTE,
 
     // This "parent" link is only used at type parsing time.

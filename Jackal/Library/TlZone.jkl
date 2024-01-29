@@ -17,11 +17,10 @@ FN TlInitializeZone (
         blocksize = SIZEOF TlZoneBlockHeader
     END
 
-    // First align to 8 bytes, assuming a 64-bit C host.
-    // TODO ifdef this for 32 bits as well
+    // First align to word size.
 
-    blocksize += 7
-    blocksize &= ~7
+    blocksize += (TL_MACHINE_WORD_SIZE - 1)
+    blocksize &= ~(TL_MACHINE_WORD_SIZE - 1)
 
     zone^.BlockSize = blocksize
     zone^.FreeListHead = NULLPTR

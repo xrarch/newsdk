@@ -7,8 +7,12 @@ ifndef SDK
 	SDK := $(REPO)/../sdk
 endif
 
+ifndef BITS
+	BITS := 64
+endif
+
 export SDK
-export JC := $(REPO)/build/bsjkl target=CHost
+export JC := $(REPO)/build/bsjkl target=CHost BITS=$(BITS)
 export JCC := $(CC) -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c
 export CC := $(CC) -Ofast
 

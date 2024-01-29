@@ -72,8 +72,7 @@ STRUCT IrLabelBody
 END
 
 STRUCT IrJumpBody
-    // Actually a pointer to an IrInstruction (TODO GRR BOOTSTRAP TRANSPILER!!)
-    Label : ^VOID,
+    Label : ^IrInstruction,
 END
 
 STRUCT IrLoadStoreBody
@@ -93,9 +92,8 @@ STRUCT IrConstantBody
 END
 
 STRUCT IrBranchBody
-    // Actually a pointer to IrInstructions (TODO GRR BOOTSTRAP TRANSPILER!!)
-    TrueLabel : ^VOID,
-    FalseLabel : ^VOID,
+    TrueLabel : ^IrInstruction,
+    FalseLabel : ^IrInstruction,
 END
 
 STRUCT IrCallBody

@@ -54,8 +54,9 @@ STRUCT PrsOperatorRecord
     NoRightSide : UBYTE,
 END
 
-PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
-PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+// FORWARD
+EXTERN PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+EXTERN PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
 
 FNPTR PrsDeclaratorF () : ^LexSymbol
 
@@ -881,7 +882,7 @@ FN PrsParseArrayInitializer (
         basetype = basetype^.Body.Named.Symbol^.SemanticType
     END
 
-    elementsize := basetype^.Size
+    elementsize := type^.Body.Array.ElementSize
     bound := type^.Body.Array.Bound
     index := 0
     offset := 0
@@ -1678,6 +1679,8 @@ FN PrsType (
         walkptr := arraytail
 
         WHILE walkptr DO
+            walkptr^.Body.Array.ElementSize = size
+
             size *= walkptr^.Body.Array.Bound
 
             walkptr^.Size = size
@@ -3908,8 +3911,7 @@ FN PrsParseFnSignature (
 
                 type^.Body.Function.VarArgTable = varargtablesymbol
 
-                // The type of the vararg table is boundless array of
-                // pointer to void.
+                // The type of the vararg table is pointer to pointer to void.
 
                 varargtablesymbol^.SemanticType = PrsVarArgType
 
@@ -5221,6 +5223,171 @@ FN (PrsOperatorEvalF) PrsEvalSizeOfValue (
     RETURN PrsConstantType
 END
 
+PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_DOT] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParseCompoundTypeIndex,
+        [EvalFunc] = &PrsEvalCompoundTypeIndex,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_LBRACKET] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParseArrayIndex,
+        [EvalFunc] = &PrsEvalArrayIndex,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_LPAREN] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParseFunctionCall,
+        [EvalFunc] = &PrsEvalFunctionCall,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_CARET] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParsePtrDereference,
+        [EvalFunc] = &PrsEvalPtrDereference,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_MUL] = {
+        [Precedence] = 20,
+        [ParseFunc] = &PrsParseMul,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_DIVIDE] = {
+        [Precedence] = 20,
+        [ParseFunc] = &PrsParseDivide,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_MODULO] = {
+        [Precedence] = 20,
+        [ParseFunc] = &PrsParseModulo,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_PLUS] = {
+        [Precedence] = 19,
+        [ParseFunc] = &PrsParsePlus,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_MINUS] = {
+        [Precedence] = 19,
+        [ParseFunc] = &PrsParseMinus,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_LEFTSHIFT] = {
+        [Precedence] = 18,
+        [ParseFunc] = &PrsParseLeftShift,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_RIGHTSHIFT] = {
+        [Precedence] = 18,
+        [ParseFunc] = &PrsParseRightShift,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_BITAND] = {
+        [Precedence] = 17,
+        [ParseFunc] = &PrsParseBitAnd,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_BITXOR] = {
+        [Precedence] = 16,
+        [ParseFunc] = &PrsParseBitXor,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_BITOR] = {
+        [Precedence] = 15,
+        [ParseFunc] = &PrsParseBitOr,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_LESSTHAN] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseLessThan,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_GREATERTHAN] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseGreaterThan,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_LTEQ] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseLtEq,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_GTEQ] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseGtEq,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_EQUIV] = {
+        [Precedence] = 13,
+        [ParseFunc] = &PrsParseEquiv,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_NOTEQUIV] = {
+        [Precedence] = 13,
+        [ParseFunc] = &PrsParseNotEquiv,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_AND] = {
+        [Precedence] = 12,
+        [ParseFunc] = &PrsParseAnd,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_OR] = {
+        [Precedence] = 11,
+        [ParseFunc] = &PrsParseOr,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+
+    // Left-ops
+
+    [TOKEN_ADDROF] = {
+        [EvalFunc] = &PrsEvalAddrOf,
+    },
+    [TOKEN_INVERSE] = {
+        [EvalFunc] = &PrsEvalUnaryArithmetic,
+    },
+    [TOKEN_NOT] = {
+        [EvalFunc] = &PrsEvalUnaryConditional,
+    },
+    [TOKEN_BITNOT] = {
+        [EvalFunc] = &PrsEvalUnaryArithmetic,
+    },
+    [TOKEN_CAST] = {
+        [EvalFunc] = &PrsEvalCast,
+    },
+    [TOKEN_SIZEOFVALUE] = {
+        [EvalFunc] = &PrsEvalSizeOfValue,
+    },
+}
+
+PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_BITAND] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseAddrOf,
+    },
+    [TOKEN_MINUS] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseInverse,
+    },
+    [TOKEN_NOT] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseNot,
+    },
+    [TOKEN_BITNOT] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseBitNot,
+    },
+    [TOKEN_CAST] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseCast,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_SIZEOFVALUE] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseSizeOfValue,
+    },
+}
 
 FN PrsInitialize ()
 
@@ -5280,136 +5447,15 @@ FN PrsInitialize ()
     PrsConstantType^.MinimumAlignment =
         JklTargetInfo^.PrimitiveAlignment[JklTargetInfo^.LargestPrimitive]
 
-    // Set up the vararg table type as array of pointer to VOID.
+    // Set up the vararg table type as pointer to pointer to VOID.
 
     PrsVarArgType = PrsCreateType ()
 
-    PrsVarArgType^.Subtype = TYPE_ARRAY
-    PrsVarArgType^.Body.Array.HasBound = FALSE
-    PrsVarArgType^.Body.Array.Base = PrsNullPtrType
+    PrsVarArgType^.Subtype = TYPE_POINTER
+    PrsVarArgType^.Body.Pointer.Base = PrsNullPtrType
 
-    // Initialize the operators.
-    // TODO replace all this stuff with static initialization once we have that
-    //      when we're compiling ourselves
-
-    PrsOperators[TOKEN_DOT].Precedence = 25
-    PrsOperators[TOKEN_DOT].ParseFunc = &PrsParseCompoundTypeIndex
-    PrsOperators[TOKEN_DOT].EvalFunc = &PrsEvalCompoundTypeIndex
-    PrsOperators[TOKEN_DOT].NoRightSide = TRUE
-
-    PrsOperators[TOKEN_LBRACKET].Precedence = 25
-    PrsOperators[TOKEN_LBRACKET].ParseFunc = &PrsParseArrayIndex
-    PrsOperators[TOKEN_LBRACKET].EvalFunc = &PrsEvalArrayIndex
-    PrsOperators[TOKEN_LBRACKET].NoRightSide = TRUE
-
-    PrsOperators[TOKEN_LPAREN].Precedence = 25
-    PrsOperators[TOKEN_LPAREN].ParseFunc = &PrsParseFunctionCall
-    PrsOperators[TOKEN_LPAREN].EvalFunc = &PrsEvalFunctionCall
-    PrsOperators[TOKEN_LPAREN].NoRightSide = TRUE
-
-    PrsOperators[TOKEN_CARET].Precedence = 25
-    PrsOperators[TOKEN_CARET].ParseFunc = &PrsParsePtrDereference
-    PrsOperators[TOKEN_CARET].EvalFunc = &PrsEvalPtrDereference
-    PrsOperators[TOKEN_CARET].NoRightSide = TRUE
-
-    PrsOperators[TOKEN_MUL].Precedence = 20
-    PrsOperators[TOKEN_MUL].ParseFunc = &PrsParseMul
-    PrsOperators[TOKEN_MUL].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_DIVIDE].Precedence = 20
-    PrsOperators[TOKEN_DIVIDE].ParseFunc = &PrsParseDivide
-    PrsOperators[TOKEN_DIVIDE].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_MODULO].Precedence = 20
-    PrsOperators[TOKEN_MODULO].ParseFunc = &PrsParseModulo
-    PrsOperators[TOKEN_MODULO].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_PLUS].Precedence = 19
-    PrsOperators[TOKEN_PLUS].ParseFunc = &PrsParsePlus
-    PrsOperators[TOKEN_PLUS].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_MINUS].Precedence = 19
-    PrsOperators[TOKEN_MINUS].ParseFunc = &PrsParseMinus
-    PrsOperators[TOKEN_MINUS].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_LEFTSHIFT].Precedence = 18
-    PrsOperators[TOKEN_LEFTSHIFT].ParseFunc = &PrsParseLeftShift
-    PrsOperators[TOKEN_LEFTSHIFT].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_RIGHTSHIFT].Precedence = 18
-    PrsOperators[TOKEN_RIGHTSHIFT].ParseFunc = &PrsParseRightShift
-    PrsOperators[TOKEN_RIGHTSHIFT].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_BITAND].Precedence = 17
-    PrsOperators[TOKEN_BITAND].ParseFunc = &PrsParseBitAnd
-    PrsOperators[TOKEN_BITAND].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_BITXOR].Precedence = 16
-    PrsOperators[TOKEN_BITXOR].ParseFunc = &PrsParseBitXor
-    PrsOperators[TOKEN_BITXOR].EvalFunc = &PrsEvalArithmetic
-
-    PrsOperators[TOKEN_BITOR].Precedence = 15
-    PrsOperators[TOKEN_BITOR].ParseFunc = &PrsParseBitOr
-    PrsOperators[TOKEN_BITOR].EvalFunc = &PrsEvalArithmetic
-    
-    PrsOperators[TOKEN_LESSTHAN].Precedence = 14
-    PrsOperators[TOKEN_LESSTHAN].ParseFunc = &PrsParseLessThan
-    PrsOperators[TOKEN_LESSTHAN].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_GREATERTHAN].Precedence = 14
-    PrsOperators[TOKEN_GREATERTHAN].ParseFunc = &PrsParseGreaterThan
-    PrsOperators[TOKEN_GREATERTHAN].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_LTEQ].Precedence = 14
-    PrsOperators[TOKEN_LTEQ].ParseFunc = &PrsParseLtEq
-    PrsOperators[TOKEN_LTEQ].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_GTEQ].Precedence = 14
-    PrsOperators[TOKEN_GTEQ].ParseFunc = &PrsParseGtEq
-    PrsOperators[TOKEN_GTEQ].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_EQUIV].Precedence = 13
-    PrsOperators[TOKEN_EQUIV].ParseFunc = &PrsParseEquiv
-    PrsOperators[TOKEN_EQUIV].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_NOTEQUIV].Precedence = 13
-    PrsOperators[TOKEN_NOTEQUIV].ParseFunc = &PrsParseNotEquiv
-    PrsOperators[TOKEN_NOTEQUIV].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_AND].Precedence = 12
-    PrsOperators[TOKEN_AND].ParseFunc = &PrsParseAnd
-    PrsOperators[TOKEN_AND].EvalFunc = &PrsEvalConditional
-
-    PrsOperators[TOKEN_OR].Precedence = 11
-    PrsOperators[TOKEN_OR].ParseFunc = &PrsParseOr
-    PrsOperators[TOKEN_OR].EvalFunc = &PrsEvalConditional
-
-    // Initialize the left-operators.
-
-    PrsLeftOperators[TOKEN_BITAND].Precedence = 24
-    PrsLeftOperators[TOKEN_BITAND].ParseFunc = &PrsParseAddrOf
-    PrsOperators[TOKEN_ADDROF].EvalFunc = &PrsEvalAddrOf
-
-    PrsLeftOperators[TOKEN_MINUS].Precedence = 24
-    PrsLeftOperators[TOKEN_MINUS].ParseFunc = &PrsParseInverse
-    PrsOperators[TOKEN_INVERSE].EvalFunc = &PrsEvalUnaryArithmetic
-
-    PrsLeftOperators[TOKEN_NOT].Precedence = 24
-    PrsLeftOperators[TOKEN_NOT].ParseFunc = &PrsParseNot
-    PrsOperators[TOKEN_NOT].EvalFunc = &PrsEvalUnaryConditional
-
-    PrsLeftOperators[TOKEN_BITNOT].Precedence = 24
-    PrsLeftOperators[TOKEN_BITNOT].ParseFunc = &PrsParseBitNot
-    PrsOperators[TOKEN_BITNOT].EvalFunc = &PrsEvalUnaryArithmetic
-
-    PrsLeftOperators[TOKEN_CAST].Precedence = 24
-    PrsLeftOperators[TOKEN_CAST].ParseFunc = &PrsParseCast
-    PrsOperators[TOKEN_CAST].EvalFunc = &PrsEvalCast
-    PrsLeftOperators[TOKEN_CAST].NoRightSide = TRUE
-
-    PrsLeftOperators[TOKEN_SIZEOFVALUE].Precedence = 24
-    PrsLeftOperators[TOKEN_SIZEOFVALUE].ParseFunc = &PrsParseSizeOfValue
-    PrsOperators[TOKEN_SIZEOFVALUE].EvalFunc = &PrsEvalSizeOfValue
+    PrsVarArgType^.Size = JklTargetInfo^.PointerSize
+    PrsVarArgType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
 
     // Initialize the declarators.
 

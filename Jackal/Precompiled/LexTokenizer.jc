@@ -179,7 +179,7 @@ void LexInsertKeyword(uint64_t _mng_name145, uint64_t _mng_type146, uint64_t _mn
     __twr_v149 = (uint64_t)(&LexKeywordBumpArray);
     __twr_v150 = (uint64_t)(&LexKeywordBumpIndex);
     __twr_v151 = *(uint64_t*)(__twr_v150);
-    __twr_v152 = 52ULL;
+    __twr_v152 = 56ULL;
     __twr_v153 = __twr_v151 * __twr_v152;
     __twr_v154 = __twr_v149 + __twr_v153;
     _mng_keyword155 = __twr_v154;
@@ -3370,7 +3370,7 @@ void LexGetToken(uint64_t _mng_token1475) {
     __twr_v1480 = (uint64_t)(&LexPutbackStack);
     __twr_v1481 = 1ULL;
     __twr_v1482 = _mng_index1478 - __twr_v1481;
-    __twr_v1483 = 27ULL;
+    __twr_v1483 = 32ULL;
     __twr_v1484 = __twr_v1482 * __twr_v1483;
     __twr_v1485 = __twr_v1480 + __twr_v1484;
     ((void (*)(uint64_t, uint64_t))__twr_v1479)(_mng_token1475, __twr_v1485);
@@ -3416,7 +3416,7 @@ void LexPutbackToken(uint64_t _mng_token1490) {
     __twr_l188:;
     __twr_v1500 = (uint64_t)(&LexCopyToken);
     __twr_v1501 = (uint64_t)(&LexPutbackStack);
-    __twr_v1502 = 27ULL;
+    __twr_v1502 = 32ULL;
     __twr_v1503 = _mng_index1493 * __twr_v1502;
     __twr_v1504 = __twr_v1501 + __twr_v1503;
     ((void (*)(uint64_t, uint64_t))__twr_v1500)(__twr_v1504, _mng_token1490);
@@ -3472,7 +3472,7 @@ uint64_t LexMatchToken(uint64_t _mng_token1508, uint64_t _mng_type1509, uint64_t
     __twr_v1514 = (uint64_t)(&LexNextToken);
     __twr_v1515 = (uint64_t)(&LexPutbackStack);
     __twr_v1516 = 0ULL;
-    __twr_v1517 = 27ULL;
+    __twr_v1517 = 32ULL;
     __twr_v1518 = __twr_v1516 * __twr_v1517;
     __twr_v1519 = __twr_v1515 + __twr_v1518;
     ((void (*)(uint64_t))__twr_v1514)(__twr_v1519);
@@ -3485,7 +3485,7 @@ uint64_t LexMatchToken(uint64_t _mng_token1508, uint64_t _mng_type1509, uint64_t
     __twr_v1523 = (uint64_t)(&LexPutbackStack);
     __twr_v1524 = 1ULL;
     __twr_v1525 = _mng_index1513 - __twr_v1524;
-    __twr_v1526 = 27ULL;
+    __twr_v1526 = 32ULL;
     __twr_v1527 = __twr_v1525 * __twr_v1526;
     __twr_v1528 = __twr_v1523 + __twr_v1527;
     _mng_matchtoken1529 = __twr_v1528;

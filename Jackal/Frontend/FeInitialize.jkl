@@ -15,7 +15,20 @@ PUBLIC FeOutputFileHandle : ^VOID
 
 PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
 
-PUBLIC JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
+PUBLIC JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX] = {
+    [PRIM_TYPE_UBYTE] = 0xFF,
+    [PRIM_TYPE_UINT] = 0xFFFF,
+    [PRIM_TYPE_ULONG] = 0xFFFFFFFF,
+
+    [PRIM_TYPE_BYTE] = 0xFF,
+    [PRIM_TYPE_INT] = 0xFFFF,
+    [PRIM_TYPE_LONG] = 0xFFFFFFFF,
+
+#IF ( == BITS 64 )
+    [PRIM_TYPE_UQUAD] = 0xFFFFFFFFFFFFFFFF,
+    [PRIM_TYPE_QUAD] = 0xFFFFFFFFFFFFFFFF,
+#END
+}
 
 PUBLIC JklCHost := FALSE
 
@@ -180,49 +193,51 @@ FN FeCopyPathFileBlock (
     )
 END
 
-TrgCHostInfo : JklTargetInfoRecord
+// TEMP: split out
+
+TrgCHostInfo : JklTargetInfoRecord = {
+    [PointerAlignment] = 8,
+    [PointerSize] = 8,
+    [LargestPrimitive] = PRIM_TYPE_UQUAD,
+    [LargestSignedPrimitive] = PRIM_TYPE_QUAD,
+    [SupportedTypes] = {
+        [PRIM_TYPE_VOID] = TRUE,
+        [PRIM_TYPE_UBYTE] = TRUE,
+        [PRIM_TYPE_UINT] = TRUE,
+        [PRIM_TYPE_ULONG] = TRUE,
+        [PRIM_TYPE_UQUAD] = TRUE,
+        [PRIM_TYPE_BYTE] = TRUE,
+        [PRIM_TYPE_INT] = TRUE,
+        [PRIM_TYPE_LONG] = TRUE,
+        [PRIM_TYPE_QUAD] = TRUE,
+    },
+    [PrimitiveAlignment] = {
+        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_UBYTE] = 1,
+        [PRIM_TYPE_UINT] = 2,
+        [PRIM_TYPE_ULONG] = 4,
+        [PRIM_TYPE_UQUAD] = 8,
+        [PRIM_TYPE_BYTE] = 1,
+        [PRIM_TYPE_INT] = 2,
+        [PRIM_TYPE_LONG] = 4,
+        [PRIM_TYPE_QUAD] = 8,
+    },
+    [PrimitiveSize] = {
+        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_UBYTE] = 1,
+        [PRIM_TYPE_UINT] = 2,
+        [PRIM_TYPE_ULONG] = 4,
+        [PRIM_TYPE_UQUAD] = 8,
+        [PRIM_TYPE_BYTE] = 1,
+        [PRIM_TYPE_INT] = 2,
+        [PRIM_TYPE_LONG] = 4,
+        [PRIM_TYPE_QUAD] = 8,
+    },
+}
 
 FN TrgInitialize ()
     
     // TEMP: Just point stuff to the C host
-
-    // TODO replace all this stuff with static initialization when we have that
-
-    TrgCHostInfo.PointerAlignment = 8
-    TrgCHostInfo.PointerSize = 8
-
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_VOID] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UBYTE] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UINT] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_ULONG] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UQUAD] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_BYTE] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_INT] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_LONG] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_QUAD] = TRUE
-
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_VOID] = 0
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UBYTE] = 1
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UINT] = 2
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_ULONG] = 4
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UQUAD] = 8
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_BYTE] = 1
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_INT] = 2
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_LONG] = 4
-    TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_QUAD] = 8
-
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_VOID] = 0
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_UBYTE] = 1
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_UINT] = 2
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_ULONG] = 4
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_UQUAD] = 8
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_BYTE] = 1
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_INT] = 2
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_LONG] = 4
-    TrgCHostInfo.PrimitiveSize[PRIM_TYPE_QUAD] = 8
-
-    TrgCHostInfo.LargestPrimitive = PRIM_TYPE_UQUAD
-    TrgCHostInfo.LargestSignedPrimitive = PRIM_TYPE_QUAD
 
     JklTargetInfo = &TrgCHostInfo
 END
@@ -286,20 +301,6 @@ FN JklCompileProgram (
 )
 
     // Compile the entire program.
-
-    // Initialize some tables.
-    // TODO static initialization
-    // TODO add mask for QUAD and UQUAD, ifdef'd off
-
-    JklPrimitiveTypeMasks[PRIM_TYPE_UBYTE] = 0xFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_UINT] = 0xFFFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_ULONG] = 0xFFFFFFFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_UQUAD] = 0xFFFFFFFFFFFFFFFF
-
-    JklPrimitiveTypeMasks[PRIM_TYPE_BYTE] = 0xFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_INT] = 0xFFFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_LONG] = 0xFFFFFFFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_QUAD] = 0xFFFFFFFFFFFFFFFF
 
     // Initialize the front-end components.
 

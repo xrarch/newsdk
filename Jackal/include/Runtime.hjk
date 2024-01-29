@@ -10,10 +10,62 @@ ENUM TlStatus : UWORD
     TL_COULDNT_OPEN,
 END
 
-// TODO ifdef this for 64 bits as well
+#IF ( == BITS 64 )
+
+#DEFINE TL_MACHINE_WORD_MAX 0xFFFFFFFFFFFFFFFF
+#DEFINE TL_MACHINE_WORD_WIDTH 64
+#DEFINE TL_MACHINE_WORD_SIZE 8
+
+#ELSEIF ( == BITS 32 )
 
 #DEFINE TL_MACHINE_WORD_MAX 0xFFFFFFFF
 #DEFINE TL_MACHINE_WORD_WIDTH 32
+#DEFINE TL_MACHINE_WORD_SIZE 4
+
+#ELSE
+
+#ERROR ( STRCAT "[BLD] Bad bitness: " BITS )
+
+#END
+
+#MACRO TlInitializeList ( head ) [
+  listhead := &(head)
+
+  listhead^.Prev = head
+  listhead^.Next = head
+]
+
+#MACRO TlInsertAtTailList ( head, entry ) [
+  listhead := &(head)
+  last := listhead^.Prev
+
+  (entry).Prev = last
+  (entry).Next = listhead
+  last^.Next = &(entry)
+  listhead^.Prev = &(entry)
+]
+
+#MACRO TlInsertAtHeadList ( head, entry ) [
+  listhead := &(head)
+  first := listhead^.Next
+
+  (entry).Next = first
+  (entry).Prev = listhead
+  first^.Prev = &(entry)
+  listhead^.Next = &(entry)
+]
+
+#MACRO TlRemoveEntryList ( entry ) [
+  prev := (entry).Prev
+  next := (entry).Next
+  prev^.Next = next
+  next^.Prev = prev
+]
+
+STRUCT TlListEntry
+    Next : ^TlListEntry,
+    Prev : ^TlListEntry,
+END
 
 EXTERN FN TlInitialize ()
 

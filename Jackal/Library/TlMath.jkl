@@ -12,7 +12,7 @@ FN TlIsPowerOfTwo (
     // of two it is.
 
     IF constant == 0 THEN
-        RETURN -1 // TMP
+        RETURN -1
     END
 
     bitpos := 0
@@ -20,7 +20,7 @@ FN TlIsPowerOfTwo (
     WHILE TRUE DO
         IF constant & 1 THEN
             IF constant != 1 THEN
-                RETURN -1 // TMP
+                RETURN -1
             END
 
             RETURN bitpos
