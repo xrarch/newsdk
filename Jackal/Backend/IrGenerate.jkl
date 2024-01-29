@@ -363,6 +363,8 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
 
             var = CAST symbol^.IrContext TO ^IrVariable
 
+            var^.Annotation = IR_VAR_LOCAL
+
         ELSEIF type^.Subtype == TYPE_PRIMITIVE OR type^.Subtype == TYPE_POINTER THEN
             // It's a datum. Create a variable to represent this local
             // variable.
