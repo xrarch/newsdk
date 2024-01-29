@@ -60,19 +60,12 @@ EXTERN PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
 
 FNPTR PrsDeclaratorF () : ^LexSymbol
 
-STRUCT PrsDeclaratorRecord
-    ParseFunc : PrsDeclaratorF,
-END
-
-PrsDeclarators : PrsDeclaratorRecord[TOKEN_SUBTYPE_MAX]
+// FORWARD
+EXTERN PrsDeclarators : PrsDeclaratorF[TOKEN_SUBTYPE_MAX]
 
 FNPTR PrsStatementF (
     IN token : ^LexToken,
 )
-
-STRUCT PrsStatementRecord
-    ParseFunc : PrsStatementF,
-END
 
 // FORWARD
 EXTERN FN PrsExpression (
@@ -85,7 +78,8 @@ EXTERN FN PrsType (
     IN depth : UWORD,
 )
 
-PrsStatements : PrsStatementRecord[TOKEN_SUBTYPE_MAX]
+// FORWARD
+EXTERN PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX]
 
 FN PrsCreateType () : ^LexSemanticType
 
@@ -2080,7 +2074,7 @@ FN PrsGlobalDeclaration () : UBYTE
 
     // This is a declarative keyword of some variety.
 
-    PrsDeclarators[token.Subtype].ParseFunc ()
+    PrsDeclarators[token.Subtype] ()
 
     RETURN TRUE
 END
@@ -2163,7 +2157,7 @@ FN PrsParseBlock (
             // We found a statement keyword. Look up the table and call the
             // parse function for the statement.
 
-            PrsStatements[token.Subtype].ParseFunc (
+            PrsStatements[token.Subtype] (
                 &token, // token
             )
 
@@ -5389,6 +5383,30 @@ PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
     },
 }
 
+PrsDeclarators : PrsDeclaratorF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_ENUM] = &PrsParseEnum,
+    [TOKEN_EXTERN] = &PrsParseExtern,
+    [TOKEN_FN] = &PrsParseFn,
+    [TOKEN_FNPTR] = &PrsParseFnPtr,
+    [TOKEN_PUBLIC] = &PrsParsePublic,
+    [TOKEN_STRUCT] = &PrsParseStruct,
+    [TOKEN_TYPE] = &PrsParseType,
+    [TOKEN_UNION] = &PrsParseUnion,
+    [TOKEN_EXPORT] = &PrsParseExport,
+    [TOKEN_PRIVATE] = &PrsParsePrivate,
+}
+
+PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_BREAK] = &PrsParseBreak,
+    [TOKEN_CONTINUE] = &PrsParseContinue,
+    [TOKEN_GOTO] = &PrsParseGoTo,
+    [TOKEN_IF] = &PrsParseIf,
+    [TOKEN_LEAVE] = &PrsParseLeave,
+    [TOKEN_RETURN] = &PrsParseReturn,
+    [TOKEN_WHILE] = &PrsParseWhile,
+    [TOKEN_LABEL] = &PrsParseLabel,
+}
+
 FN PrsInitialize ()
 
     // Initialize the parser.
@@ -5456,30 +5474,6 @@ FN PrsInitialize ()
 
     PrsVarArgType^.Size = JklTargetInfo^.PointerSize
     PrsVarArgType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
-
-    // Initialize the declarators.
-
-    PrsDeclarators[TOKEN_ENUM].ParseFunc = &PrsParseEnum
-    PrsDeclarators[TOKEN_EXTERN].ParseFunc = &PrsParseExtern
-    PrsDeclarators[TOKEN_FN].ParseFunc = &PrsParseFn
-    PrsDeclarators[TOKEN_FNPTR].ParseFunc = &PrsParseFnPtr
-    PrsDeclarators[TOKEN_PUBLIC].ParseFunc = &PrsParsePublic
-    PrsDeclarators[TOKEN_STRUCT].ParseFunc = &PrsParseStruct
-    PrsDeclarators[TOKEN_TYPE].ParseFunc = &PrsParseType
-    PrsDeclarators[TOKEN_UNION].ParseFunc = &PrsParseUnion
-    PrsDeclarators[TOKEN_EXPORT].ParseFunc = &PrsParseExport
-    PrsDeclarators[TOKEN_PRIVATE].ParseFunc = &PrsParsePrivate
-
-    // Initialize the statements.
-
-    PrsStatements[TOKEN_BREAK].ParseFunc = &PrsParseBreak
-    PrsStatements[TOKEN_CONTINUE].ParseFunc = &PrsParseContinue
-    PrsStatements[TOKEN_GOTO].ParseFunc = &PrsParseGoTo
-    PrsStatements[TOKEN_IF].ParseFunc = &PrsParseIf
-    PrsStatements[TOKEN_LEAVE].ParseFunc = &PrsParseLeave
-    PrsStatements[TOKEN_RETURN].ParseFunc = &PrsParseReturn
-    PrsStatements[TOKEN_WHILE].ParseFunc = &PrsParseWhile
-    PrsStatements[TOKEN_LABEL].ParseFunc = &PrsParseLabel
 END
 
 FN PrsProgram ()
