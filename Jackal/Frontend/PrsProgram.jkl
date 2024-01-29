@@ -4110,6 +4110,8 @@ FN PrsParseFnSignature (
         LexResetScope ( oldscope )
     END
 
+    LexEnterMacroFreeZone ()
+
     IF LexMatchToken (
         NULLPTR, // token
         TOKEN_COLON, // type
@@ -4134,6 +4136,8 @@ FN PrsParseFnSignature (
 
         type^.Body.Function.ReturnType = returntype
     END
+
+    LexLeaveMacroFreeZone ()
 
     IF NOT fnptr AND (flags & VAR_FLAG_EXTERN == 0) THEN
         // There's a body, so only reset the scope now. We waited until after we

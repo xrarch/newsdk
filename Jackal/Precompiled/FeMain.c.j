@@ -101,6 +101,8 @@ extern uint64_t LexResetScope(uint64_t _mng_scope126);
 extern void LexLeaveScope();
 extern void LexEnterOverlayScope(uint64_t _mng_scope127);
 extern void LexExitOverlayScope();
+extern void LexEnterMacroFreeZone();
+extern void LexLeaveMacroFreeZone();
 extern void LexCopyToken(uint64_t _mng_dest128, uint64_t _mng_src129);
 extern void LexGetToken(uint64_t _mng_token130);
 extern void LexPutbackToken(uint64_t _mng_token131);

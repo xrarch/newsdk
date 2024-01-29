@@ -29,7 +29,7 @@ END
 #END
 
 #MACRO TlInitializeList ( head ) [
-    listhead := &(head)
+    listhead := &(head )
 
     listhead^.Prev = listhead
     listhead^.Next = listhead

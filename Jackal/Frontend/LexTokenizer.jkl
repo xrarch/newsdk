@@ -53,6 +53,11 @@ PUBLIC LexRootScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexCurrentScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexFalseCount : ULONG = 0
 
+LexMacroFree := 0
+
+LexSavedMacro : ^LexMacro = NULLPTR
+LexSavedMacroToken : LexToken
+
 LexCurrentOverlayScope : ^TlSymbolTable = NULLPTR
 
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
@@ -373,6 +378,7 @@ END
 #DEFINE TOKEN_FLAG_STRING   4
 #DEFINE TOKEN_FLAG_CHARLIT  8
 #DEFINE TOKEN_FLAG_UPPER    16
+#DEFINE TOKEN_FLAG_FOGETTABOUTIT 32
 
 FN LexGetStringTokenInternal (
     IN token : ^LexToken,
@@ -620,6 +626,27 @@ FN LexGetTokenContents (
     // COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
     // in length or greater.
 
+    IF LexSavedMacro THEN
+        // There was previously a macro encountered in a macro free zone.
+
+        IF LexMacroFree THEN
+            // Still a macro free zone, return another dummy EOF token.
+
+            RETURN TOKEN_FLAG_FOGETTABOUTIT
+        END
+
+        // We can expand the macro now.
+
+        macro := LexSavedMacro
+
+        LexSavedMacro = NULLPTR
+
+        LexExpandMacro (
+            macro, // macro
+            &LexSavedMacroToken, // token
+        )
+    END
+
     // We GOTO LoopOnMacro in the case that the token turns out to be a macro
     // that needs expansion (this is intentionally picked over the alternative
     // of wrapping this routine in a WHILE TRUE loop).
@@ -820,6 +847,20 @@ FN LexGetTokenContents (
     // It is a macro! Expand it and loop, so our caller gets the next "real"
     // token.
 
+    IF LexMacroFree THEN
+        // This is a macro free zone. Remember that we found this macro and
+        // return a dummy EOF token (to avoid spurious token matches).
+
+        LexCopyToken (
+            &LexSavedMacroToken, // dest
+            token, // src
+        )
+
+        LexSavedMacro = macro
+
+        RETURN TOKEN_FLAG_FOGETTABOUTIT
+    END
+
     LexExpandMacro (
         macro, // macro
         token, // token
@@ -894,6 +935,14 @@ FN LexNextToken (
 
         token^.Type = TOKEN_STRING
         token^.Payload = internedstring
+
+        LEAVE
+    END
+
+    IF tokenflag & TOKEN_FLAG_FOGETTABOUTIT THEN
+        // This is an ignored macro.
+
+        token^.Type = TOKEN_EOF
 
         LEAVE
     END
@@ -1037,6 +1086,20 @@ FN LexExitOverlayScope ()
     LexCurrentOverlayScope = NULLPTR
 END
 
+FN LexEnterMacroFreeZone ()
+
+    // Enter a macro free zone.
+
+    LexMacroFree += 1
+END
+
+FN LexLeaveMacroFreeZone ()
+
+    // Leave a macro free zone.
+
+    LexMacroFree -= 1
+END
+
 FN LexCopyToken (
     IN dest : ^LexToken,
     IN src : ^LexToken,
@@ -1131,6 +1194,12 @@ FN LexMatchToken (
 
     IF matchtoken^.Type != type THEN
         // Not a match.
+
+        IF matchtoken^.Type == TOKEN_EOF THEN
+            // Don't save EOF tokens.
+
+            LexPutbackStackPtr -= 1
+        END
 
         RETURN FALSE
     END
