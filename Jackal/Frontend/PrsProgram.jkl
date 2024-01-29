@@ -4214,6 +4214,8 @@ FN PrsParseFnSignature (
     ) THEN
         // There's a return type!
 
+        LexLeaveMacroFreeZone ()
+
         returntype := PrsCreateType ()
 
         PrsType (
@@ -4230,9 +4232,10 @@ FN PrsParseFnSignature (
         END
 
         type^.Body.Function.ReturnType = returntype
-    END
 
-    LexLeaveMacroFreeZone ()
+    ELSE
+        LexLeaveMacroFreeZone ()
+    END
 
     IF NOT fnptr AND (flags & VAR_FLAG_EXTERN == 0) THEN
         // There's a body, so only reset the scope now. We waited until after we
