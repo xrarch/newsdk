@@ -3718,3 +3718,13 @@ void CtTranspile() {
     __twr_v1634 = *(uint64_t*)(__twr_v1633);
     __twr_v1635 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1624)(__twr_v1626, __twr_v1630, __twr_v1634);
 }
+uint64_t CtTargetInfo[8] = {
+    (uint64_t)(&"CHost"),
+    (uint64_t)(&CtTranspile),
+    0x0804020100000808,
+    0x0000080402010000,
+    0x0000080402010000,
+    0x0001000008040201,
+    0x0101000001010101,
+    0x0000050B00000101,
+};

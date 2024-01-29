@@ -1,7 +1,10 @@
 COMPONENTS := Library \
 			  Frontend \
-			  Backend \
-			  CTranspiler
+			  Backend
+
+ifeq ($(TRG_CT),1)
+	COMPONENTS += CTranspiler
+endif
 
 OUTPUTFILE := jkl
 

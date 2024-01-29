@@ -11,8 +11,17 @@ ifndef BITS
 	BITS := 64
 endif
 
+ifndef TRG_CT
+	TRG_CT := 1
+endif
+
+export TRG_CT
 export SDK
-export JC := $(REPO)/build/bsjkl target=CHost BITS=$(BITS)
+
+export JC := $(REPO)/build/bsjkl target=CHost \
+	BITS=$(BITS) \
+	TRG_CT=$(TRG_CT)
+
 export JCC := $(CC) -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c
 export CC := $(CC) -Ofast
 

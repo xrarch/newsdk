@@ -3812,7 +3812,7 @@ uint64_t PrsParseInitializer(uint64_t _mng_errtoken1600, uint64_t _mng_type1601,
     __twr_v1668 = *(uint64_t*)(__twr_v1667);
     __twr_v1669 = (uint64_t)(&JklTargetInfo);
     __twr_v1670 = *(uint64_t*)(__twr_v1669);
-    __twr_v1671 = 1ULL;
+    __twr_v1671 = 17ULL;
     __twr_v1672 = __twr_v1670 + __twr_v1671;
     __twr_v1673 = *(uint8_t*)(__twr_v1672);
     if (__twr_v1668 < __twr_v1673) { goto __twr_l251; } else { goto __twr_l250; }
@@ -5066,7 +5066,7 @@ void PrsType(uint64_t _mng_type2074, uint64_t _mng_depth2075) {
     __twr_l323:;
     __twr_v2084 = (uint64_t)(&JklTargetInfo);
     __twr_v2085 = *(uint64_t*)(__twr_v2084);
-    __twr_v2086 = 30ULL;
+    __twr_v2086 = 46ULL;
     __twr_v2087 = __twr_v2085 + __twr_v2086;
     __twr_v2088 = (uint64_t)(&_mng_typetoken2078);
     __twr_v2089 = 26ULL;
@@ -5111,7 +5111,7 @@ void PrsType(uint64_t _mng_type2074, uint64_t _mng_depth2075) {
     *(uint8_t*)(__twr_v2121) = __twr_v2115;
     __twr_v2122 = (uint64_t)(&JklTargetInfo);
     __twr_v2123 = *(uint64_t*)(__twr_v2122);
-    __twr_v2124 = 2ULL;
+    __twr_v2124 = 18ULL;
     __twr_v2125 = __twr_v2123 + __twr_v2124;
     __twr_v2126 = (uint64_t)(&_mng_typetoken2078);
     __twr_v2127 = 26ULL;
@@ -5126,7 +5126,7 @@ void PrsType(uint64_t _mng_type2074, uint64_t _mng_depth2075) {
     *(uint8_t*)(__twr_v2135) = __twr_v2133;
     __twr_v2136 = (uint64_t)(&JklTargetInfo);
     __twr_v2137 = *(uint64_t*)(__twr_v2136);
-    __twr_v2138 = 16ULL;
+    __twr_v2138 = 32ULL;
     __twr_v2139 = __twr_v2137 + __twr_v2138;
     __twr_v2140 = (uint64_t)(&_mng_typetoken2078);
     __twr_v2141 = 26ULL;
@@ -5175,7 +5175,7 @@ void PrsType(uint64_t _mng_type2074, uint64_t _mng_depth2075) {
     *(uint64_t*)(__twr_v2174) = _mng_basetype2162;
     __twr_v2175 = (uint64_t)(&JklTargetInfo);
     __twr_v2176 = *(uint64_t*)(__twr_v2175);
-    __twr_v2177 = 0ULL;
+    __twr_v2177 = 16ULL;
     __twr_v2178 = __twr_v2176 + __twr_v2177;
     __twr_v2179 = *(uint8_t*)(__twr_v2178);
     __twr_v2180 = 73ULL;
@@ -5183,7 +5183,7 @@ void PrsType(uint64_t _mng_type2074, uint64_t _mng_depth2075) {
     *(uint8_t*)(__twr_v2181) = __twr_v2179;
     __twr_v2182 = (uint64_t)(&JklTargetInfo);
     __twr_v2183 = *(uint64_t*)(__twr_v2182);
-    __twr_v2184 = 1ULL;
+    __twr_v2184 = 17ULL;
     __twr_v2185 = __twr_v2183 + __twr_v2184;
     __twr_v2186 = *(uint8_t*)(__twr_v2185);
     __twr_v2187 = 64ULL;
@@ -14563,7 +14563,7 @@ uint64_t PrsParseFnPtr() {
     *(uint64_t*)(__twr_v6412) = _mng_type6400;
     __twr_v6413 = (uint64_t)(&JklTargetInfo);
     __twr_v6414 = *(uint64_t*)(__twr_v6413);
-    __twr_v6415 = 1ULL;
+    __twr_v6415 = 17ULL;
     __twr_v6416 = __twr_v6414 + __twr_v6415;
     __twr_v6417 = *(uint8_t*)(__twr_v6416);
     __twr_v6418 = 64ULL;
@@ -14571,7 +14571,7 @@ uint64_t PrsParseFnPtr() {
     *(uint64_t*)(__twr_v6419) = __twr_v6417;
     __twr_v6420 = (uint64_t)(&JklTargetInfo);
     __twr_v6421 = *(uint64_t*)(__twr_v6420);
-    __twr_v6422 = 0ULL;
+    __twr_v6422 = 16ULL;
     __twr_v6423 = __twr_v6421 + __twr_v6422;
     __twr_v6424 = *(uint8_t*)(__twr_v6423);
     __twr_v6425 = 73ULL;
@@ -18019,7 +18019,7 @@ void PrsInitialize() {
     *(uint8_t*)(__twr_v7537) = __twr_v7531;
     __twr_v7538 = (uint64_t)(&JklTargetInfo);
     __twr_v7539 = *(uint64_t*)(__twr_v7538);
-    __twr_v7540 = 16ULL;
+    __twr_v7540 = 32ULL;
     __twr_v7541 = __twr_v7539 + __twr_v7540;
     __twr_v7542 = 8ULL;
     __twr_v7543 = 1ULL;
@@ -18031,7 +18031,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7548) = __twr_v7546;
     __twr_v7549 = (uint64_t)(&JklTargetInfo);
     __twr_v7550 = *(uint64_t*)(__twr_v7549);
-    __twr_v7551 = 2ULL;
+    __twr_v7551 = 18ULL;
     __twr_v7552 = __twr_v7550 + __twr_v7551;
     __twr_v7553 = 8ULL;
     __twr_v7554 = 1ULL;
@@ -18058,7 +18058,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7572) = _mng_primtype7520;
     __twr_v7573 = (uint64_t)(&JklTargetInfo);
     __twr_v7574 = *(uint64_t*)(__twr_v7573);
-    __twr_v7575 = 1ULL;
+    __twr_v7575 = 17ULL;
     __twr_v7576 = __twr_v7574 + __twr_v7575;
     __twr_v7577 = *(uint8_t*)(__twr_v7576);
     __twr_v7578 = (uint64_t)(&PrsStringType);
@@ -18068,7 +18068,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7581) = __twr_v7577;
     __twr_v7582 = (uint64_t)(&JklTargetInfo);
     __twr_v7583 = *(uint64_t*)(__twr_v7582);
-    __twr_v7584 = 0ULL;
+    __twr_v7584 = 16ULL;
     __twr_v7585 = __twr_v7583 + __twr_v7584;
     __twr_v7586 = *(uint8_t*)(__twr_v7585);
     __twr_v7587 = (uint64_t)(&PrsStringType);
@@ -18120,7 +18120,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7625) = _mng_primtype7520;
     __twr_v7626 = (uint64_t)(&JklTargetInfo);
     __twr_v7627 = *(uint64_t*)(__twr_v7626);
-    __twr_v7628 = 1ULL;
+    __twr_v7628 = 17ULL;
     __twr_v7629 = __twr_v7627 + __twr_v7628;
     __twr_v7630 = *(uint8_t*)(__twr_v7629);
     __twr_v7631 = (uint64_t)(&PrsNullPtrType);
@@ -18130,7 +18130,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7634) = __twr_v7630;
     __twr_v7635 = (uint64_t)(&JklTargetInfo);
     __twr_v7636 = *(uint64_t*)(__twr_v7635);
-    __twr_v7637 = 0ULL;
+    __twr_v7637 = 16ULL;
     __twr_v7638 = __twr_v7636 + __twr_v7637;
     __twr_v7639 = *(uint8_t*)(__twr_v7638);
     __twr_v7640 = (uint64_t)(&PrsNullPtrType);
@@ -18150,7 +18150,7 @@ void PrsInitialize() {
     *(uint8_t*)(__twr_v7651) = __twr_v7647;
     __twr_v7652 = (uint64_t)(&JklTargetInfo);
     __twr_v7653 = *(uint64_t*)(__twr_v7652);
-    __twr_v7654 = 44ULL;
+    __twr_v7654 = 60ULL;
     __twr_v7655 = __twr_v7653 + __twr_v7654;
     __twr_v7656 = *(uint8_t*)(__twr_v7655);
     __twr_v7657 = (uint64_t)(&PrsConstantType);
@@ -18174,11 +18174,11 @@ void PrsInitialize() {
     *(uint8_t*)(__twr_v7673) = __twr_v7665;
     __twr_v7674 = (uint64_t)(&JklTargetInfo);
     __twr_v7675 = *(uint64_t*)(__twr_v7674);
-    __twr_v7676 = 16ULL;
+    __twr_v7676 = 32ULL;
     __twr_v7677 = __twr_v7675 + __twr_v7676;
     __twr_v7678 = (uint64_t)(&JklTargetInfo);
     __twr_v7679 = *(uint64_t*)(__twr_v7678);
-    __twr_v7680 = 44ULL;
+    __twr_v7680 = 60ULL;
     __twr_v7681 = __twr_v7679 + __twr_v7680;
     __twr_v7682 = *(uint8_t*)(__twr_v7681);
     __twr_v7683 = 1ULL;
@@ -18192,11 +18192,11 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7690) = __twr_v7686;
     __twr_v7691 = (uint64_t)(&JklTargetInfo);
     __twr_v7692 = *(uint64_t*)(__twr_v7691);
-    __twr_v7693 = 2ULL;
+    __twr_v7693 = 18ULL;
     __twr_v7694 = __twr_v7692 + __twr_v7693;
     __twr_v7695 = (uint64_t)(&JklTargetInfo);
     __twr_v7696 = *(uint64_t*)(__twr_v7695);
-    __twr_v7697 = 44ULL;
+    __twr_v7697 = 60ULL;
     __twr_v7698 = __twr_v7696 + __twr_v7697;
     __twr_v7699 = *(uint8_t*)(__twr_v7698);
     __twr_v7700 = 1ULL;
@@ -18231,7 +18231,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7725) = __twr_v7717;
     __twr_v7726 = (uint64_t)(&JklTargetInfo);
     __twr_v7727 = *(uint64_t*)(__twr_v7726);
-    __twr_v7728 = 1ULL;
+    __twr_v7728 = 17ULL;
     __twr_v7729 = __twr_v7727 + __twr_v7728;
     __twr_v7730 = *(uint8_t*)(__twr_v7729);
     __twr_v7731 = (uint64_t)(&PrsVarArgType);
@@ -18241,7 +18241,7 @@ void PrsInitialize() {
     *(uint64_t*)(__twr_v7734) = __twr_v7730;
     __twr_v7735 = (uint64_t)(&JklTargetInfo);
     __twr_v7736 = *(uint64_t*)(__twr_v7735);
-    __twr_v7737 = 0ULL;
+    __twr_v7737 = 16ULL;
     __twr_v7738 = __twr_v7736 + __twr_v7737;
     __twr_v7739 = *(uint8_t*)(__twr_v7738);
     __twr_v7740 = (uint64_t)(&PrsVarArgType);

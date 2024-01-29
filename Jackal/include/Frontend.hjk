@@ -7,6 +7,8 @@ EXTERN FN JklCompileProgram (
     IN argv : ^^UBYTE,
 )
 
+FNPTR JklTargetF ()
+
 EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 
@@ -51,6 +53,8 @@ END
 EXTERN JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
 
 STRUCT JklTargetInfoRecord
+    Name : ^UBYTE,
+    EntryFunc : JklTargetF,
     PointerAlignment : UBYTE,
     PointerSize : UBYTE,
     PrimitiveAlignment : UBYTE[PRIM_TYPE_MAX],

@@ -1006,7 +1006,7 @@ void LexInitialize() {
     __twr_v438 = 44ULL;
     __twr_v439 = (uint64_t)(&JklTargetInfo);
     __twr_v440 = *(uint64_t*)(__twr_v439);
-    __twr_v441 = 44ULL;
+    __twr_v441 = 60ULL;
     __twr_v442 = __twr_v440 + __twr_v441;
     __twr_v443 = *(uint8_t*)(__twr_v442);
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v435)(__twr_v436, __twr_v437, __twr_v438, __twr_v443);
@@ -1016,7 +1016,7 @@ void LexInitialize() {
     __twr_v447 = 45ULL;
     __twr_v448 = (uint64_t)(&JklTargetInfo);
     __twr_v449 = *(uint64_t*)(__twr_v448);
-    __twr_v450 = 45ULL;
+    __twr_v450 = 61ULL;
     __twr_v451 = __twr_v449 + __twr_v450;
     __twr_v452 = *(uint8_t*)(__twr_v451);
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v444)(__twr_v445, __twr_v446, __twr_v447, __twr_v452);
