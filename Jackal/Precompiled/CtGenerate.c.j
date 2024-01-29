@@ -111,6 +111,17 @@ extern void PrsInitialize();
 extern uint64_t PrsGlobalListHead;
 extern uint64_t PrsFunctionListHead;
 extern uint64_t PrsEvaluateType(uint64_t _mng_node145);
+extern void CtTranspile();
+uint64_t CtTargetInfo[8] = {
+    (uint64_t)(&"CHost"),
+    (uint64_t)(&CtTranspile),
+    0x0804020100000808,
+    0x0000080402010000,
+    0x0000080402010000,
+    0x0001000008040201,
+    0x0101000001010101,
+    0x0000050B00000101,
+};
 uint64_t CtBigBuffer[11];
 uint64_t CtFuncBuffer[11];
 void CtCopyBytes(uint64_t _mng_srcbuf146, uint64_t _mng_length147) {
@@ -3718,13 +3729,3 @@ void CtTranspile() {
     __twr_v1634 = *(uint64_t*)(__twr_v1633);
     __twr_v1635 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1624)(__twr_v1626, __twr_v1630, __twr_v1634);
 }
-uint64_t CtTargetInfo[8] = {
-    (uint64_t)(&"CHost"),
-    (uint64_t)(&CtTranspile),
-    0x0804020100000808,
-    0x0000080402010000,
-    0x0000080402010000,
-    0x0001000008040201,
-    0x0101000001010101,
-    0x0000050B00000101,
-};
