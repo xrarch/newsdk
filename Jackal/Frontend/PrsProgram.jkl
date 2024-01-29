@@ -763,6 +763,69 @@ FN PrsAtom () : ^PrsAstNode
 
         atomnode^.Body.Constant.Value = type^.Size
 
+    ELSEIF token.Type == TOKEN_OFFSETOF THEN
+        // We have to create a constant containing the offset of the field in
+        // the given struct. Syntax is OFFSETOF StructName.FieldName.
+
+        idtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        END
+
+        symbol := CAST idtoken.Payload TO ^LexSymbol
+
+        IF symbol^.Type != SYM_TYPE THEN
+            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        END
+
+        type := symbol^.SemanticType
+
+        IF type^.Subtype != TYPE_COMPOUND THEN
+            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        END
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_OPER, // type
+            TOKEN_DOT, // subtype
+        ) THEN
+            LexTokenError ( &idtoken, "Expected a dot", 0, 0, 0 )
+        END
+
+        oldscope := LexEnterScope ( type^.Body.Compound.FieldScope )
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        LexResetScope ( oldscope )
+
+        IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &idtoken, "Expected a field name", 0, 0, 0 )
+        END
+
+        symbol = CAST idtoken.Payload TO ^LexSymbol
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        atomnode^.Body.Constant.Value = symbol^.Value
+
     ELSE
         LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
     END
