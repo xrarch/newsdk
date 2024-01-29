@@ -59,6 +59,6 @@ void TlInitialize() {
     uint64_t __twr_v104;
     __twr_v102 = (uint64_t)(&TlInitializeZone);
     __twr_v103 = (uint64_t)(&TlSymbolTableZone);
-    __twr_v104 = 800ULL;
+    __twr_v104 = 1584ULL;
     ((void (*)(uint64_t, uint64_t))__twr_v102)(__twr_v103, __twr_v104);
 }

@@ -68,7 +68,7 @@ void TlInitializeSymbolTable(uint64_t _mng_symboltable102, uint64_t _mng_outersc
     *(uint64_t*)(__twr_v106) = _mng_outerscope103;
     __twr_v107 = (uint64_t)(&_mng_deletefunc104);
     __twr_v108 = *(uint64_t*)(__twr_v107);
-    __twr_v109 = 792ULL;
+    __twr_v109 = 1576ULL;
     __twr_v110 = _mng_symboltable102 + __twr_v109;
     *(uint64_t*)(__twr_v110) = __twr_v108;
     __twr_v111 = (uint64_t)(&TlInitializeHashTable);
@@ -114,7 +114,7 @@ uint64_t TlDeleteSymbolTable(uint64_t _mng_symboltable123) {
     __twr_v128 = (uint64_t)(&TlEnumerateHashTable);
     __twr_v129 = 8ULL;
     __twr_v130 = _mng_symboltable123 + __twr_v129;
-    __twr_v131 = 792ULL;
+    __twr_v131 = 1576ULL;
     __twr_v132 = _mng_symboltable123 + __twr_v131;
     __twr_v133 = *(uint64_t*)(__twr_v132);
     ((void (*)(uint64_t, uint64_t))__twr_v128)(__twr_v130, __twr_v133);

@@ -8,13 +8,15 @@ FN TlInitializeHashTable (
     IN hashtable : ^TlHashTable,
 )
 
-    hashtable^.OrderedListHead = NULLPTR
+    TlInitializeList ( &hashtable^.OrderedListHead )
 
-    TlFillMemoryWithByte (
-        &hashtable^.BucketHeads, // ptr
-        SIZEOFVALUE hashtable^.BucketHeads, // sz
-        0, // byte
-    )
+    i := 0
+
+    WHILE i < TL_HASH_SIZE DO
+        TlInitializeList ( &hashtable^.BucketHeads[i] )
+
+        i += 1
+    END
 END
 
 FN TlSummarizeHashTable (
@@ -29,12 +31,13 @@ FN TlSummarizeHashTable (
     WHILE i < TL_HASH_SIZE DO
         entries := 0
 
-        entry := hashtable^.BucketHeads[i]
+        head := &hashtable^.BucketHeads[i]
+        listentry := head^.Next
 
-        WHILE entry DO
+        WHILE listentry != head DO
             entries += 1
 
-            entry = entry^.Next
+            listentry = listentry^.Next
         END
 
         IF entries THEN
@@ -55,35 +58,23 @@ FN TlInsertHashTableByHash (
     IN hash : ULONG,
 )
 
-    head := hashtable^.BucketHeads[hash]
-
     entry^.HashTable = hashtable
     entry^.Key = key
     entry^.Hash = hash
 
     // Insert entry into doubly linked hash bucket list, at the head.
 
-    entry^.Prev = NULLPTR
-    entry^.Next = head
-
-    IF head THEN
-        head^.Prev = entry
-    END
-
-    hashtable^.BucketHeads[hash] = entry
+    TlInsertAtHeadList (
+        &hashtable^.BucketHeads[hash], // head
+        &entry^.HashEntry,
+    )
 
     // Insert entry into ordered list, at the head.
 
-    head = hashtable^.OrderedListHead
-
-    entry^.PrevOrdered = NULLPTR
-    entry^.NextOrdered = head
-
-    IF head THEN
-        head^.Prev = entry
-    END
-
-    hashtable^.OrderedListHead = entry
+    TlInsertAtHeadList (
+        &hashtable^.OrderedListHead, // head
+        &entry^.OrderedEntry, // entry
+    )
 END
 
 FN TlInsertHashTable (
@@ -118,17 +109,20 @@ FN TlLookupOrAllocateEntryHashTable (
 
     hash := TlHashString ( key )
 
-    head := hashtable^.BucketHeads[hash]
-    entry := head
+    head := &hashtable^.BucketHeads[hash]
+    listentry := head^.Next
+    entry : ^TlHashTableEntry
 
-    WHILE entry DO
+    WHILE listentry != head DO
+        entry = CONTAINEROF listentry TO TlHashTableEntry.HashEntry
+
         IF TlCompareString ( key, entry^.Key ) == 0 THEN
             created^ = FALSE
 
             RETURN entry
         END
 
-        entry = entry^.Next
+        listentry = listentry^.Next
     END
 
     // Not found! Allocate one.
@@ -166,15 +160,17 @@ FN TlLookupOrInsertHashTable (
 
     hash := TlHashString ( key )
 
-    head := hashtable^.BucketHeads[hash]
-    oldentry := head
+    head := &hashtable^.BucketHeads[hash]
+    listentry := head^.Next
 
-    WHILE oldentry DO
+    WHILE listentry != head DO
+        oldentry := CONTAINEROF listentry TO TlHashTableEntry.HashEntry
+
         IF TlCompareString ( key, oldentry^.Key ) == 0 THEN
             RETURN oldentry
         END
 
-        oldentry = oldentry^.Next
+        listentry = listentry^.Next
     END
 
     // Not found!
@@ -195,14 +191,17 @@ FN TlLookupHashTableByHash (
     IN hash : ULONG,
 ) : ^TlHashTableEntry
 
-    entry := hashtable^.BucketHeads[hash]
+    head := &hashtable^.BucketHeads[hash]
+    listentry := head^.Next
 
-    WHILE entry DO
+    WHILE listentry != head DO
+        entry := CONTAINEROF listentry TO TlHashTableEntry.HashEntry
+
         IF TlCompareString ( key, entry^.Key ) == 0 THEN
             RETURN entry
         END
 
-        entry = entry^.Next
+        listentry = listentry^.Next
     END
 
     RETURN NULLPTR
@@ -226,40 +225,17 @@ FN TlRemoveHashTable (
     IN entry : ^TlHashTableEntry,
 )
 
-    hashtable := entry^.HashTable
-    hash := entry^.Hash
-
     // Remove entry from doubly linked hash bucket list.
 
-    p := entry^.Prev
-
-    IF p THEN
-        p^.Next = entry^.Next
-    ELSE // no prev means we were the head
-        hashtable^.BucketHeads[hash] = entry^.Next
-    END
-
-    p = entry^.Next
-
-    IF p THEN
-        p^.Prev = entry^.Prev
-    END
+    TlRemoveEntryList (
+        &entry^.HashEntry, // entry
+    )
 
     // Remove entry from doubly linked ordered list.
 
-    p = entry^.PrevOrdered
-
-    IF p THEN
-        p^.NextOrdered = entry^.NextOrdered
-    ELSE // no prev means we were the head
-        hashtable^.OrderedListHead = entry^.NextOrdered
-    END
-
-    p = entry^.NextOrdered
-
-    IF p THEN
-        p^.PrevOrdered = entry^.PrevOrdered
-    END
+    TlRemoveEntryList (
+        &entry^.OrderedEntry, // entry
+    )
 END
 
 FN TlEnumerateHashTable (
@@ -267,17 +243,20 @@ FN TlEnumerateHashTable (
     IN enumfunc : TlHashTableEnumeratorF,
 )
 
-    entry := hashtable^.OrderedListHead
+    head := &hashtable^.OrderedListHead
+    listentry := head^.Next
 
-    WHILE entry DO
+    WHILE listentry != head DO
         // Capture the next entry now since the enumeration function might
         // destroy this entry.
 
-        nextentry := entry^.Next
+        nextentry := listentry^.Next
+
+        entry := CONTAINEROF listentry TO TlHashTableEntry.OrderedEntry
 
         enumfunc ( entry )
 
-        entry = nextentry
+        listentry = nextentry
     END
 END
 

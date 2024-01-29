@@ -3606,6 +3606,113 @@ FN (PrsOperatorF) PrsParseCast (
     node^.Body.Operator.OperatorSpecific = type
 END
 
+FN (PrsOperatorF) PrsParseContainerOf (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // This takes the form CONTAINEROF x TO StructName.FieldName and turns it
+    // into essentially CAST (x - OFFSETOF StructName.FieldName) TO ^StructName.
+
+    subnode := PrsCreateAstNode (
+        AST_OPERATOR, // type
+        &node^.Token, // token
+    )
+
+    subnode^.Token.Subtype = TOKEN_MINUS
+    subnode^.Body.Operator.Left = PrsExpression ( 0 )
+
+    PrsCheckNodeIsValue ( subnode^.Body.Operator.Left )
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_OTHER, // type
+        TOKEN_TO, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected TO.", 0, 0, 0 )
+    END
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+    END
+
+    IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+        LexTokenError ( &token, "Expected a struct name", 0, 0, 0 )
+    END
+
+    symbol := CAST token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_TYPE THEN
+        LexTokenError ( &token, "Expected a struct name", 0, 0, 0 )
+    END
+
+    type := symbol^.SemanticType
+
+    IF type^.Subtype != TYPE_COMPOUND THEN
+        LexTokenError ( &token, "Expected a struct name", 0, 0, 0 )
+    END
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_OPER, // type
+        TOKEN_DOT, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a dot", 0, 0, 0 )
+    END
+
+    LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+    END
+
+    LexExitOverlayScope ()
+
+    IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+        LexTokenError ( &token, "Expected a field name", 0, 0, 0 )
+    END
+
+    symbol = CAST token.Payload TO ^LexSymbol
+
+    constnode := PrsCreateAstNode (
+        AST_CONSTANT,
+        &token, // token
+    )
+
+    constnode^.Body.Constant.Value = symbol^.Value
+
+    subnode^.Body.Operator.Right = constnode
+
+    // Turn our own AST node into a cast, with the subtraction node as the left
+    // side.
+
+    node^.Token.Subtype = TOKEN_CAST
+    node^.Body.Operator.Left = subnode
+
+    // Create a pointer-to type.
+
+    ptrtype := PrsCreateType ()
+    ptrtype^.Subtype = TYPE_POINTER
+    ptrtype^.Body.Pointer.Base = type
+
+    ptrtype^.Size = JklTargetInfo^.PointerSize
+    ptrtype^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+
+    // The type goes in the operator-specific field.
+
+    node^.Body.Operator.OperatorSpecific = ptrtype
+END
+
 FN (PrsOperatorF) PrsParseSizeOfValue (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -5442,6 +5549,11 @@ PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_CAST] = {
         [Precedence] = 24,
         [ParseFunc] = &PrsParseCast,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_CONTAINEROF] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseContainerOf,
         [NoRightSide] = TRUE,
     },
     [TOKEN_SIZEOFVALUE] = {

@@ -2463,6 +2463,7 @@ END
 FN LexInitializePreprocessor ()
 
     TlInitializeHashTable ( &LexDirectiveHashTable )
+    TlInitializeHashTable ( &LexOperatorHashTable )
     TlInitializeDynamicBuffer ( &LexIfStack )
 
     // Create the root macro scope.

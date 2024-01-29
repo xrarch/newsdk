@@ -70,7 +70,7 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[115];
+extern uint64_t LexDefaultSection[213];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -3338,7 +3338,7 @@ void CtGenerateInitializer(uint64_t _mng_value1373, uint64_t _mng_primtype1374, 
     __twr_v1453 = 25ULL;
     __twr_v1454 = __twr_v1452 + __twr_v1453;
     __twr_v1455 = *(uint8_t*)(__twr_v1454);
-    __twr_v1456 = 80ULL;
+    __twr_v1456 = 81ULL;
     if (__twr_v1455 == __twr_v1456) { goto __twr_l119; } else { goto __twr_l118; }
     __twr_l119:;
     __twr_v1457 = (uint64_t)(&CtInsertByte);

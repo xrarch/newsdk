@@ -29,15 +29,15 @@ END
 #END
 
 #MACRO TlInitializeList ( head ) [
-    listhead := &(head )
+    listhead := (head)
 
     listhead^.Prev = listhead
     listhead^.Next = listhead
 ]
 
 #MACRO TlInsertAtTailList ( head, entry ) [
-    listhead := &(head)
-    listentry := &(entry)
+    listhead := (head)
+    listentry := (entry)
     last := listhead^.Prev
 
     listentry^.Prev = last
@@ -47,18 +47,18 @@ END
 ]
 
 #MACRO TlInsertAtHeadList ( head, entry ) [
-    listhead := &(head)
-    listentry := &(entry)
+    listhead := (head)
+    listentry := (entry)
     first := listhead^.Next
 
     listentry^.Next = first
     listentry^.Prev = listhead
-    first^.Prev = listentry
-    listhead^.Next = listentry
+    first^.Prev = (entry)
+    listhead^.Next = (entry)
 ]
 
 #MACRO TlRemoveEntryList ( entry ) [
-    listentry := &(entry)
+    listentry := (entry)
 
     prev := listentry^.Prev
     next := listentry^.Next
@@ -185,16 +185,13 @@ EXTERN TlBumpHits : UWORD
 #DEFINE TL_HASH_SIZE 97
 
 STRUCT TlHashTable
-    OrderedListHead : ^TlHashTableEntry,
-    BucketHeads : ^TlHashTableEntry[TL_HASH_SIZE],
+    OrderedListHead : TlListEntry,
+    BucketHeads : TlListEntry[TL_HASH_SIZE],
 END
 
 STRUCT TlHashTableEntry
-    Next : ^TlHashTableEntry,
-    Prev : ^TlHashTableEntry,
-
-    NextOrdered : ^TlHashTableEntry,
-    PrevOrdered : ^TlHashTableEntry,
+    HashEntry : TlListEntry,
+    OrderedEntry : TlListEntry,
 
     HashTable : ^TlHashTable,
 

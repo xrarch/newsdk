@@ -43,6 +43,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_BREAK,       // statement
     TOKEN_BYTE,        // type
     TOKEN_CAST,        // operator
+    TOKEN_CONTAINEROF, // operator
     TOKEN_CONTINUE,    // statement
     TOKEN_DO,          // other
     TOKEN_ELSE,        // terminator
