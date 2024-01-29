@@ -154,19 +154,6 @@ FN PrsCreateAstNode (
     RETURN node
 END
 
-FN PrsCreateIdentifierNode (
-    IN token : ^LexToken,
-) : ^PrsAstNode
-
-    // Create an identifier node.
-    // XXX Turn this into a macro when those work.
-
-    RETURN PrsCreateAstNode (
-        AST_IDENTIFIER, // type
-        token, // token
-    )
-END
-
 FN PrsInsertNodeIntoBlock (
     IN block : ^PrsBlock,
     IN node : ^PrsAstNode,
@@ -645,7 +632,8 @@ FN PrsAtom () : ^PrsAstNode
             atomnode^.Body.Constant.Value = symbol^.Value
 
         ELSEIF symbol^.Type == SYM_VAR THEN
-            atomnode = PrsCreateIdentifierNode (
+            atomnode = PrsCreateAstNode (
+                AST_IDENTIFIER, // type
                 &token, // token
             )
 
@@ -2045,7 +2033,10 @@ FN PrsVariableDeclaration (
         IF hasinitializer THEN
             // Create an AST node for the assignment of the initial value.
 
-            idnode := PrsCreateIdentifierNode ( token )
+            idnode := PrsCreateAstNode (
+                AST_IDENTIFIER, // type
+                token, // token
+            )
 
             asgnnode := PrsCreateAstNode (
                 AST_ASSIGN, // type
