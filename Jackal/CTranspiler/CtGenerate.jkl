@@ -65,7 +65,7 @@ FNPTR CtInsertByteF (
 
 FN CtCopyBytes (
     IN srcbuf : ^UBYTE,
-    IN length : ULONG,
+    IN length : UWORD,
 )
 
     // Copy a buffer into the big buffer.
@@ -103,7 +103,7 @@ FN (CtInsertByteF) CtInsertByte (
 END
 
 FN CtInsertNumber (
-    IN number : ULONG,
+    IN number : UWORD,
 )
 
     // Insert a number into the big buffer.
@@ -117,7 +117,7 @@ END
 
 FN CtCopyBytesFunc (
     IN srcbuf : ^UBYTE,
-    IN length : ULONG,
+    IN length : UWORD,
 )
 
     // Copy a buffer into the func buffer.
@@ -155,7 +155,7 @@ FN (CtInsertByteF) CtInsertByteFunc (
 END
 
 FN CtInsertNumberFunc (
-    IN number : ULONG,
+    IN number : UWORD,
 )
 
     // Insert a number into the func buffer.
