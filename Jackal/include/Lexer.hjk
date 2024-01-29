@@ -1,8 +1,8 @@
 #INCLUDE "<inc>/Frontend.hjk"
 
-CONST LEX_PUTBACK_STACK_DEPTH := 256
-CONST LEX_BUFFER_SIZE := 16384
-CONST LEX_DIRECTIVE_MAX := 64
+#DEFINE LEX_PUTBACK_STACK_DEPTH 256
+#DEFINE LEX_BUFFER_SIZE 16384
+#DEFINE LEX_DIRECTIVE_MAX 64
 
 ENUM LexTokenType : UBYTE
     TOKEN_ANY,
@@ -227,7 +227,7 @@ STRUCT LexSymbol
 
     NextFunction : ^LexSymbol,
 
-    Value : TlMachineWord,
+    Value : UWORD,
 
     // Unfortunately the initial value has to be a void pointer; it's actually a
     // pointer to an AST node, or in the case of a function, an IR block.
@@ -267,7 +267,7 @@ STRUCT LexSemanticTypeArrayBody
 
     Base : ^LexSemanticType,
 
-    Bound : TlMachineWord,
+    Bound : UWORD,
 
     HasBound : UBYTE,
 
@@ -334,7 +334,7 @@ END
 
 STRUCT LexSemanticType
     Body : LexSemanticTypeBody,
-    Size : TlMachineWord,
+    Size : UWORD,
     Subtype : LexSemanticSubtype,
     MinimumAlignment : UBYTE,
     CachedIsDeclarable : UBYTE,
@@ -502,20 +502,20 @@ EXTERN FN LexMatchToken (
 
 EXTERN FN LexStreamError (
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
 
 EXTERN FN LexTokenError (
     IN token : ^LexToken,
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
 
 EXTERN FN LexCrunchNumber (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
-) : TlMachineWord
+) : UWORD

@@ -82,7 +82,7 @@ FN TlLookupSymbolTable (
         symboltable = symboltable^.PrevScope
     END
 
-    RETURN 0
+    RETURN NULLPTR
 END
 
 FN TlInsertSymbolTable (

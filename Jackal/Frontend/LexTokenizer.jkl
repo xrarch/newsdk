@@ -46,7 +46,7 @@ PUBLIC LexCharTreatment : LexCharBehavior[256] = {
     // be zero.
 }
 
-CONST LEX_TOKEN_STRING_SIZE := 128
+#DEFINE LEX_TOKEN_STRING_SIZE 128
 
 PUBLIC LexCurrentStream : ^LexStream = NULLPTR
 PUBLIC LexRootScope : ^TlSymbolTable = NULLPTR
@@ -365,11 +365,243 @@ FN (LexGetCharacterF) LexGetCharacter () : UBYTE
     RETURN byte
 END
 
-CONST TOKEN_FLAG_SPLIT    := 1
-CONST TOKEN_FLAG_COALESCE := 2
-CONST TOKEN_FLAG_STRING   := 4
-CONST TOKEN_FLAG_CHARLIT  := 8
-CONST TOKEN_FLAG_UPPER    := 16
+#DEFINE TOKEN_FLAG_SPLIT    1
+#DEFINE TOKEN_FLAG_COALESCE 2
+#DEFINE TOKEN_FLAG_STRING   4
+#DEFINE TOKEN_FLAG_CHARLIT  8
+#DEFINE TOKEN_FLAG_UPPER    16
+
+FN LexGetStringTokenInternal (
+    IN token : ^LexToken,
+    IN terminator : UBYTE,
+    IN dynamicbuffer : ^TlDynamicBuffer,
+    IN buffer : ^UBYTE,
+    OUT length : ^ULONG,
+)
+
+    len := 0
+    isbackslash := FALSE
+
+    WHILE TRUE DO
+        byte := LexGetCharacter ()
+
+        IF NOT byte THEN
+            LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
+        END
+
+        IF NOT isbackslash THEN
+            IF byte == terminator THEN
+                // String is done.
+
+                BREAK
+
+            ELSEIF byte == '\\' THEN
+                isbackslash = TRUE
+
+                CONTINUE
+            END
+        ELSE
+            isbackslash = FALSE
+
+            IF byte == 'n' THEN
+                byte = '\n'
+            
+            ELSEIF byte == 't' THEN
+                byte = '\t'
+            
+            ELSEIF byte == 'r' THEN
+                byte = '\r'
+            
+            ELSEIF byte == 'b' THEN
+                byte = '\b'
+            
+            ELSEIF byte == '[' THEN
+                byte = '\['
+            END
+        END
+
+        IF dynamicbuffer THEN
+            TlInsertDynamicBuffer ( dynamicbuffer, byte )
+        
+        ELSEIF len == LEX_TOKEN_STRING_SIZE - 1 THEN
+            LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
+        
+        ELSE
+            buffer[len] = byte
+            len += 1
+        END
+    END
+
+    IF dynamicbuffer THEN
+        TlInsertDynamicBuffer ( dynamicbuffer, 0 )
+    ELSE
+        buffer[len] = 0
+        length^ = len
+    END
+END
+
+FN LexCrunchCharacterLiteral (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+) : UWORD
+
+    num : UWORD = 0
+    i := 0
+
+    WHILE buffer[i] DO
+        lastnum := num
+
+        num *= 256
+
+        IF lastnum != 0 AND num / lastnum != 256 THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
+        num += buffer[i]
+
+        IF num < lastnum THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
+        i += 1
+    END
+
+    RETURN num
+END
+
+FN LexCrunchNumber (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+) : UWORD
+
+    num : UWORD = 0
+    i := 0
+
+    IF buffer[0] == '0' THEN
+        // This number is either a literal zero, octal, or hexadecimal.
+
+        IF NOT buffer[1] THEN
+            // Literal zero.
+
+            RETURN 0
+        END
+
+        IF buffer[1] == 'x' THEN
+            // Hexadecimal.
+
+            IF NOT buffer[2] THEN
+                LexTokenError ( token, "Unfinished hex number.", 0, 0, 0 )
+            END
+
+            i = 2
+
+            WHILE buffer[i] DO
+                lastnum := num
+
+                num *= 16
+
+                // Check for overflow.
+
+                IF lastnum != 0 AND num / lastnum != 16 THEN
+                    LexTokenError ( token,
+                        "Number does not fit in machine word.", 0, 0, 0 )
+                END
+
+                IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
+                    num += buffer[i] - '0'
+                
+                ELSEIF buffer[i] >= 'A' AND buffer[i] <= 'F' THEN
+                    num += buffer[i] - 'A' + 10
+                
+                ELSEIF buffer[i] >= 'a' AND buffer[i] <= 'f' THEN
+                    num += buffer[i] - 'a' + 10
+
+                ELSE
+                    LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
+                END
+
+                // Check for overflow.
+
+                IF num < lastnum THEN
+                    LexTokenError ( token,
+                        "Number does not fit in machine word.", 0, 0, 0 )
+                END
+
+                i += 1
+            END
+
+            RETURN num
+        END
+
+        // Octal.
+
+        i = 1
+
+        WHILE buffer[i] DO
+            IF NOT (buffer[i] >= '0' AND buffer[i] <= '7') THEN
+                LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
+            END
+
+            lastnum := num
+
+            num *= 8
+
+            // Check for overflow.
+
+            IF lastnum != 0 AND num / lastnum != 8 THEN
+                LexTokenError ( token,
+                    "Number does not fit in machine word.", 0, 0, 0 )
+            END
+
+            num += buffer[i] - '0'
+
+            // Check for overflow.
+
+            IF num < lastnum THEN
+                LexTokenError ( token,
+                    "Number does not fit in machine word.", 0, 0, 0 )
+            END
+
+            i += 1
+        END
+
+        RETURN num
+    END
+
+    // Decimal.
+
+    WHILE buffer[i] DO
+        IF NOT (buffer[i] >= '0' AND buffer[i] <= '9') THEN
+            LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
+        END
+
+        lastnum := num
+
+        num *= 10
+
+        // Check for overflow.
+
+        IF lastnum != 0 AND num / lastnum != 10 THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
+        num += buffer[i] - '0'
+
+        // Check for overflow.
+
+        IF num < lastnum THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
+        i += 1
+    END
+
+    RETURN num
+END
 
 FN LexGetTokenContents (
     IN token : ^LexToken,
@@ -593,75 +825,6 @@ FN LexGetTokenContents (
     GOTO LoopOnMacro
 END
 
-FN LexGetStringTokenInternal (
-    IN token : ^LexToken,
-    IN terminator : UBYTE,
-    IN dynamicbuffer : ^TlDynamicBuffer,
-    IN buffer : ^UBYTE,
-    OUT length : ^ULONG,
-)
-
-    len := 0
-    isbackslash := FALSE
-
-    WHILE TRUE DO
-        byte := LexGetCharacter ()
-
-        IF NOT byte THEN
-            LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
-        END
-
-        IF NOT isbackslash THEN
-            IF byte == terminator THEN
-                // String is done.
-
-                BREAK
-
-            ELSEIF byte == '\\' THEN
-                isbackslash = TRUE
-
-                CONTINUE
-            END
-        ELSE
-            isbackslash = FALSE
-
-            IF byte == 'n' THEN
-                byte = '\n'
-            
-            ELSEIF byte == 't' THEN
-                byte = '\t'
-            
-            ELSEIF byte == 'r' THEN
-                byte = '\r'
-            
-            ELSEIF byte == 'b' THEN
-                byte = '\b'
-            
-            ELSEIF byte == '[' THEN
-                byte = '\['
-            END
-        END
-
-        IF dynamicbuffer THEN
-            TlInsertDynamicBuffer ( dynamicbuffer, byte )
-        
-        ELSEIF len == LEX_TOKEN_STRING_SIZE - 1 THEN
-            LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
-        
-        ELSE
-            buffer[len] = byte
-            len += 1
-        END
-    END
-
-    IF dynamicbuffer THEN
-        TlInsertDynamicBuffer ( dynamicbuffer, 0 )
-    ELSE
-        buffer[len] = 0
-        length^ = len
-    END
-END
-
 FN LexNextToken (
     IN token : ^LexToken,
 )
@@ -715,10 +878,10 @@ FN LexNextToken (
         // tokens.
 
         token^.Type = TOKEN_NUMBER
-        token^.Payload = LexCrunchCharacterLiteral (
+        token^.Payload = CAST LexCrunchCharacterLiteral (
             token, // token
             &buffer[0], // buffer
-        )
+        ) TO ^VOID
 
         LEAVE
     END
@@ -744,10 +907,10 @@ FN LexNextToken (
         // This is a numerical token.
 
         token^.Type = TOKEN_NUMBER
-        token^.Payload = LexCrunchNumber (
+        token^.Payload = CAST LexCrunchNumber (
             token, // token
             &buffer[0], // buffer
-        )
+        ) TO ^VOID
 
         LEAVE
     END
@@ -775,7 +938,7 @@ FN LexNextToken (
             TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
         END
 
-        symbol^.Name = symbol + SIZEOF LexSymbol
+        symbol^.Name = CAST (symbol + SIZEOF LexSymbol) TO ^UBYTE
         symbol^.Type = SYM_UNINITIALIZED
         symbol^.IrContext = NULLPTR
         symbol^.TrgContext = NULLPTR
@@ -796,169 +959,6 @@ FN LexNextToken (
     END
 
     token^.Payload = symbol
-END
-
-FN LexCrunchCharacterLiteral (
-    IN token : ^LexToken,
-    IN buffer : ^UBYTE,
-) : TlMachineWord
-
-    num : TlMachineWord = 0
-    i := 0
-
-    WHILE buffer[i] DO
-        lastnum := num
-
-        num *= 256
-
-        IF lastnum != 0 AND num / lastnum != 256 THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
-        END
-
-        num += buffer[i]
-
-        IF num < lastnum THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
-        END
-
-        i += 1
-    END
-
-    RETURN num
-END
-
-FN LexCrunchNumber (
-    IN token : ^LexToken,
-    IN buffer : ^UBYTE,
-) : TlMachineWord
-
-    num : ULONG = 0
-    i := 0
-
-    IF buffer[0] == '0' THEN
-        // This number is either a literal zero, octal, or hexadecimal.
-
-        IF NOT buffer[1] THEN
-            // Literal zero.
-
-            RETURN 0
-        END
-
-        IF buffer[1] == 'x' THEN
-            // Hexadecimal.
-
-            IF NOT buffer[2] THEN
-                LexTokenError ( token, "Unfinished hex number.", 0, 0, 0 )
-            END
-
-            i = 2
-
-            WHILE buffer[i] DO
-                lastnum := num
-
-                num *= 16
-
-                // Check for overflow.
-
-                IF lastnum != 0 AND num / lastnum != 16 THEN
-                    LexTokenError ( token,
-                        "Number does not fit in machine word.", 0, 0, 0 )
-                END
-
-                IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
-                    num += buffer[i] - '0'
-                
-                ELSEIF buffer[i] >= 'A' AND buffer[i] <= 'F' THEN
-                    num += buffer[i] - 'A' + 10
-                
-                ELSEIF buffer[i] >= 'a' AND buffer[i] <= 'f' THEN
-                    num += buffer[i] - 'a' + 10
-
-                ELSE
-                    LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
-                END
-
-                // Check for overflow.
-
-                IF num < lastnum THEN
-                    LexTokenError ( token,
-                        "Number does not fit in machine word.", 0, 0, 0 )
-                END
-
-                i += 1
-            END
-
-            RETURN num
-        END
-
-        // Octal.
-
-        i = 1
-
-        WHILE buffer[i] DO
-            IF NOT (buffer[i] >= '0' AND buffer[i] <= '7') THEN
-                LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
-            END
-
-            lastnum := num
-
-            num *= 8
-
-            // Check for overflow.
-
-            IF lastnum != 0 AND num / lastnum != 8 THEN
-                LexTokenError ( token,
-                    "Number does not fit in machine word.", 0, 0, 0 )
-            END
-
-            num += buffer[i] - '0'
-
-            // Check for overflow.
-
-            IF num < lastnum THEN
-                LexTokenError ( token,
-                    "Number does not fit in machine word.", 0, 0, 0 )
-            END
-
-            i += 1
-        END
-
-        RETURN num
-    END
-
-    // Decimal.
-
-    WHILE buffer[i] DO
-        IF NOT (buffer[i] >= '0' AND buffer[i] <= '9') THEN
-            LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
-        END
-
-        lastnum := num
-
-        num *= 10
-
-        // Check for overflow.
-
-        IF lastnum != 0 AND num / lastnum != 10 THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
-        END
-
-        num += buffer[i] - '0'
-
-        // Check for overflow.
-
-        IF num < lastnum THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
-        END
-
-        i += 1
-    END
-
-    RETURN num
 END
 
 FN LexEnterScope (

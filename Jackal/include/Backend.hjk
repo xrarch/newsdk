@@ -89,7 +89,7 @@ STRUCT IrStringBody
 END
 
 STRUCT IrConstantBody
-    Constant : TlMachineWord,
+    Constant : UWORD,
 END
 
 STRUCT IrBranchBody

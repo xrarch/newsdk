@@ -145,6 +145,10 @@ FN IrGenerateLoad (
         inst, // definedby
     )
 
+    WHILE type^.Subtype == TYPE_NAMED DO
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
     IF type^.Subtype == TYPE_PRIMITIVE THEN
         inst^.Body.LoadStore.Type = type^.Body.Primitive.Type
 
@@ -174,6 +178,10 @@ FN IrGenerateStore (
     inst := IrCreateInstruction (
         IR_STORE, // type
     )
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
 
     IF type^.Subtype == TYPE_PRIMITIVE THEN
         inst^.Body.LoadStore.Type = type^.Body.Primitive.Type
@@ -244,7 +252,7 @@ FN IrGenerateUnconditionalJump (
 END
 
 FN IrCreateConstantVariable (
-    IN value : TlMachineWord,
+    IN value : UWORD,
 ) : ^IrVariable
 
     // Create a variable with a constant value.
@@ -284,7 +292,7 @@ END
 
 FN IrGenerateConstantMove (
     IN destvar : ^IrVariable,
-    IN constant : TlMachineWord,
+    IN constant : UWORD,
 )
 
     // Generate a move of a constant into the destination variable.
@@ -320,10 +328,17 @@ FN IrGenerateOperatorInst (
     RETURN var
 END
 
+
+// FORWARD
 EXTERN FN IrGenerateExpression (
     IN node : ^PrsAstNode,
     IN truelabel : ^IrInstruction,
     IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+// FORWARD
+EXTERN FN IrGenerateRvalue (
+    IN node : ^PrsAstNode,
 ) : ^IrVariable
 
 FN (IrExpressionGenerationF) IrGenerateIdentifier (
@@ -1258,28 +1273,39 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
 
     // Generate IR for indexing an array.
 
-    var := IrGenerateExpression (
-        node^.Body.Operator.Left, // node
-        NULLPTR, // truelabel
-        NULLPTR, // falselabel
-    )
-
-    indexvar := IrGenerateRvalue ( node^.Body.Operator.Right )
-
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
-    stride : TlMachineWord
+    basetype : ^LexSemanticType
+    var : ^IrVariable
 
     IF type^.Subtype == TYPE_ARRAY THEN
-        stride = type^.Body.Array.Base^.Size
+        basetype = type^.Body.Array.Base
+
+        var = IrGenerateExpression (
+            node^.Body.Operator.Left, // node
+            NULLPTR, // truelabel
+            NULLPTR, // falselabel
+        )
 
     ELSE
         // Must be a pointer.
 
-        stride = type^.Body.Pointer.Base^.Size
+        basetype = type^.Body.Pointer.Base
+
+        var = IrGenerateRvalue (
+            node^.Body.Operator.Left, // node
+        )
     END
 
-    stridevar := IrCreateConstantVariable ( stride )
+    indexvar := IrGenerateRvalue ( node^.Body.Operator.Right )
+
+    // Skip type names.
+
+    WHILE basetype^.Subtype == TYPE_NAMED DO
+        basetype = basetype^.Body.Named.Symbol^.SemanticType
+    END
+
+    stridevar := IrCreateConstantVariable ( basetype^.Size )
 
     // Generate a multiplication to calculate the offset.
 
@@ -1923,6 +1949,11 @@ FN (IrStatementGenerationF) IrGenerateReturn (
     IrInsertInstructionTail ( inst )
 END
 
+// FORWARD
+EXTERN FN IrGenerateBlock (
+    IN block : ^PrsBlock,
+)
+
 FN (IrStatementGenerationF) IrGenerateWhile (
     IN node : ^PrsAstNode,
 )
@@ -1983,7 +2014,12 @@ FN (IrStatementGenerationF) IrGenerateWhile (
 
     IrInsertInstructionTail ( truelabel )
 
+    beginlabel := IrCreateLabel ()
+    IrWhileBeginLabel = beginlabel
+
     IrGenerateBlock ( body )
+
+    IrInsertInstructionTail ( beginlabel )
 
     IrGenerateExpression (
         cond, // node

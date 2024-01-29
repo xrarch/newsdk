@@ -6,7 +6,7 @@ TWRFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/*.jkl)) \
 
 CFILES := $(foreach component,$(COMPONENTS),$(wildcard $(component)/CHost/*.c))
 
-COBJ := $(TWRFILES:.jkl=.c)
+COBJ := $(TWRFILES:.jkl=.jc)
 OBJ  := $(TWRFILES:.jkl=.o) $(CFILES:.c=.o)
 
 FULLOUTPUTFILE = $(BUILDROOT)/$(OUTPUTFILE)
@@ -18,11 +18,20 @@ $(FULLOUTPUTFILE): $(OBJ)
 
 define COMPONENT_TEMPLATE
 
-$(1)/%.c: $(1)/%.jkl $$(INCLUDEFILES) $$(wildcard $(1)/*.hjk)
-	$$(TBC) $$< $$@ incdir=$$(INCDIR) libdir=$$(LIBDIR)
+$(1)/%.jc: $(1)/%.jkl $$(INCLUDEFILES) $$(wildcard $(1)/*.hjk)
+	$$(JC) $$< $$@ incdir=$$(INCDIR) libdir=$$(LIBDIR)
+ifeq ($$(KEEPPRECOMPILED), 1)
+	cp $$@ ./Precompiled/$$(notdir $$@)
+endif
+
+$(1)/%.o: $(1)/%.jc
+	$$(JCC) $$< -c -o $$@
 
 $(1)/%.o: $(1)/%.c
 	$$(CC) $$< -c -o $$@
+ifeq ($$(KEEP_PRECOMPILED), 1)
+	cp $$< ./Precompiled/$$(notdir $$<)
+endif
 
 endef
 

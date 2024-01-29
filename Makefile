@@ -8,8 +8,9 @@ ifndef SDK
 endif
 
 export SDK
-export TBC := $(SDK)/tbc.sh
-export CC := $(CC) -Wno-parentheses-equality
+export JC := $(REPO)/build/bsjkl target=CHost
+export JCC := $(CC) -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c
+export CC := $(CC) -Ofast
 
 PROJECTS := Jackal
 
@@ -37,3 +38,6 @@ cleanup:
 	for dir in $(PROJECTS); do \
 		make -C $$dir cleanup; \
 	done
+
+bootstrap: $(BUILDROOT)
+	$(JCC) Jackal/Precompiled/*.jc Jackal/Precompiled/*.c -o $(REPO)/build/bsjkl

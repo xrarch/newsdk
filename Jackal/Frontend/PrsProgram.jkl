@@ -20,7 +20,7 @@ PrsNullPtrType : ^LexSemanticType = NULLPTR
 PrsConstantType : ^LexSemanticType = NULLPTR
 PrsVarArgType : ^LexSemanticType = NULLPTR
 
-CONST TYPE_SIZE_UNINIT := 0xFFFFFFFF
+#DEFINE TYPE_SIZE_UNINIT 0xFFFFFFFF
 
 ENUM PrsBlockType : UBYTE
     BLOCK_NULL,
@@ -72,6 +72,17 @@ FNPTR PrsStatementF (
 STRUCT PrsStatementRecord
     ParseFunc : PrsStatementF,
 END
+
+// FORWARD
+EXTERN FN PrsExpression (
+    IN minprecedence : UWORD,
+) : ^PrsAstNode
+
+// FORWARD
+EXTERN FN PrsType (
+    IN type : ^LexSemanticType,
+    IN depth : UWORD,
+)
 
 PrsStatements : PrsStatementRecord[TOKEN_SUBTYPE_MAX]
 
@@ -616,7 +627,7 @@ FN PrsAtom () : ^PrsAstNode
             &token, // token
         )
 
-        atomnode^.Body.Constant.Value = CAST token.Payload TO TlMachineWord
+        atomnode^.Body.Constant.Value = CAST token.Payload TO UWORD
 
     ELSEIF token.Type == TOKEN_IDENTIFIER THEN
         // This is an identifier. The symbol pointer and stuff stay in the token
@@ -765,7 +776,7 @@ FN PrsAtom () : ^PrsAstNode
 END
 
 FN PrsExpression (
-    IN minprecedence : ULONG,
+    IN minprecedence : UWORD,
 ) : ^PrsAstNode
 
     // Parse a expression. Pays attention to precedence.
@@ -803,7 +814,9 @@ FN PrsExpression (
         node^.Body.Operator.Left = atomnode
 
         IF NOT operator^.NoRightSide THEN
-            node^.Body.Operator.Right = PrsExpression ( minprecedence + 1 )
+            node^.Body.Operator.Right = PrsExpression (
+                operator^.Precedence + 1, // minprecedence
+            )
         END
 
         IF operator^.ParseFunc THEN
@@ -818,6 +831,33 @@ FN PrsExpression (
 
     RETURN atomnode
 END
+
+FN PrsCheckConstant (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN value : UWORD,
+)
+
+    // Make sure the value fits in the type.
+
+    IF type^.Subtype != TYPE_PRIMITIVE THEN
+        LEAVE
+    END
+
+    masked := value & JklPrimitiveTypeMasks[type^.Body.Primitive.Type]
+
+    IF masked != value THEN
+        LexTokenError ( errtoken, "Constant doesn't fit in type", 0, 0, 0 )
+    END
+END
+
+// FORWARD
+EXTERN FN PrsParseInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+) : ^PrsAstNode
 
 FN PrsParseArrayInitializer (
     IN errtoken : ^LexToken,
@@ -834,6 +874,13 @@ FN PrsParseArrayInitializer (
     // [INDEX] = INITIALIZER,
 
     basetype := type^.Body.Array.Base
+
+    // First strip away any type names.
+
+    WHILE basetype^.Subtype == TYPE_NAMED DO
+        basetype = basetype^.Body.Named.Symbol^.SemanticType
+    END
+
     elementsize := basetype^.Size
     bound := type^.Body.Array.Bound
     index := 0
@@ -994,9 +1041,17 @@ FN PrsParseStructInitializer (
 
         offset := fieldsymbol^.Value
 
+        striptype := fieldsymbol^.SemanticType
+
+        // First strip away any type names.
+
+        WHILE striptype^.Subtype == TYPE_NAMED DO
+            striptype = striptype^.Body.Named.Symbol^.SemanticType
+        END
+
         PrsParseInitializer (
             &token, // errtoken
-            fieldsymbol^.SemanticType, // type
+            striptype, // type
             &bytearray[offset], // bytearray
             &bparray[offset], // bparray
         )
@@ -1388,7 +1443,7 @@ END
 
 FN PrsType (
     IN type : ^LexSemanticType,
-    IN depth : UBYTE,
+    IN depth : UWORD,
 )
 
     // Parse the type into the provided type structure.
@@ -1683,23 +1738,43 @@ FN PrsFoundSymbol (
         )
 
         IF global THEN
-            // Remove from list of globals and re-add at new position.
+            // Add a dummy extern entry after us so that a forward decl still
+            // appears in the expected spot. This is kind of hacky and is mostly
+            // for the benefit of the C transpiler backend.
+
+            dummyextern : ^LexSymbol
+
+            status := TlBumpAlloc (
+                SIZEOF LexSymbol,
+                &dummyextern, // OUT ptr
+            )
+
+            TlCopyMemory (
+                dummyextern, // dest
+                symbol, // src
+                SIZEOF LexSymbol, // sz
+            )
+
+            // Add the dummy after us and remove ourselves.
+
+            dummyextern^.Prev = symbol^.Prev
+            dummyextern^.Next = symbol^.Next
+
+            IF PrsGlobalListTail == symbol THEN
+                PrsGlobalListTail = dummyextern
+            ELSE
+                symbol^.Next^.Prev = dummyextern
+            END
 
             p := symbol^.Prev
 
             IF p THEN
-                p^.Next = symbol^.Next
+                p^.Next = dummyextern
             ELSE // no prev means we were the head
-                PrsGlobalListHead = symbol^.Next
+                PrsGlobalListHead = dummyextern
             END
 
-            p = symbol^.Next
-
-            IF p THEN
-                p^.Prev = symbol^.Prev
-            ELSE // no next means we were the tail
-                PrsGlobalListTail = symbol^.Prev
-            END
+            // Re-add at tail.
 
             tail := PrsGlobalListTail
 
@@ -1755,25 +1830,6 @@ FN PrsFoundSymbol (
 
     ELSE
         symbol^.Section = LexCurrentSection
-    END
-END
-
-FN PrsCheckConstant (
-    IN errtoken : ^LexToken,
-    IN type : ^LexSemanticType,
-    IN value : TlMachineWord,
-)
-
-    // Make sure the value fits in the type.
-
-    IF type^.Subtype != TYPE_PRIMITIVE THEN
-        LEAVE
-    END
-
-    masked := value & JklPrimitiveTypeMasks[type^.Body.Primitive.Type]
-
-    IF masked != value THEN
-        LexTokenError ( errtoken, "Constant doesn't fit in type", 0, 0, 0 )
     END
 END
 
@@ -3577,7 +3633,7 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
 
     token : LexToken
 
-    value : TlMachineWord = 0
+    value : UWORD = 0
 
     WHILE TRUE DO
         IF LexMatchToken (
@@ -3674,10 +3730,6 @@ FN PrsParseFnSignature (
     ) THEN
         // An FNPTR name is specified. Collect it.
 
-        IF fnptr THEN
-            LexTokenError ( &fnptrtoken, "FNPTR not allowed on an FNPTR", 0, 0, 0 )
-        END
-
         fnptrtoken : LexToken
 
         IF NOT LexMatchToken (
@@ -3690,6 +3742,10 @@ FN PrsParseFnSignature (
 
         IF fnptrtoken.Subtype == TOKEN_IDENTIFIER_NEW THEN
             LexTokenError ( &fnptrtoken, "Undeclared identifier", 0, 0, 0 )
+        END
+
+        IF fnptr THEN
+            LexTokenError ( &fnptrtoken, "FNPTR not allowed on an FNPTR", 0, 0, 0 )
         END
 
         symbol := CAST fnptrtoken.Payload TO ^LexSymbol
@@ -4207,7 +4263,7 @@ FN PrsParseCompoundType (
 
     minalignment := 0
 
-    offset : TlMachineWord = 0
+    offset : UWORD = 0
 
     WHILE TRUE DO
         oldscope := LexEnterScope ( fieldscope )

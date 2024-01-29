@@ -15,7 +15,7 @@ PUBLIC FeOutputFileHandle : ^VOID
 
 PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
 
-PUBLIC JklPrimitiveTypeMasks : TlMachineWord[PRIM_TYPE_MAX]
+PUBLIC JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
 
 PUBLIC JklCHost := FALSE
 
@@ -40,7 +40,7 @@ END
 
 FN FeParseArguments (
     IN argc : ULONG,
-    IN argv : ^UBYTE[],
+    IN argv : ^^UBYTE,
 )
 
     // Find the value of these arguments, if they exist:
@@ -180,57 +180,6 @@ FN FeCopyPathFileBlock (
     )
 END
 
-EXTERN FN IrGenerate ()
-EXTERN FN CtTranspile ()
-
-FN JklCompileProgram (
-    IN argc : ULONG,
-    IN argv : ^UBYTE[],
-)
-
-    // Compile the entire program.
-
-    // Initialize some tables.
-    // TODO static initialization
-    // TODO add mask for QUAD and UQUAD, ifdef'd off
-
-    JklPrimitiveTypeMasks[PRIM_TYPE_UBYTE] = 0xFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_UINT] = 0xFFFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_ULONG] = 0xFFFFFFFF
-
-    JklPrimitiveTypeMasks[PRIM_TYPE_BYTE] = 0xFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_INT] = 0xFFFF
-    JklPrimitiveTypeMasks[PRIM_TYPE_LONG] = 0xFFFFFFFF
-
-    // Initialize the front-end components.
-
-    FeInitialize (
-        argc, // argc
-        argv, // argv
-    )
-
-    // Parse the program and construct a global symbol table and abstract syntax
-    // trees.
-
-    PrsProgram ()
-
-    // Generate IR for each function.
-
-    IrGenerate ()
-
-    IF JklCHost THEN
-        // We're transpiling for the C host, so generate the C and return.
-
-        CtTranspile ()
-
-        LEAVE
-    END
-
-    // Call the target-specific code to finish compilation.
-
-    // ...
-END
-
 TrgCHostInfo : JklTargetInfoRecord
 
 FN TrgInitialize ()
@@ -246,11 +195,11 @@ FN TrgInitialize ()
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_UBYTE] = TRUE
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_UINT] = TRUE
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_ULONG] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UQUAD] = FALSE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_UQUAD] = TRUE
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_BYTE] = TRUE
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_INT] = TRUE
     TrgCHostInfo.SupportedTypes[PRIM_TYPE_LONG] = TRUE
-    TrgCHostInfo.SupportedTypes[PRIM_TYPE_QUAD] = FALSE
+    TrgCHostInfo.SupportedTypes[PRIM_TYPE_QUAD] = TRUE
 
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_VOID] = 0
     TrgCHostInfo.PrimitiveAlignment[PRIM_TYPE_UBYTE] = 1
@@ -272,15 +221,15 @@ FN TrgInitialize ()
     TrgCHostInfo.PrimitiveSize[PRIM_TYPE_LONG] = 4
     TrgCHostInfo.PrimitiveSize[PRIM_TYPE_QUAD] = 8
 
-    TrgCHostInfo.LargestPrimitive = PRIM_TYPE_ULONG
-    TrgCHostInfo.LargestSignedPrimitive = PRIM_TYPE_LONG
+    TrgCHostInfo.LargestPrimitive = PRIM_TYPE_UQUAD
+    TrgCHostInfo.LargestSignedPrimitive = PRIM_TYPE_QUAD
 
     JklTargetInfo = &TrgCHostInfo
 END
 
 FN FeInitialize (
     IN argc : ULONG,
-    IN argv : ^UBYTE[],
+    IN argv : ^^UBYTE,
 )
     
     // Initialize the file block hash table.
@@ -326,4 +275,57 @@ FN FeInitialize (
     // Initialize the parser.
 
     PrsInitialize ()
+END
+
+EXTERN FN IrGenerate ()
+EXTERN FN CtTranspile ()
+
+FN JklCompileProgram (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Compile the entire program.
+
+    // Initialize some tables.
+    // TODO static initialization
+    // TODO add mask for QUAD and UQUAD, ifdef'd off
+
+    JklPrimitiveTypeMasks[PRIM_TYPE_UBYTE] = 0xFF
+    JklPrimitiveTypeMasks[PRIM_TYPE_UINT] = 0xFFFF
+    JklPrimitiveTypeMasks[PRIM_TYPE_ULONG] = 0xFFFFFFFF
+    JklPrimitiveTypeMasks[PRIM_TYPE_UQUAD] = 0xFFFFFFFFFFFFFFFF
+
+    JklPrimitiveTypeMasks[PRIM_TYPE_BYTE] = 0xFF
+    JklPrimitiveTypeMasks[PRIM_TYPE_INT] = 0xFFFF
+    JklPrimitiveTypeMasks[PRIM_TYPE_LONG] = 0xFFFFFFFF
+    JklPrimitiveTypeMasks[PRIM_TYPE_QUAD] = 0xFFFFFFFFFFFFFFFF
+
+    // Initialize the front-end components.
+
+    FeInitialize (
+        argc, // argc
+        argv, // argv
+    )
+
+    // Parse the program and construct a global symbol table and abstract syntax
+    // trees.
+
+    PrsProgram ()
+
+    // Generate IR for each function.
+
+    IrGenerate ()
+
+    IF JklCHost THEN
+        // We're transpiling for the C host, so generate the C and return.
+
+        CtTranspile ()
+
+        LEAVE
+    END
+
+    // Call the target-specific code to finish compilation.
+
+    // ...
 END

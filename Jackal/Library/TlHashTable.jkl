@@ -107,7 +107,7 @@ END
 
 FN TlLookupOrAllocateEntryHashTable (
     IN hashtable : ^TlHashTable,
-    IN entrysize : ULONG,
+    IN entrysize : UWORD,
     IN key : ^UBYTE,
     OUT created : ^UBYTE,
 ) : ^TlHashTableEntry

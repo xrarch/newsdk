@@ -5,14 +5,14 @@
 #INCLUDE "<inc>/Runtime.hjk"
 
 FN TlIsPowerOfTwo (
-    IN constant : TlMachineWord,
-) : ULONG
+    IN constant : UWORD,
+) : UWORD
 
     // Check if the constant is a power of two. If it is, return which Nth power
     // of two it is.
 
     IF constant == 0 THEN
-        RETURN -1
+        RETURN -1 // TMP
     END
 
     bitpos := 0
@@ -20,7 +20,7 @@ FN TlIsPowerOfTwo (
     WHILE TRUE DO
         IF constant & 1 THEN
             IF constant != 1 THEN
-                RETURN -1
+                RETURN -1 // TMP
             END
 
             RETURN bitpos
@@ -33,8 +33,8 @@ END
 
 FN TlPunchValue (
     IN ptr : ^UBYTE,
-    IN value : TlMachineWord,
-    IN bytes : ULONG,
+    IN value : UWORD,
+    IN bytes : UWORD,
 )
 
     // Punch a value into a byte array. Note: always little-endian.

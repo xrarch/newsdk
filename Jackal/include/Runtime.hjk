@@ -4,7 +4,7 @@
 // order to reuse these things for the other self-hosted tools.
 //
 
-ENUM TlStatus : ULONG
+ENUM TlStatus : UWORD
     TL_SUCCESS,
     TL_NO_MEMORY,
     TL_COULDNT_OPEN,
@@ -12,27 +12,25 @@ END
 
 // TODO ifdef this for 64 bits as well
 
-TYPE TlMachineWord : ULONG
-CONST TL_MACHINE_WORD_MAX : ULONG = 0xFFFFFFFF
-CONST TL_MACHINE_WORD_WIDTH : ULONG = 32
-CONST TL_MACHINE_WORD_BYTES : ULONG = 4
+#DEFINE TL_MACHINE_WORD_MAX 0xFFFFFFFF
+#DEFINE TL_MACHINE_WORD_WIDTH 32
 
 EXTERN FN TlInitialize ()
 
 EXTERN FN TlMeasureString (
     IN str : ^UBYTE,
-) : ULONG
+) : UWORD
 
 EXTERN FN TlFillMemoryWithByte (
     IN ptr : ^VOID,
-    IN sz : ULONG,
-    IN byte : UBYTE,
+    IN sz : UWORD,
+    IN byte : UWORD,
 )
 
 EXTERN FN TlCopyMemory (
     IN dest : ^VOID,
     IN src : ^VOID,
-    IN sz : ULONG,
+    IN sz : UWORD,
 )
 
 EXTERN FN TlPrintString (
@@ -40,7 +38,7 @@ EXTERN FN TlPrintString (
 )
 
 EXTERN FN TlPrintNumber (
-    IN num : ULONG,
+    IN num : UWORD,
 )
 
 EXTERN FN TlPrintCharacter (
@@ -49,27 +47,27 @@ EXTERN FN TlPrintCharacter (
 
 EXTERN FN TlInternalError (
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
 
 EXTERN FN TlUserError (
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
 
 EXTERN FN TlErrorExit ()
 
 EXTERN FN TlBumpAlloc (
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     OUT ptr : ^^VOID,
 ) : TlStatus
 
 EXTERN FN TlAlloc (
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     OUT ptr : ^^VOID,
 ) : TlStatus
 
@@ -80,18 +78,18 @@ EXTERN FN TlFree (
 EXTERN FN TlCompareString (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,
-) : ULONG
+) : UWORD
 
 EXTERN FN TlCompareStringWithMax (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,
-    IN count : ULONG,
-) : ULONG
+    IN count : UWORD,
+) : UWORD
 
 EXTERN FN TlCopyString (
     IN dest : ^UBYTE,
     IN src : ^UBYTE,
-    IN bufsize : ULONG,
+    IN bufsize : UWORD,
 )
 
 EXTERN FN TlOpenSource (
@@ -110,25 +108,25 @@ EXTERN FN TlClose (
 
 EXTERN FN TlReadFile (
     IN handle : ^VOID,
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     IN buffer : ^VOID,
-) : ULONG
+) : UWORD
 
 EXTERN FN TlWriteFile (
     IN handle : ^VOID,
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     IN buffer : ^VOID,
-) : ULONG
+) : UWORD
 
-EXTERN TlHeapHits : ULONG
-EXTERN TlBumpBytesUsed : ULONG
-EXTERN TlBumpHits : ULONG
+EXTERN TlHeapHits : UWORD
+EXTERN TlBumpBytesUsed : UWORD
+EXTERN TlBumpHits : UWORD
 
 
 // hash table stuff
 
 
-CONST TL_HASH_SIZE : ULONG = 97
+#DEFINE TL_HASH_SIZE 97
 
 STRUCT TlHashTable
     OrderedListHead : ^TlHashTableEntry,
@@ -148,6 +146,10 @@ STRUCT TlHashTableEntry
 
     Hash : UBYTE,
 END
+
+FNPTR TlHashTableEnumeratorF (
+    IN entry : ^TlHashTableEntry,
+)
 
 EXTERN FN TlInitializeHashTable (
     IN hashtable : ^TlHashTable,
@@ -171,7 +173,7 @@ EXTERN FN TlLookupOrInsertHashTable (
 
 EXTERN FN TlLookupOrAllocateEntryHashTable (
     IN hashtable : ^TlHashTable,
-    IN entrysize : ULONG,
+    IN entrysize : UWORD,
     IN key : ^UBYTE,
     OUT created : ^UBYTE,
 ) : ^TlHashTableEntry
@@ -199,10 +201,6 @@ EXTERN FN TlLookupHashTableByHash (
 EXTERN FN TlHashString (
     IN str : ^UBYTE,
 ) : ULONG
-
-FNPTR TlHashTableEnumeratorF (
-    IN entry : ^TlHashTableEntry,
-)
 
 
 // symbol table stuff
@@ -248,11 +246,11 @@ EXTERN FN TlRemoveSymbolTable (
 // dynamic buffer stuff
 
 
-CONST TL_DYNAMIC_BUFFER_INITIAL := 64
+#DEFINE TL_DYNAMIC_BUFFER_INITIAL 64
 
 STRUCT TlDynamicBuffer
-    Count : ULONG,
-    BufferSize : ULONG,
+    Count : UWORD,
+    BufferSize : UWORD,
     Buffer : ^UBYTE,
 
     InitialBuffer : UBYTE[TL_DYNAMIC_BUFFER_INITIAL]
@@ -274,18 +272,18 @@ EXTERN FN TlInsertDynamicBuffer (
 EXTERN FN TlCopyIntoDynamicBuffer (
     IN array : ^TlDynamicBuffer,
     IN srcbuf : ^UBYTE,
-    IN length : ULONG,
+    IN length : UWORD,
 )
 
 EXTERN FN TlInsertNumberDynamicBuffer (
     IN array : ^TlDynamicBuffer,
-    IN number : ULONG,
+    IN number : UWORD,
     IN base : UBYTE,
 )
 
 EXTERN FN TlPopDynamicBuffer (
     IN array : ^TlDynamicBuffer,
-) : UBYTE
+) : UWORD
 
 
 // path stuff
@@ -296,7 +294,7 @@ EXTERN FN TlMatchPath (
     IN pathset : ^UBYTE,
     IN resultingpath : ^TlDynamicBuffer,
     OUT handle : ^^VOID,
-) : UBYTE
+) : UWORD
 
 EXTERN FN TlCopyParentPath (
     IN srcpath : ^UBYTE,
@@ -307,10 +305,10 @@ EXTERN FN TlCopyParentPath (
 // zone stuff
 
 
-CONST TL_ZONE_GROW_BY : ULONG = 32
+#DEFINE TL_ZONE_GROW_BY 32
 
 STRUCT TlZone
-    BlockSize : ULONG,
+    BlockSize : UWORD,
     FreeListHead : ^TlZoneBlockHeader,
 END
 
@@ -320,7 +318,7 @@ END
 
 EXTERN FN TlInitializeZone (
     IN zone : ^TlZone,
-    IN blocksize : ULONG,
+    IN blocksize : UWORD,
 )
 
 EXTERN FN TlAllocateFromZone (
@@ -337,11 +335,11 @@ EXTERN FN TlFreeToZone (
 
 
 EXTERN FN TlIsPowerOfTwo (
-    IN constant : TlMachineWord,
-) : ULONG
+    IN constant : UWORD,
+) : UWORD
 
 EXTERN FN TlPunchValue (
     IN ptr : ^UBYTE,
-    IN value : TlMachineWord,
-    IN bytes : ULONG,
+    IN value : UWORD,
+    IN bytes : UWORD,
 )

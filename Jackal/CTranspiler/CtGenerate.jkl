@@ -141,7 +141,8 @@ FN CtOutputSymbolName (
     IF NOT sym^.TrgContext THEN
         // Declare the local.
 
-        sym^.TrgContext = CAST TRUE TO ^VOID
+        sym^.TrgContext = CAST CtIrVariableNumber TO ^VOID
+        CtIrVariableNumber += 1
 
         type := sym^.SemanticType
 
@@ -172,6 +173,7 @@ FN CtOutputSymbolName (
         CtInsertString ( CtTypeNames[primtype] )
         CtInsertString ( " _mng_" )
         CtInsertString ( sym^.Name )
+        CtInsertNumber ( CAST sym^.TrgContext TO UWORD )
 
         IF bound THEN
             CtInsertByte ( '[' )
@@ -184,6 +186,7 @@ FN CtOutputSymbolName (
 
     CtInsertStringFunc ( "_mng_" )
     CtInsertStringFunc ( sym^.Name )
+    CtInsertNumberFunc ( CAST sym^.TrgContext TO UWORD )
 END
 
 FN CtOutputVariableName (
@@ -378,6 +381,7 @@ FN (CtGenerateF) CtGenerateConstant (
     CtOutputVariableName ( inst^.Defines )
     CtInsertStringFunc ( " = " )
     CtInsertNumberFunc ( inst^.Body.Constant.Constant )
+    CtInsertStringFunc ( "ULL" )
     CtInsertStringFunc ( ";\n" )
 END
 
@@ -1121,11 +1125,12 @@ FN CtGenerateFunction (
     arg := type^.Body.Function.ArgListHead
 
     WHILE arg DO
-        arg^.Symbol^.TrgContext = CAST TRUE TO ^VOID
+        arg^.Symbol^.TrgContext = CAST CtIrVariableNumber TO ^VOID
+        CtIrVariableNumber += 1
 
         CtInsertString ( "uint64_t _mng_" )
-
         CtInsertString ( arg^.Symbol^.Name )
+        CtInsertNumber ( CAST arg^.Symbol^.TrgContext TO UWORD )
 
         arg = arg^.Next
 
@@ -1135,14 +1140,22 @@ FN CtGenerateFunction (
     END
 
     IF type^.Body.Function.IsVarArg THEN
-        type^.Body.Function.VarArgTable^.TrgContext = CAST TRUE TO ^VOID
-        type^.Body.Function.VarArgCount^.TrgContext = CAST TRUE TO ^VOID
+        vtsym := type^.Body.Function.VarArgTable
+        vcsym := type^.Body.Function.VarArgCount
+
+        vtsym^.TrgContext = CAST CtIrVariableNumber TO ^VOID
+        CtIrVariableNumber += 1
+
+        vcsym^.TrgContext = CAST CtIrVariableNumber TO ^VOID
+        CtIrVariableNumber += 1
 
         CtInsertString ( "uint64_t _mng_" )
-        CtInsertString ( type^.Body.Function.VarArgTable^.Name )
+        CtInsertString ( vtsym^.Name )
+        CtInsertNumber ( CAST vtsym^.TrgContext TO UWORD )
 
         CtInsertString ( ", uint64_t _mng_" )
-        CtInsertString ( type^.Body.Function.VarArgCount^.Name )
+        CtInsertString ( vcsym^.Name )
+        CtInsertNumber ( CAST vcsym^.TrgContext TO UWORD )
     END
 
     CtInsertString ( ")" )
@@ -1163,6 +1176,13 @@ FN CtGenerateFunction (
 
     CtInsertString ( "}\n" )
 END
+
+// FORWARD
+EXTERN FN CtGenerateInitializer (
+    IN value : ^PrsAstNode,
+    IN primtype : JklPrimitiveType,
+    IN count : ULONG,
+)
 
 FN CtGenerateCompoundInitializer (
     IN node : ^PrsAstNode,
@@ -1247,6 +1267,7 @@ FN CtGenerateInitializer (
 
     IF value^.Type == AST_CONSTANT THEN
         CtInsertNumber ( value^.Body.Constant.Value )
+        CtInsertString ( "ULL" )
 
         LEAVE
     END

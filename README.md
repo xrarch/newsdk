@@ -6,10 +6,14 @@ Expect only very gradual progress on this.
 
 ## Usage
 
+To initially build the Jackal compiler, type `make bootstrap` to cause the "precompiled" C files to be built into the initial compiler at `./build/bsjkl`. Subsequent `make`s will use this compiler.
+
+Note that compiling the compiler itself will create `./build/jkl` and leave the initial compiler alone. Do another `make bootstrap` to update it.
+
 ## Implementation Plan
 
 - [x] Jackal -> C bootstrap transpiler.
-- [ ] Self-hosted Jackal compiler w/ C backend.
+- [x] Self-hosted Jackal compiler w/ C backend.
 - [ ] Fox32 backend.
 - [ ] XR/17032 backend.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.

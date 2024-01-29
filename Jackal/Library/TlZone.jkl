@@ -8,7 +8,7 @@
 
 FN TlInitializeZone (
     IN zone : ^TlZone,
-    IN blocksize : ULONG,
+    IN blocksize : UWORD,
 )
 
     // Make the block size at least great enough to store a block header.

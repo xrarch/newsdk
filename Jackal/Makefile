@@ -5,6 +5,8 @@ COMPONENTS := Library \
 
 OUTPUTFILE := jkl
 
+KEEPPRECOMPILED := 1
+
 INCDIR := ./include/
 
 include $(REPO)/Project.mk

@@ -75,7 +75,7 @@ END
 FN TlCopyIntoDynamicBuffer (
     IN array : ^TlDynamicBuffer,
     IN srcbuf : ^UBYTE,
-    IN length : ULONG,
+    IN length : UWORD,
 )
 
     // Copy from the source buffer into the dynamic buffer.
@@ -143,7 +143,7 @@ END
 
 FN TlInsertNumberDynamicBuffer (
     IN array : ^TlDynamicBuffer,
-    IN number : ULONG,
+    IN number : UWORD,
     IN base : UBYTE,
 )
 
@@ -185,7 +185,7 @@ END
 
 FN TlPopDynamicBuffer (
     IN array : ^TlDynamicBuffer,
-) : UBYTE
+) : UWORD
 
     // Pop the last value inserted into the dynamic buffer. Allows abuse of it
     // as a simple stack of bytes.

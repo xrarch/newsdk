@@ -1,10 +1,10 @@
 #INCLUDE "<inc>/Runtime.hjk"
 
-CONST FE_PATH_BUFFER_SIZE := 256
+#DEFINE FE_PATH_BUFFER_SIZE 256
 
 EXTERN FN JklCompileProgram (
     IN argc : ULONG,
-    IN argv : ^UBYTE[],
+    IN argv : ^^UBYTE,
 )
 
 EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
@@ -48,7 +48,7 @@ ENUM JklPrimitiveType : UBYTE
     PRIM_TYPE_MAX, // MUST be at the end
 END
 
-EXTERN JklPrimitiveTypeMasks : TlMachineWord[PRIM_TYPE_MAX]
+EXTERN JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
 
 STRUCT JklTargetInfoRecord
     PointerAlignment : UBYTE,

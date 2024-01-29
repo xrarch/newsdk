@@ -8,9 +8,9 @@ EXTERN PrsGlobalListHead : ^LexSymbol
 
 EXTERN PrsFunctionListHead : ^LexSymbol
 
-CONST VAR_FLAG_EXTERN := 1
-CONST VAR_FLAG_PUBLIC := 2
-CONST VAR_FLAG_EXPORT := 4
+#DEFINE VAR_FLAG_EXTERN 1
+#DEFINE VAR_FLAG_PUBLIC 2
+#DEFINE VAR_FLAG_EXPORT 4
 
 ENUM PrsAstType : UBYTE
     AST_IDENTIFIER,
@@ -49,7 +49,7 @@ STRUCT PrsAstOperator
 END
 
 STRUCT PrsAstConstant
-    Value : TlMachineWord,
+    Value : UWORD,
 END
 
 STRUCT PrsAstStatement

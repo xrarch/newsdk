@@ -7,11 +7,11 @@
 #INCLUDE "<inc>/Runtime.hjk"
 
 EXTERN FN exit (
-    IN status : _int,
+    IN status : UWORD,
 )
 
 EXTERN FN malloc (
-    IN size : ULONG,
+    IN size : UWORD,
 ) : ^VOID
 
 EXTERN FN free (
@@ -19,59 +19,59 @@ EXTERN FN free (
 )
 
 EXTERN FN strcmp (
-    IN s1 : ^_char,
-    IN s2 : ^_char,
-) : _int
+    IN s1 : ^UBYTE,
+    IN s2 : ^UBYTE,
+) : UWORD
 
 EXTERN FN strncmp (
-    IN s1 : ^_char,
-    IN s2 : ^_char,
-    IN n : ULONG,
-) : _int
+    IN s1 : ^UBYTE,
+    IN s2 : ^UBYTE,
+    IN n : UWORD,
+) : UWORD
 
 EXTERN FN fopen (
-    IN path : ^_char,
-    IN mode : ^_char,
+    IN path : ^UBYTE,
+    IN mode : ^UBYTE,
 ) : ^VOID
 
 EXTERN FN fclose (
     IN stream : ^VOID,
-) : ^_int
+) : ^UWORD
 
 EXTERN FN fread (
     IN ptr : ^VOID,
-    IN size : ULONG,
-    IN nitems : ULONG,
+    IN size : UWORD,
+    IN nitems : UWORD,
     IN stream : ^VOID,
-) : ULONG
+) : UWORD
 
 EXTERN FN fwrite (
     IN ptr : ^VOID,
-    IN size : ULONG,
-    IN nitems : ULONG,
+    IN size : UWORD,
+    IN nitems : UWORD,
     IN stream : ^VOID,
-) : ULONG
+) : UWORD
 
 EXTERN FN memset (
     IN ptr : ^VOID,
-    IN c : _int,
-    IN len : ULONG,
+    IN c : UWORD,
+    IN len : UWORD,
 ) : ^VOID
 
 EXTERN FN memcpy (
     IN dest : ^VOID,
     IN src : ^VOID,
-    IN sz : ULONG,
+    IN sz : UWORD,
 ) : ^VOID
 
 EXTERN FN strlen (
-    IN s : ^_char
-) : ULONG
+    IN s : ^UBYTE,
+) : UWORD
 
 FN TlFillMemoryWithByte (
     IN ptr : ^VOID,
-    IN sz : ULONG,
-    IN byte : UBYTE,
+    IN sz : UWORD,
+    IN byte : UWORD,
 )
 
     memset (
@@ -84,7 +84,7 @@ END
 FN TlCopyMemory (
     IN dest : ^VOID,
     IN src : ^VOID,
-    IN sz : ULONG,
+    IN sz : UWORD,
 )
 
     memcpy (
@@ -99,10 +99,10 @@ FN TlErrorExit ()
     exit ( 1 )
 END
 
-TlHeapHits : ULONG = 0
+TlHeapHits : UWORD = 0
 
 FN TlAlloc (
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     OUT ptr : ^^VOID,
 ) : TlStatus
 
@@ -125,14 +125,14 @@ FN TlFree (
 END
 
 TlBumpPtr := NULLPTR
-TlBumpBytesLeft : ULONG = 0
-TlBumpBytesUsed : ULONG = 0
-TlBumpHits : ULONG = 0
+TlBumpBytesLeft : UWORD = 0
+TlBumpBytesUsed : UWORD = 0
+TlBumpHits : UWORD = 0
 
-CONST TL_BUMP_EXTEND : ULONG = 65536
+#DEFINE TL_BUMP_EXTEND 65536
 
 FN TlBumpAlloc (
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     OUT ptr : ^^VOID,
 ) : TlStatus
 
@@ -183,7 +183,7 @@ END
 FN TlCompareString (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,
-) : ULONG
+) : UWORD
 
     RETURN strcmp ( str1, str2 )
 END
@@ -191,15 +191,15 @@ END
 FN TlCompareStringWithMax (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,
-    IN count : ULONG,
-) : ULONG
+    IN count : UWORD,
+) : UWORD
 
     RETURN strncmp ( str1, str2, count )
 END
 
 FN TlMeasureString (
     IN str : ^UBYTE,
-) : ULONG
+) : UWORD
 
     RETURN strlen ( str )
 END
@@ -207,7 +207,7 @@ END
 FN TlCopyString (
     IN dest : ^UBYTE,
     IN src : ^UBYTE,
-    IN bufsize : ULONG,
+    IN bufsize : UWORD,
 )
     IF NOT bufsize THEN
         LEAVE
@@ -265,21 +265,23 @@ END
 
 FN TlReadFile (
     IN handle : ^VOID,
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     IN buffer : ^VOID,
-) : ULONG
+) : UWORD
 
     // XXX make sure to check for errors on hosts where that is more
     // applicable.
+
+
 
     RETURN fread ( buffer, 1, bytes, handle )
 END
 
 FN TlWriteFile (
     IN handle : ^VOID,
-    IN bytes : ULONG,
+    IN bytes : UWORD,
     IN buffer : ^VOID,
-) : ULONG
+) : UWORD
 
     // XXX make sure to check for errors on hosts where that is more
     // applicable.

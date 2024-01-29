@@ -21,7 +21,7 @@ LexDirectiveToken : LexToken
 
 // More than this deep in macros and we assume you messed up.
 
-CONST LEX_MACRO_DEPTH_MAX := 64
+#DEFINE LEX_MACRO_DEPTH_MAX 64
 
 FNPTR LexDirectiveParseF ()
 
@@ -110,35 +110,6 @@ FN LexCreateMacroTable (
         outerscope, // outerscope
         &LexMacroDelete, // deletefunc
     )
-END
-
-FN LexParseDirective ()
-
-    // The lexer found a preprocessor directive and called us to handle it.
-    // Until we return, we are in full control of the source stream, and can
-    // consume it, tokenize it, etc to our hearts content. Thanks to the
-    // layered nature of the lexer, we don't have to worry about maintaining
-    // line numbers and so on.
-
-    // Declare a token stub for error reporting purposes.
-
-    buffer : UBYTE[LEX_DIRECTIVE_MAX]
-
-    LexCollectDirectiveToken (
-        &LexDirectiveToken, // token
-        &buffer[0], // buffer
-    )
-
-    directive := CAST TlLookupHashTable (
-        &LexDirectiveHashTable, // hashtable
-        &buffer[0], // key
-    ) TO ^LexDirective
-
-    IF NOT directive THEN
-        LexTokenError ( &LexDirectiveToken, "Unknown directive", 0, 0, 0 )
-    END
-
-    directive^.ParseRoutine ()
 END
 
 FN LexNextNonWhitespaceCharacter (
@@ -373,8 +344,8 @@ FN LexGetComplexString (
     END
 END
 
-CONST ARG_NAME_NONZERO : UBYTE = 1
-CONST ARG_NAME_DONE : UBYTE = 2
+#DEFINE ARG_NAME_NONZERO 1
+#DEFINE ARG_NAME_DONE 2
 
 FN LexCollectMacroArgumentContents (
     IN token : ^LexToken,
@@ -664,8 +635,8 @@ END
 
 FN LexCollectValueNumeric (
     IN token : ^LexToken,
-    IN ignore : UBYTE,
-) : TlMachineWord
+    IN ignore : UWORD,
+) : UWORD
 
     buffer : TlDynamicBuffer
 
@@ -2455,6 +2426,35 @@ FN (LexOperatorParseF) LexOperatorBitAnd (
         buffer, // array
         0, // byte
     )
+END
+
+FN LexParseDirective ()
+
+    // The lexer found a preprocessor directive and called us to handle it.
+    // Until we return, we are in full control of the source stream, and can
+    // consume it, tokenize it, etc to our hearts content. Thanks to the
+    // layered nature of the lexer, we don't have to worry about maintaining
+    // line numbers and so on.
+
+    // Declare a token stub for error reporting purposes.
+
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+
+    LexCollectDirectiveToken (
+        &LexDirectiveToken, // token
+        &buffer[0], // buffer
+    )
+
+    directive := CAST TlLookupHashTable (
+        &LexDirectiveHashTable, // hashtable
+        &buffer[0], // key
+    ) TO ^LexDirective
+
+    IF NOT directive THEN
+        LexTokenError ( &LexDirectiveToken, "Unknown directive", 0, 0, 0 )
+    END
+
+    directive^.ParseRoutine ()
 END
 
 FN LexInitializePreprocessor ()

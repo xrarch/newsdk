@@ -6,51 +6,26 @@
 #INCLUDE "<inc>/Runtime.hjk"
 #INCLUDE "<inc>/Lexer.hjk"
 
-FN main (
-    IN argc : _int,
-    IN argv : ^_char[],
-) : _int
-
-    // Initialize the Toolchain Library.
-
-    TlInitialize ()
-
-    // Compile the program.
-
-    JklCompileProgram ( argc, argv )
-
-    TlPrintNumber ( TlBumpHits )
-    TlPrintString ( "\n" )
-    TlPrintNumber ( TlHeapHits )
-    TlPrintString ( "\n" )
-    TlPrintNumber ( TlBumpBytesUsed )
-    TlPrintString ( "\n" )
-
-    // Return success.
-
-    RETURN 0
-END
-
 EXTERN FN LexStreamError_C (
     IN filename : ^UBYTE,
-    IN linenumber : ULONG,
-    IN linepos : ULONG,
+    IN linenumber : UWORD,
+    IN linepos : UWORD,
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
 
 FN LexStreamError (
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
     stream := LexCurrentStream
 
     LexStreamError_C (
-        stream^.FileBlock^.IncludeName, // filename
+        &stream^.FileBlock^.IncludeName[0], // filename
         stream^.LineNumber, // linenumber
         stream^.LinePosition, // linepos
         str, // str
@@ -65,13 +40,13 @@ END
 FN LexTokenError (
     IN token : ^LexToken,
     IN str : ^UBYTE,
-    IN err1 : ULONG,
-    IN err2 : ULONG,
-    IN err3 : ULONG,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
 )
 
     LexStreamError_C (
-        token^.FileBlock^.IncludeName, // filename
+        &token^.FileBlock^.IncludeName[0], // filename
         token^.LineNumber, // linenumber
         token^.LinePosition, // linepos
         str, // str
