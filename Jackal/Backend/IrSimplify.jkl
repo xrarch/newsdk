@@ -10,11 +10,11 @@ FN IrSimplifyForFunction (
 
     // Simplify the IR for a function in a single pass.
 
-    // Simplifications performed include:
+    // Simplifications performed (locally, over basic blocks) include:
     //
     //  o Strength reduction
     //  o Constant propagation and folding
     //  o Arithmetic re-association
     //  o Value propagation
-    
+
 END
