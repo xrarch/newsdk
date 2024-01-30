@@ -155,10 +155,11 @@ FN IrValueNumberVariable (
     var^.ValueKeySrc2 = valuesrc2
     var^.ValueKeyOp = valueop
 
-    hash : ULONG = valuesrc1 $ valuesrc2
+    hash : ULONG = valuesrc1 $ valuesrc2 $ valueop
     hash $= hash >> 7
     hash $= hash >> 14
-    hash $= valueop
+    hash $= hash >> 21
+    hash $= hash >> 28
     hash %= VN_HASH_SIZE
 
     TlInsertAtHeadList (
@@ -233,10 +234,11 @@ FN IrFindValue (
         valuesrc2 = src2^.ValueNumber
     END
 
-    hash : ULONG = valuesrc1 $ valuesrc2
+    hash : ULONG = valuesrc1 $ valuesrc2 $ op
     hash $= hash >> 7
     hash $= hash >> 14
-    hash $= op
+    hash $= hash >> 21
+    hash $= hash >> 28
     hash %= VN_HASH_SIZE
 
     head := &IrHashTable.BucketHeads[hash]
