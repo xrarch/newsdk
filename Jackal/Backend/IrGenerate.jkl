@@ -79,6 +79,9 @@ FN IrCreateVariable (
     var^.Symbol = NULLPTR
     var^.Number = 0
 
+    var^.ValueAcquiredByLoad = FALSE
+    var^.ValueKeyOp = 0
+
     RETURN var
 END
 
@@ -99,6 +102,17 @@ FN IrInsertInstructionTail (
     END
 
     IrCurrentFunction^.Tail = inst
+
+    IF inst^.Type > IR_BRANCH_LOW_NUMBER AND
+        inst^.Type < IR_BRANCH_HIGH_NUMBER THEN
+
+        IrValueNumberBarrier ( FALSE )
+
+    ELSEIF inst^.Type > IR_LOAD_BARRIER_LOW_NUMBER AND
+        inst^.Type < IR_LOAD_BARRIER_HIGH_NUMBER THEN
+
+        IrValueNumberBarrier ( TRUE )
+    END
 END
 
 FN IrRemoveInstruction (
@@ -134,11 +148,21 @@ FN IrGenerateLoad (
     // Generate a load of a pointer into another variable. The variable is not
     // annotated.
 
+    retvar := IrFindValue (
+        IR_LOAD, // op
+        var, // src1
+        NULLPTR, // src2
+    )
+
+    IF retvar THEN
+        RETURN retvar
+    END
+
     inst := IrCreateInstruction (
         IR_LOAD,
     )
 
-    retvar := IrCreateVariable (
+    retvar = IrCreateVariable (
         inst, // definedby
     )
 
@@ -158,6 +182,15 @@ FN IrGenerateLoad (
 
     inst^.Defines = retvar
     inst^.Source1 = var
+
+    retvar^.ValueAcquiredByLoad = TRUE
+
+    IrValueNumberVariable (
+        retvar, // var
+        IR_LOAD, // valueop
+        var, // src1
+        NULLPTR, // src2
+    )
 
     IrInsertInstructionTail ( inst )
 
@@ -254,16 +287,29 @@ FN IrCreateConstantVariable (
 
     // Create a variable with a constant value.
 
+    var := IrFindConstant (
+        value, // constant
+    )
+
+    IF var THEN
+        RETURN var
+    END
+
     inst := IrCreateInstruction (
         IR_CONSTANT, // type
     )
 
-    var := IrCreateVariable (
+    var = IrCreateVariable (
         inst, // definedby
     )
 
     inst^.Defines = var
     inst^.Body.Constant.Constant = value
+
+    IrValueNumberConstantVariable (
+        var, // var
+        value, // value
+    )
 
     IrInsertInstructionTail ( inst )
 
@@ -283,6 +329,8 @@ FN IrGenerateMove (
 
     inst^.Defines = destvar
     inst^.Source1 = srcvar
+
+    IrKillVariable ( destvar )
 
     IrInsertInstructionTail ( inst )
 END
@@ -308,17 +356,34 @@ FN IrGenerateOperatorInst (
     IN src2 : ^IrVariable,
 ) : ^IrVariable
 
+    var := IrFindValue (
+        type, // op
+        src1, // src1
+        src2, // src2
+    )
+
+    IF var THEN
+        RETURN var
+    END
+
     inst := IrCreateInstruction (
         type, // type
     )
 
-    var := IrCreateVariable (
+    var = IrCreateVariable (
         inst, // definedby
     )
 
     inst^.Defines = var
     inst^.Source1 = src1
     inst^.Source2 = src2
+
+    IrValueNumberVariable (
+        var, // var
+        type, // valueop
+        src1, // src1
+        src2, // src2
+    )
 
     IrInsertInstructionTail ( inst )
 
@@ -391,6 +456,8 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
 
             var^.Annotation = IR_VAR_LOCAL
 
+            IrGiveOpaqueValueVariable ( var )
+
         ELSE
             // It must be compound.
 
@@ -408,6 +475,9 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
             IrInsertInstructionTail ( inst )
 
             var^.Annotation = IR_VAR_ADDRESS_CALC
+
+            // TODO
+            IrGiveOpaqueValueVariable ( var )
         END
 
     ELSE
@@ -427,6 +497,9 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
         inst^.Body.Addr.Symbol = symbol
 
         IrInsertInstructionTail ( inst )
+
+        // TODO
+        IrGiveOpaqueValueVariable ( var )
     END
 
     IF truelabel THEN
@@ -2214,11 +2287,17 @@ END
 
 FN IrGenerate ()
 
+    // Initialize the value numbering support package.
+
+    IrInitializeValueNumber ()
+
     // For each function definition, generate IR.
 
     funcsym := PrsFunctionListHead
 
     WHILE funcsym DO
+        IrValueNumberBarrier ( FALSE )
+
         IrGenerateForFunction ( funcsym )
 
         funcsym = funcsym^.NextFunction

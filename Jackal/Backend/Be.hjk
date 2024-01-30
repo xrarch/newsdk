@@ -1,1 +1,37 @@
 #INCLUDE "<inc>/Backend.hjk"
+
+EXTERN FN IrValueNumberVariable (
+    IN var : ^IrVariable,
+    IN valueop : IrInstructionType,
+    IN src1 : ^IrVariable,
+    IN src2 : ^IrVariable,
+)
+
+EXTERN FN IrFindValue (
+    IN op : IrInstructionType,
+    IN src1 : ^IrVariable,
+    IN src2 : ^IrVariable,
+) : ^IrVariable
+
+EXTERN FN IrValueNumberBarrier (
+    IN onlyloads : UBYTE,
+)
+
+EXTERN FN IrKillVariable (
+    IN var : ^IrVariable,
+)
+
+EXTERN FN IrValueNumberConstantVariable (
+    IN var : ^IrVariable,
+    IN constant : UWORD,
+)
+
+EXTERN FN IrFindConstant (
+    IN constant : UWORD,
+) : ^IrVariable
+
+EXTERN FN IrGiveOpaqueValueVariable (
+    IN var : ^IrVariable,
+)
+
+EXTERN FN IrInitializeValueNumber ()

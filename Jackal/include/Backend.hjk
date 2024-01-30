@@ -1,36 +1,52 @@
 #INCLUDE "<inc>/Parser.hjk"
 
 ENUM IrInstructionType : UBYTE
-    IR_LABEL,
-    IR_JUMP,
+    IR_MIN, // MUST be at the start
+
     IR_LOAD,
     IR_ADDR,
     IR_STACK_ADDR,
     IR_STRING_ADDR,
     IR_CONSTANT,
-    IR_BRANCH_NONZERO,
-    IR_RETURN,
     IR_MOVE,
     IR_NOT,
+
+    IR_BRANCH_LOW_NUMBER,
+
+    IR_RETURN,
+    IR_BRANCH_NONZERO,
     IR_BRANCH_EQUALS,
-    IR_COMPARE_EQUALS,
     IR_BRANCH_NOT_EQUALS,
-    IR_COMPARE_NOT_EQUALS,
     IR_BRANCH_LESS_THAN,
-    IR_COMPARE_LESS_THAN,
     IR_BRANCH_GREATER_THAN,
-    IR_COMPARE_GREATER_THAN,
     IR_BRANCH_LTEQ,
-    IR_COMPARE_LTEQ,
     IR_BRANCH_GTEQ,
-    IR_COMPARE_GTEQ,
     IR_BRANCH_LESS_THAN_SIGNED,
-    IR_COMPARE_LESS_THAN_SIGNED,
     IR_BRANCH_GREATER_THAN_SIGNED,
-    IR_COMPARE_GREATER_THAN_SIGNED,
     IR_BRANCH_LTEQ_SIGNED,
-    IR_COMPARE_LTEQ_SIGNED,
     IR_BRANCH_GTEQ_SIGNED,
+    IR_LABEL,
+    IR_JUMP,
+
+    IR_BRANCH_HIGH_NUMBER,
+
+    IR_LOAD_BARRIER_LOW_NUMBER,
+
+    IR_CALL,
+    IR_STORE,
+    IR_BARRIER,
+
+    IR_LOAD_BARRIER_HIGH_NUMBER,
+
+    IR_COMPARE_EQUALS,
+    IR_COMPARE_NOT_EQUALS,
+    IR_COMPARE_LESS_THAN,
+    IR_COMPARE_GREATER_THAN,
+    IR_COMPARE_LTEQ,
+    IR_COMPARE_GTEQ,
+    IR_COMPARE_LESS_THAN_SIGNED,
+    IR_COMPARE_GREATER_THAN_SIGNED,
+    IR_COMPARE_LTEQ_SIGNED,
     IR_COMPARE_GTEQ_SIGNED,
     IR_BIT_AND,
     IR_BIT_OR,
@@ -45,8 +61,6 @@ ENUM IrInstructionType : UBYTE
     IR_BIT_NOT,
     IR_MULTIPLY,
     IR_INVERSE,
-    IR_CALL,
-    IR_STORE,
 
     IR_MAX, // MUST be at the end
 END
@@ -61,9 +75,22 @@ STRUCT IrVariable
     Symbol : ^LexSymbol,
     DefinedBy : ^IrInstruction,
 
-    Annotation : IrVariableAnnotation,
+    ValueListEntry : TlListEntry,
+    ValueHashEntry : TlListEntry,
+
+    ConstantValue : UWORD,
+
+    ValueNumber : ULONG,
 
     Number : ULONG,
+
+    ValueKeySrc1 : ULONG,
+    ValueKeySrc2 : ULONG,
+    ValueAcquiredByLoad : UBYTE,
+
+    Annotation : IrVariableAnnotation,
+
+    ValueKeyOp : IrInstructionType,
 END
 
 STRUCT IrLabelBody

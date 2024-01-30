@@ -293,8 +293,6 @@ void TlCopyString(uint64_t _mng_dest220, uint64_t _mng_src221, uint64_t _mng_buf
     uint64_t __twr_v232;
     uint64_t __twr_v233;
     uint64_t __twr_v234;
-    uint64_t __twr_v235;
-    uint64_t __twr_v236;
     if (_mng_bufsize222) { goto __twr_l11; } else { goto __twr_l12; }
     __twr_l12:;
     return;
@@ -308,91 +306,89 @@ void TlCopyString(uint64_t _mng_dest220, uint64_t _mng_src221, uint64_t _mng_buf
     __twr_v226 = 1ULL;
     __twr_v227 = _mng_dest220 + __twr_v226;
     _mng_dest220 = __twr_v227;
-    __twr_v228 = 1ULL;
-    __twr_v229 = _mng_src221 + __twr_v228;
-    _mng_src221 = __twr_v229;
-    __twr_v230 = 1ULL;
-    __twr_v231 = _mng_bufsize222 - __twr_v230;
-    _mng_bufsize222 = __twr_v231;
-    __twr_v232 = *(uint8_t*)(_mng_src221);
-    __twr_v233 = 0ULL;
-    if (__twr_v232 == __twr_v233) { goto __twr_l17; } else { goto __twr_l16; }
+    __twr_v228 = _mng_src221 + __twr_v226;
+    _mng_src221 = __twr_v228;
+    __twr_v229 = _mng_bufsize222 - __twr_v226;
+    _mng_bufsize222 = __twr_v229;
+    __twr_v230 = *(uint8_t*)(_mng_src221);
+    __twr_v231 = 0ULL;
+    if (__twr_v230 == __twr_v231) { goto __twr_l17; } else { goto __twr_l16; }
     __twr_l17:;
     goto __twr_l14;
     __twr_l16:;
     __twr_l15:;
-    __twr_v234 = 1ULL;
-    __twr_v235 = _mng_bufsize222 - __twr_v234;
-    if (__twr_v235) { goto __twr_l13; } else { goto __twr_l14; }
+    __twr_v232 = 1ULL;
+    __twr_v233 = _mng_bufsize222 - __twr_v232;
+    if (__twr_v233) { goto __twr_l13; } else { goto __twr_l14; }
     __twr_l14:;
-    __twr_v236 = 0ULL;
-    *(uint8_t*)(_mng_dest220) = __twr_v236;
+    __twr_v234 = 0ULL;
+    *(uint8_t*)(_mng_dest220) = __twr_v234;
 }
-uint64_t TlOpenSource(uint64_t _mng_filename237, uint64_t _mng_handle238) {
+uint64_t TlOpenSource(uint64_t _mng_filename235, uint64_t _mng_handle236) {
+    uint64_t __twr_v237;
+    uint64_t __twr_v238;
     uint64_t __twr_v239;
     uint64_t __twr_v240;
     uint64_t __twr_v241;
     uint64_t __twr_v242;
     uint64_t __twr_v243;
-    uint64_t __twr_v244;
-    uint64_t __twr_v245;
-    __twr_v239 = (uint64_t)(&fopen);
-    __twr_v240 = (uint64_t)(&"r");
-    __twr_v241 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v239)(_mng_filename237, __twr_v240);
-    *(uint64_t*)(_mng_handle238) = __twr_v241;
-    __twr_v242 = *(uint64_t*)(_mng_handle238);
-    __twr_v243 = 0ULL;
-    if (__twr_v242 == __twr_v243) { goto __twr_l19; } else { goto __twr_l18; }
+    __twr_v237 = (uint64_t)(&fopen);
+    __twr_v238 = (uint64_t)(&"r");
+    __twr_v239 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v237)(_mng_filename235, __twr_v238);
+    *(uint64_t*)(_mng_handle236) = __twr_v239;
+    __twr_v240 = *(uint64_t*)(_mng_handle236);
+    __twr_v241 = 0ULL;
+    if (__twr_v240 == __twr_v241) { goto __twr_l19; } else { goto __twr_l18; }
     __twr_l19:;
-    __twr_v244 = 2ULL;
-    return __twr_v244;
+    __twr_v242 = 2ULL;
+    return __twr_v242;
     __twr_l18:;
-    __twr_v245 = 0ULL;
-    return __twr_v245;
+    __twr_v243 = 0ULL;
+    return __twr_v243;
 }
-uint64_t TlOpenDestination(uint64_t _mng_filename246, uint64_t _mng_handle247) {
+uint64_t TlOpenDestination(uint64_t _mng_filename244, uint64_t _mng_handle245) {
+    uint64_t __twr_v246;
+    uint64_t __twr_v247;
     uint64_t __twr_v248;
     uint64_t __twr_v249;
     uint64_t __twr_v250;
     uint64_t __twr_v251;
     uint64_t __twr_v252;
-    uint64_t __twr_v253;
-    uint64_t __twr_v254;
-    __twr_v248 = (uint64_t)(&fopen);
-    __twr_v249 = (uint64_t)(&"w");
-    __twr_v250 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v248)(_mng_filename246, __twr_v249);
-    *(uint64_t*)(_mng_handle247) = __twr_v250;
-    __twr_v251 = *(uint64_t*)(_mng_handle247);
-    __twr_v252 = 0ULL;
-    if (__twr_v251 == __twr_v252) { goto __twr_l21; } else { goto __twr_l20; }
+    __twr_v246 = (uint64_t)(&fopen);
+    __twr_v247 = (uint64_t)(&"w");
+    __twr_v248 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v246)(_mng_filename244, __twr_v247);
+    *(uint64_t*)(_mng_handle245) = __twr_v248;
+    __twr_v249 = *(uint64_t*)(_mng_handle245);
+    __twr_v250 = 0ULL;
+    if (__twr_v249 == __twr_v250) { goto __twr_l21; } else { goto __twr_l20; }
     __twr_l21:;
-    __twr_v253 = 2ULL;
-    return __twr_v253;
+    __twr_v251 = 2ULL;
+    return __twr_v251;
     __twr_l20:;
-    __twr_v254 = 0ULL;
-    return __twr_v254;
+    __twr_v252 = 0ULL;
+    return __twr_v252;
 }
-void TlClose(uint64_t _mng_handle255) {
-    uint64_t __twr_v256;
-    uint64_t __twr_v257;
-    __twr_v256 = (uint64_t)(&fclose);
-    __twr_v257 = ((uint64_t (*)(uint64_t))__twr_v256)(_mng_handle255);
+void TlClose(uint64_t _mng_handle253) {
+    uint64_t __twr_v254;
+    uint64_t __twr_v255;
+    __twr_v254 = (uint64_t)(&fclose);
+    __twr_v255 = ((uint64_t (*)(uint64_t))__twr_v254)(_mng_handle253);
 }
-uint64_t TlReadFile(uint64_t _mng_handle258, uint64_t _mng_bytes259, uint64_t _mng_buffer260) {
+uint64_t TlReadFile(uint64_t _mng_handle256, uint64_t _mng_bytes257, uint64_t _mng_buffer258) {
+    uint64_t __twr_v259;
+    uint64_t __twr_v260;
     uint64_t __twr_v261;
-    uint64_t __twr_v262;
-    uint64_t __twr_v263;
-    __twr_v261 = (uint64_t)(&fread);
-    __twr_v262 = 1ULL;
-    __twr_v263 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v261)(_mng_buffer260, __twr_v262, _mng_bytes259, _mng_handle258);
-    return __twr_v263;
+    __twr_v259 = (uint64_t)(&fread);
+    __twr_v260 = 1ULL;
+    __twr_v261 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v259)(_mng_buffer258, __twr_v260, _mng_bytes257, _mng_handle256);
+    return __twr_v261;
 }
-uint64_t TlWriteFile(uint64_t _mng_handle264, uint64_t _mng_bytes265, uint64_t _mng_buffer266) {
+uint64_t TlWriteFile(uint64_t _mng_handle262, uint64_t _mng_bytes263, uint64_t _mng_buffer264) {
+    uint64_t __twr_v265;
+    uint64_t __twr_v266;
     uint64_t __twr_v267;
-    uint64_t __twr_v268;
-    uint64_t __twr_v269;
-    __twr_v267 = (uint64_t)(&fwrite);
-    __twr_v268 = 1ULL;
-    __twr_v269 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v267)(_mng_buffer266, __twr_v268, _mng_bytes265, _mng_handle264);
-    return __twr_v269;
+    __twr_v265 = (uint64_t)(&fwrite);
+    __twr_v266 = 1ULL;
+    __twr_v267 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v265)(_mng_buffer264, __twr_v266, _mng_bytes263, _mng_handle262);
+    return __twr_v267;
 }

@@ -940,10 +940,6 @@ FN PrsParseArrayInitializer (
             BREAK
         END
 
-        IF index >= bound THEN
-            LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
-        END
-
         IF LexMatchToken (
             NULLPTR, // token
             TOKEN_OPER, // type
@@ -982,6 +978,10 @@ FN PrsParseArrayInitializer (
             END
 
             offset = index * elementsize
+        END
+
+        IF index >= bound THEN
+            LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
         END
 
         // Parse the initializer for this element.

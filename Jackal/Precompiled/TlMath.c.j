@@ -64,7 +64,6 @@ uint64_t TlIsPowerOfTwo(uint64_t _mng_constant102) {
     uint64_t __twr_v111;
     uint64_t __twr_v112;
     uint64_t __twr_v113;
-    uint64_t __twr_v114;
     __twr_v103 = 0ULL;
     if (_mng_constant102 == __twr_v103) { goto __twr_l2; } else { goto __twr_l1; }
     __twr_l2:;
@@ -89,32 +88,29 @@ uint64_t TlIsPowerOfTwo(uint64_t _mng_constant102) {
     __twr_v111 = 1ULL;
     __twr_v112 = _mng_constant102 >> __twr_v111;
     _mng_constant102 = __twr_v112;
-    __twr_v113 = 1ULL;
-    __twr_v114 = _mng_bitpos106 + __twr_v113;
-    _mng_bitpos106 = __twr_v114;
+    __twr_v113 = _mng_bitpos106 + __twr_v111;
+    _mng_bitpos106 = __twr_v113;
     goto __twr_l3;
     __twr_l4:;
 }
-void TlPunchValue(uint64_t _mng_ptr115, uint64_t _mng_value116, uint64_t _mng_bytes117) {
+void TlPunchValue(uint64_t _mng_ptr114, uint64_t _mng_value115, uint64_t _mng_bytes116) {
+    uint64_t __twr_v117;
     uint64_t __twr_v118;
     uint64_t __twr_v119;
     uint64_t __twr_v120;
     uint64_t __twr_v121;
-    uint64_t __twr_v122;
-    uint64_t __twr_v123;
-    if (_mng_bytes117) { goto __twr_l9; } else { goto __twr_l10; }
+    if (_mng_bytes116) { goto __twr_l9; } else { goto __twr_l10; }
     __twr_l9:;
-    *(uint8_t*)(_mng_ptr115) = _mng_value116;
-    __twr_v118 = 1ULL;
-    __twr_v119 = _mng_ptr115 + __twr_v118;
-    _mng_ptr115 = __twr_v119;
-    __twr_v120 = 8ULL;
-    __twr_v121 = _mng_value116 >> __twr_v120;
-    _mng_value116 = __twr_v121;
-    __twr_v122 = 1ULL;
-    __twr_v123 = _mng_bytes117 - __twr_v122;
-    _mng_bytes117 = __twr_v123;
+    *(uint8_t*)(_mng_ptr114) = _mng_value115;
+    __twr_v117 = 1ULL;
+    __twr_v118 = _mng_ptr114 + __twr_v117;
+    _mng_ptr114 = __twr_v118;
+    __twr_v119 = 8ULL;
+    __twr_v120 = _mng_value115 >> __twr_v119;
+    _mng_value115 = __twr_v120;
+    __twr_v121 = _mng_bytes116 - __twr_v117;
+    _mng_bytes116 = __twr_v121;
     __twr_l11:;
-    if (_mng_bytes117) { goto __twr_l9; } else { goto __twr_l10; }
+    if (_mng_bytes116) { goto __twr_l9; } else { goto __twr_l10; }
     __twr_l10:;
 }

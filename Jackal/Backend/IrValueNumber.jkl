@@ -1,0 +1,304 @@
+//
+// Implements support routines for value numbering.
+//
+
+#INCLUDE "Be.hjk"
+
+#DEFINE VN_HASH_SIZE 197
+
+STRUCT IrHashTableRecord
+    OrderedListHead : TlListEntry,
+    BucketHeads : TlListEntry[VN_HASH_SIZE],
+END
+
+IrHashTable : IrHashTableRecord
+
+IrNextValueNumber : ULONG = 1
+
+FN IrValueNumberBarrier (
+    IN onlyloads : UBYTE,
+)
+
+    // Cause a value number barrier; clear the hash table.
+
+    head := &IrHashTable.OrderedListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        nextentry := listentry^.Next
+
+        var := CONTAINEROF listentry TO IrVariable.ValueListEntry
+
+        IF NOT onlyloads OR var^.ValueAcquiredByLoad THEN
+            var^.ValueNumber = 0
+
+            TlRemoveEntryList ( &var^.ValueListEntry )
+            TlRemoveEntryList ( &var^.ValueHashEntry )
+        END
+
+        listentry = nextentry
+    END
+END
+
+FN IrKillValueNumber (
+    IN value : ULONG,
+)
+
+    // Kill all expressions that use the given value number.
+
+    head := &IrHashTable.OrderedListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        var := CONTAINEROF listentry TO IrVariable.ValueListEntry
+
+        nextentry := listentry^.Next
+
+        IF var^.ValueKeySrc1 == value OR var^.ValueKeySrc2 == value THEN
+            var^.ValueNumber = 0
+
+            TlRemoveEntryList ( &var^.ValueListEntry )
+            TlRemoveEntryList ( &var^.ValueHashEntry )
+        END
+
+        listentry = nextentry
+    END
+END
+
+FN IrKillVariable (
+    IN var : ^IrVariable,
+)
+
+    IrKillValueNumber ( var^.ValueNumber )
+
+    IF var^.ValueKeyOp THEN
+        TlRemoveEntryList ( &var^.ValueListEntry )
+        TlRemoveEntryList ( &var^.ValueHashEntry )
+    END
+END
+
+FN IrGiveOpaqueValueVariable (
+    IN var : ^IrVariable,
+)
+
+    IF var^.ValueKeyOp THEN
+        // This variable already has a value number, so remove it from its place
+        // in the value number hash table.
+
+        TlRemoveEntryList ( &var^.ValueHashEntry )
+        TlRemoveEntryList ( &var^.ValueListEntry )
+
+        // Also kill any values that used this variable's old value number.
+
+        IrKillValueNumber ( var^.ValueNumber )
+    END
+
+    var^.ValueKeyOp = 0
+
+    var^.ValueNumber = IrNextValueNumber
+    IrNextValueNumber += 1
+END
+
+FN IrValueNumberVariable (
+    IN var : ^IrVariable,
+    IN valueop : IrInstructionType,
+    IN src1 : ^IrVariable,
+    IN src2 : ^IrVariable,
+)
+
+    // Give the variable a (new) value number.
+
+    byload := var^.ValueAcquiredByLoad | src1^.ValueAcquiredByLoad
+    valuesrc1 := src1^.ValueNumber
+
+    IF NOT valuesrc1 THEN
+        LEAVE
+    END
+
+    valuesrc2 : ULONG = 0
+
+    IF src2 THEN
+        valuesrc2 = src2^.ValueNumber
+        byload |= src2^.ValueAcquiredByLoad
+
+        IF NOT valuesrc2 THEN
+            LEAVE
+        END
+    END
+
+    IF var^.ValueKeyOp THEN
+        // This variable already has a value number, so remove it from its place
+        // in the value number hash table.
+
+        TlRemoveEntryList ( &var^.ValueHashEntry )
+
+        // Also kill any values that used this variable's old value number.
+
+        IrKillValueNumber ( var^.ValueNumber )
+    ELSE
+        // Put the variable at the head of the global list.
+
+        TlInsertAtHeadList (
+            &IrHashTable.OrderedListHead, // head
+            &var^.ValueListEntry, // entry
+        )
+    END
+
+    vn := IrNextValueNumber
+    IrNextValueNumber += 1
+
+    var^.ValueNumber = vn
+
+    var^.ValueAcquiredByLoad = byload
+
+    var^.ValueKeySrc1 = valuesrc1
+    var^.ValueKeySrc2 = valuesrc2
+    var^.ValueKeyOp = valueop
+
+    hash : ULONG = valuesrc1 $ valuesrc2
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= valueop
+    hash %= VN_HASH_SIZE
+
+    TlInsertAtHeadList (
+        &IrHashTable.BucketHeads[hash], // head
+        &var^.ValueHashEntry,
+    )
+END
+
+FN IrValueNumberConstantVariable (
+    IN var : ^IrVariable,
+    IN constant : UWORD,
+)
+
+    // Give the variable a (new) value number.
+
+    IF var^.ValueKeyOp THEN
+        // This variable already has a value number, so remove it from its place
+        // in the value number hash table.
+
+        TlRemoveEntryList ( &var^.ValueHashEntry )
+
+        // Also kill any values that used this variable's old value number.
+
+        IrKillValueNumber ( var^.ValueNumber )
+    ELSE
+        // Put the variable at the head of the global list.
+
+        TlInsertAtHeadList (
+            &IrHashTable.OrderedListHead, // head
+            &var^.ValueListEntry, // entry
+        )
+    END
+
+    vn := IrNextValueNumber
+    IrNextValueNumber += 1
+
+    var^.ValueNumber = vn
+
+    var^.ConstantValue = constant
+    var^.ValueKeyOp = IR_CONSTANT
+
+    hash : ULONG = constant
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= hash >> 21
+    hash $= hash >> 28
+    hash %= VN_HASH_SIZE
+
+    TlInsertAtHeadList (
+        &IrHashTable.BucketHeads[hash], // head
+        &var^.ValueHashEntry,
+    )
+END
+
+FN IrFindValue (
+    IN op : IrInstructionType,
+    IN src1 : ^IrVariable,
+    IN src2 : ^IrVariable,
+) : ^IrVariable
+
+    // Find a value matching the source variables and opcode provided.
+
+    valuesrc1 : ULONG = 0
+    valuesrc2 : ULONG = 0
+
+    IF src1 THEN
+        valuesrc1 = src1^.ValueNumber
+    END
+
+    IF src2 THEN
+        valuesrc2 = src2^.ValueNumber
+    END
+
+    hash : ULONG = valuesrc1 $ valuesrc2
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= op
+    hash %= VN_HASH_SIZE
+
+    head := &IrHashTable.BucketHeads[hash]
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
+
+        IF var^.ValueKeyOp == op AND
+            var^.ValueKeySrc1 == valuesrc1 AND
+            var^.ValueKeySrc2 == valuesrc2 THEN
+
+            RETURN var
+        END
+
+        listentry = listentry^.Next
+    END
+
+    RETURN NULLPTR
+END
+
+FN IrFindConstant (
+    IN constant : UWORD,
+) : ^IrVariable
+
+    // Find a value matching the source variables and opcode provided.
+
+    hash : ULONG = constant
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= hash >> 21
+    hash $= hash >> 28
+    hash %= VN_HASH_SIZE
+
+    head := &IrHashTable.BucketHeads[hash]
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
+
+        IF var^.ValueKeyOp == IR_CONSTANT AND
+            var^.ConstantValue == constant THEN
+
+            RETURN var
+        END
+
+        listentry = listentry^.Next
+    END
+
+    RETURN NULLPTR
+END
+
+FN IrInitializeValueNumber ()
+
+    // Initialize the structures for value numbering.
+
+    TlInitializeList ( &IrHashTable.OrderedListHead )
+
+    i := 0
+
+    WHILE i < VN_HASH_SIZE DO
+        TlInitializeList ( &IrHashTable.BucketHeads[i] )
+
+        i += 1
+    END
+END
