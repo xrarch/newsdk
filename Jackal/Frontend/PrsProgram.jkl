@@ -1466,14 +1466,6 @@ FN PrsHasSideEffect (
     // We only expect expression nodes here.
 
     IF node^.Type == AST_OPERATOR AND
-        node^.Token.Subtype == TOKEN_CARET THEN
-
-        // Loads may have side effects.
-
-        RETURN TRUE
-    END
-
-    IF node^.Type == AST_OPERATOR AND
         node^.Token.Subtype == TOKEN_LPAREN THEN
 
         // Function calls may have side effects.

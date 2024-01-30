@@ -1,0 +1,20 @@
+//
+// IR simplifier.
+//
+
+#INCLUDE "Be.hjk"
+
+FN IrSimplifyForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Simplify the IR for a function in a single pass.
+
+    // Simplifications performed include:
+    //
+    //  o Strength reduction
+    //  o Constant propagation and folding
+    //  o Arithmetic re-association
+    //  o Value propagation
+    
+END

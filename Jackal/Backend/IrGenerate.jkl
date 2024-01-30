@@ -2336,6 +2336,8 @@ FN IrGenerate ()
 
         IrGenerateForFunction ( funcsym )
 
+        IrSimplifyForFunction ( funcsym )
+
         funcsym = funcsym^.NextFunction
     END
 END
