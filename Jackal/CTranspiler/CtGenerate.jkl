@@ -1069,6 +1069,13 @@ FN (CtGenerateF) CtGenerateStore (
     CtInsertStringFunc ( ";\n" )
 END
 
+FN (CtGenerateF) CtGenerateNothing (
+    IN inst : ^IrInstruction,
+)
+
+    // Do absolutely nothing.
+END
+
 CtGenerateInstructionFunctions : CtGenerateF[IR_MAX] = {
     [IR_LABEL] = &CtGenerateLabel,
     [IR_JUMP] = &CtGenerateJump,
@@ -1116,6 +1123,7 @@ CtGenerateInstructionFunctions : CtGenerateF[IR_MAX] = {
     [IR_INVERSE] = &CtGenerateInverse,
     [IR_CALL] = &CtGenerateCall,
     [IR_STORE] = &CtGenerateStore,
+    [IR_BARRIER] = &CtGenerateNothing,
 }
 
 FN CtGenerateIrInst (

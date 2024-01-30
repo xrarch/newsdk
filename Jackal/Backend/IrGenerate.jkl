@@ -289,6 +289,7 @@ FN IrCreateConstantVariable (
 
     var := IrFindConstant (
         value, // constant
+        IR_CONSTANT, // op
     )
 
     IF var THEN
@@ -309,6 +310,7 @@ FN IrCreateConstantVariable (
     IrValueNumberConstantVariable (
         var, // var
         value, // value
+        IR_CONSTANT, // op
     )
 
     IrInsertInstructionTail ( inst )
@@ -461,8 +463,46 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
         ELSE
             // It must be compound.
 
+            var = IrFindConstant (
+                CAST symbol TO UWORD, // constant
+                IR_STACK_ADDR, // op
+            )
+
+            IF NOT var THEN
+                inst := IrCreateInstruction (
+                    IR_STACK_ADDR, // type
+                )
+
+                var = IrCreateVariable (
+                    inst, // definedby
+                )
+
+                inst^.Defines = var
+                inst^.Body.Addr.Symbol = symbol
+
+                IrInsertInstructionTail ( inst )
+
+                IrValueNumberConstantVariable (
+                    var, // var
+                    CAST symbol TO UWORD, // constant
+                    IR_STACK_ADDR, // op
+                )
+            END
+
+            var^.Annotation = IR_VAR_ADDRESS_CALC
+        END
+
+    ELSE
+        // It's a global.
+
+        var = IrFindConstant (
+            CAST symbol TO UWORD, // constant
+            IR_ADDR, // op
+        )
+
+        IF NOT var THEN
             inst := IrCreateInstruction (
-                IR_STACK_ADDR, // type
+                IR_ADDR, // type
             )
 
             var = IrCreateVariable (
@@ -474,32 +514,14 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
 
             IrInsertInstructionTail ( inst )
 
-            var^.Annotation = IR_VAR_ADDRESS_CALC
-
-            // TODO
-            IrGiveOpaqueValueVariable ( var )
+            IrValueNumberConstantVariable (
+                var, // var
+                CAST symbol TO UWORD, // constant
+                IR_ADDR, // op
+            )
         END
 
-    ELSE
-        // It's a global.
-
-        inst := IrCreateInstruction (
-            IR_ADDR, // type
-        )
-
-        var = IrCreateVariable (
-            inst, // definedby
-        )
-
         var^.Annotation = IR_VAR_ADDRESS_CALC
-
-        inst^.Defines = var
-        inst^.Body.Addr.Symbol = symbol
-
-        IrInsertInstructionTail ( inst )
-
-        // TODO
-        IrGiveOpaqueValueVariable ( var )
     END
 
     IF truelabel THEN
@@ -1998,6 +2020,19 @@ FN (IrStatementGenerationF) IrGenerateBreak (
     IrGenerateUnconditionalJump ( IrWhileEndLabel )
 END
 
+FN (IrStatementGenerationF) IrGenerateBarrier (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for a barrier statement.
+
+    inst := IrCreateInstruction (
+        IR_BARRIER, // type
+    )
+
+    IrInsertInstructionTail ( inst )
+END
+
 FN (IrStatementGenerationF) IrGenerateReturn (
     IN node : ^PrsAstNode,
 )
@@ -2239,6 +2274,7 @@ IrStatementGenerationTable : IrStatementGenerationF[AST_MAX] = {
     [AST_GOTO] = &IrGenerateGoTo,
     [AST_CONTINUE] = &IrGenerateContinue,
     [AST_IF] = &IrGenerateIf,
+    [AST_BARRIER] = &IrGenerateBarrier,
 }
 
 FN IrGenerateBlock (

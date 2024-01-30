@@ -5171,6 +5171,27 @@ FN (PrsStatementF) PrsParseWhile (
     )
 END
 
+FN (PrsStatementF) PrsParseBarrier (
+    IN token : ^LexToken,
+)
+
+    // Parse a BARRIER statement.
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_BARRIER, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
 FN (PrsStatementF) PrsParseLabel (
     IN token : ^LexToken,
 )
@@ -5574,6 +5595,7 @@ PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_LEAVE] = &PrsParseLeave,
     [TOKEN_RETURN] = &PrsParseReturn,
     [TOKEN_WHILE] = &PrsParseWhile,
+    [TOKEN_BARRIER] = &PrsParseBarrier,
     [TOKEN_LABEL] = &PrsParseLabel,
 }
 

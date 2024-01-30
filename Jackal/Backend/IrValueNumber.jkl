@@ -170,6 +170,7 @@ END
 FN IrValueNumberConstantVariable (
     IN var : ^IrVariable,
     IN constant : UWORD,
+    IN op : IrInstructionType,
 )
 
     // Give the variable a (new) value number.
@@ -198,7 +199,7 @@ FN IrValueNumberConstantVariable (
     var^.ValueNumber = vn
 
     var^.ConstantValue = constant
-    var^.ValueKeyOp = IR_CONSTANT
+    var^.ValueKeyOp = op
 
     hash : ULONG = constant
     hash $= hash >> 7
@@ -259,6 +260,7 @@ END
 
 FN IrFindConstant (
     IN constant : UWORD,
+    IN op : IrInstructionType,
 ) : ^IrVariable
 
     // Find a value matching the source variables and opcode provided.
@@ -276,7 +278,7 @@ FN IrFindConstant (
     WHILE listentry != head DO
         var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
 
-        IF var^.ValueKeyOp == IR_CONSTANT AND
+        IF var^.ValueKeyOp == op AND
             var^.ConstantValue == constant THEN
 
             RETURN var

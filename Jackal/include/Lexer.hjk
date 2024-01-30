@@ -79,6 +79,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_UNION,       // declarator
     TOKEN_VOID,        // type
     TOKEN_WHILE,       // statement
+    TOKEN_BARRIER,     // statement
     TOKEN_EXPORT,      // declarator
     TOKEN_PRIVATE,     // declarator
     TOKEN_UQUAD,       // type

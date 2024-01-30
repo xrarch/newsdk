@@ -24,10 +24,12 @@ EXTERN FN IrKillVariable (
 EXTERN FN IrValueNumberConstantVariable (
     IN var : ^IrVariable,
     IN constant : UWORD,
+    IN op : IrInstructionType,
 )
 
 EXTERN FN IrFindConstant (
     IN constant : UWORD,
+    IN op : IrInstructionType,
 ) : ^IrVariable
 
 EXTERN FN IrGiveOpaqueValueVariable (
