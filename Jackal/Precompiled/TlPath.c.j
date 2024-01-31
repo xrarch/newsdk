@@ -82,7 +82,7 @@ void TlCopyParentPath(uint64_t _mng_srcpath102, uint64_t _mng_destpath103) {
     _mng_i105 = __twr_v104;
     _mng_lastoff106 = __twr_v104;
     __twr_v107 = 1ULL;
-    __twr_v108 = _mng_i105 * __twr_v107;
+    __twr_v108 = __twr_v104 * __twr_v107;
     __twr_v109 = _mng_srcpath102 + __twr_v108;
     __twr_v110 = *(uint8_t*)(__twr_v109);
     if (__twr_v110) { goto __twr_l1; } else { goto __twr_l2; }
@@ -253,7 +253,7 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     __twr_v177 = *(uint64_t*)(__twr_v176);
     __twr_v178 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v174)(__twr_v177, _mng_handle132);
     _mng_status179 = __twr_v178;
-    if (_mng_status179) { goto __twr_l17; } else { goto __twr_l18; }
+    if (__twr_v178) { goto __twr_l17; } else { goto __twr_l18; }
     __twr_l18:;
     __twr_v180 = 1ULL;
     return __twr_v180;

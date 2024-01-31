@@ -89,8 +89,11 @@ FN IrCreateVariable (
     var^.Symbol = NULLPTR
     var^.Number = 0
 
-    var^.ValueAcquiredByLoad = FALSE
-    var^.ValueKeyOp = 0
+    var^.Opt.Vn.AcquiredByLoad = FALSE
+    var^.Opt.Vn.KeyOp = 0
+
+    var^.Known = FALSE
+    var^.Escaped = FALSE
 
     RETURN var
 END
@@ -193,7 +196,7 @@ FN IrGenerateLoad (
     inst^.Defines = retvar
     inst^.Source1 = var
 
-    retvar^.ValueAcquiredByLoad = TRUE
+    retvar^.Opt.Vn.AcquiredByLoad = TRUE
 
     IrValueNumberVariable (
         retvar, // var
@@ -1301,6 +1304,8 @@ FN (IrExpressionGenerationF) IrGenerateAddrOf (
         IF var^.Annotation != IR_VAR_LOCAL THEN
             TlInternalError ( "Weird variable at AddrOf", 0, 0, 0 )
         END
+
+        var^.Escaped = TRUE
 
         inst := IrCreateInstruction (
             IR_STACK_ADDR, // type

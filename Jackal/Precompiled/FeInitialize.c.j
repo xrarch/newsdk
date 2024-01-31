@@ -166,7 +166,7 @@ uint64_t FeIsMacroArgument(uint64_t _mng_arg147) {
     __twr_v148 = 0ULL;
     _mng_i149 = __twr_v148;
     __twr_v150 = 1ULL;
-    __twr_v151 = _mng_i149 * __twr_v150;
+    __twr_v151 = __twr_v148 * __twr_v150;
     __twr_v152 = _mng_arg147 + __twr_v151;
     __twr_v153 = *(uint8_t*)(__twr_v152);
     if (__twr_v153) { goto __twr_l1; } else { goto __twr_l2; }
@@ -350,7 +350,7 @@ void FeParseArguments(uint64_t _mng_argc169, uint64_t _mng_argv170) {
     _mng_foundoutput179 = __twr_v171;
     _mng_foundtarget180 = __twr_v171;
     _mng_i181 = __twr_v173;
-    if (_mng_i181 < _mng_argc169) { goto __twr_l6; } else { goto __twr_l7; }
+    if (__twr_v173 < _mng_argc169) { goto __twr_l6; } else { goto __twr_l7; }
     __twr_l6:;
     __twr_v182 = (uint64_t)(&TlCompareStringWithMax);
     __twr_v183 = 8ULL;
@@ -644,7 +644,7 @@ void TrgInitialize() {
     __twr_v343 = __twr_v341 * __twr_v342;
     __twr_v344 = __twr_v340 + __twr_v343;
     _mng_target345 = __twr_v344;
-    __twr_v346 = *(uint64_t*)(_mng_target345);
+    __twr_v346 = *(uint64_t*)(__twr_v344);
     if (__twr_v346 != __twr_v341) { goto __twr_l33; } else { goto __twr_l34; }
     __twr_l33:;
     __twr_v347 = (uint64_t)(&TlCompareString);
@@ -724,7 +724,7 @@ void FeInitialize(uint64_t _mng_argc366, uint64_t _mng_argv367) {
     __twr_v378 = (uint64_t)(&FeInputFileHandle);
     __twr_v379 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v372)(__twr_v377, __twr_v378);
     _mng_status380 = __twr_v379;
-    if (_mng_status380) { goto __twr_l39; } else { goto __twr_l38; }
+    if (__twr_v379) { goto __twr_l39; } else { goto __twr_l38; }
     __twr_l39:;
     __twr_v381 = (uint64_t)(&TlUserError);
     __twr_v382 = (uint64_t)(&"Failed to open source file.");
@@ -740,7 +740,7 @@ void FeInitialize(uint64_t _mng_argc366, uint64_t _mng_argv367) {
     __twr_v390 = (uint64_t)(&FeOutputFileHandle);
     __twr_v391 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v384)(__twr_v389, __twr_v390);
     _mng_status380 = __twr_v391;
-    if (_mng_status380) { goto __twr_l41; } else { goto __twr_l40; }
+    if (__twr_v391) { goto __twr_l41; } else { goto __twr_l40; }
     __twr_l41:;
     __twr_v392 = (uint64_t)(&TlUserError);
     __twr_v393 = (uint64_t)(&"Failed to open destination file.");

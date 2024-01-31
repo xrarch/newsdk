@@ -176,11 +176,11 @@ uint64_t TlBumpAlloc(uint64_t _mng_bytes154, uint64_t _mng_ptr155) {
     __twr_v157 = _mng_bytes154 + __twr_v156;
     _mng_bytes154 = __twr_v157;
     __twr_v158 = 18446744073709551608ULL;
-    __twr_v159 = _mng_bytes154 & __twr_v158;
+    __twr_v159 = __twr_v157 & __twr_v158;
     _mng_bytes154 = __twr_v159;
     __twr_v160 = (uint64_t)(&TlBumpBytesLeft);
     __twr_v161 = *(uint64_t*)(__twr_v160);
-    if (_mng_bytes154 <= __twr_v161) { goto __twr_l4; } else { goto __twr_l3; }
+    if (__twr_v159 <= __twr_v161) { goto __twr_l4; } else { goto __twr_l3; }
     __twr_l4:;
     __twr_v162 = (uint64_t)(&TlBumpPtr);
     __twr_v163 = *(uint64_t*)(__twr_v162);
@@ -304,7 +304,7 @@ void TlCopyString(uint64_t _mng_dest217, uint64_t _mng_src218, uint64_t _mng_buf
     _mng_src218 = __twr_v225;
     __twr_v226 = _mng_bufsize219 - __twr_v223;
     _mng_bufsize219 = __twr_v226;
-    __twr_v227 = *(uint8_t*)(_mng_src218);
+    __twr_v227 = *(uint8_t*)(__twr_v225);
     __twr_v228 = 0ULL;
     if (__twr_v227 == __twr_v228) { goto __twr_l17; } else { goto __twr_l16; }
     __twr_l17:;

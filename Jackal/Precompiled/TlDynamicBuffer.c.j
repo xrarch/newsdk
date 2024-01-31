@@ -199,7 +199,7 @@ void TlInsertDynamicBuffer(uint64_t _mng_array124, uint64_t _mng_byte125) {
     __twr_v151 = (uint64_t)(&_mng_newbuffer152);
     __twr_v153 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v145)(__twr_v150, __twr_v151);
     _mng_status154 = __twr_v153;
-    if (_mng_status154) { goto __twr_l6; } else { goto __twr_l5; }
+    if (__twr_v153) { goto __twr_l6; } else { goto __twr_l5; }
     __twr_l6:;
     __twr_v155 = (uint64_t)(&TlInternalError);
     __twr_v156 = (uint64_t)(&"Failed to grow dynamic buffer");
@@ -352,7 +352,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array187, uint64_t _mng_srcbuf188, ui
     __twr_v216 = _mng_array187 + __twr_v215;
     __twr_v217 = *(uint64_t*)(__twr_v216);
     __twr_v218 = __twr_v217 + _mng_length189;
-    if (__twr_v218 > _mng_newlength214) { goto __twr_l11; } else { goto __twr_l12; }
+    if (__twr_v218 > __twr_v213) { goto __twr_l11; } else { goto __twr_l12; }
     __twr_l11:;
     __twr_v219 = 2ULL;
     __twr_v220 = _mng_newlength214 * __twr_v219;
@@ -368,7 +368,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array187, uint64_t _mng_srcbuf188, ui
     __twr_v226 = (uint64_t)(&_mng_newbuffer227);
     __twr_v228 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v225)(_mng_newlength214, __twr_v226);
     _mng_status229 = __twr_v228;
-    if (_mng_status229) { goto __twr_l15; } else { goto __twr_l14; }
+    if (__twr_v228) { goto __twr_l15; } else { goto __twr_l14; }
     __twr_l15:;
     __twr_v230 = (uint64_t)(&TlInternalError);
     __twr_v231 = (uint64_t)(&"Failed to grow dynamic buffer");
@@ -466,7 +466,7 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array261, uint64_t _mng_number262
     _mng_divisor274 = __twr_v273;
     _mng_n275 = _mng_number262;
     __twr_v276 = 10ULL;
-    if (_mng_n275 >= __twr_v276) { goto __twr_l22; } else { goto __twr_l23; }
+    if (_mng_number262 >= __twr_v276) { goto __twr_l22; } else { goto __twr_l23; }
     __twr_l22:;
     __twr_v277 = 10ULL;
     __twr_v278 = _mng_divisor274 * __twr_v277;
@@ -483,7 +483,7 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array261, uint64_t _mng_number262
     __twr_v283 = 1ULL;
     __twr_v284 = _mng_log10272 + __twr_v283;
     _mng_log10272 = __twr_v284;
-    if (_mng_log10272) { goto __twr_l25; } else { goto __twr_l26; }
+    if (__twr_v284) { goto __twr_l25; } else { goto __twr_l26; }
     __twr_l25:;
     __twr_v285 = (uint64_t)(&TlInsertDynamicBuffer);
     __twr_v286 = _mng_number262 / _mng_divisor274;

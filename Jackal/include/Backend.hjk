@@ -71,6 +71,28 @@ ENUM IrVariableAnnotation : UBYTE
     IR_VAR_LOCAL,
 END
 
+STRUCT IrVariableValueNumberInfo
+    ConstantValue : UWORD,
+
+    KeySrc1 : ULONG,
+    KeySrc2 : ULONG,
+
+    ValueNumber : ULONG,
+
+    AcquiredByLoad : UBYTE,
+
+    KeyOp : IrInstructionType,
+END
+
+STRUCT IrVariableSimplifyInfo
+    Contents : ^IrVariable,
+END
+
+UNION IrVariableOptInfo
+    Vn : IrVariableValueNumberInfo,
+    Sim : IrVariableSimplifyInfo,
+END
+
 STRUCT IrVariable
     Symbol : ^LexSymbol,
     DefinedBy : ^IrInstruction,
@@ -78,19 +100,13 @@ STRUCT IrVariable
     ValueListEntry : TlListEntry,
     ValueHashEntry : TlListEntry,
 
-    ConstantValue : UWORD,
-
-    ValueNumber : ULONG,
+    Opt : IrVariableOptInfo,
 
     Number : ULONG,
 
-    ValueKeySrc1 : ULONG,
-    ValueKeySrc2 : ULONG,
-    ValueAcquiredByLoad : UBYTE,
-
     Annotation : IrVariableAnnotation,
-
-    ValueKeyOp : IrInstructionType,
+    Known : UBYTE,
+    Escaped : UBYTE,
 END
 
 STRUCT IrLabelBody

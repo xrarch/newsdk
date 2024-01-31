@@ -137,7 +137,7 @@ void LexStreamError(uint64_t _mng_str153, uint64_t _mng_err1154, uint64_t _mng_e
     _mng_stream159 = __twr_v158;
     __twr_v160 = (uint64_t)(&LexStreamError_C);
     __twr_v161 = 8ULL;
-    __twr_v162 = _mng_stream159 + __twr_v161;
+    __twr_v162 = __twr_v158 + __twr_v161;
     __twr_v163 = *(uint64_t*)(__twr_v162);
     __twr_v164 = 304ULL;
     __twr_v165 = __twr_v163 + __twr_v164;
@@ -146,10 +146,10 @@ void LexStreamError(uint64_t _mng_str153, uint64_t _mng_err1154, uint64_t _mng_e
     __twr_v168 = __twr_v166 * __twr_v167;
     __twr_v169 = __twr_v165 + __twr_v168;
     __twr_v170 = 44ULL;
-    __twr_v171 = _mng_stream159 + __twr_v170;
+    __twr_v171 = __twr_v158 + __twr_v170;
     __twr_v172 = *(uint32_t*)(__twr_v171);
     __twr_v173 = 48ULL;
-    __twr_v174 = _mng_stream159 + __twr_v173;
+    __twr_v174 = __twr_v158 + __twr_v173;
     __twr_v175 = *(uint32_t*)(__twr_v174);
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v160)(__twr_v169, __twr_v172, __twr_v175, _mng_str153, _mng_err1154, _mng_err2155, _mng_err3156);
     __twr_v176 = (uint64_t)(&TlErrorExit);

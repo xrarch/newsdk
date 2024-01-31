@@ -4,11 +4,41 @@
 
 #INCLUDE "Be.hjk"
 
+IrKnownVariableListHead : TlListEntry
+
+FN IrKnownVariableBarrier (
+    IN onlyescaped : UBYTE,
+)
+
+    // Kill all the known variables.
+
+    head := &IrKnownVariableListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        nextentry := listentry^.Next
+
+        var := CONTAINEROF listentry TO IrVariable.ValueListEntry
+
+        IF NOT onlyescaped OR var^.Escaped THEN
+            var^.Known = FALSE
+
+            TlRemoveEntryList ( listentry )
+        END
+
+        listentry = nextentry
+    END
+END
+
 FN IrSimplify (
     IN irfunc : ^IrFunction,
 )
 
     // Simplify the IR for a function in a single pass.
+
+    // Initialize the known variable list.
+
+    TlInitializeList ( &IrKnownVariableListHead )
 
     // Simplifications performed (locally, over basic blocks) include:
     //
@@ -22,10 +52,61 @@ FN IrSimplify (
     // automagically vanish during DAG instruction selection as nothing relevant
     // will refer to them.
 
+    IrKnownVariableBarrier ( FALSE )
+
     inst := irfunc^.Head
 
     WHILE inst DO
+        // Perform any value propagation opportunities.
+        // Since we store constants in temporaries, this also performs constant
+        // propagation :)
+
+        src1 := inst^.Source1
+        src2 := inst^.Source2
+
+        IF src1 AND src1^.Known THEN
+            inst^.Source1 = src1^.Opt.Sim.Contents
+        END
+
+        IF src2 AND src2^.Known THEN
+            inst^.Source2 = src2^.Opt.Sim.Contents
+        END
+
+        def := inst^.Defines
+
+        IF inst^.Type == IR_MOVE THEN
+            IF NOT def^.Known THEN
+                def^.Known = TRUE
+
+                TlInsertAtHeadList (
+                    &IrKnownVariableListHead, // head
+                    &def^.ValueListEntry, // entry
+                )
+            END
+
+            def^.Known = TRUE
+            def^.Opt.Sim.Contents = inst^.Source1
+
+        ELSEIF def AND def^.Known THEN
+            TlRemoveEntryList ( &def^.ValueListEntry )
+
+            def^.Known = FALSE
+        END
+
+        IF (inst^.Type > IR_BRANCH_LOW_NUMBER AND
+            inst^.Type < IR_BRANCH_HIGH_NUMBER) THEN
+
+            // We don't do any of these things across basic block boundaries
+            // because we are lame.
+
+            IrKnownVariableBarrier ( FALSE )
         
+        ELSEIF inst^.Type == IR_CALL THEN
+            // This was a call so we have to make sure to kill any escaped
+            // locals, since we just left our function context.
+
+            IrKnownVariableBarrier ( TRUE )
+        END
 
         inst = inst^.Next
     END

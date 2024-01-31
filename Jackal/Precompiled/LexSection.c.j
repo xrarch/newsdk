@@ -263,14 +263,14 @@ void LexPushSection(uint64_t _mng_section196) {
     __twr_v201 = (uint64_t)(&LexSectionStackTop);
     __twr_v202 = *(uint64_t*)(__twr_v201);
     __twr_v203 = 0ULL;
-    __twr_v204 = _mng_elem200 + __twr_v203;
+    __twr_v204 = __twr_v199 + __twr_v203;
     *(uint64_t*)(__twr_v204) = __twr_v202;
     __twr_v205 = (uint64_t)(&LexCurrentSection);
     __twr_v206 = *(uint64_t*)(__twr_v205);
     __twr_v207 = 8ULL;
-    __twr_v208 = _mng_elem200 + __twr_v207;
+    __twr_v208 = __twr_v199 + __twr_v207;
     *(uint64_t*)(__twr_v208) = __twr_v206;
-    *(uint64_t*)(__twr_v201) = _mng_elem200;
+    *(uint64_t*)(__twr_v201) = __twr_v199;
     *(uint64_t*)(__twr_v205) = _mng_section196;
 }
 uint64_t LexPopSection() {
@@ -292,7 +292,7 @@ uint64_t LexPopSection() {
     __twr_v209 = (uint64_t)(&LexSectionStackTop);
     __twr_v210 = *(uint64_t*)(__twr_v209);
     _mng_elem211 = __twr_v210;
-    if (_mng_elem211) { goto __twr_l8; } else { goto __twr_l9; }
+    if (__twr_v210) { goto __twr_l8; } else { goto __twr_l9; }
     __twr_l9:;
     __twr_v212 = 0ULL;
     return __twr_v212;

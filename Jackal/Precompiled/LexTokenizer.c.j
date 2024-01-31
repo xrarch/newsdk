@@ -195,20 +195,20 @@ void LexInsertKeyword(uint64_t _mng_name146, uint64_t _mng_type147, uint64_t _mn
     __twr_v159 = (uint64_t)(&_mng_type147);
     __twr_v160 = *(uint8_t*)(__twr_v159);
     __twr_v161 = 48ULL;
-    __twr_v162 = _mng_keyword156 + __twr_v161;
+    __twr_v162 = __twr_v155 + __twr_v161;
     *(uint8_t*)(__twr_v162) = __twr_v160;
     __twr_v163 = (uint64_t)(&_mng_subtype148);
     __twr_v164 = *(uint8_t*)(__twr_v163);
     __twr_v165 = 49ULL;
-    __twr_v166 = _mng_keyword156 + __twr_v165;
+    __twr_v166 = __twr_v155 + __twr_v165;
     *(uint8_t*)(__twr_v166) = __twr_v164;
     __twr_v167 = 50ULL;
-    __twr_v168 = _mng_keyword156 + __twr_v167;
+    __twr_v168 = __twr_v155 + __twr_v167;
     *(uint8_t*)(__twr_v168) = _mng_context149;
     __twr_v169 = (uint64_t)(&TlInsertHashTable);
     __twr_v170 = (uint64_t)(&LexKeywordHashTable);
     __twr_v171 = 0ULL;
-    __twr_v172 = _mng_keyword156 + __twr_v171;
+    __twr_v172 = __twr_v155 + __twr_v171;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v169)(__twr_v170, __twr_v172, _mng_name146);
 }
 void LexDeleteSymbol(uint64_t _mng_entry173) {
@@ -813,7 +813,7 @@ uint64_t LexGetCharacter() {
     __twr_v386 = (uint64_t)(&LexStreamNextCharacter);
     __twr_v387 = ((uint64_t (*)())__twr_v386)();
     _mng_byte388 = __twr_v387;
-    if (_mng_byte388) { goto __twr_l3; } else { goto __twr_l4; }
+    if (__twr_v387) { goto __twr_l3; } else { goto __twr_l4; }
     __twr_l4:;
     goto __twr_l2;
     __twr_l3:;
@@ -895,7 +895,7 @@ uint64_t LexGetCharacter() {
     __twr_v433 = ((uint64_t (*)())__twr_v432)();
     _mng_nextbyte434 = __twr_v433;
     __twr_v435 = 47ULL;
-    if (_mng_nextbyte434 == __twr_v435) { goto __twr_l21; } else { goto __twr_l20; }
+    if (__twr_v433 == __twr_v435) { goto __twr_l21; } else { goto __twr_l20; }
     __twr_l21:;
     __twr_v436 = 1ULL;
     _mng_comment385 = __twr_v436;
@@ -994,7 +994,7 @@ void LexGetStringTokenInternal(uint64_t _mng_token458, uint64_t _mng_terminator4
     __twr_v466 = (uint64_t)(&LexGetCharacter);
     __twr_v467 = ((uint64_t (*)())__twr_v466)();
     _mng_byte468 = __twr_v467;
-    if (_mng_byte468) { goto __twr_l31; } else { goto __twr_l32; }
+    if (__twr_v467) { goto __twr_l31; } else { goto __twr_l32; }
     __twr_l32:;
     __twr_v469 = (uint64_t)(&LexTokenError);
     __twr_v470 = (uint64_t)(&"String token terminated by EOF!");
@@ -1128,7 +1128,7 @@ uint64_t LexCrunchCharacterLiteral(uint64_t _mng_token500, uint64_t _mng_buffer5
     _mng_num503 = __twr_v502;
     _mng_i504 = __twr_v502;
     __twr_v505 = 1ULL;
-    __twr_v506 = _mng_i504 * __twr_v505;
+    __twr_v506 = __twr_v502 * __twr_v505;
     __twr_v507 = _mng_buffer501 + __twr_v506;
     __twr_v508 = *(uint8_t*)(__twr_v507);
     if (__twr_v508) { goto __twr_l58; } else { goto __twr_l59; }
@@ -1138,7 +1138,7 @@ uint64_t LexCrunchCharacterLiteral(uint64_t _mng_token500, uint64_t _mng_buffer5
     __twr_v511 = _mng_num503 * __twr_v510;
     _mng_num503 = __twr_v511;
     __twr_v512 = 0ULL;
-    if (_mng_lastnum509 != __twr_v512) { goto __twr_l63; } else { goto __twr_l61; }
+    if (_mng_num503 != __twr_v512) { goto __twr_l63; } else { goto __twr_l61; }
     __twr_l63:;
     __twr_v513 = _mng_num503 / _mng_lastnum509;
     __twr_v514 = 256ULL;
@@ -1155,7 +1155,7 @@ uint64_t LexCrunchCharacterLiteral(uint64_t _mng_token500, uint64_t _mng_buffer5
     __twr_v521 = *(uint8_t*)(__twr_v520);
     __twr_v522 = _mng_num503 + __twr_v521;
     _mng_num503 = __twr_v522;
-    if (_mng_num503 < _mng_lastnum509) { goto __twr_l65; } else { goto __twr_l64; }
+    if (__twr_v522 < _mng_lastnum509) { goto __twr_l65; } else { goto __twr_l64; }
     __twr_l65:;
     __twr_v523 = (uint64_t)(&LexTokenError);
     __twr_v524 = (uint64_t)(&"Number does not fit in machine word.");
@@ -1403,7 +1403,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_v560 = 2ULL;
     _mng_i536 = __twr_v560;
     __twr_v561 = 1ULL;
-    __twr_v562 = _mng_i536 * __twr_v561;
+    __twr_v562 = __twr_v560 * __twr_v561;
     __twr_v563 = _mng_buffer533 + __twr_v562;
     __twr_v564 = *(uint8_t*)(__twr_v563);
     if (__twr_v564) { goto __twr_l74; } else { goto __twr_l75; }
@@ -1413,7 +1413,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_v567 = _mng_num535 * __twr_v566;
     _mng_num535 = __twr_v567;
     __twr_v568 = 0ULL;
-    if (_mng_lastnum565 != __twr_v568) { goto __twr_l79; } else { goto __twr_l77; }
+    if (_mng_num535 != __twr_v568) { goto __twr_l79; } else { goto __twr_l77; }
     __twr_l79:;
     __twr_v569 = _mng_num535 / _mng_lastnum565;
     __twr_v570 = 16ULL;
@@ -1522,7 +1522,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_l70:;
     __twr_v637 = 1ULL;
     _mng_i536 = __twr_v637;
-    __twr_v638 = _mng_i536 * __twr_v637;
+    __twr_v638 = __twr_v637 * __twr_v637;
     __twr_v639 = _mng_buffer533 + __twr_v638;
     __twr_v640 = *(uint8_t*)(__twr_v639);
     if (__twr_v640) { goto __twr_l92; } else { goto __twr_l93; }
@@ -1551,7 +1551,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_v656 = _mng_num535 * __twr_v655;
     _mng_num535 = __twr_v656;
     __twr_v657 = 0ULL;
-    if (_mng_lastnum654 != __twr_v657) { goto __twr_l100; } else { goto __twr_l98; }
+    if (_mng_num535 != __twr_v657) { goto __twr_l100; } else { goto __twr_l98; }
     __twr_l100:;
     __twr_v658 = _mng_num535 / _mng_lastnum654;
     __twr_v659 = 8ULL;
@@ -1570,7 +1570,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_v668 = __twr_v666 - __twr_v667;
     __twr_v669 = _mng_num535 + __twr_v668;
     _mng_num535 = __twr_v669;
-    if (_mng_num535 < _mng_lastnum654) { goto __twr_l102; } else { goto __twr_l101; }
+    if (__twr_v669 < _mng_lastnum654) { goto __twr_l102; } else { goto __twr_l101; }
     __twr_l102:;
     __twr_v670 = (uint64_t)(&LexTokenError);
     __twr_v671 = (uint64_t)(&"Number does not fit in machine word.");
@@ -1619,7 +1619,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_v698 = _mng_num535 * __twr_v697;
     _mng_num535 = __twr_v698;
     __twr_v699 = 0ULL;
-    if (_mng_lastnum696 != __twr_v699) { goto __twr_l111; } else { goto __twr_l109; }
+    if (_mng_num535 != __twr_v699) { goto __twr_l111; } else { goto __twr_l109; }
     __twr_l111:;
     __twr_v700 = _mng_num535 / _mng_lastnum696;
     __twr_v701 = 10ULL;
@@ -1638,7 +1638,7 @@ uint64_t LexCrunchNumber(uint64_t _mng_token532, uint64_t _mng_buffer533) {
     __twr_v710 = __twr_v708 - __twr_v709;
     __twr_v711 = _mng_num535 + __twr_v710;
     _mng_num535 = __twr_v711;
-    if (_mng_num535 < _mng_lastnum696) { goto __twr_l113; } else { goto __twr_l112; }
+    if (__twr_v711 < _mng_lastnum696) { goto __twr_l113; } else { goto __twr_l112; }
     __twr_l113:;
     __twr_v712 = (uint64_t)(&LexTokenError);
     __twr_v713 = (uint64_t)(&"Number does not fit in machine word.");
@@ -1907,7 +1907,7 @@ uint64_t LexGetTokenContents(uint64_t _mng_token721, uint64_t _mng_buffer722, ui
     __twr_v737 = (uint64_t)(&LexCurrentStream);
     __twr_v738 = *(uint64_t*)(__twr_v737);
     _mng_stream739 = __twr_v738;
-    if (_mng_stream739) { goto __twr_l120; } else { goto __twr_l119; }
+    if (__twr_v738) { goto __twr_l120; } else { goto __twr_l119; }
     __twr_l120:;
     __twr_v740 = 8ULL;
     __twr_v741 = _mng_stream739 + __twr_v740;
@@ -1932,7 +1932,7 @@ uint64_t LexGetTokenContents(uint64_t _mng_token721, uint64_t _mng_buffer722, ui
     _mng_byte756 = __twr_v755;
     __twr_v757 = (uint64_t)(&LexCharTreatment);
     __twr_v758 = 1ULL;
-    __twr_v759 = _mng_byte756 * __twr_v758;
+    __twr_v759 = __twr_v755 * __twr_v758;
     __twr_v760 = __twr_v757 + __twr_v759;
     __twr_v761 = *(uint8_t*)(__twr_v760);
     __twr_v762 = 3ULL;
@@ -1941,7 +1941,7 @@ uint64_t LexGetTokenContents(uint64_t _mng_token721, uint64_t _mng_buffer722, ui
     __twr_v763 = (uint64_t)(&LexCurrentStream);
     __twr_v764 = *(uint64_t*)(__twr_v763);
     _mng_stream739 = __twr_v764;
-    if (_mng_stream739) { goto __twr_l125; } else { goto __twr_l124; }
+    if (__twr_v764) { goto __twr_l125; } else { goto __twr_l124; }
     __twr_l125:;
     __twr_v765 = 8ULL;
     __twr_v766 = _mng_stream739 + __twr_v765;
@@ -2002,12 +2002,12 @@ uint64_t LexGetTokenContents(uint64_t _mng_token721, uint64_t _mng_buffer722, ui
     __twr_v804 = __twr_v802 + __twr_v803;
     __twr_v805 = *(uint64_t*)(_mng_internedstring724);
     __twr_v806 = 16ULL;
-    __twr_v807 = _mng_dynamicbuffer795 + __twr_v806;
+    __twr_v807 = __twr_v794 + __twr_v806;
     __twr_v808 = *(uint64_t*)(__twr_v807);
     __twr_v809 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v800)(__twr_v804, __twr_v805, __twr_v808);
     _mng_str810 = __twr_v809;
     __twr_v811 = *(uint64_t*)(_mng_internedstring724);
-    if (_mng_str810 != __twr_v811) { goto __twr_l131; } else { goto __twr_l130; }
+    if (__twr_v809 != __twr_v811) { goto __twr_l131; } else { goto __twr_l130; }
     __twr_l131:;
     __twr_v812 = (uint64_t)(&TlUninitializeDynamicBuffer);
     ((void (*)(uint64_t))__twr_v812)(_mng_dynamicbuffer795);
@@ -2223,7 +2223,7 @@ uint64_t LexGetTokenContents(uint64_t _mng_token721, uint64_t _mng_buffer722, ui
     __twr_v937 = _mng_buffer722 + __twr_v936;
     __twr_v938 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v931)(__twr_v933, __twr_v937);
     _mng_macro939 = __twr_v938;
-    if (_mng_macro939) { goto __twr_l166; } else { goto __twr_l167; }
+    if (__twr_v938) { goto __twr_l166; } else { goto __twr_l167; }
     __twr_l167:;
     __twr_v940 = 0ULL;
     return __twr_v940;
@@ -2429,7 +2429,7 @@ void LexNextToken(uint64_t _mng_token948) {
     __twr_v960 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v949)(_mng_token948, __twr_v955, __twr_v956, __twr_v958);
     _mng_tokenflag961 = __twr_v960;
     __twr_v962 = 19ULL;
-    __twr_v963 = _mng_tokenflag961 & __twr_v962;
+    __twr_v963 = __twr_v960 & __twr_v962;
     if (__twr_v963) { goto __twr_l171; } else { goto __twr_l170; }
     __twr_l171:;
     __twr_v964 = (uint64_t)(&TlLookupHashTable);
@@ -2441,7 +2441,7 @@ void LexNextToken(uint64_t _mng_token948) {
     __twr_v970 = __twr_v966 + __twr_v969;
     __twr_v971 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v964)(__twr_v965, __twr_v970);
     _mng_keyword972 = __twr_v971;
-    if (_mng_keyword972) { goto __twr_l172; } else { goto __twr_l173; }
+    if (__twr_v971) { goto __twr_l172; } else { goto __twr_l173; }
     __twr_l173:;
     __twr_v973 = 16ULL;
     __twr_v974 = _mng_tokenflag961 & __twr_v973;
@@ -2603,7 +2603,7 @@ void LexNextToken(uint64_t _mng_token948) {
     __twr_v1079 = (uint64_t)(&_mng_symbol1066);
     __twr_v1080 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v1076)(__twr_v1078, __twr_v1079);
     _mng_status1081 = __twr_v1080;
-    if (_mng_status1081) { goto __twr_l193; } else { goto __twr_l192; }
+    if (__twr_v1080) { goto __twr_l193; } else { goto __twr_l192; }
     __twr_l193:;
     __twr_v1082 = (uint64_t)(&TlInternalError);
     __twr_v1083 = (uint64_t)(&"Couldn't allocate symbol");
@@ -2697,7 +2697,7 @@ uint64_t LexResetScope(uint64_t _mng_scope1131) {
     __twr_v1133 = *(uint64_t*)(__twr_v1132);
     _mng_oldscope1134 = __twr_v1133;
     *(uint64_t*)(__twr_v1132) = _mng_scope1131;
-    return _mng_oldscope1134;
+    return __twr_v1133;
 }
 void LexLeaveScope() {
     uint64_t __twr_v1135;
@@ -2825,7 +2825,7 @@ void LexGetToken(uint64_t _mng_token1181) {
     __twr_v1182 = (uint64_t)(&LexPutbackStackPtr);
     __twr_v1183 = *(uint32_t*)(__twr_v1182);
     _mng_index1184 = __twr_v1183;
-    if (_mng_index1184) { goto __twr_l201; } else { goto __twr_l200; }
+    if (__twr_v1183) { goto __twr_l201; } else { goto __twr_l200; }
     __twr_l201:;
     __twr_v1185 = (uint64_t)(&LexCopyToken);
     __twr_v1186 = (uint64_t)(&LexPutbackStack);
@@ -2862,7 +2862,7 @@ void LexPutbackToken(uint64_t _mng_token1194) {
     __twr_v1196 = *(uint32_t*)(__twr_v1195);
     _mng_index1197 = __twr_v1196;
     __twr_v1198 = 256ULL;
-    if (_mng_index1197 == __twr_v1198) { goto __twr_l203; } else { goto __twr_l202; }
+    if (__twr_v1196 == __twr_v1198) { goto __twr_l203; } else { goto __twr_l202; }
     __twr_l203:;
     __twr_v1199 = (uint64_t)(&TlInternalError);
     __twr_v1200 = (uint64_t)(&"Lexer putback stack overflow");
@@ -2928,7 +2928,7 @@ uint64_t LexMatchToken(uint64_t _mng_token1210, uint64_t _mng_type1211, uint64_t
     __twr_v1213 = (uint64_t)(&LexPutbackStackPtr);
     __twr_v1214 = *(uint32_t*)(__twr_v1213);
     _mng_index1215 = __twr_v1214;
-    if (_mng_index1215) { goto __twr_l204; } else { goto __twr_l205; }
+    if (__twr_v1214) { goto __twr_l204; } else { goto __twr_l205; }
     __twr_l205:;
     __twr_v1216 = (uint64_t)(&LexNextToken);
     __twr_v1217 = (uint64_t)(&LexPutbackStack);

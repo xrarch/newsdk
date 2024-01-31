@@ -29,8 +29,8 @@ FN IrValueNumberBarrier (
 
         var := CONTAINEROF listentry TO IrVariable.ValueListEntry
 
-        IF NOT onlyloads OR var^.ValueAcquiredByLoad THEN
-            var^.ValueNumber = 0
+        IF NOT onlyloads OR var^.Opt.Vn.AcquiredByLoad THEN
+            var^.Opt.Vn.ValueNumber = 0
 
             TlRemoveEntryList ( &var^.ValueListEntry )
             TlRemoveEntryList ( &var^.ValueHashEntry )
@@ -54,8 +54,8 @@ FN IrKillValueNumber (
 
         nextentry := listentry^.Next
 
-        IF var^.ValueKeySrc1 == value OR var^.ValueKeySrc2 == value THEN
-            var^.ValueNumber = 0
+        IF var^.Opt.Vn.KeySrc1 == value OR var^.Opt.Vn.KeySrc2 == value THEN
+            var^.Opt.Vn.ValueNumber = 0
 
             TlRemoveEntryList ( &var^.ValueListEntry )
             TlRemoveEntryList ( &var^.ValueHashEntry )
@@ -69,9 +69,9 @@ FN IrKillVariable (
     IN var : ^IrVariable,
 )
 
-    IrKillValueNumber ( var^.ValueNumber )
+    IrKillValueNumber ( var^.Opt.Vn.ValueNumber )
 
-    IF var^.ValueKeyOp THEN
+    IF var^.Opt.Vn.KeyOp THEN
         TlRemoveEntryList ( &var^.ValueListEntry )
         TlRemoveEntryList ( &var^.ValueHashEntry )
     END
@@ -81,7 +81,7 @@ FN IrGiveOpaqueValueVariable (
     IN var : ^IrVariable,
 )
 
-    IF var^.ValueKeyOp THEN
+    IF var^.Opt.Vn.KeyOp THEN
         // This variable already has a value number, so remove it from its place
         // in the value number hash table.
 
@@ -90,12 +90,12 @@ FN IrGiveOpaqueValueVariable (
 
         // Also kill any values that used this variable's old value number.
 
-        IrKillValueNumber ( var^.ValueNumber )
+        IrKillValueNumber ( var^.Opt.Vn.ValueNumber )
     END
 
-    var^.ValueKeyOp = 0
+    var^.Opt.Vn.KeyOp = 0
 
-    var^.ValueNumber = IrNextValueNumber
+    var^.Opt.Vn.ValueNumber = IrNextValueNumber
     IrNextValueNumber += 1
 END
 
@@ -108,8 +108,8 @@ FN IrValueNumberVariable (
 
     // Give the variable a (new) value number.
 
-    byload := var^.ValueAcquiredByLoad | src1^.ValueAcquiredByLoad
-    valuesrc1 := src1^.ValueNumber
+    byload := var^.Opt.Vn.AcquiredByLoad | src1^.Opt.Vn.AcquiredByLoad
+    valuesrc1 := src1^.Opt.Vn.ValueNumber
 
     IF NOT valuesrc1 THEN
         LEAVE
@@ -118,15 +118,15 @@ FN IrValueNumberVariable (
     valuesrc2 : ULONG = 0
 
     IF src2 THEN
-        valuesrc2 = src2^.ValueNumber
-        byload |= src2^.ValueAcquiredByLoad
+        valuesrc2 = src2^.Opt.Vn.ValueNumber
+        byload |= src2^.Opt.Vn.AcquiredByLoad
 
         IF NOT valuesrc2 THEN
             LEAVE
         END
     END
 
-    IF var^.ValueKeyOp THEN
+    IF var^.Opt.Vn.KeyOp THEN
         // This variable already has a value number, so remove it from its place
         // in the value number hash table.
 
@@ -134,7 +134,7 @@ FN IrValueNumberVariable (
 
         // Also kill any values that used this variable's old value number.
 
-        IrKillValueNumber ( var^.ValueNumber )
+        IrKillValueNumber ( var^.Opt.Vn.ValueNumber )
     ELSE
         // Put the variable at the head of the global list.
 
@@ -147,13 +147,13 @@ FN IrValueNumberVariable (
     vn := IrNextValueNumber
     IrNextValueNumber += 1
 
-    var^.ValueNumber = vn
+    var^.Opt.Vn.ValueNumber = vn
 
-    var^.ValueAcquiredByLoad = byload
+    var^.Opt.Vn.AcquiredByLoad = byload
 
-    var^.ValueKeySrc1 = valuesrc1
-    var^.ValueKeySrc2 = valuesrc2
-    var^.ValueKeyOp = valueop
+    var^.Opt.Vn.KeySrc1 = valuesrc1
+    var^.Opt.Vn.KeySrc2 = valuesrc2
+    var^.Opt.Vn.KeyOp = valueop
 
     hash : ULONG = valuesrc1 $ valuesrc2 $ valueop
     hash $= hash >> 7
@@ -176,7 +176,7 @@ FN IrValueNumberConstantVariable (
 
     // Give the variable a (new) value number.
 
-    IF var^.ValueKeyOp THEN
+    IF var^.Opt.Vn.KeyOp THEN
         // This variable already has a value number, so remove it from its place
         // in the value number hash table.
 
@@ -184,7 +184,7 @@ FN IrValueNumberConstantVariable (
 
         // Also kill any values that used this variable's old value number.
 
-        IrKillValueNumber ( var^.ValueNumber )
+        IrKillValueNumber ( var^.Opt.Vn.ValueNumber )
     ELSE
         // Put the variable at the head of the global list.
 
@@ -197,10 +197,10 @@ FN IrValueNumberConstantVariable (
     vn := IrNextValueNumber
     IrNextValueNumber += 1
 
-    var^.ValueNumber = vn
+    var^.Opt.Vn.ValueNumber = vn
 
-    var^.ConstantValue = constant
-    var^.ValueKeyOp = op
+    var^.Opt.Vn.ConstantValue = constant
+    var^.Opt.Vn.KeyOp = op
 
     hash : ULONG = constant
     hash $= hash >> 7
@@ -227,11 +227,11 @@ FN IrFindValue (
     valuesrc2 : ULONG = 0
 
     IF src1 THEN
-        valuesrc1 = src1^.ValueNumber
+        valuesrc1 = src1^.Opt.Vn.ValueNumber
     END
 
     IF src2 THEN
-        valuesrc2 = src2^.ValueNumber
+        valuesrc2 = src2^.Opt.Vn.ValueNumber
     END
 
     hash : ULONG = valuesrc1 $ valuesrc2 $ op
@@ -247,15 +247,15 @@ FN IrFindValue (
     WHILE listentry != head DO
         var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
 
-        IF var^.ValueKeyOp == op THEN
-            IF var^.ValueKeySrc1 == valuesrc1 AND
-                var^.ValueKeySrc2 == valuesrc2 THEN
+        IF var^.Opt.Vn.KeyOp == op THEN
+            IF var^.Opt.Vn.KeySrc1 == valuesrc1 AND
+                var^.Opt.Vn.KeySrc2 == valuesrc2 THEN
 
                 RETURN var
 
             ELSEIF IrCommutativity[op] AND
-                var^.ValueKeySrc1 == valuesrc2 AND
-                var^.ValueKeySrc2 == valuesrc1 THEN
+                var^.Opt.Vn.KeySrc1 == valuesrc2 AND
+                var^.Opt.Vn.KeySrc2 == valuesrc1 THEN
 
                 RETURN var
             END
@@ -287,8 +287,8 @@ FN IrFindConstant (
     WHILE listentry != head DO
         var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
 
-        IF var^.ValueKeyOp == op AND
-            var^.ConstantValue == constant THEN
+        IF var^.Opt.Vn.KeyOp == op AND
+            var^.Opt.Vn.ConstantValue == constant THEN
 
             RETURN var
         END

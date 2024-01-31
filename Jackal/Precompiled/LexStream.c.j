@@ -285,10 +285,10 @@ uint64_t LexPopStream() {
     __twr_v213 = *(uint64_t*)(__twr_v212);
     _mng_oldstream214 = __twr_v213;
     __twr_v215 = 0ULL;
-    __twr_v216 = _mng_oldstream214 + __twr_v215;
+    __twr_v216 = __twr_v213 + __twr_v215;
     __twr_v217 = *(uint64_t*)(__twr_v216);
     *(uint64_t*)(__twr_v212) = __twr_v217;
-    return _mng_oldstream214;
+    return __twr_v213;
 }
 void LexInitializeFileStream(uint64_t _mng_stream218, uint64_t _mng_fileblock219, uint64_t _mng_handle220) {
     uint64_t __twr_v221;
@@ -319,7 +319,7 @@ void LexInitializeFileStream(uint64_t _mng_stream218, uint64_t _mng_fileblock219
     __twr_v225 = (uint64_t)(&_mng_buffer226);
     __twr_v227 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v223)(__twr_v224, __twr_v225);
     _mng_status228 = __twr_v227;
-    if (_mng_status228) { goto __twr_l4; } else { goto __twr_l3; }
+    if (__twr_v227) { goto __twr_l4; } else { goto __twr_l3; }
     __twr_l4:;
     __twr_v229 = (uint64_t)(&TlInternalError);
     __twr_v230 = (uint64_t)(&"Failed to allocate lex buffer");
@@ -350,7 +350,7 @@ uint64_t LexCreateFileStream(uint64_t _mng_fileblock241, uint64_t _mng_handle242
     _mng_stream245 = __twr_v244;
     __twr_v246 = (uint64_t)(&LexInitializeFileStream);
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v246)(_mng_stream245, _mng_fileblock241, _mng_handle242);
-    return _mng_stream245;
+    return __twr_v244;
 }
 extern uint64_t PrsLeaveMacro();
 uint64_t LexStreamNextCharacter() {
@@ -533,7 +533,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v250 = *(uint64_t*)(__twr_v249);
     _mng_stream251 = __twr_v250;
     __twr_v252 = 92ULL;
-    __twr_v253 = _mng_stream251 + __twr_v252;
+    __twr_v253 = __twr_v250 + __twr_v252;
     __twr_v254 = *(uint8_t*)(__twr_v253);
     if (__twr_v254) { goto __twr_l9; } else { goto __twr_l10; }
     __twr_l9:;
@@ -612,7 +612,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v304 = *(uint64_t*)(__twr_v303);
     _mng_macro305 = __twr_v304;
     __twr_v306 = 257ULL;
-    __twr_v307 = _mng_macro305 + __twr_v306;
+    __twr_v307 = __twr_v304 + __twr_v306;
     __twr_v308 = *(uint8_t*)(__twr_v307);
     if (__twr_v308) { goto __twr_l19; } else { goto __twr_l20; }
     __twr_l20:;
