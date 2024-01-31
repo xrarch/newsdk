@@ -76,8 +76,8 @@ void TlInitializeZone(uint64_t _mng_zone102, uint64_t _mng_blocksize103) {
     __twr_v109 = __twr_v107 & __twr_v108;
     _mng_blocksize103 = __twr_v109;
     __twr_v110 = 0ULL;
-    __twr_v111 = _mng_zone102 + __twr_v110;
-    *(uint64_t*)(__twr_v111) = __twr_v109;
+    __twr_v111 = _mng_zone102;
+    *(uint64_t*)(_mng_zone102) = __twr_v109;
     __twr_v112 = 8ULL;
     __twr_v113 = _mng_zone102 + __twr_v112;
     *(uint64_t*)(__twr_v113) = __twr_v110;
@@ -127,16 +127,16 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone114) {
     if (__twr_v117) { goto __twr_l4; } else { goto __twr_l3; }
     __twr_l4:;
     __twr_v119 = 0ULL;
-    __twr_v120 = _mng_block118 + __twr_v119;
-    __twr_v121 = *(uint64_t*)(__twr_v120);
+    __twr_v120 = _mng_block118;
+    __twr_v121 = *(uint64_t*)(_mng_block118);
     __twr_v122 = 8ULL;
     __twr_v123 = _mng_zone114 + __twr_v122;
     *(uint64_t*)(__twr_v123) = __twr_v121;
     return _mng_block118;
     __twr_l3:;
     __twr_v124 = 0ULL;
-    __twr_v125 = _mng_zone114 + __twr_v124;
-    __twr_v126 = *(uint64_t*)(__twr_v125);
+    __twr_v125 = _mng_zone114;
+    __twr_v126 = *(uint64_t*)(_mng_zone114);
     _mng_blocksize127 = __twr_v126;
     __twr_v128 = 5ULL;
     __twr_v129 = __twr_v126 << __twr_v128;
@@ -164,8 +164,8 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone114) {
     __twr_v144 = _mng_zone114 + __twr_v143;
     __twr_v145 = *(uint64_t*)(__twr_v144);
     __twr_v146 = 0ULL;
-    __twr_v147 = _mng_chunk133 + __twr_v146;
-    *(uint64_t*)(__twr_v147) = __twr_v145;
+    __twr_v147 = _mng_chunk133;
+    *(uint64_t*)(_mng_chunk133) = __twr_v145;
     *(uint64_t*)(__twr_v144) = _mng_chunk133;
     __twr_v148 = 1ULL;
     __twr_v149 = _mng_i141 + __twr_v148;
@@ -190,7 +190,7 @@ void TlFreeToZone(uint64_t _mng_zone152, uint64_t _mng_block153) {
     __twr_v156 = _mng_zone152 + __twr_v155;
     __twr_v157 = *(uint64_t*)(__twr_v156);
     __twr_v158 = 0ULL;
-    __twr_v159 = _mng_block153 + __twr_v158;
-    *(uint64_t*)(__twr_v159) = __twr_v157;
+    __twr_v159 = _mng_block153;
+    *(uint64_t*)(_mng_block153) = __twr_v157;
     *(uint64_t*)(__twr_v156) = _mng_block153;
 }

@@ -229,8 +229,8 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     __twr_v159 = _mng_resultingpath131 + __twr_v158;
     __twr_v160 = *(uint64_t*)(__twr_v159);
     __twr_v161 = 0ULL;
-    __twr_v162 = _mng_resultingpath131 + __twr_v161;
-    __twr_v163 = *(uint64_t*)(__twr_v162);
+    __twr_v162 = _mng_resultingpath131;
+    __twr_v163 = *(uint64_t*)(_mng_resultingpath131);
     __twr_v164 = __twr_v163 - __twr_v153;
     __twr_v165 = __twr_v164 * __twr_v153;
     __twr_v166 = __twr_v160 + __twr_v165;

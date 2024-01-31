@@ -208,7 +208,7 @@ void LexInsertKeyword(uint64_t _mng_name146, uint64_t _mng_type147, uint64_t _mn
     __twr_v169 = (uint64_t)(&TlInsertHashTable);
     __twr_v170 = (uint64_t)(&LexKeywordHashTable);
     __twr_v171 = 0ULL;
-    __twr_v172 = __twr_v155 + __twr_v171;
+    __twr_v172 = __twr_v155;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v169)(__twr_v170, __twr_v172, _mng_name146);
 }
 void LexDeleteSymbol(uint64_t _mng_entry173) {
@@ -2492,8 +2492,8 @@ void LexNextToken(uint64_t _mng_token948) {
     __twr_v1005 = __twr_v1003 * __twr_v1004;
     __twr_v1006 = __twr_v1002 + __twr_v1005;
     __twr_v1007 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v1001)(_mng_token948, __twr_v1006);
-    __twr_v1008 = _mng_token948 + __twr_v1003;
-    *(uint64_t*)(__twr_v1008) = __twr_v1007;
+    __twr_v1008 = _mng_token948;
+    *(uint64_t*)(_mng_token948) = __twr_v1007;
     return;
     __twr_l176:;
     __twr_v1009 = 4ULL;
@@ -2505,8 +2505,8 @@ void LexNextToken(uint64_t _mng_token948) {
     __twr_v1013 = _mng_token948 + __twr_v1012;
     *(uint8_t*)(__twr_v1013) = __twr_v1011;
     __twr_v1014 = 0ULL;
-    __twr_v1015 = _mng_token948 + __twr_v1014;
-    *(uint64_t*)(__twr_v1015) = _mng_internedstring959;
+    __twr_v1015 = _mng_token948;
+    *(uint64_t*)(_mng_token948) = _mng_internedstring959;
     return;
     __twr_l178:;
     __twr_v1016 = 32ULL;
@@ -2556,8 +2556,8 @@ void LexNextToken(uint64_t _mng_token948) {
     __twr_v1045 = __twr_v1043 * __twr_v1044;
     __twr_v1046 = __twr_v1042 + __twr_v1045;
     __twr_v1047 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v1041)(_mng_token948, __twr_v1046);
-    __twr_v1048 = _mng_token948 + __twr_v1043;
-    *(uint64_t*)(__twr_v1048) = __twr_v1047;
+    __twr_v1048 = _mng_token948;
+    *(uint64_t*)(_mng_token948) = __twr_v1047;
     return;
     __twr_l184:;
     __twr_v1049 = 18ULL;
@@ -2660,8 +2660,8 @@ void LexNextToken(uint64_t _mng_token948) {
     *(uint8_t*)(__twr_v1119) = __twr_v1117;
     __twr_l190:;
     __twr_v1120 = 0ULL;
-    __twr_v1121 = _mng_token948 + __twr_v1120;
-    *(uint64_t*)(__twr_v1121) = _mng_symbol1066;
+    __twr_v1121 = _mng_token948;
+    *(uint64_t*)(_mng_token948) = _mng_symbol1066;
 }
 uint64_t LexEnterScope(uint64_t _mng_scope1122) {
     uint64_t __twr_v1123;
@@ -2774,10 +2774,10 @@ void LexCopyToken(uint64_t _mng_dest1151, uint64_t _mng_src1152) {
     uint64_t __twr_v1179;
     uint64_t __twr_v1180;
     __twr_v1153 = 0ULL;
-    __twr_v1154 = _mng_src1152 + __twr_v1153;
-    __twr_v1155 = *(uint64_t*)(__twr_v1154);
-    __twr_v1156 = _mng_dest1151 + __twr_v1153;
-    *(uint64_t*)(__twr_v1156) = __twr_v1155;
+    __twr_v1154 = _mng_src1152;
+    __twr_v1155 = *(uint64_t*)(_mng_src1152);
+    __twr_v1156 = _mng_dest1151;
+    *(uint64_t*)(_mng_dest1151) = __twr_v1155;
     __twr_v1157 = 8ULL;
     __twr_v1158 = _mng_src1152 + __twr_v1157;
     __twr_v1159 = *(uint64_t*)(__twr_v1158);

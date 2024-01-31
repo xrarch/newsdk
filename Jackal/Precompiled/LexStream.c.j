@@ -168,8 +168,8 @@ void LexInitializeStream(uint64_t _mng_stream152, uint64_t _mng_macro153) {
     uint64_t __twr_v189;
     uint64_t __twr_v190;
     __twr_v154 = 0ULL;
-    __twr_v155 = _mng_stream152 + __twr_v154;
-    *(uint64_t*)(__twr_v155) = __twr_v154;
+    __twr_v155 = _mng_stream152;
+    *(uint64_t*)(_mng_stream152) = __twr_v154;
     __twr_v156 = 8ULL;
     __twr_v157 = _mng_stream152 + __twr_v156;
     *(uint64_t*)(__twr_v157) = __twr_v154;
@@ -270,8 +270,8 @@ void LexPushStream(uint64_t _mng_stream207) {
     __twr_v208 = (uint64_t)(&LexCurrentStream);
     __twr_v209 = *(uint64_t*)(__twr_v208);
     __twr_v210 = 0ULL;
-    __twr_v211 = _mng_stream207 + __twr_v210;
-    *(uint64_t*)(__twr_v211) = __twr_v209;
+    __twr_v211 = _mng_stream207;
+    *(uint64_t*)(_mng_stream207) = __twr_v209;
     *(uint64_t*)(__twr_v208) = _mng_stream207;
 }
 uint64_t LexPopStream() {
@@ -285,8 +285,8 @@ uint64_t LexPopStream() {
     __twr_v213 = *(uint64_t*)(__twr_v212);
     _mng_oldstream214 = __twr_v213;
     __twr_v215 = 0ULL;
-    __twr_v216 = __twr_v213 + __twr_v215;
-    __twr_v217 = *(uint64_t*)(__twr_v216);
+    __twr_v216 = __twr_v213;
+    __twr_v217 = *(uint64_t*)(__twr_v213);
     *(uint64_t*)(__twr_v212) = __twr_v217;
     return __twr_v213;
 }
@@ -626,10 +626,10 @@ uint64_t LexStreamNextCharacter() {
     __twr_v314 = (uint64_t)(&LexCurrentScope);
     __twr_v315 = *(uint64_t*)(__twr_v314);
     __twr_v316 = 0ULL;
-    __twr_v317 = __twr_v315 + __twr_v316;
-    __twr_v318 = *(uint64_t*)(__twr_v317);
-    __twr_v319 = __twr_v318 + __twr_v316;
-    __twr_v320 = *(uint64_t*)(__twr_v319);
+    __twr_v317 = __twr_v315;
+    __twr_v318 = *(uint64_t*)(__twr_v315);
+    __twr_v319 = __twr_v318;
+    __twr_v320 = *(uint64_t*)(__twr_v318);
     if (__twr_v320) { goto __twr_l25; } else { goto __twr_l24; }
     __twr_l25:;
     __twr_v321 = (uint64_t)(&LexStreamError);

@@ -316,6 +316,7 @@ FN PrsFieldSequence (
     END
 
     type := symbol^.SemanticType
+    structtype := type
 
     IF NOT LexMatchToken (
         &idtoken, // token
@@ -378,7 +379,7 @@ FN PrsFieldSequence (
 
     offset^ = finaloffset
 
-    RETURN type
+    RETURN structtype
 END
 
 FN PrsCheckType (

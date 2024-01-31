@@ -574,9 +574,9 @@ uint64_t FeCreateFileBlock(uint64_t _mng_includename311, uint64_t _mng_created31
     __twr_v325 = __twr_v321 + __twr_v324;
     __twr_v326 = 256ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v319)(__twr_v325, _mng_includename311, __twr_v326);
-    __twr_v327 = _mng_fileblock317 + __twr_v322;
+    __twr_v327 = _mng_fileblock317;
     __twr_v328 = 40ULL;
-    __twr_v329 = __twr_v327 + __twr_v328;
+    __twr_v329 = _mng_fileblock317 + __twr_v328;
     *(uint64_t*)(__twr_v329) = __twr_v325;
     __twr_l31:;
     return _mng_fileblock317;
@@ -654,8 +654,8 @@ void TrgInitialize() {
     __twr_v351 = __twr_v349 * __twr_v350;
     __twr_v352 = __twr_v348 + __twr_v351;
     __twr_v353 = *(uint64_t*)(_mng_target345);
-    __twr_v354 = __twr_v353 + __twr_v349;
-    __twr_v355 = *(uint64_t*)(__twr_v354);
+    __twr_v354 = __twr_v353;
+    __twr_v355 = *(uint64_t*)(__twr_v353);
     __twr_v356 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v347)(__twr_v352, __twr_v355);
     if (__twr_v356 == __twr_v349) { goto __twr_l37; } else { goto __twr_l36; }
     __twr_l37:;

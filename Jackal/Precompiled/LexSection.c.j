@@ -152,9 +152,9 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     __twr_v154 = __twr_v150 + __twr_v153;
     __twr_v155 = 64ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v148)(__twr_v154, _mng_name147, __twr_v155);
-    __twr_v156 = _mng_section146 + __twr_v151;
+    __twr_v156 = _mng_section146;
     __twr_v157 = 40ULL;
-    __twr_v158 = __twr_v156 + __twr_v157;
+    __twr_v158 = _mng_section146 + __twr_v157;
     *(uint64_t*)(__twr_v158) = __twr_v154;
     __twr_v159 = (uint64_t)(&TlInitializeHashTable);
     __twr_v160 = 120ULL;
@@ -263,8 +263,8 @@ void LexPushSection(uint64_t _mng_section196) {
     __twr_v201 = (uint64_t)(&LexSectionStackTop);
     __twr_v202 = *(uint64_t*)(__twr_v201);
     __twr_v203 = 0ULL;
-    __twr_v204 = __twr_v199 + __twr_v203;
-    *(uint64_t*)(__twr_v204) = __twr_v202;
+    __twr_v204 = __twr_v199;
+    *(uint64_t*)(__twr_v199) = __twr_v202;
     __twr_v205 = (uint64_t)(&LexCurrentSection);
     __twr_v206 = *(uint64_t*)(__twr_v205);
     __twr_v207 = 8ULL;
@@ -298,8 +298,8 @@ uint64_t LexPopSection() {
     return __twr_v212;
     __twr_l8:;
     __twr_v213 = 0ULL;
-    __twr_v214 = _mng_elem211 + __twr_v213;
-    __twr_v215 = *(uint64_t*)(__twr_v214);
+    __twr_v214 = _mng_elem211;
+    __twr_v215 = *(uint64_t*)(_mng_elem211);
     __twr_v216 = (uint64_t)(&LexSectionStackTop);
     *(uint64_t*)(__twr_v216) = __twr_v215;
     __twr_v217 = 8ULL;

@@ -74,13 +74,13 @@ void TlInitializeHashTable(uint64_t _mng_hashtable102) {
     uint64_t __twr_v121;
     uint64_t __twr_v122;
     __twr_v103 = 0ULL;
-    __twr_v104 = _mng_hashtable102 + __twr_v103;
-    _mng_listhead105 = __twr_v104;
+    __twr_v104 = _mng_hashtable102;
+    _mng_listhead105 = _mng_hashtable102;
     __twr_v106 = 8ULL;
-    __twr_v107 = __twr_v104 + __twr_v106;
-    *(uint64_t*)(__twr_v107) = __twr_v104;
-    __twr_v108 = __twr_v104 + __twr_v103;
-    *(uint64_t*)(__twr_v108) = __twr_v104;
+    __twr_v107 = _mng_hashtable102 + __twr_v106;
+    *(uint64_t*)(__twr_v107) = _mng_hashtable102;
+    __twr_v108 = _mng_hashtable102;
+    *(uint64_t*)(_mng_hashtable102) = _mng_hashtable102;
     _mng_i109 = __twr_v103;
     __twr_v110 = 97ULL;
     if (__twr_v103 < __twr_v110) { goto __twr_l1; } else { goto __twr_l2; }
@@ -94,8 +94,8 @@ void TlInitializeHashTable(uint64_t _mng_hashtable102) {
     __twr_v117 = __twr_v114 + __twr_v116;
     *(uint64_t*)(__twr_v117) = __twr_v114;
     __twr_v118 = 0ULL;
-    __twr_v119 = __twr_v114 + __twr_v118;
-    *(uint64_t*)(__twr_v119) = __twr_v114;
+    __twr_v119 = __twr_v114;
+    *(uint64_t*)(__twr_v114) = __twr_v114;
     __twr_v120 = 1ULL;
     __twr_v121 = _mng_i109 + __twr_v120;
     _mng_i109 = __twr_v121;
@@ -142,8 +142,8 @@ void TlSummarizeHashTable(uint64_t _mng_hashtable123) {
     __twr_v131 = _mng_i125 * __twr_v129;
     __twr_v132 = __twr_v130 + __twr_v131;
     _mng_head133 = __twr_v132;
-    __twr_v134 = __twr_v132 + __twr_v127;
-    __twr_v135 = *(uint64_t*)(__twr_v134);
+    __twr_v134 = __twr_v132;
+    __twr_v135 = *(uint64_t*)(__twr_v132);
     _mng_listentry136 = __twr_v135;
     if (__twr_v135 != __twr_v132) { goto __twr_l7; } else { goto __twr_l8; }
     __twr_l7:;
@@ -151,8 +151,8 @@ void TlSummarizeHashTable(uint64_t _mng_hashtable123) {
     __twr_v138 = _mng_entries128 + __twr_v137;
     _mng_entries128 = __twr_v138;
     __twr_v139 = 0ULL;
-    __twr_v140 = _mng_listentry136 + __twr_v139;
-    __twr_v141 = *(uint64_t*)(__twr_v140);
+    __twr_v140 = _mng_listentry136;
+    __twr_v141 = *(uint64_t*)(_mng_listentry136);
     _mng_listentry136 = __twr_v141;
     __twr_l9:;
     if (_mng_listentry136 != _mng_head133) { goto __twr_l7; } else { goto __twr_l8; }
@@ -218,33 +218,33 @@ void TlInsertHashTableByHash(uint64_t _mng_hashtable149, uint64_t _mng_entry150,
     __twr_v160 = __twr_v158 + __twr_v159;
     _mng_listhead161 = __twr_v160;
     __twr_v162 = 0ULL;
-    __twr_v163 = _mng_entry150 + __twr_v162;
-    _mng_listentry164 = __twr_v163;
-    __twr_v165 = __twr_v160 + __twr_v162;
-    __twr_v166 = *(uint64_t*)(__twr_v165);
+    __twr_v163 = _mng_entry150;
+    _mng_listentry164 = _mng_entry150;
+    __twr_v165 = __twr_v160;
+    __twr_v166 = *(uint64_t*)(__twr_v160);
     _mng_first167 = __twr_v166;
-    __twr_v168 = __twr_v163 + __twr_v162;
-    *(uint64_t*)(__twr_v168) = __twr_v166;
+    __twr_v168 = _mng_entry150;
+    *(uint64_t*)(_mng_entry150) = __twr_v166;
     __twr_v169 = 8ULL;
-    __twr_v170 = __twr_v163 + __twr_v169;
+    __twr_v170 = _mng_entry150 + __twr_v169;
     *(uint64_t*)(__twr_v170) = __twr_v160;
     __twr_v171 = __twr_v166 + __twr_v169;
-    *(uint64_t*)(__twr_v171) = __twr_v163;
-    *(uint64_t*)(__twr_v165) = __twr_v163;
-    __twr_v172 = _mng_hashtable149 + __twr_v162;
-    _mng_listhead173 = __twr_v172;
+    *(uint64_t*)(__twr_v171) = _mng_entry150;
+    *(uint64_t*)(__twr_v160) = _mng_entry150;
+    __twr_v172 = _mng_hashtable149;
+    _mng_listhead173 = _mng_hashtable149;
     __twr_v174 = _mng_entry150 + __twr_v157;
     _mng_listentry175 = __twr_v174;
-    __twr_v176 = __twr_v172 + __twr_v162;
-    __twr_v177 = *(uint64_t*)(__twr_v176);
+    __twr_v176 = _mng_hashtable149;
+    __twr_v177 = *(uint64_t*)(_mng_hashtable149);
     _mng_first178 = __twr_v177;
-    __twr_v179 = __twr_v174 + __twr_v162;
-    *(uint64_t*)(__twr_v179) = __twr_v177;
+    __twr_v179 = __twr_v174;
+    *(uint64_t*)(__twr_v174) = __twr_v177;
     __twr_v180 = __twr_v174 + __twr_v169;
-    *(uint64_t*)(__twr_v180) = __twr_v172;
+    *(uint64_t*)(__twr_v180) = _mng_hashtable149;
     __twr_v181 = __twr_v177 + __twr_v169;
     *(uint64_t*)(__twr_v181) = __twr_v174;
-    *(uint64_t*)(__twr_v176) = __twr_v174;
+    *(uint64_t*)(_mng_hashtable149) = __twr_v174;
 }
 void TlInsertHashTable(uint64_t _mng_hashtable182, uint64_t _mng_entry183, uint64_t _mng_key184) {
     uint64_t __twr_v185;
@@ -300,8 +300,8 @@ uint64_t TlLookupOrAllocateEntryHashTable(uint64_t _mng_hashtable189, uint64_t _
     __twr_v199 = __twr_v197 + __twr_v198;
     _mng_head200 = __twr_v199;
     __twr_v201 = 0ULL;
-    __twr_v202 = __twr_v199 + __twr_v201;
-    __twr_v203 = *(uint64_t*)(__twr_v202);
+    __twr_v202 = __twr_v199;
+    __twr_v203 = *(uint64_t*)(__twr_v199);
     _mng_listentry204 = __twr_v203;
     if (__twr_v203 != __twr_v199) { goto __twr_l12; } else { goto __twr_l13; }
     __twr_l12:;
@@ -320,8 +320,8 @@ uint64_t TlLookupOrAllocateEntryHashTable(uint64_t _mng_hashtable189, uint64_t _
     return _mng_entry207;
     __twr_l15:;
     __twr_v214 = 0ULL;
-    __twr_v215 = _mng_listentry204 + __twr_v214;
-    __twr_v216 = *(uint64_t*)(__twr_v215);
+    __twr_v215 = _mng_listentry204;
+    __twr_v216 = *(uint64_t*)(_mng_listentry204);
     _mng_listentry204 = __twr_v216;
     __twr_l14:;
     if (_mng_listentry204 != _mng_head200) { goto __twr_l12; } else { goto __twr_l13; }
@@ -377,8 +377,8 @@ uint64_t TlLookupOrInsertHashTable(uint64_t _mng_hashtable226, uint64_t _mng_ent
     __twr_v235 = __twr_v233 + __twr_v234;
     _mng_head236 = __twr_v235;
     __twr_v237 = 0ULL;
-    __twr_v238 = __twr_v235 + __twr_v237;
-    __twr_v239 = *(uint64_t*)(__twr_v238);
+    __twr_v238 = __twr_v235;
+    __twr_v239 = *(uint64_t*)(__twr_v235);
     _mng_listentry240 = __twr_v239;
     if (__twr_v239 != __twr_v235) { goto __twr_l19; } else { goto __twr_l20; }
     __twr_l19:;
@@ -395,8 +395,8 @@ uint64_t TlLookupOrInsertHashTable(uint64_t _mng_hashtable226, uint64_t _mng_ent
     return _mng_oldentry243;
     __twr_l22:;
     __twr_v249 = 0ULL;
-    __twr_v250 = _mng_listentry240 + __twr_v249;
-    __twr_v251 = *(uint64_t*)(__twr_v250);
+    __twr_v250 = _mng_listentry240;
+    __twr_v251 = *(uint64_t*)(_mng_listentry240);
     _mng_listentry240 = __twr_v251;
     __twr_l21:;
     if (_mng_listentry240 != _mng_head236) { goto __twr_l19; } else { goto __twr_l20; }
@@ -433,8 +433,8 @@ uint64_t TlLookupHashTableByHash(uint64_t _mng_hashtable253, uint64_t _mng_key25
     __twr_v259 = __twr_v257 + __twr_v258;
     _mng_head260 = __twr_v259;
     __twr_v261 = 0ULL;
-    __twr_v262 = __twr_v259 + __twr_v261;
-    __twr_v263 = *(uint64_t*)(__twr_v262);
+    __twr_v262 = __twr_v259;
+    __twr_v263 = *(uint64_t*)(__twr_v259);
     _mng_listentry264 = __twr_v263;
     if (__twr_v263 != __twr_v259) { goto __twr_l24; } else { goto __twr_l25; }
     __twr_l24:;
@@ -451,8 +451,8 @@ uint64_t TlLookupHashTableByHash(uint64_t _mng_hashtable253, uint64_t _mng_key25
     return _mng_entry267;
     __twr_l27:;
     __twr_v273 = 0ULL;
-    __twr_v274 = _mng_listentry264 + __twr_v273;
-    __twr_v275 = *(uint64_t*)(__twr_v274);
+    __twr_v274 = _mng_listentry264;
+    __twr_v275 = *(uint64_t*)(_mng_listentry264);
     _mng_listentry264 = __twr_v275;
     __twr_l26:;
     if (_mng_listentry264 != _mng_head260) { goto __twr_l24; } else { goto __twr_l25; }
@@ -498,17 +498,17 @@ void TlRemoveHashTable(uint64_t _mng_entry284) {
     uint64_t __twr_v306;
     uint64_t __twr_v307;
     __twr_v285 = 0ULL;
-    __twr_v286 = _mng_entry284 + __twr_v285;
-    _mng_listentry287 = __twr_v286;
+    __twr_v286 = _mng_entry284;
+    _mng_listentry287 = _mng_entry284;
     __twr_v288 = 8ULL;
-    __twr_v289 = __twr_v286 + __twr_v288;
+    __twr_v289 = _mng_entry284 + __twr_v288;
     __twr_v290 = *(uint64_t*)(__twr_v289);
     _mng_prev291 = __twr_v290;
-    __twr_v292 = __twr_v286 + __twr_v285;
-    __twr_v293 = *(uint64_t*)(__twr_v292);
+    __twr_v292 = _mng_entry284;
+    __twr_v293 = *(uint64_t*)(_mng_entry284);
     _mng_next294 = __twr_v293;
-    __twr_v295 = __twr_v290 + __twr_v285;
-    *(uint64_t*)(__twr_v295) = __twr_v293;
+    __twr_v295 = __twr_v290;
+    *(uint64_t*)(__twr_v290) = __twr_v293;
     __twr_v296 = __twr_v293 + __twr_v288;
     *(uint64_t*)(__twr_v296) = __twr_v290;
     __twr_v297 = 16ULL;
@@ -517,11 +517,11 @@ void TlRemoveHashTable(uint64_t _mng_entry284) {
     __twr_v300 = __twr_v298 + __twr_v288;
     __twr_v301 = *(uint64_t*)(__twr_v300);
     _mng_prev302 = __twr_v301;
-    __twr_v303 = __twr_v298 + __twr_v285;
-    __twr_v304 = *(uint64_t*)(__twr_v303);
+    __twr_v303 = __twr_v298;
+    __twr_v304 = *(uint64_t*)(__twr_v298);
     _mng_next305 = __twr_v304;
-    __twr_v306 = __twr_v301 + __twr_v285;
-    *(uint64_t*)(__twr_v306) = __twr_v304;
+    __twr_v306 = __twr_v301;
+    *(uint64_t*)(__twr_v301) = __twr_v304;
     __twr_v307 = __twr_v304 + __twr_v288;
     *(uint64_t*)(__twr_v307) = __twr_v301;
 }
@@ -542,16 +542,16 @@ void TlEnumerateHashTable(uint64_t _mng_hashtable308, uint64_t _mng_enumfunc309)
     uint64_t __twr_v323;
     uint64_t __twr_v324;
     __twr_v310 = 0ULL;
-    __twr_v311 = _mng_hashtable308 + __twr_v310;
-    _mng_head312 = __twr_v311;
-    __twr_v313 = __twr_v311 + __twr_v310;
-    __twr_v314 = *(uint64_t*)(__twr_v313);
+    __twr_v311 = _mng_hashtable308;
+    _mng_head312 = _mng_hashtable308;
+    __twr_v313 = _mng_hashtable308;
+    __twr_v314 = *(uint64_t*)(_mng_hashtable308);
     _mng_listentry315 = __twr_v314;
-    if (__twr_v314 != __twr_v311) { goto __twr_l29; } else { goto __twr_l30; }
+    if (__twr_v314 != _mng_hashtable308) { goto __twr_l29; } else { goto __twr_l30; }
     __twr_l29:;
     __twr_v316 = 0ULL;
-    __twr_v317 = _mng_listentry315 + __twr_v316;
-    __twr_v318 = *(uint64_t*)(__twr_v317);
+    __twr_v317 = _mng_listentry315;
+    __twr_v318 = *(uint64_t*)(_mng_listentry315);
     _mng_nextentry319 = __twr_v318;
     __twr_v320 = 16ULL;
     __twr_v321 = _mng_listentry315 - __twr_v320;
