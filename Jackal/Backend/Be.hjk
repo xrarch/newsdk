@@ -45,3 +45,7 @@ EXTERN FN IrCreateConstantBefore (
     IN beforeinst : ^IrInstruction,
     IN value : UWORD,
 ) : ^IrVariable
+
+EXTERN FN IrRemoveInstruction (
+    IN inst : ^IrInstruction,
+)

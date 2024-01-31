@@ -154,49 +154,40 @@ uint64_t FeIsMacroArgument(uint64_t _mng_arg147) {
     uint64_t __twr_v157;
     uint64_t __twr_v158;
     uint64_t __twr_v159;
-    uint64_t __twr_v160;
-    uint64_t __twr_v161;
+    __twr_v148 = 0ULL;
+    _mng_i149 = __twr_v148;
+    __twr_v150 = *(uint8_t*)(_mng_arg147);
+    if (__twr_v150) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_l1:;
+    __twr_v151 = _mng_arg147 + _mng_i149;
+    __twr_v152 = *(uint8_t*)(__twr_v151);
+    __twr_v153 = 61ULL;
+    if (__twr_v152 == __twr_v153) { goto __twr_l5; } else { goto __twr_l4; }
+    __twr_l5:;
+    __twr_v154 = _mng_arg147 + _mng_i149;
+    return __twr_v154;
+    __twr_l4:;
+    __twr_v155 = 1ULL;
+    __twr_v156 = _mng_i149 + __twr_v155;
+    _mng_i149 = __twr_v156;
+    __twr_l3:;
+    __twr_v157 = _mng_arg147 + _mng_i149;
+    __twr_v158 = *(uint8_t*)(__twr_v157);
+    if (__twr_v158) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_l2:;
+    __twr_v159 = 0ULL;
+    return __twr_v159;
+}
+void FeParseArguments(uint64_t _mng_argc160, uint64_t _mng_argv161) {
     uint64_t __twr_v162;
     uint64_t __twr_v163;
     uint64_t __twr_v164;
     uint64_t __twr_v165;
-    uint64_t __twr_v166;
-    uint64_t __twr_v167;
-    uint64_t __twr_v168;
-    __twr_v148 = 0ULL;
-    _mng_i149 = __twr_v148;
-    __twr_v150 = 1ULL;
-    __twr_v151 = __twr_v148;
-    __twr_v152 = _mng_arg147;
-    __twr_v153 = *(uint8_t*)(_mng_arg147);
-    if (__twr_v153) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l1:;
-    __twr_v154 = 1ULL;
-    __twr_v155 = _mng_i149;
-    __twr_v156 = _mng_arg147 + _mng_i149;
-    __twr_v157 = *(uint8_t*)(__twr_v156);
-    __twr_v158 = 61ULL;
-    if (__twr_v157 == __twr_v158) { goto __twr_l5; } else { goto __twr_l4; }
-    __twr_l5:;
-    __twr_v159 = 1ULL;
-    __twr_v160 = _mng_i149;
-    __twr_v161 = _mng_arg147 + _mng_i149;
-    return __twr_v161;
-    __twr_l4:;
-    __twr_v162 = 1ULL;
-    __twr_v163 = _mng_i149 + __twr_v162;
-    _mng_i149 = __twr_v163;
-    __twr_l3:;
-    __twr_v164 = 1ULL;
-    __twr_v165 = _mng_i149;
-    __twr_v166 = _mng_arg147 + _mng_i149;
-    __twr_v167 = *(uint8_t*)(__twr_v166);
-    if (__twr_v167) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l2:;
-    __twr_v168 = 0ULL;
-    return __twr_v168;
-}
-void FeParseArguments(uint64_t _mng_argc169, uint64_t _mng_argv170) {
+    uint64_t _mng_foundinput166;
+    uint64_t _mng_foundoutput167;
+    uint64_t _mng_foundtarget168;
+    uint64_t _mng_i169;
+    uint64_t __twr_v170;
     uint64_t __twr_v171;
     uint64_t __twr_v172;
     uint64_t __twr_v173;
@@ -204,10 +195,10 @@ void FeParseArguments(uint64_t _mng_argc169, uint64_t _mng_argv170) {
     uint64_t __twr_v175;
     uint64_t __twr_v176;
     uint64_t __twr_v177;
-    uint64_t _mng_foundinput178;
-    uint64_t _mng_foundoutput179;
-    uint64_t _mng_foundtarget180;
-    uint64_t _mng_i181;
+    uint64_t __twr_v178;
+    uint64_t __twr_v179;
+    uint64_t __twr_v180;
+    uint64_t __twr_v181;
     uint64_t __twr_v182;
     uint64_t __twr_v183;
     uint64_t __twr_v184;
@@ -301,13 +292,187 @@ void FeParseArguments(uint64_t _mng_argc169, uint64_t _mng_argv170) {
     uint64_t __twr_v272;
     uint64_t __twr_v273;
     uint64_t __twr_v274;
-    uint64_t __twr_v275;
-    uint64_t __twr_v276;
+    __twr_v162 = 0ULL;
+    __twr_v163 = (uint64_t)(&FeLibraryDirectory);
+    __twr_v164 = 1ULL;
+    *(uint8_t*)(__twr_v163) = __twr_v162;
+    __twr_v165 = (uint64_t)(&FeIncludeDirectory);
+    *(uint8_t*)(__twr_v165) = __twr_v162;
+    _mng_foundinput166 = __twr_v162;
+    _mng_foundoutput167 = __twr_v162;
+    _mng_foundtarget168 = __twr_v162;
+    _mng_i169 = __twr_v164;
+    if (_mng_argc160 >= __twr_v164) { goto __twr_l6; } else { goto __twr_l7; }
+    __twr_l6:;
+    __twr_v170 = (uint64_t)(&TlCompareStringWithMax);
+    __twr_v171 = 3ULL;
+    __twr_v172 = _mng_i169 << __twr_v171;
+    __twr_v173 = _mng_argv161 + __twr_v172;
+    __twr_v174 = *(uint64_t*)(__twr_v173);
+    __twr_v175 = (uint64_t)(&"libdir=");
+    __twr_v176 = 7ULL;
+    __twr_v177 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v170)(__twr_v174, __twr_v175, __twr_v176);
+    __twr_v178 = 0ULL;
+    if (__twr_v177 == __twr_v178) { goto __twr_l10; } else { goto __twr_l11; }
+    __twr_l10:;
+    __twr_v179 = (uint64_t)(&TlCopyString);
+    __twr_v180 = (uint64_t)(&FeLibraryDirectory);
+    __twr_v181 = 3ULL;
+    __twr_v182 = _mng_i169 << __twr_v181;
+    __twr_v183 = _mng_argv161 + __twr_v182;
+    __twr_v184 = *(uint64_t*)(__twr_v183);
+    __twr_v185 = 7ULL;
+    __twr_v186 = __twr_v184 + __twr_v185;
+    __twr_v187 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v179)(__twr_v180, __twr_v186, __twr_v187);
+    goto __twr_l9;
+    __twr_l11:;
+    __twr_v188 = (uint64_t)(&TlCompareStringWithMax);
+    __twr_v189 = 3ULL;
+    __twr_v190 = _mng_i169 << __twr_v189;
+    __twr_v191 = _mng_argv161 + __twr_v190;
+    __twr_v192 = *(uint64_t*)(__twr_v191);
+    __twr_v193 = (uint64_t)(&"incdir=");
+    __twr_v194 = 7ULL;
+    __twr_v195 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v188)(__twr_v192, __twr_v193, __twr_v194);
+    __twr_v196 = 0ULL;
+    if (__twr_v195 == __twr_v196) { goto __twr_l12; } else { goto __twr_l13; }
+    __twr_l12:;
+    __twr_v197 = (uint64_t)(&TlCopyString);
+    __twr_v198 = (uint64_t)(&FeIncludeDirectory);
+    __twr_v199 = 3ULL;
+    __twr_v200 = _mng_i169 << __twr_v199;
+    __twr_v201 = _mng_argv161 + __twr_v200;
+    __twr_v202 = *(uint64_t*)(__twr_v201);
+    __twr_v203 = 7ULL;
+    __twr_v204 = __twr_v202 + __twr_v203;
+    __twr_v205 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v197)(__twr_v198, __twr_v204, __twr_v205);
+    goto __twr_l9;
+    __twr_l13:;
+    __twr_v206 = (uint64_t)(&TlCompareStringWithMax);
+    __twr_v207 = 3ULL;
+    __twr_v208 = _mng_i169 << __twr_v207;
+    __twr_v209 = _mng_argv161 + __twr_v208;
+    __twr_v210 = *(uint64_t*)(__twr_v209);
+    __twr_v211 = (uint64_t)(&"target=");
+    __twr_v212 = 7ULL;
+    __twr_v213 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v206)(__twr_v210, __twr_v211, __twr_v212);
+    __twr_v214 = 0ULL;
+    if (__twr_v213 == __twr_v214) { goto __twr_l14; } else { goto __twr_l15; }
+    __twr_l14:;
+    __twr_v215 = (uint64_t)(&TlCopyString);
+    __twr_v216 = (uint64_t)(&FeTargetString);
+    __twr_v217 = 0ULL;
+    __twr_v218 = 3ULL;
+    __twr_v219 = _mng_i169 << __twr_v218;
+    __twr_v220 = _mng_argv161 + __twr_v219;
+    __twr_v221 = *(uint64_t*)(__twr_v220);
+    __twr_v222 = 7ULL;
+    __twr_v223 = __twr_v221 + __twr_v222;
+    __twr_v224 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v215)(__twr_v216, __twr_v223, __twr_v224);
+    __twr_v225 = (uint64_t)(&TlCompareString);
+    __twr_v226 = (uint64_t)(&"CHost");
+    __twr_v227 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v225)(__twr_v216, __twr_v226);
+    if (__twr_v227 == __twr_v217) { goto __twr_l17; } else { goto __twr_l18; }
+    __twr_l17:;
+    __twr_v228 = 1ULL;
+    __twr_v229 = (uint64_t)(&JklCHost);
+    *(uint64_t*)(__twr_v229) = __twr_v228;
+    goto __twr_l16;
+    __twr_l18:;
+    __twr_v230 = 0ULL;
+    __twr_v231 = (uint64_t)(&JklCHost);
+    *(uint64_t*)(__twr_v231) = __twr_v230;
+    __twr_l16:;
+    __twr_v232 = 1ULL;
+    _mng_foundtarget168 = __twr_v232;
+    goto __twr_l9;
+    __twr_l15:;
+    __twr_v233 = (uint64_t)(&FeIsMacroArgument);
+    __twr_v234 = 3ULL;
+    __twr_v235 = _mng_i169 << __twr_v234;
+    __twr_v236 = _mng_argv161 + __twr_v235;
+    __twr_v237 = *(uint64_t*)(__twr_v236);
+    __twr_v238 = ((uint64_t (*)(uint64_t))__twr_v233)(__twr_v237);
+    if (__twr_v238) { goto __twr_l19; } else { goto __twr_l20; }
+    __twr_l19:;
+    __twr_v239 = (uint64_t)(&LexDefineMacroFromArgumentString);
+    __twr_v240 = 3ULL;
+    __twr_v241 = _mng_i169 << __twr_v240;
+    __twr_v242 = _mng_argv161 + __twr_v241;
+    __twr_v243 = *(uint64_t*)(__twr_v242);
+    ((void (*)(uint64_t))__twr_v239)(__twr_v243);
+    goto __twr_l9;
+    __twr_l20:;
+    if (_mng_foundinput166) { goto __twr_l21; } else { goto __twr_l22; }
+    __twr_l21:;
+    if (_mng_foundoutput167) { goto __twr_l24; } else { goto __twr_l23; }
+    __twr_l24:;
+    __twr_v244 = (uint64_t)(&TlUserError);
+    __twr_v245 = (uint64_t)(&"Too many arguments specified!");
+    __twr_v246 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v244)(__twr_v245, __twr_v246, __twr_v246, __twr_v246);
+    __twr_l23:;
+    __twr_v247 = 1ULL;
+    _mng_foundoutput167 = __twr_v247;
+    __twr_v248 = (uint64_t)(&TlCopyString);
+    __twr_v249 = (uint64_t)(&FeOutputFile);
+    __twr_v250 = 3ULL;
+    __twr_v251 = _mng_i169 << __twr_v250;
+    __twr_v252 = _mng_argv161 + __twr_v251;
+    __twr_v253 = *(uint64_t*)(__twr_v252);
+    __twr_v254 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v248)(__twr_v249, __twr_v253, __twr_v254);
+    goto __twr_l9;
+    __twr_l22:;
+    __twr_v255 = 1ULL;
+    _mng_foundinput166 = __twr_v255;
+    __twr_v256 = (uint64_t)(&TlCopyString);
+    __twr_v257 = (uint64_t)(&FeInputFile);
+    __twr_v258 = 3ULL;
+    __twr_v259 = _mng_i169 << __twr_v258;
+    __twr_v260 = _mng_argv161 + __twr_v259;
+    __twr_v261 = *(uint64_t*)(__twr_v260);
+    __twr_v262 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v256)(__twr_v257, __twr_v261, __twr_v262);
+    __twr_l9:;
+    __twr_v263 = 1ULL;
+    __twr_v264 = _mng_i169 + __twr_v263;
+    _mng_i169 = __twr_v264;
+    __twr_l8:;
+    if (_mng_i169 < _mng_argc160) { goto __twr_l6; } else { goto __twr_l7; }
+    __twr_l7:;
+    if (_mng_foundinput166) { goto __twr_l25; } else { goto __twr_l26; }
+    __twr_l26:;
+    __twr_v265 = (uint64_t)(&TlUserError);
+    __twr_v266 = (uint64_t)(&"No input file specified.");
+    __twr_v267 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v265)(__twr_v266, __twr_v267, __twr_v267, __twr_v267);
+    __twr_l25:;
+    if (_mng_foundoutput167) { goto __twr_l27; } else { goto __twr_l28; }
+    __twr_l28:;
+    __twr_v268 = (uint64_t)(&TlUserError);
+    __twr_v269 = (uint64_t)(&"No output file specified.");
+    __twr_v270 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v268)(__twr_v269, __twr_v270, __twr_v270, __twr_v270);
+    __twr_l27:;
+    if (_mng_foundtarget168) { goto __twr_l29; } else { goto __twr_l30; }
+    __twr_l30:;
+    __twr_v271 = (uint64_t)(&TlCopyString);
+    __twr_v272 = (uint64_t)(&FeTargetString);
+    __twr_v273 = (uint64_t)(&"xr17032");
+    __twr_v274 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v271)(__twr_v272, __twr_v273, __twr_v274);
+    __twr_l29:;
+}
+uint64_t FeCreateFileBlock(uint64_t _mng_includename275, uint64_t _mng_created276) {
     uint64_t __twr_v277;
     uint64_t __twr_v278;
     uint64_t __twr_v279;
     uint64_t __twr_v280;
-    uint64_t __twr_v281;
+    uint64_t _mng_fileblock281;
     uint64_t __twr_v282;
     uint64_t __twr_v283;
     uint64_t __twr_v284;
@@ -316,15 +481,52 @@ void FeParseArguments(uint64_t _mng_argc169, uint64_t _mng_argv170) {
     uint64_t __twr_v287;
     uint64_t __twr_v288;
     uint64_t __twr_v289;
-    uint64_t __twr_v290;
-    uint64_t __twr_v291;
+    __twr_v277 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
+    __twr_v278 = (uint64_t)(&FeFileBlockHashTable);
+    __twr_v279 = 560ULL;
+    __twr_v280 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v277)(__twr_v278, __twr_v279, _mng_includename275, _mng_created276);
+    _mng_fileblock281 = __twr_v280;
+    __twr_v282 = *(uint8_t*)(_mng_created276);
+    if (__twr_v282) { goto __twr_l32; } else { goto __twr_l31; }
+    __twr_l32:;
+    __twr_v283 = (uint64_t)(&TlCopyString);
+    __twr_v284 = 304ULL;
+    __twr_v285 = _mng_fileblock281 + __twr_v284;
+    __twr_v286 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v283)(__twr_v285, _mng_includename275, __twr_v286);
+    __twr_v287 = _mng_fileblock281 + __twr_v284;
+    __twr_v288 = 40ULL;
+    __twr_v289 = _mng_fileblock281 + __twr_v288;
+    *(uint64_t*)(__twr_v289) = __twr_v287;
+    __twr_l31:;
+    return _mng_fileblock281;
+}
+void FeCopyPathFileBlock(uint64_t _mng_fileblock290, uint64_t _mng_filepath291) {
     uint64_t __twr_v292;
     uint64_t __twr_v293;
     uint64_t __twr_v294;
     uint64_t __twr_v295;
+    __twr_v292 = (uint64_t)(&TlCopyString);
+    __twr_v293 = 48ULL;
+    __twr_v294 = _mng_fileblock290 + __twr_v293;
+    __twr_v295 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v292)(__twr_v294, _mng_filepath291, __twr_v295);
+}
+extern uint64_t CtTargetInfo[8];
+uint64_t TrgInfoRecords[8] = {
+    (uint64_t)(&CtTargetInfo),
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+};
+void TrgInitialize() {
     uint64_t __twr_v296;
     uint64_t __twr_v297;
-    uint64_t __twr_v298;
+    uint64_t _mng_target298;
     uint64_t __twr_v299;
     uint64_t __twr_v300;
     uint64_t __twr_v301;
@@ -341,230 +543,50 @@ void FeParseArguments(uint64_t _mng_argc169, uint64_t _mng_argv170) {
     uint64_t __twr_v312;
     uint64_t __twr_v313;
     uint64_t __twr_v314;
-    uint64_t __twr_v315;
-    uint64_t __twr_v316;
+    __twr_v296 = (uint64_t)(&TrgInfoRecords);
+    __twr_v297 = 0ULL;
+    _mng_target298 = __twr_v296;
+    __twr_v299 = *(uint64_t*)(__twr_v296);
+    if (__twr_v299 != __twr_v297) { goto __twr_l33; } else { goto __twr_l34; }
+    __twr_l33:;
+    __twr_v300 = (uint64_t)(&TlCompareString);
+    __twr_v301 = (uint64_t)(&FeTargetString);
+    __twr_v302 = 0ULL;
+    __twr_v303 = *(uint64_t*)(_mng_target298);
+    __twr_v304 = *(uint64_t*)(__twr_v303);
+    __twr_v305 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v300)(__twr_v301, __twr_v304);
+    if (__twr_v305 == __twr_v302) { goto __twr_l37; } else { goto __twr_l36; }
+    __twr_l37:;
+    __twr_v306 = *(uint64_t*)(_mng_target298);
+    __twr_v307 = (uint64_t)(&JklTargetInfo);
+    *(uint64_t*)(__twr_v307) = __twr_v306;
+    return;
+    __twr_l36:;
+    __twr_v308 = 8ULL;
+    __twr_v309 = _mng_target298 + __twr_v308;
+    _mng_target298 = __twr_v309;
+    __twr_l35:;
+    __twr_v310 = *(uint64_t*)(_mng_target298);
+    __twr_v311 = 0ULL;
+    if (__twr_v310 != __twr_v311) { goto __twr_l33; } else { goto __twr_l34; }
+    __twr_l34:;
+    __twr_v312 = (uint64_t)(&TlUserError);
+    __twr_v313 = (uint64_t)(&"Unknown target specified");
+    __twr_v314 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v312)(__twr_v313, __twr_v314, __twr_v314, __twr_v314);
+}
+void FeInitialize(uint64_t _mng_argc315, uint64_t _mng_argv316) {
     uint64_t __twr_v317;
     uint64_t __twr_v318;
     uint64_t __twr_v319;
     uint64_t __twr_v320;
-    __twr_v171 = 0ULL;
-    __twr_v172 = (uint64_t)(&FeLibraryDirectory);
-    __twr_v173 = 1ULL;
-    __twr_v174 = __twr_v171;
-    __twr_v175 = __twr_v172;
-    *(uint8_t*)(__twr_v172) = __twr_v171;
-    __twr_v176 = (uint64_t)(&FeIncludeDirectory);
-    __twr_v177 = __twr_v176;
-    *(uint8_t*)(__twr_v176) = __twr_v171;
-    _mng_foundinput178 = __twr_v171;
-    _mng_foundoutput179 = __twr_v171;
-    _mng_foundtarget180 = __twr_v171;
-    _mng_i181 = __twr_v173;
-    if (_mng_argc169 >= __twr_v173) { goto __twr_l6; } else { goto __twr_l7; }
-    __twr_l6:;
-    __twr_v182 = (uint64_t)(&TlCompareStringWithMax);
-    __twr_v183 = 8ULL;
-    __twr_v184 = 3ULL;
-    __twr_v185 = _mng_i181 << __twr_v184;
-    __twr_v186 = _mng_argv170 + __twr_v185;
-    __twr_v187 = *(uint64_t*)(__twr_v186);
-    __twr_v188 = (uint64_t)(&"libdir=");
-    __twr_v189 = 7ULL;
-    __twr_v190 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v182)(__twr_v187, __twr_v188, __twr_v189);
-    __twr_v191 = 0ULL;
-    if (__twr_v190 == __twr_v191) { goto __twr_l10; } else { goto __twr_l11; }
-    __twr_l10:;
-    __twr_v192 = (uint64_t)(&TlCopyString);
-    __twr_v193 = (uint64_t)(&FeLibraryDirectory);
-    __twr_v194 = 0ULL;
-    __twr_v195 = 1ULL;
-    __twr_v196 = __twr_v194;
-    __twr_v197 = __twr_v193;
-    __twr_v198 = 8ULL;
-    __twr_v199 = 3ULL;
-    __twr_v200 = _mng_i181 << __twr_v199;
-    __twr_v201 = _mng_argv170 + __twr_v200;
-    __twr_v202 = *(uint64_t*)(__twr_v201);
-    __twr_v203 = 7ULL;
-    __twr_v204 = __twr_v203;
-    __twr_v205 = __twr_v202 + __twr_v203;
-    __twr_v206 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v192)(__twr_v193, __twr_v205, __twr_v206);
-    goto __twr_l9;
-    __twr_l11:;
-    __twr_v207 = (uint64_t)(&TlCompareStringWithMax);
-    __twr_v208 = 8ULL;
-    __twr_v209 = 3ULL;
-    __twr_v210 = _mng_i181 << __twr_v209;
-    __twr_v211 = _mng_argv170 + __twr_v210;
-    __twr_v212 = *(uint64_t*)(__twr_v211);
-    __twr_v213 = (uint64_t)(&"incdir=");
-    __twr_v214 = 7ULL;
-    __twr_v215 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v207)(__twr_v212, __twr_v213, __twr_v214);
-    __twr_v216 = 0ULL;
-    if (__twr_v215 == __twr_v216) { goto __twr_l12; } else { goto __twr_l13; }
-    __twr_l12:;
-    __twr_v217 = (uint64_t)(&TlCopyString);
-    __twr_v218 = (uint64_t)(&FeIncludeDirectory);
-    __twr_v219 = 0ULL;
-    __twr_v220 = 1ULL;
-    __twr_v221 = __twr_v219;
-    __twr_v222 = __twr_v218;
-    __twr_v223 = 8ULL;
-    __twr_v224 = 3ULL;
-    __twr_v225 = _mng_i181 << __twr_v224;
-    __twr_v226 = _mng_argv170 + __twr_v225;
-    __twr_v227 = *(uint64_t*)(__twr_v226);
-    __twr_v228 = 7ULL;
-    __twr_v229 = __twr_v228;
-    __twr_v230 = __twr_v227 + __twr_v228;
-    __twr_v231 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v217)(__twr_v218, __twr_v230, __twr_v231);
-    goto __twr_l9;
-    __twr_l13:;
-    __twr_v232 = (uint64_t)(&TlCompareStringWithMax);
-    __twr_v233 = 8ULL;
-    __twr_v234 = 3ULL;
-    __twr_v235 = _mng_i181 << __twr_v234;
-    __twr_v236 = _mng_argv170 + __twr_v235;
-    __twr_v237 = *(uint64_t*)(__twr_v236);
-    __twr_v238 = (uint64_t)(&"target=");
-    __twr_v239 = 7ULL;
-    __twr_v240 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v232)(__twr_v237, __twr_v238, __twr_v239);
-    __twr_v241 = 0ULL;
-    if (__twr_v240 == __twr_v241) { goto __twr_l14; } else { goto __twr_l15; }
-    __twr_l14:;
-    __twr_v242 = (uint64_t)(&TlCopyString);
-    __twr_v243 = (uint64_t)(&FeTargetString);
-    __twr_v244 = 0ULL;
-    __twr_v245 = 1ULL;
-    __twr_v246 = __twr_v244;
-    __twr_v247 = __twr_v243;
-    __twr_v248 = 8ULL;
-    __twr_v249 = 3ULL;
-    __twr_v250 = _mng_i181 << __twr_v249;
-    __twr_v251 = _mng_argv170 + __twr_v250;
-    __twr_v252 = *(uint64_t*)(__twr_v251);
-    __twr_v253 = 7ULL;
-    __twr_v254 = __twr_v253;
-    __twr_v255 = __twr_v252 + __twr_v253;
-    __twr_v256 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v242)(__twr_v243, __twr_v255, __twr_v256);
-    __twr_v257 = (uint64_t)(&TlCompareString);
-    __twr_v258 = (uint64_t)(&"CHost");
-    __twr_v259 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v257)(__twr_v243, __twr_v258);
-    if (__twr_v259 == __twr_v244) { goto __twr_l17; } else { goto __twr_l18; }
-    __twr_l17:;
-    __twr_v260 = 1ULL;
-    __twr_v261 = (uint64_t)(&JklCHost);
-    *(uint64_t*)(__twr_v261) = __twr_v260;
-    goto __twr_l16;
-    __twr_l18:;
-    __twr_v262 = 0ULL;
-    __twr_v263 = (uint64_t)(&JklCHost);
-    *(uint64_t*)(__twr_v263) = __twr_v262;
-    __twr_l16:;
-    __twr_v264 = 1ULL;
-    _mng_foundtarget180 = __twr_v264;
-    goto __twr_l9;
-    __twr_l15:;
-    __twr_v265 = (uint64_t)(&FeIsMacroArgument);
-    __twr_v266 = 8ULL;
-    __twr_v267 = 3ULL;
-    __twr_v268 = _mng_i181 << __twr_v267;
-    __twr_v269 = _mng_argv170 + __twr_v268;
-    __twr_v270 = *(uint64_t*)(__twr_v269);
-    __twr_v271 = ((uint64_t (*)(uint64_t))__twr_v265)(__twr_v270);
-    if (__twr_v271) { goto __twr_l19; } else { goto __twr_l20; }
-    __twr_l19:;
-    __twr_v272 = (uint64_t)(&LexDefineMacroFromArgumentString);
-    __twr_v273 = 8ULL;
-    __twr_v274 = 3ULL;
-    __twr_v275 = _mng_i181 << __twr_v274;
-    __twr_v276 = _mng_argv170 + __twr_v275;
-    __twr_v277 = *(uint64_t*)(__twr_v276);
-    ((void (*)(uint64_t))__twr_v272)(__twr_v277);
-    goto __twr_l9;
-    __twr_l20:;
-    if (_mng_foundinput178) { goto __twr_l21; } else { goto __twr_l22; }
-    __twr_l21:;
-    if (_mng_foundoutput179) { goto __twr_l24; } else { goto __twr_l23; }
-    __twr_l24:;
-    __twr_v278 = (uint64_t)(&TlUserError);
-    __twr_v279 = (uint64_t)(&"Too many arguments specified!");
-    __twr_v280 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v278)(__twr_v279, __twr_v280, __twr_v280, __twr_v280);
-    __twr_l23:;
-    __twr_v281 = 1ULL;
-    _mng_foundoutput179 = __twr_v281;
-    __twr_v282 = (uint64_t)(&TlCopyString);
-    __twr_v283 = (uint64_t)(&FeOutputFile);
-    __twr_v284 = 0ULL;
-    __twr_v285 = __twr_v284;
-    __twr_v286 = __twr_v283;
-    __twr_v287 = 8ULL;
-    __twr_v288 = 3ULL;
-    __twr_v289 = _mng_i181 << __twr_v288;
-    __twr_v290 = _mng_argv170 + __twr_v289;
-    __twr_v291 = *(uint64_t*)(__twr_v290);
-    __twr_v292 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v282)(__twr_v283, __twr_v291, __twr_v292);
-    goto __twr_l9;
-    __twr_l22:;
-    __twr_v293 = 1ULL;
-    _mng_foundinput178 = __twr_v293;
-    __twr_v294 = (uint64_t)(&TlCopyString);
-    __twr_v295 = (uint64_t)(&FeInputFile);
-    __twr_v296 = 0ULL;
-    __twr_v297 = __twr_v296;
-    __twr_v298 = __twr_v295;
-    __twr_v299 = 8ULL;
-    __twr_v300 = 3ULL;
-    __twr_v301 = _mng_i181 << __twr_v300;
-    __twr_v302 = _mng_argv170 + __twr_v301;
-    __twr_v303 = *(uint64_t*)(__twr_v302);
-    __twr_v304 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v294)(__twr_v295, __twr_v303, __twr_v304);
-    __twr_l9:;
-    __twr_v305 = 1ULL;
-    __twr_v306 = _mng_i181 + __twr_v305;
-    _mng_i181 = __twr_v306;
-    __twr_l8:;
-    if (_mng_i181 < _mng_argc169) { goto __twr_l6; } else { goto __twr_l7; }
-    __twr_l7:;
-    if (_mng_foundinput178) { goto __twr_l25; } else { goto __twr_l26; }
-    __twr_l26:;
-    __twr_v307 = (uint64_t)(&TlUserError);
-    __twr_v308 = (uint64_t)(&"No input file specified.");
-    __twr_v309 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v307)(__twr_v308, __twr_v309, __twr_v309, __twr_v309);
-    __twr_l25:;
-    if (_mng_foundoutput179) { goto __twr_l27; } else { goto __twr_l28; }
-    __twr_l28:;
-    __twr_v310 = (uint64_t)(&TlUserError);
-    __twr_v311 = (uint64_t)(&"No output file specified.");
-    __twr_v312 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v310)(__twr_v311, __twr_v312, __twr_v312, __twr_v312);
-    __twr_l27:;
-    if (_mng_foundtarget180) { goto __twr_l29; } else { goto __twr_l30; }
-    __twr_l30:;
-    __twr_v313 = (uint64_t)(&TlCopyString);
-    __twr_v314 = (uint64_t)(&FeTargetString);
-    __twr_v315 = 0ULL;
-    __twr_v316 = 1ULL;
-    __twr_v317 = __twr_v315;
-    __twr_v318 = __twr_v314;
-    __twr_v319 = (uint64_t)(&"xr17032");
-    __twr_v320 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v313)(__twr_v314, __twr_v319, __twr_v320);
-    __twr_l29:;
-}
-uint64_t FeCreateFileBlock(uint64_t _mng_includename321, uint64_t _mng_created322) {
+    uint64_t __twr_v321;
+    uint64_t __twr_v322;
     uint64_t __twr_v323;
     uint64_t __twr_v324;
     uint64_t __twr_v325;
     uint64_t __twr_v326;
-    uint64_t _mng_fileblock327;
+    uint64_t __twr_v327;
     uint64_t __twr_v328;
     uint64_t __twr_v329;
     uint64_t __twr_v330;
@@ -575,233 +597,70 @@ uint64_t FeCreateFileBlock(uint64_t _mng_includename321, uint64_t _mng_created32
     uint64_t __twr_v335;
     uint64_t __twr_v336;
     uint64_t __twr_v337;
-    uint64_t __twr_v338;
-    uint64_t __twr_v339;
+    __twr_v317 = (uint64_t)(&TlInitializeHashTable);
+    __twr_v318 = (uint64_t)(&FeFileBlockHashTable);
+    ((void (*)(uint64_t))__twr_v317)(__twr_v318);
+    __twr_v319 = (uint64_t)(&LexInitializePreprocessor);
+    ((void (*)())__twr_v319)();
+    __twr_v320 = (uint64_t)(&FeParseArguments);
+    ((void (*)(uint64_t, uint64_t))__twr_v320)(_mng_argc315, _mng_argv316);
+    __twr_v321 = (uint64_t)(&TlOpenSource);
+    __twr_v322 = (uint64_t)(&FeInputFile);
+    __twr_v323 = (uint64_t)(&FeInputFileHandle);
+    __twr_v324 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v321)(__twr_v322, __twr_v323);
+    if (__twr_v324) { goto __twr_l39; } else { goto __twr_l38; }
+    __twr_l39:;
+    __twr_v325 = (uint64_t)(&TlUserError);
+    __twr_v326 = (uint64_t)(&"Failed to open source file.");
+    __twr_v327 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v325)(__twr_v326, __twr_v327, __twr_v327, __twr_v327);
+    __twr_l38:;
+    __twr_v328 = (uint64_t)(&TlOpenDestination);
+    __twr_v329 = (uint64_t)(&FeOutputFile);
+    __twr_v330 = (uint64_t)(&FeOutputFileHandle);
+    __twr_v331 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v328)(__twr_v329, __twr_v330);
+    if (__twr_v331) { goto __twr_l41; } else { goto __twr_l40; }
+    __twr_l41:;
+    __twr_v332 = (uint64_t)(&TlUserError);
+    __twr_v333 = (uint64_t)(&"Failed to open destination file.");
+    __twr_v334 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v332)(__twr_v333, __twr_v334, __twr_v334, __twr_v334);
+    __twr_l40:;
+    __twr_v335 = (uint64_t)(&TrgInitialize);
+    ((void (*)())__twr_v335)();
+    __twr_v336 = (uint64_t)(&LexInitialize);
+    ((void (*)())__twr_v336)();
+    __twr_v337 = (uint64_t)(&PrsInitialize);
+    ((void (*)())__twr_v337)();
+}
+extern void IrGenerate();
+extern void IrSimplify();
+extern void IrEliminateDeadVariables();
+void JklCompileProgram(uint64_t _mng_argc338, uint64_t _mng_argv339) {
     uint64_t __twr_v340;
     uint64_t __twr_v341;
-    __twr_v323 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
-    __twr_v324 = (uint64_t)(&FeFileBlockHashTable);
-    __twr_v325 = 560ULL;
-    __twr_v326 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v323)(__twr_v324, __twr_v325, _mng_includename321, _mng_created322);
-    _mng_fileblock327 = __twr_v326;
-    __twr_v328 = *(uint8_t*)(_mng_created322);
-    if (__twr_v328) { goto __twr_l32; } else { goto __twr_l31; }
-    __twr_l32:;
-    __twr_v329 = (uint64_t)(&TlCopyString);
-    __twr_v330 = 304ULL;
-    __twr_v331 = _mng_fileblock327 + __twr_v330;
-    __twr_v332 = 0ULL;
-    __twr_v333 = 1ULL;
-    __twr_v334 = __twr_v332;
-    __twr_v335 = __twr_v331;
-    __twr_v336 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v329)(__twr_v331, _mng_includename321, __twr_v336);
-    __twr_v337 = _mng_fileblock327 + __twr_v330;
-    __twr_v338 = __twr_v337;
-    __twr_v339 = _mng_fileblock327;
-    __twr_v340 = 40ULL;
-    __twr_v341 = _mng_fileblock327 + __twr_v340;
-    *(uint64_t*)(__twr_v341) = __twr_v337;
-    __twr_l31:;
-    return _mng_fileblock327;
-}
-void FeCopyPathFileBlock(uint64_t _mng_fileblock342, uint64_t _mng_filepath343) {
+    uint64_t __twr_v342;
+    uint64_t __twr_v343;
     uint64_t __twr_v344;
     uint64_t __twr_v345;
     uint64_t __twr_v346;
     uint64_t __twr_v347;
     uint64_t __twr_v348;
     uint64_t __twr_v349;
-    uint64_t __twr_v350;
-    uint64_t __twr_v351;
-    __twr_v344 = (uint64_t)(&TlCopyString);
-    __twr_v345 = 48ULL;
-    __twr_v346 = _mng_fileblock342 + __twr_v345;
-    __twr_v347 = 0ULL;
-    __twr_v348 = 1ULL;
-    __twr_v349 = __twr_v347;
-    __twr_v350 = __twr_v346;
-    __twr_v351 = 256ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v344)(__twr_v346, _mng_filepath343, __twr_v351);
-}
-extern uint64_t CtTargetInfo[8];
-uint64_t TrgInfoRecords[8] = {
-    (uint64_t)(&CtTargetInfo),
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
-};
-void TrgInitialize() {
-    uint64_t __twr_v352;
-    uint64_t __twr_v353;
-    uint64_t __twr_v354;
-    uint64_t __twr_v355;
-    uint64_t __twr_v356;
-    uint64_t _mng_target357;
-    uint64_t __twr_v358;
-    uint64_t __twr_v359;
-    uint64_t __twr_v360;
-    uint64_t __twr_v361;
-    uint64_t __twr_v362;
-    uint64_t __twr_v363;
-    uint64_t __twr_v364;
-    uint64_t __twr_v365;
-    uint64_t __twr_v366;
-    uint64_t __twr_v367;
-    uint64_t __twr_v368;
-    uint64_t __twr_v369;
-    uint64_t __twr_v370;
-    uint64_t __twr_v371;
-    uint64_t __twr_v372;
-    uint64_t __twr_v373;
-    uint64_t __twr_v374;
-    uint64_t __twr_v375;
-    uint64_t __twr_v376;
-    uint64_t __twr_v377;
-    __twr_v352 = (uint64_t)(&TrgInfoRecords);
-    __twr_v353 = 0ULL;
-    __twr_v354 = 8ULL;
-    __twr_v355 = __twr_v353;
-    __twr_v356 = __twr_v352;
-    _mng_target357 = __twr_v352;
-    __twr_v358 = *(uint64_t*)(__twr_v352);
-    if (__twr_v358 != __twr_v353) { goto __twr_l33; } else { goto __twr_l34; }
-    __twr_l33:;
-    __twr_v359 = (uint64_t)(&TlCompareString);
-    __twr_v360 = (uint64_t)(&FeTargetString);
-    __twr_v361 = 0ULL;
-    __twr_v362 = 1ULL;
-    __twr_v363 = __twr_v361;
-    __twr_v364 = __twr_v360;
-    __twr_v365 = *(uint64_t*)(_mng_target357);
-    __twr_v366 = __twr_v365;
-    __twr_v367 = *(uint64_t*)(__twr_v365);
-    __twr_v368 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v359)(__twr_v360, __twr_v367);
-    if (__twr_v368 == __twr_v361) { goto __twr_l37; } else { goto __twr_l36; }
-    __twr_l37:;
-    __twr_v369 = *(uint64_t*)(_mng_target357);
-    __twr_v370 = (uint64_t)(&JklTargetInfo);
-    *(uint64_t*)(__twr_v370) = __twr_v369;
-    return;
-    __twr_l36:;
-    __twr_v371 = 8ULL;
-    __twr_v372 = _mng_target357 + __twr_v371;
-    _mng_target357 = __twr_v372;
-    __twr_l35:;
-    __twr_v373 = *(uint64_t*)(_mng_target357);
-    __twr_v374 = 0ULL;
-    if (__twr_v373 != __twr_v374) { goto __twr_l33; } else { goto __twr_l34; }
-    __twr_l34:;
-    __twr_v375 = (uint64_t)(&TlUserError);
-    __twr_v376 = (uint64_t)(&"Unknown target specified");
-    __twr_v377 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v375)(__twr_v376, __twr_v377, __twr_v377, __twr_v377);
-}
-void FeInitialize(uint64_t _mng_argc378, uint64_t _mng_argv379) {
-    uint64_t __twr_v380;
-    uint64_t __twr_v381;
-    uint64_t __twr_v382;
-    uint64_t __twr_v383;
-    uint64_t __twr_v384;
-    uint64_t __twr_v385;
-    uint64_t __twr_v386;
-    uint64_t __twr_v387;
-    uint64_t __twr_v388;
-    uint64_t __twr_v389;
-    uint64_t __twr_v390;
-    uint64_t __twr_v391;
-    uint64_t _mng_status392;
-    uint64_t __twr_v393;
-    uint64_t __twr_v394;
-    uint64_t __twr_v395;
-    uint64_t __twr_v396;
-    uint64_t __twr_v397;
-    uint64_t __twr_v398;
-    uint64_t __twr_v399;
-    uint64_t __twr_v400;
-    uint64_t __twr_v401;
-    uint64_t __twr_v402;
-    uint64_t __twr_v403;
-    uint64_t __twr_v404;
-    uint64_t __twr_v405;
-    uint64_t __twr_v406;
-    uint64_t __twr_v407;
-    uint64_t __twr_v408;
-    uint64_t __twr_v409;
-    __twr_v380 = (uint64_t)(&TlInitializeHashTable);
-    __twr_v381 = (uint64_t)(&FeFileBlockHashTable);
-    ((void (*)(uint64_t))__twr_v380)(__twr_v381);
-    __twr_v382 = (uint64_t)(&LexInitializePreprocessor);
-    ((void (*)())__twr_v382)();
-    __twr_v383 = (uint64_t)(&FeParseArguments);
-    ((void (*)(uint64_t, uint64_t))__twr_v383)(_mng_argc378, _mng_argv379);
-    __twr_v384 = (uint64_t)(&TlOpenSource);
-    __twr_v385 = (uint64_t)(&FeInputFile);
-    __twr_v386 = 0ULL;
-    __twr_v387 = 1ULL;
-    __twr_v388 = __twr_v386;
-    __twr_v389 = __twr_v385;
-    __twr_v390 = (uint64_t)(&FeInputFileHandle);
-    __twr_v391 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v384)(__twr_v385, __twr_v390);
-    _mng_status392 = __twr_v391;
-    if (__twr_v391) { goto __twr_l39; } else { goto __twr_l38; }
-    __twr_l39:;
-    __twr_v393 = (uint64_t)(&TlUserError);
-    __twr_v394 = (uint64_t)(&"Failed to open source file.");
-    __twr_v395 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v393)(__twr_v394, __twr_v395, __twr_v395, __twr_v395);
-    __twr_l38:;
-    __twr_v396 = (uint64_t)(&TlOpenDestination);
-    __twr_v397 = (uint64_t)(&FeOutputFile);
-    __twr_v398 = 0ULL;
-    __twr_v399 = 1ULL;
-    __twr_v400 = __twr_v398;
-    __twr_v401 = __twr_v397;
-    __twr_v402 = (uint64_t)(&FeOutputFileHandle);
-    __twr_v403 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v396)(__twr_v397, __twr_v402);
-    _mng_status392 = __twr_v403;
-    if (__twr_v403) { goto __twr_l41; } else { goto __twr_l40; }
-    __twr_l41:;
-    __twr_v404 = (uint64_t)(&TlUserError);
-    __twr_v405 = (uint64_t)(&"Failed to open destination file.");
-    __twr_v406 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v404)(__twr_v405, __twr_v406, __twr_v406, __twr_v406);
-    __twr_l40:;
-    __twr_v407 = (uint64_t)(&TrgInitialize);
-    ((void (*)())__twr_v407)();
-    __twr_v408 = (uint64_t)(&LexInitialize);
-    ((void (*)())__twr_v408)();
-    __twr_v409 = (uint64_t)(&PrsInitialize);
-    ((void (*)())__twr_v409)();
-}
-extern void IrGenerate();
-extern void IrSimplify();
-void JklCompileProgram(uint64_t _mng_argc410, uint64_t _mng_argv411) {
-    uint64_t __twr_v412;
-    uint64_t __twr_v413;
-    uint64_t __twr_v414;
-    uint64_t __twr_v415;
-    uint64_t __twr_v416;
-    uint64_t __twr_v417;
-    uint64_t __twr_v418;
-    uint64_t __twr_v419;
-    uint64_t __twr_v420;
-    __twr_v412 = (uint64_t)(&FeInitialize);
-    ((void (*)(uint64_t, uint64_t))__twr_v412)(_mng_argc410, _mng_argv411);
-    __twr_v413 = (uint64_t)(&PrsProgram);
-    ((void (*)())__twr_v413)();
-    __twr_v414 = (uint64_t)(&IrGenerate);
-    ((void (*)())__twr_v414)();
-    __twr_v415 = (uint64_t)(&IrSimplify);
-    ((void (*)())__twr_v415)();
-    __twr_v416 = (uint64_t)(&JklTargetInfo);
-    __twr_v417 = *(uint64_t*)(__twr_v416);
-    __twr_v418 = 8ULL;
-    __twr_v419 = __twr_v417 + __twr_v418;
-    __twr_v420 = *(uint64_t*)(__twr_v419);
-    ((void (*)())__twr_v420)();
+    __twr_v340 = (uint64_t)(&FeInitialize);
+    ((void (*)(uint64_t, uint64_t))__twr_v340)(_mng_argc338, _mng_argv339);
+    __twr_v341 = (uint64_t)(&PrsProgram);
+    ((void (*)())__twr_v341)();
+    __twr_v342 = (uint64_t)(&IrGenerate);
+    ((void (*)())__twr_v342)();
+    __twr_v343 = (uint64_t)(&IrSimplify);
+    ((void (*)())__twr_v343)();
+    __twr_v344 = (uint64_t)(&IrEliminateDeadVariables);
+    ((void (*)())__twr_v344)();
+    __twr_v345 = (uint64_t)(&JklTargetInfo);
+    __twr_v346 = *(uint64_t*)(__twr_v345);
+    __twr_v347 = 8ULL;
+    __twr_v348 = __twr_v346 + __twr_v347;
+    __twr_v349 = *(uint64_t*)(__twr_v348);
+    ((void (*)())__twr_v349)();
 }

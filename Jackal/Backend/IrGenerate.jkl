@@ -95,6 +95,7 @@ FN IrCreateVariable (
 
     var^.Known = FALSE
     var^.Escaped = FALSE
+    var^.ConsideredForDve = FALSE
 
     RETURN var
 END

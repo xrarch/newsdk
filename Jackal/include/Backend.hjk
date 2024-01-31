@@ -99,9 +99,18 @@ STRUCT IrVariableSimplifyInfo
     ConstantValue : UWORD,
 END
 
+STRUCT IrVariableEliminationInfo
+    DeadListEntry : TlListEntry,
+
+    DefinedByListHead : ^IrInstruction,
+
+    References : ULONG,
+END
+
 UNION IrVariableOptInfo
     Vn : IrVariableValueNumberInfo,
     Sim : IrVariableSimplifyInfo,
+    Dve : IrVariableEliminationInfo,
 END
 
 STRUCT IrVariable
@@ -116,6 +125,7 @@ STRUCT IrVariable
     Known : UBYTE,
     KnownConstant : UBYTE,
     Escaped : UBYTE,
+    ConsideredForDve : UBYTE,
 END
 
 STRUCT IrLabelBody
@@ -179,6 +189,8 @@ STRUCT IrInstruction
     Defines : ^IrVariable,
     Source1 : ^IrVariable,
     Source2 : ^IrVariable,
+
+    NextDefines : ^IrInstruction,
 
     Type : IrInstructionType,
 END

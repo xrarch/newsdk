@@ -274,6 +274,7 @@ END
 
 EXTERN FN IrGenerate ()
 EXTERN FN IrSimplify ()
+EXTERN FN IrEliminateDeadVariables ()
 
 FN JklCompileProgram (
     IN argc : ULONG,
@@ -298,9 +299,13 @@ FN JklCompileProgram (
 
     IrGenerate ()
 
-    // Perform final IR simplification pass.
+    // Perform IR simplification pass.
 
     IrSimplify ()
+
+    // Perform final pass over IR for dead variable elimination.
+
+    IrEliminateDeadVariables ()
 
     // Call the target-specific code to finish compilation.
 

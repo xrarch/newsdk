@@ -1,0 +1,217 @@
+//
+// Implements support for dead variable elimination.
+//
+
+#INCLUDE "Be.hjk"
+
+IrDeadVariableListHead : TlListEntry
+IrDeadLocalCount := 0
+
+FN IrEliminateDeadInstruction (
+    IN inst : ^IrInstruction,
+)
+
+    // Eliminate a dead instruction.
+
+    IrRemoveInstruction ( inst )
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1 THEN
+        src1^.Opt.Dve.References -= 1
+
+        IF src1^.Opt.Dve.References == 0 THEN
+            // This variable is dead now too.
+
+            TlInsertAtTailList (
+                &IrDeadVariableListHead, // head
+                &src1^.Opt.Dve.DeadListEntry, // entry
+            )
+        END
+    END
+
+    IF src2 THEN
+        src2^.Opt.Dve.References -= 1
+
+        IF src2^.Opt.Dve.References == 0 THEN
+            // This variable is dead now too.
+
+            TlInsertAtTailList (
+                &IrDeadVariableListHead, // head
+                &src2^.Opt.Dve.DeadListEntry, // entry
+            )
+        END
+    END
+END
+
+FN IrEliminateDeadVariable (
+    IN var : ^IrVariable,
+)
+
+    // Eliminate the dead variable. This might make other variables dead too.
+
+    definedbyinst := var^.DefinedBy
+
+    IF definedbyinst THEN
+        IF definedbyinst^.Type == IR_CALL THEN
+            // Don't eliminate this. Calls have side effects.
+
+            LEAVE
+        END
+
+        IrEliminateDeadInstruction ( definedbyinst )
+
+    ELSEIF var^.Symbol THEN
+        // Eliminate all instructions that define this named local.
+
+        inst := var^.Opt.Dve.DefinedByListHead
+
+        WHILE inst DO
+            IrEliminateDeadInstruction ( inst )
+
+            inst = inst^.NextDefines
+        END
+    END
+END
+
+FN IrEliminateForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Eliminate the dead variables for a function.
+
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+    // Do an initial scan over the IR to construct use counts for each variable
+    // and the initial dead variable list.
+
+    inst := irfunc^.Head
+
+    WHILE inst DO
+        def := inst^.Defines
+
+        IF def THEN
+            IF NOT def^.ConsideredForDve THEN
+                // Optimistically place it on the dead variable list.
+
+                TlInsertAtTailList (
+                    &IrDeadVariableListHead, // head
+                    &def^.Opt.Dve.DeadListEntry, // entry
+                )
+
+                def^.ConsideredForDve = TRUE
+                def^.Opt.Dve.References = 0
+
+                IF def^.Symbol THEN
+                    def^.Opt.Dve.DefinedByListHead = NULLPTR
+                END
+            END
+
+            IF def^.Symbol THEN
+                inst^.NextDefines = def^.Opt.Dve.DefinedByListHead
+                def^.Opt.Dve.DefinedByListHead = inst
+            END
+        END
+
+        src1 := inst^.Source1
+        src2 := inst^.Source2
+
+        IF src1 THEN
+            IF NOT src1^.ConsideredForDve THEN
+                src1^.Opt.Dve.References = 1
+                src1^.ConsideredForDve = TRUE
+
+            ELSE
+                IF NOT src1^.Opt.Dve.References THEN
+                    // Not dead after all.
+
+                    TlRemoveEntryList ( &src1^.Opt.Dve.DeadListEntry )
+                END
+
+                src1^.Opt.Dve.References += 1
+            END
+        END
+
+        IF src2 THEN
+            IF NOT src2^.ConsideredForDve THEN
+                src2^.Opt.Dve.References = 1
+                src2^.ConsideredForDve = TRUE
+
+            ELSE
+                IF NOT src2^.Opt.Dve.References THEN
+                    // Not dead after all.
+
+                    TlRemoveEntryList ( &src2^.Opt.Dve.DeadListEntry )
+                END
+
+                src2^.Opt.Dve.References += 1
+            END
+        END
+
+        IF inst^.Type == IR_CALL THEN
+            // Special handling for call arguments.
+
+            arg := inst^.Body.Call.ArgListHead
+
+            WHILE arg DO
+                var := arg^.Variable
+
+                IF NOT var^.ConsideredForDve THEN
+                    var^.Opt.Dve.References = 1
+                    var^.ConsideredForDve = TRUE
+
+                ELSE
+                    IF NOT var^.Opt.Dve.References THEN
+                        // Not dead after all.
+
+                        TlRemoveEntryList ( &var^.Opt.Dve.DeadListEntry )
+                    END
+
+                    var^.Opt.Dve.References += 1
+                END
+
+                arg = arg^.Next
+            END
+        END
+
+        inst = inst^.Next
+    END
+
+    // Iterate the dead variable list to a fixed point.
+
+    head := &IrDeadVariableListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        var := CONTAINEROF listentry TO IrVariable.Opt.Dve.DeadListEntry
+
+        IrEliminateDeadVariable ( var )
+
+        nextentry := listentry^.Next
+
+        TlRemoveEntryList ( listentry )
+
+        listentry = nextentry
+    END
+
+
+END
+
+FN IrEliminateDeadVariables ()
+
+    // Eliminate all the dead variables. The simplification pass makes a LOT of
+    // them.
+
+    // Initialize the dead variable list head.
+
+    TlInitializeList ( &IrDeadVariableListHead )
+
+    funcsym := PrsFunctionListHead
+
+    WHILE funcsym DO
+        IrEliminateForFunction ( funcsym )
+
+        funcsym = funcsym^.NextFunction
+    END
+END
