@@ -288,6 +288,99 @@ FN PrsIsCompileTime (
     RETURN FALSE
 END
 
+FN PrsFieldSequence (
+    OUT offset : ^UWORD,
+) : ^LexSemanticType
+
+    // Parse a sequence of the form StructName.FieldName.FieldName... and return
+    // the resulting final offset and type.
+
+    idtoken : LexToken
+
+    IF NOT LexMatchToken (
+        &idtoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+        LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+    END
+
+    symbol := CAST idtoken.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_TYPE THEN
+        LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+    END
+
+    type := symbol^.SemanticType
+
+    IF NOT LexMatchToken (
+        &idtoken, // token
+        TOKEN_OPER, // type
+        TOKEN_DOT, // subtype
+    ) THEN
+        LexTokenError ( &idtoken, "Expected a dot", 0, 0, 0 )
+    END
+
+    finaloffset : UWORD = 0
+
+    WHILE TRUE DO
+        WHILE type^.Subtype == TYPE_NAMED DO
+            IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                // Forward declared type that we don't know anything about yet.
+
+                LexTokenError ( &idtoken,
+                    "Illegal use of undeclared destination type", 0, 0, 0 )
+            END
+
+            type = type^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF type^.Subtype != TYPE_COMPOUND THEN
+            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        END
+
+        LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        LexExitOverlayScope ()
+
+        IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &idtoken, "Non-existent field name", 0, 0, 0 )
+        END
+
+        symbol = CAST idtoken.Payload TO ^LexSymbol
+
+        finaloffset += symbol^.Value
+
+        type = symbol^.SemanticType
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_OPER, // type
+            TOKEN_DOT, // subtype
+        ) THEN
+            // No more field names, we done.
+
+            BREAK
+        END
+    END
+
+    offset^ = finaloffset
+
+    RETURN type
+END
+
 FN PrsCheckType (
     IN errtoken : ^LexToken,
     IN type1 : ^LexSemanticType,
@@ -752,64 +845,18 @@ FN PrsAtom () : ^PrsAstNode
         // We have to create a constant containing the offset of the field in
         // the given struct. Syntax is OFFSETOF StructName.FieldName.
 
-        idtoken : LexToken
+        offset : UWORD
 
-        IF NOT LexMatchToken (
-            &idtoken, // token
-            TOKEN_IDENTIFIER, // type
-            0, // subtype
-        ) THEN
-            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
-        END
-
-        IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
-        END
-
-        symbol := CAST idtoken.Payload TO ^LexSymbol
-
-        IF symbol^.Type != SYM_TYPE THEN
-            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
-        END
-
-        type := symbol^.SemanticType
-
-        IF type^.Subtype != TYPE_COMPOUND THEN
-            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
-        END
-
-        IF NOT LexMatchToken (
-            &idtoken, // token
-            TOKEN_OPER, // type
-            TOKEN_DOT, // subtype
-        ) THEN
-            LexTokenError ( &idtoken, "Expected a dot", 0, 0, 0 )
-        END
-
-        LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
-
-        IF NOT LexMatchToken (
-            &idtoken, // token
-            TOKEN_IDENTIFIER, // type
-            0, // subtype
-        ) THEN
-            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
-        END
-
-        LexExitOverlayScope ()
-
-        IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-            LexTokenError ( &idtoken, "Expected a field name", 0, 0, 0 )
-        END
-
-        symbol = CAST idtoken.Payload TO ^LexSymbol
+        PrsFieldSequence (
+            &offset, // OUT offset
+        )
 
         atomnode = PrsCreateAstNode (
             AST_CONSTANT,
             &token, // token
         )
 
-        atomnode^.Body.Constant.Value = symbol^.Value
+        atomnode^.Body.Constant.Value = offset
 
     ELSE
         LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
@@ -817,6 +864,8 @@ FN PrsAtom () : ^PrsAstNode
 
     RETURN atomnode
 END
+
+
 
 FN PrsExpression (
     IN minprecedence : UWORD,
@@ -3613,63 +3662,19 @@ FN (PrsOperatorF) PrsParseContainerOf (
     ) THEN
         LexTokenError ( &token, "Expected TO.", 0, 0, 0 )
     END
+    
+    offset : UWORD
 
-    IF NOT LexMatchToken (
-        &token, // token
-        TOKEN_IDENTIFIER, // type
-        0, // subtype
-    ) THEN
-        LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
-    END
-
-    IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-        LexTokenError ( &token, "Expected a struct name", 0, 0, 0 )
-    END
-
-    symbol := CAST token.Payload TO ^LexSymbol
-
-    IF symbol^.Type != SYM_TYPE THEN
-        LexTokenError ( &token, "Expected a struct name", 0, 0, 0 )
-    END
-
-    type := symbol^.SemanticType
-
-    IF type^.Subtype != TYPE_COMPOUND THEN
-        LexTokenError ( &token, "Expected a struct name", 0, 0, 0 )
-    END
-
-    IF NOT LexMatchToken (
-        &token, // token
-        TOKEN_OPER, // type
-        TOKEN_DOT, // subtype
-    ) THEN
-        LexTokenError ( &token, "Expected a dot", 0, 0, 0 )
-    END
-
-    LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
-
-    IF NOT LexMatchToken (
-        &token, // token
-        TOKEN_IDENTIFIER, // type
-        0, // subtype
-    ) THEN
-        LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
-    END
-
-    LexExitOverlayScope ()
-
-    IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-        LexTokenError ( &token, "Expected a field name", 0, 0, 0 )
-    END
-
-    symbol = CAST token.Payload TO ^LexSymbol
+    type := PrsFieldSequence (
+        &offset, // OUT offset
+    )
 
     constnode := PrsCreateAstNode (
         AST_CONSTANT,
         &token, // token
     )
 
-    constnode^.Body.Constant.Value = symbol^.Value
+    constnode^.Body.Constant.Value = offset
 
     subnode^.Body.Operator.Right = constnode
 

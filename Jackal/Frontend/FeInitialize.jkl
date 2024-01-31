@@ -273,6 +273,7 @@ FN FeInitialize (
 END
 
 EXTERN FN IrGenerate ()
+EXTERN FN IrSimplify ()
 
 FN JklCompileProgram (
     IN argc : ULONG,
@@ -296,6 +297,10 @@ FN JklCompileProgram (
     // Generate IR for each function.
 
     IrGenerate ()
+
+    // Perform final IR simplification pass.
+
+    IrSimplify ()
 
     // Call the target-specific code to finish compilation.
 

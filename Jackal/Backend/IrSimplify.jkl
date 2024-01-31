@@ -6,6 +6,125 @@
 
 IrKnownVariableListHead : TlListEntry
 
+#DEFINE IR_CC_HASH_SIZE 97
+
+STRUCT IrConstantTableRecord
+    OrderedListHead : TlListEntry,
+    BucketHeads : TlListEntry[IR_CC_HASH_SIZE],
+END
+
+IrConstantTable : IrConstantTableRecord
+
+#MACRO IrVariableIsConstant ( var ) [
+    ((var)^.DefinedBy AND (var)^.DefinedBy^.Type == IR_CONSTANT)
+]
+
+#MACRO IrVariableConstantValue ( var ) [
+    ((var)^.DefinedBy^.Body.Constant.Constant)
+]
+
+FNPTR IrSimplifyF (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+FN (IrSimplifyF) IrSimplifyAdd (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify an ADD instruction.
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) +
+            IrVariableConstantValue ( src2 )
+
+        // Transform this ADD instruction into a CONSTANT instruction.
+
+        inst^.Type = IR_CONSTANT
+        inst^.Body.Constant.Constant = res
+        inst^.Source1 = NULLPTR
+        inst^.Source2 = NULLPTR
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            inst^.Type = IR_MOVE
+            inst^.Source1 = src1
+            inst^.Source2 = NULLPTR
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        inst2 := src2^.DefinedBy
+
+        IF NOT inst2 THEN
+            RETURN FALSE
+        END
+
+        IF inst2^.Type == IR_ADD THEN
+            // Possible re-association opportunity if it turns out we have
+            // something of the form:
+
+            // ADD a, b, constantA
+            // ADD c, a, constantB
+
+            // We can turn it into:
+
+            // ADD c, b, (constantA + constantB)
+
+            inst2src2 := inst2^.Source2
+
+            IF IrVariableIsConstant ( inst2src2 ) THEN
+                // Woo-hoo!
+
+                inst2src2val := IrVariableConstantValue ( inst2src2 )
+
+                // TODO
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
+IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
+    [IR_ADD] = &IrSimplifyAdd,
+}
+
 FN IrKnownVariableBarrier (
     IN onlyescaped : UBYTE,
 )
@@ -30,15 +149,13 @@ FN IrKnownVariableBarrier (
     END
 END
 
-FN IrSimplify (
-    IN irfunc : ^IrFunction,
+FN IrSimplifyForFunction (
+    IN funcsym : ^LexSymbol,
 )
 
     // Simplify the IR for a function in a single pass.
 
-    // Initialize the known variable list.
-
-    TlInitializeList ( &IrKnownVariableListHead )
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
     // Simplifications performed (locally, over basic blocks) include:
     //
@@ -51,8 +168,6 @@ FN IrSimplify (
     // be created; we don't need dead variable elimination, they will
     // automagically vanish during DAG instruction selection as nothing relevant
     // will refer to them.
-
-    IrKnownVariableBarrier ( FALSE )
 
     inst := irfunc^.Head
 
@@ -84,13 +199,30 @@ FN IrSimplify (
                 )
             END
 
-            def^.Known = TRUE
             def^.Opt.Sim.Contents = inst^.Source1
 
         ELSEIF def AND def^.Known THEN
             TlRemoveEntryList ( &def^.ValueListEntry )
 
             def^.Known = FALSE
+        END
+
+        // Perform arithmetic simplifications as may be appropriate for this
+        // operation. This may insert new IR instructions but will never remove
+        // them. That sounds like it would be worse, but this will usually
+        // result in more expensive operations becoming dead and will therefore
+        // not be represented in the final output of the compiler (as they won't
+        // be referenced in the effectful DAG).
+
+        simplifyfunc := IrSimplificationFunctions[inst^.Type]
+
+        IF simplifyfunc THEN
+            IF simplifyfunc ( inst ) THEN
+                // A simplification function can request that we repeat our
+                // analysis of this instruction.
+
+                CONTINUE
+            END
         END
 
         IF (inst^.Type > IR_BRANCH_LOW_NUMBER AND
@@ -110,4 +242,52 @@ FN IrSimplify (
 
         inst = inst^.Next
     END
+END
+
+FN IrInitializeConstantTable ()
+
+    // Initialize the structures for the constant table.
+
+    TlInitializeList ( &IrConstantTable.OrderedListHead )
+
+    i := 0
+
+    WHILE i < IR_CC_HASH_SIZE DO
+        TlInitializeList ( &IrConstantTable.BucketHeads[i] )
+
+        i += 1
+    END
+END
+
+FN IrSimplify ()
+
+    // For each function definition, simplify IR.
+
+    // XXX NOTE that we reuse some structures the value numbering uses, so we
+    //     MUST wait until after all functions have been IR-gen'd before doing
+    //     simplification.
+
+    // Initialize the known variable list.
+
+    TlInitializeList ( &IrKnownVariableListHead )
+
+    // Initialize the constant cache table (this is used in place of full value
+    // numbering for the new constants we create here).
+
+    IrInitializeConstantTable ()
+
+    TlInitializeList ( &IrConstantTable.OrderedListHead )
+
+    funcsym := PrsFunctionListHead
+
+    WHILE funcsym DO
+        IrKnownVariableBarrier ( FALSE )
+
+        IrSimplifyForFunction ( funcsym )
+
+        funcsym = funcsym^.NextFunction
+    END
+
+    // Note that there might be more opportunities for value numbering now, but
+    // I'm not sure if it's worth it yet.
 END

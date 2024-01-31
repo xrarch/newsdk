@@ -38,8 +38,4 @@ EXTERN FN IrGiveOpaqueValueVariable (
 
 EXTERN FN IrInitializeValueNumber ()
 
-EXTERN FN IrSimplify (
-    IN irfunc : ^IrFunction,
-)
-
 EXTERN IrCommutativity : UBYTE[IR_MAX]

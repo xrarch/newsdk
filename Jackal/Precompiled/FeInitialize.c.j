@@ -755,6 +755,7 @@ void FeInitialize(uint64_t _mng_argc366, uint64_t _mng_argv367) {
     ((void (*)())__twr_v397)();
 }
 extern void IrGenerate();
+extern void IrSimplify();
 void JklCompileProgram(uint64_t _mng_argc398, uint64_t _mng_argv399) {
     uint64_t __twr_v400;
     uint64_t __twr_v401;
@@ -764,16 +765,19 @@ void JklCompileProgram(uint64_t _mng_argc398, uint64_t _mng_argv399) {
     uint64_t __twr_v405;
     uint64_t __twr_v406;
     uint64_t __twr_v407;
+    uint64_t __twr_v408;
     __twr_v400 = (uint64_t)(&FeInitialize);
     ((void (*)(uint64_t, uint64_t))__twr_v400)(_mng_argc398, _mng_argv399);
     __twr_v401 = (uint64_t)(&PrsProgram);
     ((void (*)())__twr_v401)();
     __twr_v402 = (uint64_t)(&IrGenerate);
     ((void (*)())__twr_v402)();
-    __twr_v403 = (uint64_t)(&JklTargetInfo);
-    __twr_v404 = *(uint64_t*)(__twr_v403);
-    __twr_v405 = 8ULL;
-    __twr_v406 = __twr_v404 + __twr_v405;
-    __twr_v407 = *(uint64_t*)(__twr_v406);
-    ((void (*)())__twr_v407)();
+    __twr_v403 = (uint64_t)(&IrSimplify);
+    ((void (*)())__twr_v403)();
+    __twr_v404 = (uint64_t)(&JklTargetInfo);
+    __twr_v405 = *(uint64_t*)(__twr_v404);
+    __twr_v406 = 8ULL;
+    __twr_v407 = __twr_v405 + __twr_v406;
+    __twr_v408 = *(uint64_t*)(__twr_v407);
+    ((void (*)())__twr_v408)();
 }

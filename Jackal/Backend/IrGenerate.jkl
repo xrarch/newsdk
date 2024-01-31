@@ -331,6 +331,45 @@ FN IrCreateConstantVariable (
     RETURN var
 END
 
+FN IrCreateConstantBefore (
+    IN beforeinst : ^IrInstruction,
+    IN value : UWORD,
+) : ^IrVariable
+
+    // Create a variable with a constant value, and insert it before the given
+    // instruction. Helper function for IR simplifier.
+
+    var := IrFindConstant (
+        value, // constant
+        IR_CONSTANT, // op
+    )
+
+    IF var THEN
+        RETURN var
+    END
+
+    inst := IrCreateInstruction (
+        IR_CONSTANT, // type
+    )
+
+    var = IrCreateVariable (
+        inst, // definedby
+    )
+
+    inst^.Defines = var
+    inst^.Body.Constant.Constant = value
+
+    IrValueNumberConstantVariable (
+        var, // var
+        value, // value
+        IR_CONSTANT, // op
+    )
+
+    IrInsertInstructionTail ( inst )
+
+    RETURN var
+END
+
 FN IrGenerateMove (
     IN destvar : ^IrVariable,
     IN srcvar : ^IrVariable,
@@ -2334,10 +2373,6 @@ FN IrGenerateForFunction (
     funcsym^.InitialValue = IrCurrentFunction
 
     IrGenerateBlock ( funcsym^.SemanticType^.Body.Function.BodyBlock )
-
-    // Run the IR simplifier.
-
-    IrSimplify ( IrCurrentFunction )
 END
 
 FN IrGenerate ()
