@@ -1,0 +1,57 @@
+//
+// Implements the fox32 code generator.
+//
+
+#INCLUDE "<inc>/Backend.hjk"
+
+// FORWARD
+EXTERN FN (JklTargetF) FoxCompile ()
+
+FoxTargetInfo : JklTargetInfoRecord = {
+    [Name] = "fox32",
+    [EntryFunc] = &FoxCompile,
+    [PointerAlignment] = 4,
+    [PointerSize] = 4,
+    [LargestPrimitive] = PRIM_TYPE_ULONG,
+    [LargestSignedPrimitive] = PRIM_TYPE_LONG,
+    [SupportedTypes] = {
+        [PRIM_TYPE_VOID] = TRUE,
+        [PRIM_TYPE_UBYTE] = TRUE,
+        [PRIM_TYPE_UINT] = TRUE,
+        [PRIM_TYPE_ULONG] = TRUE,
+        [PRIM_TYPE_UQUAD] = FALSE,
+        [PRIM_TYPE_BYTE] = TRUE,
+        [PRIM_TYPE_INT] = TRUE,
+        [PRIM_TYPE_LONG] = TRUE,
+        [PRIM_TYPE_QUAD] = FALSE,
+    },
+    [PrimitiveAlignment] = {
+        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_UBYTE] = 1,
+        [PRIM_TYPE_UINT] = 2,
+        [PRIM_TYPE_ULONG] = 4,
+        [PRIM_TYPE_UQUAD] = 8,
+        [PRIM_TYPE_BYTE] = 1,
+        [PRIM_TYPE_INT] = 2,
+        [PRIM_TYPE_LONG] = 4,
+        [PRIM_TYPE_QUAD] = 8,
+    },
+    [PrimitiveSize] = {
+        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_UBYTE] = 1,
+        [PRIM_TYPE_UINT] = 2,
+        [PRIM_TYPE_ULONG] = 4,
+        [PRIM_TYPE_UQUAD] = 8,
+        [PRIM_TYPE_BYTE] = 1,
+        [PRIM_TYPE_INT] = 2,
+        [PRIM_TYPE_LONG] = 4,
+        [PRIM_TYPE_QUAD] = 8,
+    },
+}
+
+FN (JklTargetF) FoxCompile ()
+    
+    // Compile the program for the fox32 architecture.
+
+    TlPrintString ( "TODO compile foxly\n" )
+END

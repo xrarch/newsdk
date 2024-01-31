@@ -194,10 +194,14 @@ FN FeCopyPathFileBlock (
 END
 
 EXTERN CtTargetInfo : JklTargetInfoRecord
+EXTERN FoxTargetInfo : JklTargetInfoRecord
 
 TrgInfoRecords : ^JklTargetInfoRecord[8] = {
 #IF TRG_CT
     &CtTargetInfo,
+#END
+#IF TRG_FOX32
+    &FoxTargetInfo,
 #END
 
     NULLPTR, // MUST be here, as a sentinel

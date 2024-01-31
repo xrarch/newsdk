@@ -15,12 +15,19 @@ ifndef TRG_CT
 	TRG_CT := 1
 endif
 
+ifndef TRG_FOX32
+	TRG_FOX32 := 1
+endif
+
 export TRG_CT
+export TRG_FOX32
+
 export SDK
 
 export JC := $(REPO)/build/bsjkl target=CHost \
 	BITS=$(BITS) \
-	TRG_CT=$(TRG_CT)
+	TRG_CT=$(TRG_CT) \
+	TRG_FOX32=$(TRG_FOX32)
 
 export JCC := $(CC) -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c
 export CC := $(CC) -Ofast
