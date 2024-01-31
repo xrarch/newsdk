@@ -23,6 +23,105 @@ IrConstantTable : IrConstantTableRecord
     ((var)^.DefinedBy^.Body.Constant.Constant)
 ]
 
+FN IrCacheConstant (
+    IN var : ^IrVariable,
+    IN constant : UWORD,
+)
+
+    // Cache a constant in the constant table.
+
+    IF var^.KnownConstant THEN
+        // Remove from current hash link.
+
+        TlRemoveEntryList ( &var^.Opt.Sim.ConstantHashEntry )
+
+    ELSE
+        // Add to ordered list.
+
+        TlInsertAtHeadList (
+            &IrConstantTable.OrderedListHead, // head
+            &var^.Opt.Sim.ConstantListEntry,
+        )
+
+        var^.KnownConstant = TRUE
+    END
+
+    var^.Opt.Sim.ConstantValue = constant
+
+    hash : ULONG = constant
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= hash >> 21
+    hash $= hash >> 28
+    hash %= IR_CC_HASH_SIZE
+
+    TlInsertAtHeadList (
+        &IrConstantTable.BucketHeads[hash], // head
+        &var^.Opt.Sim.ConstantHashEntry,
+    )
+END
+
+FN IrConstantTableLookup (
+    IN beforeinst : ^IrInstruction,
+    IN constant : UWORD,
+) : ^IrVariable
+
+    // Look up a constant in the constant table.
+    // If there isn't one, create a constant variable and return it, with the
+    // constant load IR instruction inserted before the provided instruction.
+
+    hash : ULONG = constant
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= hash >> 21
+    hash $= hash >> 28
+    hash %= IR_CC_HASH_SIZE
+
+    head := &IrConstantTable.BucketHeads[hash]
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        var := CONTAINEROF listentry TO IrVariable.Opt.Sim.ConstantHashEntry
+
+        IF var^.Opt.Sim.ConstantValue == constant THEN
+            RETURN var
+        END
+
+        listentry = listentry^.Next
+    END
+
+    var := IrCreateConstantBefore (
+        beforeinst, // beforeinst
+        constant, // value
+    )
+
+    IrCacheConstant (
+        var, // var
+        constant, // constant
+    )
+
+    RETURN var
+END
+
+FN IrConstantTableBarrier ()
+
+    // Kill all the cached constants.
+
+    head := &IrConstantTable.OrderedListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        nextentry := listentry^.Next
+
+        var := CONTAINEROF listentry TO IrVariable.Opt.Sim.ConstantListEntry
+
+        TlRemoveEntryList ( &var^.Opt.Sim.ConstantListEntry )
+        TlRemoveEntryList ( &var^.Opt.Sim.ConstantHashEntry )
+
+        listentry = nextentry
+    END
+END
+
 FNPTR IrSimplifyF (
     IN inst : ^IrInstruction,
 ) : UBYTE
@@ -54,6 +153,11 @@ FN (IrSimplifyF) IrSimplifyAdd (
         inst^.Body.Constant.Constant = res
         inst^.Source1 = NULLPTR
         inst^.Source2 = NULLPTR
+
+        IrCacheConstant (
+            inst^.Defines, // var
+            res, // constant
+        )
 
         // When we create a new CONSTANT instruction, we have to repeat the
         // analysis, so return TRUE.
@@ -113,7 +217,16 @@ FN (IrSimplifyF) IrSimplifyAdd (
 
                 inst2src2val := IrVariableConstantValue ( inst2src2 )
 
-                // TODO
+                constvar := IrConstantTableLookup (
+                    inst, // beforeinst
+                    inst2src2val, // constant
+                )
+
+                inst^.Type = IR_MOVE
+                inst^.Source1 = constvar
+                inst^.Source2 = NULLPTR
+
+                RETURN FALSE
             END
         END
     END
@@ -137,7 +250,7 @@ FN IrKnownVariableBarrier (
     WHILE listentry != head DO
         nextentry := listentry^.Next
 
-        var := CONTAINEROF listentry TO IrVariable.ValueListEntry
+        var := CONTAINEROF listentry TO IrVariable.Opt.Sim.KnownListEntry
 
         IF NOT onlyescaped OR var^.Escaped THEN
             var^.Known = FALSE
@@ -165,9 +278,11 @@ FN IrSimplifyForFunction (
     //  o Value propagation
     //
     // These are done in a single forward scan over the IR. Dead variables will
-    // be created; we don't need dead variable elimination, they will
-    // automagically vanish during DAG instruction selection as nothing relevant
-    // will refer to them.
+    // be created; if we only had to eliminate dead temporaries, we wouldn't
+    // need to do anything at all, since they wouldn't be referenced by the DAG
+    // selection pass and would automagically die. However, we also want to
+    // eliminate dead named locals. For this reason, there is a dead variable
+    // elimination pass that occurs after this one.
 
     inst := irfunc^.Head
 
@@ -195,30 +310,37 @@ FN IrSimplifyForFunction (
 
                 TlInsertAtHeadList (
                     &IrKnownVariableListHead, // head
-                    &def^.ValueListEntry, // entry
+                    &def^.Opt.Sim.KnownListEntry, // entry
                 )
             END
 
             def^.Opt.Sim.Contents = inst^.Source1
 
-        ELSEIF def AND def^.Known THEN
-            TlRemoveEntryList ( &def^.ValueListEntry )
+        ELSEIF def THEN
+            IF def^.Known THEN
+                TlRemoveEntryList ( &def^.Opt.Sim.KnownListEntry )
 
-            def^.Known = FALSE
+                def^.Known = FALSE
+            END
+
+            IF def^.KnownConstant THEN
+                TlRemoveEntryList ( &def^.Opt.Sim.ConstantListEntry )
+                TlRemoveEntryList ( &def^.Opt.Sim.ConstantHashEntry )
+
+                def^.KnownConstant = FALSE
+            END
         END
 
         // Perform arithmetic simplifications as may be appropriate for this
         // operation. This may insert new IR instructions but will never remove
-        // them. That sounds like it would be worse, but this will usually
-        // result in more expensive operations becoming dead and will therefore
-        // not be represented in the final output of the compiler (as they won't
-        // be referenced in the effectful DAG).
+        // them. Instructions that were made extraneous will be removed by the
+        // dead variable elimination pass.
 
         simplifyfunc := IrSimplificationFunctions[inst^.Type]
 
         IF simplifyfunc THEN
             IF simplifyfunc ( inst ) THEN
-                // A simplification function can request that we repeat our
+                // The simplification function told us we should repeat our
                 // analysis of this instruction.
 
                 CONTINUE
@@ -232,6 +354,7 @@ FN IrSimplifyForFunction (
             // because we are lame.
 
             IrKnownVariableBarrier ( FALSE )
+            IrConstantTableBarrier ()
         
         ELSEIF inst^.Type == IR_CALL THEN
             // This was a call so we have to make sure to kill any escaped
@@ -282,6 +405,7 @@ FN IrSimplify ()
 
     WHILE funcsym DO
         IrKnownVariableBarrier ( FALSE )
+        IrConstantTableBarrier ()
 
         IrSimplifyForFunction ( funcsym )
 

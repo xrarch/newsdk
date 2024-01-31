@@ -90,6 +90,7 @@ FN IrCreateVariable (
     var^.Number = 0
 
     var^.Opt.Vn.AcquiredByLoad = FALSE
+    var^.Opt.Vn.AcquiredByNamed = FALSE
     var^.Opt.Vn.KeyOp = 0
 
     var^.Known = FALSE
@@ -119,12 +120,18 @@ FN IrInsertInstructionTail (
     IF inst^.Type > IR_BRANCH_LOW_NUMBER AND
         inst^.Type < IR_BRANCH_HIGH_NUMBER THEN
 
-        IrValueNumberBarrier ( FALSE )
+        IrValueNumberBarrier (
+            FALSE, // onlyloads
+            FALSE, // onlynameds
+        )
 
     ELSEIF inst^.Type > IR_LOAD_BARRIER_LOW_NUMBER AND
         inst^.Type < IR_LOAD_BARRIER_HIGH_NUMBER THEN
 
-        IrValueNumberBarrier ( TRUE )
+        IrValueNumberBarrier (
+            TRUE, // onlyloads
+            FALSE, // onlynameds
+        )
     END
 END
 
@@ -339,20 +346,11 @@ FN IrCreateConstantBefore (
     // Create a variable with a constant value, and insert it before the given
     // instruction. Helper function for IR simplifier.
 
-    var := IrFindConstant (
-        value, // constant
-        IR_CONSTANT, // op
-    )
-
-    IF var THEN
-        RETURN var
-    END
-
     inst := IrCreateInstruction (
         IR_CONSTANT, // type
     )
 
-    var = IrCreateVariable (
+    var := IrCreateVariable (
         inst, // definedby
     )
 
@@ -365,7 +363,20 @@ FN IrCreateConstantBefore (
         IR_CONSTANT, // op
     )
 
-    IrInsertInstructionTail ( inst )
+    prev := beforeinst^.Prev
+
+    IF prev THEN
+        prev^.Next = inst
+
+    ELSE
+        // beforeinst must have been the head.
+
+        beforeinst^.Block^.Head = inst
+    END
+
+    beforeinst^.Prev = inst
+    inst^.Next = beforeinst
+    inst^.Prev = prev
 
     RETURN var
 END
@@ -509,6 +520,8 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
             var^.Symbol = symbol
 
             var^.Annotation = IR_VAR_LOCAL
+
+            var^.Opt.Vn.AcquiredByNamed = TRUE
 
             IrGiveOpaqueValueVariable ( var )
 
@@ -1585,6 +1598,13 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
     IrInsertInstructionTail ( inst )
 
+    // Kill all named variables.
+
+    IrValueNumberBarrier (
+        FALSE, // onlyloads
+        TRUE, // onlynameds
+    )
+
     IF truelabel THEN
         IrGenerateBranch (
             node, // node
@@ -2386,7 +2406,10 @@ FN IrGenerate ()
     funcsym := PrsFunctionListHead
 
     WHILE funcsym DO
-        IrValueNumberBarrier ( FALSE )
+        IrValueNumberBarrier (
+            FALSE, // onlyloads
+            FALSE, // onlynameds
+        )
 
         IrGenerateForFunction ( funcsym )
 

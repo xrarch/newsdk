@@ -14,7 +14,8 @@ EXTERN FN IrFindValue (
 ) : ^IrVariable
 
 EXTERN FN IrValueNumberBarrier (
-    IN onlyloads : UBYTE,
+    IN onlyloads : UWORD,
+    IN onlynameds : UWORD,
 )
 
 EXTERN FN IrKillVariable (
@@ -39,3 +40,8 @@ EXTERN FN IrGiveOpaqueValueVariable (
 EXTERN FN IrInitializeValueNumber ()
 
 EXTERN IrCommutativity : UBYTE[IR_MAX]
+
+EXTERN FN IrCreateConstantBefore (
+    IN beforeinst : ^IrInstruction,
+    IN value : UWORD,
+) : ^IrVariable

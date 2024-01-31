@@ -143,6 +143,8 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     uint64_t __twr_v169;
     uint64_t __twr_v170;
     uint64_t __twr_v171;
+    uint64_t __twr_v172;
+    uint64_t __twr_v173;
     __twr_v148 = (uint64_t)(&TlCopyString);
     __twr_v149 = 48ULL;
     __twr_v150 = _mng_section146 + __twr_v149;
@@ -152,37 +154,37 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     __twr_v154 = __twr_v150 + __twr_v153;
     __twr_v155 = 64ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v148)(__twr_v154, _mng_name147, __twr_v155);
-    __twr_v156 = _mng_section146;
-    __twr_v157 = 40ULL;
-    __twr_v158 = _mng_section146 + __twr_v157;
-    *(uint64_t*)(__twr_v158) = __twr_v154;
-    __twr_v159 = (uint64_t)(&TlInitializeHashTable);
-    __twr_v160 = 120ULL;
-    __twr_v161 = _mng_section146 + __twr_v160;
-    ((void (*)(uint64_t))__twr_v159)(__twr_v161);
-    __twr_v162 = 112ULL;
+    __twr_v156 = _mng_section146 + __twr_v149;
+    __twr_v157 = __twr_v156 + __twr_v153;
+    __twr_v158 = _mng_section146;
+    __twr_v159 = 40ULL;
+    __twr_v160 = _mng_section146 + __twr_v159;
+    *(uint64_t*)(__twr_v160) = __twr_v157;
+    __twr_v161 = (uint64_t)(&TlInitializeHashTable);
+    __twr_v162 = 120ULL;
     __twr_v163 = _mng_section146 + __twr_v162;
-    *(uint64_t*)(__twr_v163) = __twr_v151;
-    __twr_v164 = (uint64_t)(&LexSectionListTail);
-    __twr_v165 = *(uint64_t*)(__twr_v164);
-    if (__twr_v165) { goto __twr_l2; } else { goto __twr_l3; }
-    __twr_l2:;
+    ((void (*)(uint64_t))__twr_v161)(__twr_v163);
+    __twr_v164 = 112ULL;
+    __twr_v165 = _mng_section146 + __twr_v164;
+    *(uint64_t*)(__twr_v165) = __twr_v151;
     __twr_v166 = (uint64_t)(&LexSectionListTail);
     __twr_v167 = *(uint64_t*)(__twr_v166);
-    __twr_v168 = 112ULL;
-    __twr_v169 = __twr_v167 + __twr_v168;
-    *(uint64_t*)(__twr_v169) = _mng_section146;
+    if (__twr_v167) { goto __twr_l2; } else { goto __twr_l3; }
+    __twr_l2:;
+    __twr_v168 = (uint64_t)(&LexSectionListTail);
+    __twr_v169 = *(uint64_t*)(__twr_v168);
+    __twr_v170 = 112ULL;
+    __twr_v171 = __twr_v169 + __twr_v170;
+    *(uint64_t*)(__twr_v171) = _mng_section146;
     goto __twr_l1;
     __twr_l3:;
-    __twr_v170 = (uint64_t)(&LexSectionListHead);
-    *(uint64_t*)(__twr_v170) = _mng_section146;
+    __twr_v172 = (uint64_t)(&LexSectionListHead);
+    *(uint64_t*)(__twr_v172) = _mng_section146;
     __twr_l1:;
-    __twr_v171 = (uint64_t)(&LexSectionListTail);
-    *(uint64_t*)(__twr_v171) = _mng_section146;
+    __twr_v173 = (uint64_t)(&LexSectionListTail);
+    *(uint64_t*)(__twr_v173) = _mng_section146;
 }
 void LexInitializeSectionStuff() {
-    uint64_t __twr_v172;
-    uint64_t __twr_v173;
     uint64_t __twr_v174;
     uint64_t __twr_v175;
     uint64_t __twr_v176;
@@ -190,23 +192,23 @@ void LexInitializeSectionStuff() {
     uint64_t __twr_v178;
     uint64_t __twr_v179;
     uint64_t __twr_v180;
-    __twr_v172 = (uint64_t)(&TlInitializeZone);
-    __twr_v173 = (uint64_t)(&LexSectionStackElementZone);
-    __twr_v174 = 16ULL;
-    ((void (*)(uint64_t, uint64_t))__twr_v172)(__twr_v173, __twr_v174);
-    __twr_v175 = (uint64_t)(&TlInitializeHashTable);
-    __twr_v176 = (uint64_t)(&LexSectionHashTable);
-    ((void (*)(uint64_t))__twr_v175)(__twr_v176);
-    __twr_v177 = (uint64_t)(&LexInitializeSection);
-    __twr_v178 = (uint64_t)(&LexDefaultSection);
-    __twr_v179 = (uint64_t)(&"DEFAULT_SECTION");
-    ((void (*)(uint64_t, uint64_t))__twr_v177)(__twr_v178, __twr_v179);
-    __twr_v180 = (uint64_t)(&LexCurrentSection);
-    *(uint64_t*)(__twr_v180) = __twr_v178;
-}
-uint64_t LexLookupSection(uint64_t _mng_name181) {
+    uint64_t __twr_v181;
     uint64_t __twr_v182;
-    uint64_t __twr_v183;
+    __twr_v174 = (uint64_t)(&TlInitializeZone);
+    __twr_v175 = (uint64_t)(&LexSectionStackElementZone);
+    __twr_v176 = 16ULL;
+    ((void (*)(uint64_t, uint64_t))__twr_v174)(__twr_v175, __twr_v176);
+    __twr_v177 = (uint64_t)(&TlInitializeHashTable);
+    __twr_v178 = (uint64_t)(&LexSectionHashTable);
+    ((void (*)(uint64_t))__twr_v177)(__twr_v178);
+    __twr_v179 = (uint64_t)(&LexInitializeSection);
+    __twr_v180 = (uint64_t)(&LexDefaultSection);
+    __twr_v181 = (uint64_t)(&"DEFAULT_SECTION");
+    ((void (*)(uint64_t, uint64_t))__twr_v179)(__twr_v180, __twr_v181);
+    __twr_v182 = (uint64_t)(&LexCurrentSection);
+    *(uint64_t*)(__twr_v182) = __twr_v180;
+}
+uint64_t LexLookupSection(uint64_t _mng_name183) {
     uint64_t __twr_v184;
     uint64_t __twr_v185;
     uint64_t __twr_v186;
@@ -215,70 +217,70 @@ uint64_t LexLookupSection(uint64_t _mng_name181) {
     uint64_t __twr_v189;
     uint64_t __twr_v190;
     uint64_t __twr_v191;
-    uint8_t _mng_created192;
+    uint64_t __twr_v192;
     uint64_t __twr_v193;
-    uint64_t _mng_section194;
+    uint8_t _mng_created194;
     uint64_t __twr_v195;
-    __twr_v182 = 0ULL;
-    __twr_v183 = 1ULL;
-    __twr_v184 = __twr_v182 * __twr_v183;
-    __twr_v185 = _mng_name181 + __twr_v184;
-    __twr_v186 = *(uint8_t*)(__twr_v185);
-    if (__twr_v186 == __twr_v182) { goto __twr_l5; } else { goto __twr_l4; }
-    __twr_l5:;
-    __twr_v187 = (uint64_t)(&LexDefaultSection);
-    return __twr_v187;
-    __twr_l4:;
-    __twr_v188 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
-    __twr_v189 = (uint64_t)(&LexSectionHashTable);
-    __twr_v190 = 1696ULL;
-    __twr_v191 = (uint64_t)(&_mng_created192);
-    __twr_v193 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v188)(__twr_v189, __twr_v190, _mng_name181, __twr_v191);
-    _mng_section194 = __twr_v193;
-    if (_mng_created192) { goto __twr_l6; } else { goto __twr_l7; }
-    __twr_l7:;
-    return _mng_section194;
-    __twr_l6:;
-    __twr_v195 = (uint64_t)(&LexInitializeSection);
-    ((void (*)(uint64_t, uint64_t))__twr_v195)(_mng_section194, _mng_name181);
-    return _mng_section194;
-}
-void LexPushSection(uint64_t _mng_section196) {
+    uint64_t _mng_section196;
     uint64_t __twr_v197;
-    uint64_t __twr_v198;
+    __twr_v184 = 0ULL;
+    __twr_v185 = 1ULL;
+    __twr_v186 = __twr_v184 * __twr_v185;
+    __twr_v187 = _mng_name183 + __twr_v186;
+    __twr_v188 = *(uint8_t*)(__twr_v187);
+    if (__twr_v188 == __twr_v184) { goto __twr_l5; } else { goto __twr_l4; }
+    __twr_l5:;
+    __twr_v189 = (uint64_t)(&LexDefaultSection);
+    return __twr_v189;
+    __twr_l4:;
+    __twr_v190 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
+    __twr_v191 = (uint64_t)(&LexSectionHashTable);
+    __twr_v192 = 1696ULL;
+    __twr_v193 = (uint64_t)(&_mng_created194);
+    __twr_v195 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v190)(__twr_v191, __twr_v192, _mng_name183, __twr_v193);
+    _mng_section196 = __twr_v195;
+    if (_mng_created194) { goto __twr_l6; } else { goto __twr_l7; }
+    __twr_l7:;
+    return _mng_section196;
+    __twr_l6:;
+    __twr_v197 = (uint64_t)(&LexInitializeSection);
+    ((void (*)(uint64_t, uint64_t))__twr_v197)(_mng_section196, _mng_name183);
+    return _mng_section196;
+}
+void LexPushSection(uint64_t _mng_section198) {
     uint64_t __twr_v199;
-    uint64_t _mng_elem200;
+    uint64_t __twr_v200;
     uint64_t __twr_v201;
-    uint64_t __twr_v202;
+    uint64_t _mng_elem202;
     uint64_t __twr_v203;
     uint64_t __twr_v204;
     uint64_t __twr_v205;
     uint64_t __twr_v206;
     uint64_t __twr_v207;
     uint64_t __twr_v208;
-    __twr_v197 = (uint64_t)(&TlAllocateFromZone);
-    __twr_v198 = (uint64_t)(&LexSectionStackElementZone);
-    __twr_v199 = ((uint64_t (*)(uint64_t))__twr_v197)(__twr_v198);
-    _mng_elem200 = __twr_v199;
-    __twr_v201 = (uint64_t)(&LexSectionStackTop);
-    __twr_v202 = *(uint64_t*)(__twr_v201);
-    __twr_v203 = 0ULL;
-    __twr_v204 = __twr_v199;
-    *(uint64_t*)(__twr_v199) = __twr_v202;
-    __twr_v205 = (uint64_t)(&LexCurrentSection);
-    __twr_v206 = *(uint64_t*)(__twr_v205);
-    __twr_v207 = 8ULL;
-    __twr_v208 = __twr_v199 + __twr_v207;
-    *(uint64_t*)(__twr_v208) = __twr_v206;
-    *(uint64_t*)(__twr_v201) = __twr_v199;
-    *(uint64_t*)(__twr_v205) = _mng_section196;
-}
-uint64_t LexPopSection() {
     uint64_t __twr_v209;
     uint64_t __twr_v210;
-    uint64_t _mng_elem211;
+    __twr_v199 = (uint64_t)(&TlAllocateFromZone);
+    __twr_v200 = (uint64_t)(&LexSectionStackElementZone);
+    __twr_v201 = ((uint64_t (*)(uint64_t))__twr_v199)(__twr_v200);
+    _mng_elem202 = __twr_v201;
+    __twr_v203 = (uint64_t)(&LexSectionStackTop);
+    __twr_v204 = *(uint64_t*)(__twr_v203);
+    __twr_v205 = 0ULL;
+    __twr_v206 = __twr_v201;
+    *(uint64_t*)(__twr_v201) = __twr_v204;
+    __twr_v207 = (uint64_t)(&LexCurrentSection);
+    __twr_v208 = *(uint64_t*)(__twr_v207);
+    __twr_v209 = 8ULL;
+    __twr_v210 = __twr_v201 + __twr_v209;
+    *(uint64_t*)(__twr_v210) = __twr_v208;
+    *(uint64_t*)(__twr_v203) = __twr_v201;
+    *(uint64_t*)(__twr_v207) = _mng_section198;
+}
+uint64_t LexPopSection() {
+    uint64_t __twr_v211;
     uint64_t __twr_v212;
-    uint64_t __twr_v213;
+    uint64_t _mng_elem213;
     uint64_t __twr_v214;
     uint64_t __twr_v215;
     uint64_t __twr_v216;
@@ -289,27 +291,29 @@ uint64_t LexPopSection() {
     uint64_t __twr_v221;
     uint64_t __twr_v222;
     uint64_t __twr_v223;
-    __twr_v209 = (uint64_t)(&LexSectionStackTop);
-    __twr_v210 = *(uint64_t*)(__twr_v209);
-    _mng_elem211 = __twr_v210;
-    if (__twr_v210) { goto __twr_l8; } else { goto __twr_l9; }
+    uint64_t __twr_v224;
+    uint64_t __twr_v225;
+    __twr_v211 = (uint64_t)(&LexSectionStackTop);
+    __twr_v212 = *(uint64_t*)(__twr_v211);
+    _mng_elem213 = __twr_v212;
+    if (__twr_v212) { goto __twr_l8; } else { goto __twr_l9; }
     __twr_l9:;
-    __twr_v212 = 0ULL;
-    return __twr_v212;
+    __twr_v214 = 0ULL;
+    return __twr_v214;
     __twr_l8:;
-    __twr_v213 = 0ULL;
-    __twr_v214 = _mng_elem211;
-    __twr_v215 = *(uint64_t*)(_mng_elem211);
-    __twr_v216 = (uint64_t)(&LexSectionStackTop);
-    *(uint64_t*)(__twr_v216) = __twr_v215;
-    __twr_v217 = 8ULL;
-    __twr_v218 = _mng_elem211 + __twr_v217;
-    __twr_v219 = *(uint64_t*)(__twr_v218);
-    __twr_v220 = (uint64_t)(&LexCurrentSection);
-    *(uint64_t*)(__twr_v220) = __twr_v219;
-    __twr_v221 = (uint64_t)(&TlFreeToZone);
-    __twr_v222 = (uint64_t)(&LexSectionStackElementZone);
-    ((void (*)(uint64_t, uint64_t))__twr_v221)(__twr_v222, _mng_elem211);
-    __twr_v223 = 1ULL;
-    return __twr_v223;
+    __twr_v215 = 0ULL;
+    __twr_v216 = _mng_elem213;
+    __twr_v217 = *(uint64_t*)(_mng_elem213);
+    __twr_v218 = (uint64_t)(&LexSectionStackTop);
+    *(uint64_t*)(__twr_v218) = __twr_v217;
+    __twr_v219 = 8ULL;
+    __twr_v220 = _mng_elem213 + __twr_v219;
+    __twr_v221 = *(uint64_t*)(__twr_v220);
+    __twr_v222 = (uint64_t)(&LexCurrentSection);
+    *(uint64_t*)(__twr_v222) = __twr_v221;
+    __twr_v223 = (uint64_t)(&TlFreeToZone);
+    __twr_v224 = (uint64_t)(&LexSectionStackElementZone);
+    ((void (*)(uint64_t, uint64_t))__twr_v223)(__twr_v224, _mng_elem213);
+    __twr_v225 = 1ULL;
+    return __twr_v225;
 }

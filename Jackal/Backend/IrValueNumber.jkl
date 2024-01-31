@@ -16,7 +16,8 @@ IrHashTable : IrHashTableRecord
 IrNextValueNumber : ULONG = 1
 
 FN IrValueNumberBarrier (
-    IN onlyloads : UBYTE,
+    IN onlyloads : UWORD,
+    IN onlynameds : UWORD,
 )
 
     // Cause a value number barrier; clear the hash table.
@@ -27,13 +28,15 @@ FN IrValueNumberBarrier (
     WHILE listentry != head DO
         nextentry := listentry^.Next
 
-        var := CONTAINEROF listentry TO IrVariable.ValueListEntry
+        var := CONTAINEROF listentry TO IrVariable.Opt.Vn.ListEntry
 
-        IF NOT onlyloads OR var^.Opt.Vn.AcquiredByLoad THEN
+        IF (NOT onlyloads OR var^.Opt.Vn.AcquiredByLoad) AND
+            (NOT onlynameds OR var^.Opt.Vn.AcquiredByNamed) THEN
+
             var^.Opt.Vn.ValueNumber = 0
 
-            TlRemoveEntryList ( &var^.ValueListEntry )
-            TlRemoveEntryList ( &var^.ValueHashEntry )
+            TlRemoveEntryList ( &var^.Opt.Vn.ListEntry )
+            TlRemoveEntryList ( &var^.Opt.Vn.HashEntry )
         END
 
         listentry = nextentry
@@ -50,15 +53,15 @@ FN IrKillValueNumber (
     listentry := head^.Next
 
     WHILE listentry != head DO
-        var := CONTAINEROF listentry TO IrVariable.ValueListEntry
+        var := CONTAINEROF listentry TO IrVariable.Opt.Vn.ListEntry
 
         nextentry := listentry^.Next
 
         IF var^.Opt.Vn.KeySrc1 == value OR var^.Opt.Vn.KeySrc2 == value THEN
             var^.Opt.Vn.ValueNumber = 0
 
-            TlRemoveEntryList ( &var^.ValueListEntry )
-            TlRemoveEntryList ( &var^.ValueHashEntry )
+            TlRemoveEntryList ( &var^.Opt.Vn.ListEntry )
+            TlRemoveEntryList ( &var^.Opt.Vn.HashEntry )
         END
 
         listentry = nextentry
@@ -72,8 +75,8 @@ FN IrKillVariable (
     IrKillValueNumber ( var^.Opt.Vn.ValueNumber )
 
     IF var^.Opt.Vn.KeyOp THEN
-        TlRemoveEntryList ( &var^.ValueListEntry )
-        TlRemoveEntryList ( &var^.ValueHashEntry )
+        TlRemoveEntryList ( &var^.Opt.Vn.ListEntry )
+        TlRemoveEntryList ( &var^.Opt.Vn.HashEntry )
     END
 END
 
@@ -85,8 +88,8 @@ FN IrGiveOpaqueValueVariable (
         // This variable already has a value number, so remove it from its place
         // in the value number hash table.
 
-        TlRemoveEntryList ( &var^.ValueHashEntry )
-        TlRemoveEntryList ( &var^.ValueListEntry )
+        TlRemoveEntryList ( &var^.Opt.Vn.HashEntry )
+        TlRemoveEntryList ( &var^.Opt.Vn.ListEntry )
 
         // Also kill any values that used this variable's old value number.
 
@@ -109,6 +112,7 @@ FN IrValueNumberVariable (
     // Give the variable a (new) value number.
 
     byload := var^.Opt.Vn.AcquiredByLoad | src1^.Opt.Vn.AcquiredByLoad
+    bynamed := var^.Opt.Vn.AcquiredByNamed | src1^.Opt.Vn.AcquiredByNamed
     valuesrc1 := src1^.Opt.Vn.ValueNumber
 
     IF NOT valuesrc1 THEN
@@ -120,6 +124,7 @@ FN IrValueNumberVariable (
     IF src2 THEN
         valuesrc2 = src2^.Opt.Vn.ValueNumber
         byload |= src2^.Opt.Vn.AcquiredByLoad
+        bynamed |= src2^.Opt.Vn.AcquiredByNamed
 
         IF NOT valuesrc2 THEN
             LEAVE
@@ -130,7 +135,7 @@ FN IrValueNumberVariable (
         // This variable already has a value number, so remove it from its place
         // in the value number hash table.
 
-        TlRemoveEntryList ( &var^.ValueHashEntry )
+        TlRemoveEntryList ( &var^.Opt.Vn.HashEntry )
 
         // Also kill any values that used this variable's old value number.
 
@@ -140,7 +145,7 @@ FN IrValueNumberVariable (
 
         TlInsertAtHeadList (
             &IrHashTable.OrderedListHead, // head
-            &var^.ValueListEntry, // entry
+            &var^.Opt.Vn.ListEntry, // entry
         )
     END
 
@@ -150,6 +155,7 @@ FN IrValueNumberVariable (
     var^.Opt.Vn.ValueNumber = vn
 
     var^.Opt.Vn.AcquiredByLoad = byload
+    var^.Opt.Vn.AcquiredByNamed = bynamed
 
     var^.Opt.Vn.KeySrc1 = valuesrc1
     var^.Opt.Vn.KeySrc2 = valuesrc2
@@ -164,7 +170,7 @@ FN IrValueNumberVariable (
 
     TlInsertAtHeadList (
         &IrHashTable.BucketHeads[hash], // head
-        &var^.ValueHashEntry,
+        &var^.Opt.Vn.HashEntry,
     )
 END
 
@@ -180,7 +186,7 @@ FN IrValueNumberConstantVariable (
         // This variable already has a value number, so remove it from its place
         // in the value number hash table.
 
-        TlRemoveEntryList ( &var^.ValueHashEntry )
+        TlRemoveEntryList ( &var^.Opt.Vn.HashEntry )
 
         // Also kill any values that used this variable's old value number.
 
@@ -190,7 +196,7 @@ FN IrValueNumberConstantVariable (
 
         TlInsertAtHeadList (
             &IrHashTable.OrderedListHead, // head
-            &var^.ValueListEntry, // entry
+            &var^.Opt.Vn.ListEntry, // entry
         )
     END
 
@@ -211,7 +217,7 @@ FN IrValueNumberConstantVariable (
 
     TlInsertAtHeadList (
         &IrHashTable.BucketHeads[hash], // head
-        &var^.ValueHashEntry,
+        &var^.Opt.Vn.HashEntry,
     )
 END
 
@@ -245,7 +251,7 @@ FN IrFindValue (
     listentry := head^.Next
 
     WHILE listentry != head DO
-        var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
+        var := CONTAINEROF listentry TO IrVariable.Opt.Vn.HashEntry
 
         IF var^.Opt.Vn.KeyOp == op THEN
             IF var^.Opt.Vn.KeySrc1 == valuesrc1 AND
@@ -285,7 +291,7 @@ FN IrFindConstant (
     listentry := head^.Next
 
     WHILE listentry != head DO
-        var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
+        var := CONTAINEROF listentry TO IrVariable.Opt.Vn.HashEntry
 
         IF var^.Opt.Vn.KeyOp == op AND
             var^.Opt.Vn.ConstantValue == constant THEN

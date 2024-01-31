@@ -72,6 +72,9 @@ ENUM IrVariableAnnotation : UBYTE
 END
 
 STRUCT IrVariableValueNumberInfo
+    ListEntry : TlListEntry,
+    HashEntry : TlListEntry,
+
     ConstantValue : UWORD,
 
     KeySrc1 : ULONG,
@@ -80,12 +83,20 @@ STRUCT IrVariableValueNumberInfo
     ValueNumber : ULONG,
 
     AcquiredByLoad : UBYTE,
+    AcquiredByNamed : UBYTE,
 
     KeyOp : IrInstructionType,
 END
 
 STRUCT IrVariableSimplifyInfo
     Contents : ^IrVariable,
+
+    KnownListEntry : TlListEntry,
+    
+    ConstantListEntry : TlListEntry,
+    ConstantHashEntry : TlListEntry,
+
+    ConstantValue : UWORD,
 END
 
 UNION IrVariableOptInfo
@@ -97,15 +108,13 @@ STRUCT IrVariable
     Symbol : ^LexSymbol,
     DefinedBy : ^IrInstruction,
 
-    ValueListEntry : TlListEntry,
-    ValueHashEntry : TlListEntry,
-
     Opt : IrVariableOptInfo,
 
     Number : ULONG,
 
     Annotation : IrVariableAnnotation,
     Known : UBYTE,
+    KnownConstant : UBYTE,
     Escaped : UBYTE,
 END
 
