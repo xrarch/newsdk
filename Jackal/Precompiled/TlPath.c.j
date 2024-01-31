@@ -82,22 +82,22 @@ void TlCopyParentPath(uint64_t _mng_srcpath102, uint64_t _mng_destpath103) {
     _mng_i105 = __twr_v104;
     _mng_lastoff106 = __twr_v104;
     __twr_v107 = 1ULL;
-    __twr_v108 = __twr_v104 * __twr_v107;
-    __twr_v109 = _mng_srcpath102 + __twr_v108;
-    __twr_v110 = *(uint8_t*)(__twr_v109);
+    __twr_v108 = __twr_v104;
+    __twr_v109 = _mng_srcpath102;
+    __twr_v110 = *(uint8_t*)(_mng_srcpath102);
     if (__twr_v110) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l1:;
     __twr_v111 = 1ULL;
-    __twr_v112 = _mng_i105 * __twr_v111;
-    __twr_v113 = _mng_srcpath102 + __twr_v112;
+    __twr_v112 = _mng_i105;
+    __twr_v113 = _mng_srcpath102 + _mng_i105;
     __twr_v114 = *(uint8_t*)(__twr_v113);
     __twr_v115 = 47ULL;
     if (__twr_v114 == __twr_v115) { goto __twr_l5; } else { goto __twr_l4; }
     __twr_l5:;
     __twr_v116 = (uint64_t)(&TlCopyIntoDynamicBuffer);
     __twr_v117 = 1ULL;
-    __twr_v118 = _mng_lastoff106 * __twr_v117;
-    __twr_v119 = _mng_srcpath102 + __twr_v118;
+    __twr_v118 = _mng_lastoff106;
+    __twr_v119 = _mng_srcpath102 + _mng_lastoff106;
     __twr_v120 = _mng_i105 - _mng_lastoff106;
     __twr_v121 = __twr_v120 + __twr_v117;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v116)(_mng_destpath103, __twr_v119, __twr_v121);
@@ -109,8 +109,8 @@ void TlCopyParentPath(uint64_t _mng_srcpath102, uint64_t _mng_destpath103) {
     _mng_i105 = __twr_v124;
     __twr_l3:;
     __twr_v125 = 1ULL;
-    __twr_v126 = _mng_i105 * __twr_v125;
-    __twr_v127 = _mng_srcpath102 + __twr_v126;
+    __twr_v126 = _mng_i105;
+    __twr_v127 = _mng_srcpath102 + _mng_i105;
     __twr_v128 = *(uint8_t*)(__twr_v127);
     if (__twr_v128) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l2:;
@@ -196,15 +196,15 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     _mng_length140 = __twr_v136;
     __twr_l6:;
     __twr_v141 = 1ULL;
-    __twr_v142 = _mng_i138 * __twr_v141;
-    __twr_v143 = _mng_pathset130 + __twr_v142;
+    __twr_v142 = _mng_i138;
+    __twr_v143 = _mng_pathset130 + _mng_i138;
     __twr_v144 = *(uint8_t*)(__twr_v143);
     __twr_v145 = 58ULL;
     if (__twr_v144 == __twr_v145) { goto __twr_l11; } else { goto __twr_l12; }
     __twr_l12:;
     __twr_v146 = 1ULL;
-    __twr_v147 = _mng_i138 * __twr_v146;
-    __twr_v148 = _mng_pathset130 + __twr_v147;
+    __twr_v147 = _mng_i138;
+    __twr_v148 = _mng_pathset130 + _mng_i138;
     __twr_v149 = *(uint8_t*)(__twr_v148);
     __twr_v150 = 0ULL;
     if (__twr_v149 == __twr_v150) { goto __twr_l11; } else { goto __twr_l10; }
@@ -221,8 +221,8 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     __twr_v153 = 1ULL;
     _mng_initialized137 = __twr_v153;
     __twr_v154 = (uint64_t)(&TlCopyIntoDynamicBuffer);
-    __twr_v155 = _mng_lastoff139 * __twr_v153;
-    __twr_v156 = _mng_pathset130 + __twr_v155;
+    __twr_v155 = _mng_lastoff139;
+    __twr_v156 = _mng_pathset130 + _mng_lastoff139;
     __twr_v157 = _mng_i138 - _mng_lastoff139;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v154)(_mng_resultingpath131, __twr_v156, __twr_v157);
     __twr_v158 = 16ULL;
@@ -232,8 +232,8 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     __twr_v162 = _mng_resultingpath131;
     __twr_v163 = *(uint64_t*)(_mng_resultingpath131);
     __twr_v164 = __twr_v163 - __twr_v153;
-    __twr_v165 = __twr_v164 * __twr_v153;
-    __twr_v166 = __twr_v160 + __twr_v165;
+    __twr_v165 = __twr_v164;
+    __twr_v166 = __twr_v160 + __twr_v164;
     __twr_v167 = *(uint8_t*)(__twr_v166);
     __twr_v168 = 47ULL;
     if (__twr_v167 != __twr_v168) { goto __twr_l16; } else { goto __twr_l15; }
@@ -266,8 +266,8 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     goto __twr_l8;
     __twr_l10:;
     __twr_v184 = 1ULL;
-    __twr_v185 = _mng_i138 * __twr_v184;
-    __twr_v186 = _mng_pathset130 + __twr_v185;
+    __twr_v185 = _mng_i138;
+    __twr_v186 = _mng_pathset130 + _mng_i138;
     __twr_v187 = *(uint8_t*)(__twr_v186);
     __twr_v188 = 58ULL;
     if (__twr_v187 == __twr_v188) { goto __twr_l19; } else { goto __twr_l20; }
@@ -280,8 +280,8 @@ uint64_t TlMatchPath(uint64_t _mng_path129, uint64_t _mng_pathset130, uint64_t _
     goto __twr_l8;
     __twr_l20:;
     __twr_v192 = 1ULL;
-    __twr_v193 = _mng_i138 * __twr_v192;
-    __twr_v194 = _mng_pathset130 + __twr_v193;
+    __twr_v193 = _mng_i138;
+    __twr_v194 = _mng_pathset130 + _mng_i138;
     __twr_v195 = *(uint8_t*)(__twr_v194);
     __twr_v196 = 0ULL;
     if (__twr_v195 == __twr_v196) { goto __twr_l21; } else { goto __twr_l22; }

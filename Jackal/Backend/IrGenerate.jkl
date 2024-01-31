@@ -800,10 +800,8 @@ FN (IrExpressionGenerationF) IrGenerateNot (
 
     // This NOT has to produce a value.
 
-    var := IrGenerateExpression (
+    var := IrGenerateRvalue (
         node^.Body.Operator.Left, // node
-        NULLPTR, // truelabel
-        NULLPTR, // falselabel
     )
 
     RETURN IrGenerateOperatorInst (

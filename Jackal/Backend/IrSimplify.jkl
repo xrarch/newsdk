@@ -62,13 +62,10 @@ FN IrCacheConstant (
 END
 
 FN IrConstantTableLookup (
-    IN beforeinst : ^IrInstruction,
     IN constant : UWORD,
 ) : ^IrVariable
 
     // Look up a constant in the constant table.
-    // If there isn't one, create a constant variable and return it, with the
-    // constant load IR instruction inserted before the provided instruction.
 
     hash : ULONG = constant
     hash $= hash >> 7
@@ -90,7 +87,21 @@ FN IrConstantTableLookup (
         listentry = listentry^.Next
     END
 
-    var := IrCreateConstantBefore (
+    RETURN NULLPTR
+END
+
+FN IrConstantTableGet (
+    IN beforeinst : ^IrInstruction,
+    IN constant : UWORD,
+) : ^IrVariable
+
+    var := IrConstantTableLookup ( constant )
+
+    IF var THEN
+        RETURN var
+    END
+
+    var = IrCreateConstantBefore (
         beforeinst, // beforeinst
         constant, // value
     )
@@ -103,34 +114,104 @@ FN IrConstantTableLookup (
     RETURN var
 END
 
-FN IrConstantTableBarrier ()
-
-    // Kill all the cached constants.
-
-    head := &IrConstantTable.OrderedListHead
-    listentry := head^.Next
-
-    WHILE listentry != head DO
-        nextentry := listentry^.Next
-
-        var := CONTAINEROF listentry TO IrVariable.Opt.Sim.ConstantListEntry
-
-        TlRemoveEntryList ( &var^.Opt.Sim.ConstantListEntry )
-        TlRemoveEntryList ( &var^.Opt.Sim.ConstantHashEntry )
-
-        listentry = nextentry
-    END
-END
-
 FNPTR IrSimplifyF (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
-FN (IrSimplifyF) IrSimplifyAdd (
+FN IrSimplifyToConstant (
+    IN inst : ^IrInstruction,
+    IN constant : UWORD,
+)
+
+    // Simplify an instruction to a given constant.
+
+    var := IrConstantTableLookup ( constant )
+
+    IF var THEN
+        inst^.Type = IR_MOVE
+        inst^.Source1 = var
+        inst^.Source2 = NULLPTR
+
+        LEAVE
+    END
+
+    inst^.Type = IR_CONSTANT
+    inst^.Body.Constant.Constant = constant
+    inst^.Source1 = NULLPTR
+    inst^.Source2 = NULLPTR
+END
+
+FN IrSimplifyToMove (
+    IN inst : ^IrInstruction,
+    IN src : ^IrVariable,
+)
+
+    // Simplify the instruction to a move.
+
+    inst^.Type = IR_MOVE
+    inst^.Source1 = src
+    inst^.Source2 = NULLPTR
+END
+
+FN (IrSimplifyF) IrSimplifyNot (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
-    // Simplify an ADD instruction.
+    // Simplify a NOT instruction.
+
+    src1 := inst^.Source1
+
+    IF src1^.Symbol THEN
+        // Named local, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Nice, turn this into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            NOT IrVariableConstantValue ( src1 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchNonZero (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+
+    IF src1^.Symbol THEN
+        // Named local, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Convert to unconditional branch.
+
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) THEN
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchEquals (
+    IN inst : ^IrInstruction,
+) : UBYTE
 
     src1 := inst^.Source1
     src2 := inst^.Source2
@@ -144,18 +225,897 @@ FN (IrSimplifyF) IrSimplifyAdd (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        res := IrVariableConstantValue ( src1 ) +
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) ==
+            IrVariableConstantValue ( src2 ) THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchNotEquals (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) !=
+            IrVariableConstantValue ( src2 ) THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchLessThan (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) <
+            IrVariableConstantValue ( src2 ) THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_GTEQ
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) >
+            IrVariableConstantValue ( src2 ) THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_LTEQ
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchLtEq (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) <=
+            IrVariableConstantValue ( src2 ) THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_GTEQ
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchGtEq (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF IrVariableConstantValue ( src1 ) >=
+            IrVariableConstantValue ( src2 ) THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_LESS_THAN
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpEquals (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            IrVariableConstantValue ( src1 ) ==
+            IrVariableConstantValue ( src2 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpNotEquals (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            IrVariableConstantValue ( src1 ) !=
+            IrVariableConstantValue ( src2 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpLessThan (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            IrVariableConstantValue ( src1 ) <
+            IrVariableConstantValue ( src2 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_GTEQ
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpGreaterThan (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            IrVariableConstantValue ( src1 ) >
+            IrVariableConstantValue ( src2 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_LTEQ
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpLtEq (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            IrVariableConstantValue ( src1 ) <=
+            IrVariableConstantValue ( src2 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_GREATER_THAN
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpGtEq (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            IrVariableConstantValue ( src1 ) >=
+            IrVariableConstantValue ( src2 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_LESS_THAN
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF CAST IrVariableConstantValue ( src1 ) TO WORD <
+            CAST IrVariableConstantValue ( src2 ) TO WORD THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_GTEQ_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF CAST IrVariableConstantValue ( src1 ) TO WORD >
+            CAST IrVariableConstantValue ( src2 ) TO WORD THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_LTEQ_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF CAST IrVariableConstantValue ( src1 ) TO WORD <=
+            CAST IrVariableConstantValue ( src2 ) TO WORD THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_GTEQ_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        inst^.Type = IR_JUMP
+
+        IF CAST IrVariableConstantValue ( src1 ) TO WORD >=
+            CAST IrVariableConstantValue ( src2 ) TO WORD THEN
+
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_BRANCH_LESS_THAN_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpLessThanSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            CAST IrVariableConstantValue ( src1 ) TO WORD <
+            CAST IrVariableConstantValue ( src2 ) TO WORD, // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_GTEQ_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpGreaterThanSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            CAST IrVariableConstantValue ( src1 ) TO WORD >
+            CAST IrVariableConstantValue ( src2 ) TO WORD, // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_LTEQ_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpLtEqSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            CAST IrVariableConstantValue ( src1 ) TO WORD <=
+            CAST IrVariableConstantValue ( src2 ) TO WORD, // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_GREATER_THAN_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCmpGtEqSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        IrSimplifyToConstant (
+            inst, // inst
+            CAST IrVariableConstantValue ( src1 ) TO WORD >=
+            CAST IrVariableConstantValue ( src2 ) TO WORD, // constant
+        )
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+
+        inst^.Type = IR_COMPARE_LESS_THAN_SIGNED
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBitAnd (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify an AND instruction.
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) &
             IrVariableConstantValue ( src2 )
 
-        // Transform this ADD instruction into a CONSTANT instruction.
+        // Transform this AND instruction into a CONSTANT instruction.
 
-        inst^.Type = IR_CONSTANT
-        inst^.Body.Constant.Constant = res
-        inst^.Source1 = NULLPTR
-        inst^.Source2 = NULLPTR
-
-        IrCacheConstant (
-            inst^.Defines, // var
+        IrSimplifyToConstant (
+            inst, // inst
             res, // constant
         )
 
@@ -183,9 +1143,144 @@ FN (IrSimplifyF) IrSimplifyAdd (
         IF src2value == 0 THEN
             // Transform this into a MOVE.
 
-            inst^.Type = IR_MOVE
-            inst^.Source1 = src1
-            inst^.Source2 = NULLPTR
+            IrSimplifyToConstant (
+                inst, // inst
+                0, // constant
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBitOr (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify an OR instruction.
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) |
+            IrVariableConstantValue ( src2 )
+
+        // Transform this OR instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyAdd (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify an ADD instruction.
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) +
+            IrVariableConstantValue ( src2 )
+
+        // Transform this ADD instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
 
             // When we create a new MOVE instruction, we have to repeat the
             // analysis, so return TRUE.
@@ -193,13 +1288,13 @@ FN (IrSimplifyF) IrSimplifyAdd (
             RETURN TRUE
         END
 
-        inst2 := src2^.DefinedBy
+        inst1 := src1^.DefinedBy
 
-        IF NOT inst2 THEN
+        IF NOT inst1 THEN
             RETURN FALSE
         END
 
-        IF inst2^.Type == IR_ADD THEN
+        IF inst1^.Type == IR_ADD THEN
             // Possible re-association opportunity if it turns out we have
             // something of the form:
 
@@ -210,21 +1305,22 @@ FN (IrSimplifyF) IrSimplifyAdd (
 
             // ADD c, b, (constantA + constantB)
 
-            inst2src2 := inst2^.Source2
+            inst1src2 := inst1^.Source2
 
-            IF IrVariableIsConstant ( inst2src2 ) THEN
+            IF IrVariableIsConstant ( inst1src2 ) THEN
                 // Woo-hoo!
 
-                inst2src2val := IrVariableConstantValue ( inst2src2 )
+                inst1src1val := IrVariableConstantValue ( inst1src2 )
+                inst1src1val += src2value
 
-                constvar := IrConstantTableLookup (
+                constvar := IrConstantTableGet (
                     inst, // beforeinst
-                    inst2src2val, // constant
+                    inst1src1val, // constant
                 )
 
-                inst^.Type = IR_MOVE
-                inst^.Source1 = constvar
-                inst^.Source2 = NULLPTR
+                inst^.Type = IR_ADD
+                inst^.Source1 = inst1^.Source1
+                inst^.Source2 = constvar
 
                 RETURN FALSE
             END
@@ -234,8 +1330,764 @@ FN (IrSimplifyF) IrSimplifyAdd (
     RETURN FALSE
 END
 
+FN (IrSimplifyF) IrSimplifySubtract (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify a SUBTRACT instruction.
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) -
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        inst1 := src1^.DefinedBy
+
+        IF NOT inst1 THEN
+            RETURN FALSE
+        END
+
+        IF inst1^.Type == IR_SUBTRACT THEN
+            // Possible re-association opportunity if it turns out we have
+            // something of the form:
+
+            // SUB a, b, constantA
+            // SUB c, a, constantB
+
+            // We can turn it into:
+
+            // SUB c, b, (constantA + constantB)
+
+            inst1src2 := inst1^.Source2
+
+            IF IrVariableIsConstant ( inst1src2 ) THEN
+                // Woo-hoo!
+
+                inst1src1val := IrVariableConstantValue ( inst1src2 )
+                inst1src1val += src2value
+
+                constvar := IrConstantTableGet (
+                    inst, // beforeinst
+                    inst1src1val, // constant
+                )
+
+                inst^.Type = IR_SUBTRACT
+                inst^.Source1 = inst1^.Source1
+                inst^.Source2 = constvar
+
+                RETURN FALSE
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyDivide (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) /
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 1 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        pwrtwo := TlIsPowerOfTwo ( src2value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a right shift.
+
+            constvar := IrConstantTableGet (
+                inst, // beforeinst
+                pwrtwo, // constant
+            )
+
+            inst^.Type = IR_RIGHT_SHIFT
+            inst^.Source2 = constvar
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyDivideSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := CAST IrVariableConstantValue ( src1 ) TO WORD /
+            CAST IrVariableConstantValue ( src2 ) TO WORD
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            CAST res TO UWORD, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 1 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyModulo (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) %
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 1 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToConstant (
+                inst, // inst
+                0, // constant
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        pwrtwo := TlIsPowerOfTwo ( src2value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a bitwise AND.
+
+            constvar := IrConstantTableGet (
+                inst, // beforeinst
+                src2value - 1, // constant
+            )
+
+            inst^.Type = IR_BIT_AND
+            inst^.Source2 = constvar
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyXor (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) $
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyLeftShift (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) <<
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        inst1 := src1^.DefinedBy
+
+        IF NOT inst1 THEN
+            RETURN FALSE
+        END
+
+        IF inst1^.Type == IR_LEFT_SHIFT THEN
+            // Possible re-association opportunity if it turns out we have
+            // something of the form:
+
+            // LSH a, b, constantA
+            // LSH c, a, constantB
+
+            // We can turn it into:
+
+            // LSH c, b, (constantA + constantB)
+
+            inst1src2 := inst1^.Source2
+
+            IF IrVariableIsConstant ( inst1src2 ) THEN
+                // Woo-hoo!
+
+                inst1src1val := IrVariableConstantValue ( inst1src2 )
+                inst1src1val += src2value
+
+                constvar := IrConstantTableGet (
+                    inst, // beforeinst
+                    inst1src1val, // constant
+                )
+
+                inst^.Type = IR_LEFT_SHIFT
+                inst^.Source1 = inst1^.Source1
+                inst^.Source2 = constvar
+
+                RETURN FALSE
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyRightShift (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) >>
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        inst1 := src1^.DefinedBy
+
+        IF NOT inst1 THEN
+            RETURN FALSE
+        END
+
+        IF inst1^.Type == IR_RIGHT_SHIFT THEN
+            // Possible re-association opportunity if it turns out we have
+            // something of the form:
+
+            // RSH a, b, constantA
+            // RSH c, a, constantB
+
+            // We can turn it into:
+
+            // RSH c, b, (constantA + constantB)
+
+            inst1src2 := inst1^.Source2
+
+            IF IrVariableIsConstant ( inst1src2 ) THEN
+                // Woo-hoo!
+
+                inst1src1val := IrVariableConstantValue ( inst1src2 )
+                inst1src1val += src2value
+
+                constvar := IrConstantTableGet (
+                    inst, // beforeinst
+                    inst1src1val, // constant
+                )
+
+                inst^.Type = IR_RIGHT_SHIFT
+                inst^.Source1 = inst1^.Source1
+                inst^.Source2 = constvar
+
+                RETURN FALSE
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBitNot (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify a bitwise NOT instruction.
+
+    src1 := inst^.Source1
+
+    IF src1^.Symbol THEN
+        // Named local, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Nice, turn this into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            ~IrVariableConstantValue ( src1 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyMultiply (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF src1^.Symbol AND src2^.Symbol THEN
+        // Both are named locals, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := IrVariableConstantValue ( src1 ) *
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Flip so that the constant is on the right.
+
+        inst^.Source1 = src2
+        inst^.Source2 = src1
+
+        src1 = src2
+        src2 = inst^.Source2
+    END
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToConstant (
+                inst, // inst
+                0, // constant
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        IF src2value == 1 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        pwrtwo := TlIsPowerOfTwo ( src2value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into left shift.
+
+            constvar := IrConstantTableGet (
+                inst, // beforeinst
+                pwrtwo, // constant
+            )
+
+            inst^.Type = IR_LEFT_SHIFT
+            inst^.Source2 = constvar
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyInverse (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Simplify an INVERSE instruction.
+
+    src1 := inst^.Source1
+
+    IF src1^.Symbol THEN
+        // Named local, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Nice, turn this into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            -IrVariableConstantValue ( src1 ), // constant
+        )
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyCall (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    // Just do value propagation on all of the inputs.
+
+    arg := inst^.Body.Call.ArgListHead
+
+    WHILE arg DO
+        var := arg^.Variable
+
+        IF var^.Known THEN
+            arg^.Variable = var^.Opt.Sim.Contents
+        END
+
+        arg = arg^.Next
+    END
+
+    RETURN FALSE
+END
+
 IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
+    [IR_NOT] = &IrSimplifyNot,
+
+    [IR_BRANCH_NONZERO] = &IrSimplifyBranchNonZero,
+    [IR_BRANCH_EQUALS] = &IrSimplifyBranchEquals,
+    [IR_BRANCH_NOT_EQUALS] = &IrSimplifyBranchNotEquals,
+    [IR_BRANCH_LESS_THAN] = &IrSimplifyBranchLessThan,
+    [IR_BRANCH_GREATER_THAN] = &IrSimplifyBranchGreaterThan,
+    [IR_BRANCH_LTEQ] = &IrSimplifyBranchLtEq,
+    [IR_BRANCH_GTEQ] = &IrSimplifyBranchGtEq,
+
+    [IR_COMPARE_EQUALS] = &IrSimplifyCmpEquals,
+    [IR_COMPARE_NOT_EQUALS] = &IrSimplifyCmpNotEquals,
+    [IR_COMPARE_LESS_THAN] = &IrSimplifyCmpLessThan,
+    [IR_COMPARE_GREATER_THAN] = &IrSimplifyCmpGreaterThan,
+    [IR_COMPARE_LTEQ] = &IrSimplifyCmpLtEq,
+    [IR_COMPARE_GTEQ] = &IrSimplifyCmpGtEq,
+
+    [IR_BRANCH_LESS_THAN_SIGNED] = &IrSimplifyBranchLessThanSigned,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = &IrSimplifyBranchGreaterThanSigned,
+    [IR_BRANCH_LTEQ_SIGNED] = &IrSimplifyBranchLtEqSigned,
+    [IR_BRANCH_GTEQ_SIGNED] = &IrSimplifyBranchGtEqSigned,
+
+    [IR_COMPARE_LESS_THAN_SIGNED] = &IrSimplifyCmpLessThanSigned,
+    [IR_COMPARE_GREATER_THAN_SIGNED] = &IrSimplifyCmpGreaterThanSigned,
+    [IR_COMPARE_LTEQ_SIGNED] = &IrSimplifyCmpLtEqSigned,
+    [IR_COMPARE_GTEQ_SIGNED] = &IrSimplifyCmpGtEqSigned,
+
+    [IR_BIT_AND] = &IrSimplifyBitAnd,
+    [IR_BIT_OR] = &IrSimplifyBitOr,
     [IR_ADD] = &IrSimplifyAdd,
+    [IR_SUBTRACT] = &IrSimplifySubtract,
+    [IR_DIVIDE] = &IrSimplifyDivide,
+    [IR_DIVIDE_SIGNED] = &IrSimplifyDivideSigned,
+    [IR_MODULO] = &IrSimplifyModulo,
+    [IR_BIT_XOR] = &IrSimplifyXor,
+    [IR_LEFT_SHIFT] = &IrSimplifyLeftShift,
+    [IR_RIGHT_SHIFT] = &IrSimplifyRightShift,
+    [IR_BIT_NOT] = &IrSimplifyBitNot,
+    [IR_MULTIPLY] = &IrSimplifyMultiply,
+    [IR_INVERSE] = &IrSimplifyInverse,
+
+    [IR_CALL] = &IrSimplifyCall,
 }
 
 FN IrKnownVariableBarrier (
@@ -256,6 +2108,24 @@ FN IrKnownVariableBarrier (
             var^.Known = FALSE
 
             TlRemoveEntryList ( listentry )
+        END
+
+        listentry = nextentry
+    END
+
+    head = &IrConstantTable.OrderedListHead
+    listentry = head^.Next
+
+    WHILE listentry != head DO
+        nextentry := listentry^.Next
+
+        var := CONTAINEROF listentry TO IrVariable.Opt.Sim.ConstantListEntry
+
+        IF NOT onlyescaped OR var^.Escaped THEN
+            var^.KnownConstant = FALSE
+
+            TlRemoveEntryList ( &var^.Opt.Sim.ConstantListEntry )
+            TlRemoveEntryList ( &var^.Opt.Sim.ConstantHashEntry )
         END
 
         listentry = nextentry
@@ -316,19 +2186,29 @@ FN IrSimplifyForFunction (
 
             def^.Opt.Sim.Contents = inst^.Source1
 
-        ELSEIF def THEN
-            IF def^.Known THEN
-                TlRemoveEntryList ( &def^.Opt.Sim.KnownListEntry )
+        ELSEIF inst^.Type == IR_CONSTANT THEN
+            IrCacheConstant (
+                def, // var
+                inst^.Body.Constant.Constant, // constnat
+            )
 
-                def^.Known = FALSE
-            END
+        END
 
-            IF def^.KnownConstant THEN
-                TlRemoveEntryList ( &def^.Opt.Sim.ConstantListEntry )
-                TlRemoveEntryList ( &def^.Opt.Sim.ConstantHashEntry )
+        IF def AND inst^.Type != IR_MOVE AND def^.Known THEN
+            // Kill
 
-                def^.KnownConstant = FALSE
-            END
+            TlRemoveEntryList ( &def^.Opt.Sim.KnownListEntry )
+
+            def^.Known = FALSE
+        END
+
+        IF def AND inst^.Type != IR_CONSTANT AND def^.KnownConstant THEN
+            // Kill
+
+            TlRemoveEntryList ( &def^.Opt.Sim.ConstantHashEntry )
+            TlRemoveEntryList ( &def^.Opt.Sim.ConstantListEntry )
+
+            def^.KnownConstant = FALSE
         END
 
         // Perform arithmetic simplifications as may be appropriate for this
@@ -354,7 +2234,6 @@ FN IrSimplifyForFunction (
             // because we are lame.
 
             IrKnownVariableBarrier ( FALSE )
-            IrConstantTableBarrier ()
         
         ELSEIF inst^.Type == IR_CALL THEN
             // This was a call so we have to make sure to kill any escaped
@@ -405,7 +2284,6 @@ FN IrSimplify ()
 
     WHILE funcsym DO
         IrKnownVariableBarrier ( FALSE )
-        IrConstantTableBarrier ()
 
         IrSimplifyForFunction ( funcsym )
 

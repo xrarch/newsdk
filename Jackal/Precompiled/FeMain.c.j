@@ -143,15 +143,15 @@ void LexStreamError(uint64_t _mng_str153, uint64_t _mng_err1154, uint64_t _mng_e
     __twr_v165 = __twr_v163 + __twr_v164;
     __twr_v166 = 0ULL;
     __twr_v167 = 1ULL;
-    __twr_v168 = __twr_v166 * __twr_v167;
-    __twr_v169 = __twr_v165 + __twr_v168;
+    __twr_v168 = __twr_v166;
+    __twr_v169 = __twr_v165;
     __twr_v170 = 44ULL;
     __twr_v171 = __twr_v158 + __twr_v170;
     __twr_v172 = *(uint32_t*)(__twr_v171);
     __twr_v173 = 48ULL;
     __twr_v174 = __twr_v158 + __twr_v173;
     __twr_v175 = *(uint32_t*)(__twr_v174);
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v160)(__twr_v169, __twr_v172, __twr_v175, _mng_str153, _mng_err1154, _mng_err2155, _mng_err3156);
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v160)(__twr_v165, __twr_v172, __twr_v175, _mng_str153, _mng_err1154, _mng_err2155, _mng_err3156);
     __twr_v176 = (uint64_t)(&TlErrorExit);
     ((void (*)())__twr_v176)();
 }
@@ -181,15 +181,15 @@ void LexTokenError(uint64_t _mng_token177, uint64_t _mng_str178, uint64_t _mng_e
     __twr_v187 = __twr_v185 + __twr_v186;
     __twr_v188 = 0ULL;
     __twr_v189 = 1ULL;
-    __twr_v190 = __twr_v188 * __twr_v189;
-    __twr_v191 = __twr_v187 + __twr_v190;
+    __twr_v190 = __twr_v188;
+    __twr_v191 = __twr_v187;
     __twr_v192 = 16ULL;
     __twr_v193 = _mng_token177 + __twr_v192;
     __twr_v194 = *(uint32_t*)(__twr_v193);
     __twr_v195 = 20ULL;
     __twr_v196 = _mng_token177 + __twr_v195;
     __twr_v197 = *(uint32_t*)(__twr_v196);
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v182)(__twr_v191, __twr_v194, __twr_v197, _mng_str178, _mng_err1179, _mng_err2180, _mng_err3181);
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v182)(__twr_v187, __twr_v194, __twr_v197, _mng_str178, _mng_err1179, _mng_err2180, _mng_err3181);
     __twr_v198 = (uint64_t)(&TlErrorExit);
     ((void (*)())__twr_v198)();
 }

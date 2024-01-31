@@ -143,7 +143,7 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone114) {
     _mng_chunksize130 = __twr_v129;
     __twr_v131 = (uint64_t)(&TlBumpAlloc);
     __twr_v132 = (uint64_t)(&_mng_chunk133);
-    __twr_v134 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v131)(_mng_chunksize130, __twr_v132);
+    __twr_v134 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v131)(__twr_v129, __twr_v132);
     _mng_status135 = __twr_v134;
     if (__twr_v134) { goto __twr_l6; } else { goto __twr_l5; }
     __twr_l6:;
@@ -158,7 +158,7 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone114) {
     __twr_v140 = 1ULL;
     _mng_i141 = __twr_v140;
     __twr_v142 = 32ULL;
-    if (__twr_v140 < __twr_v142) { goto __twr_l7; } else { goto __twr_l8; }
+    goto __twr_l7;
     __twr_l7:;
     __twr_v143 = 8ULL;
     __twr_v144 = _mng_zone114 + __twr_v143;

@@ -91,7 +91,7 @@ uint64_t TlCreateSymbolTable(uint64_t _mng_outerscope114, uint64_t _mng_deletefu
     __twr_v120 = (uint64_t)(&TlInitializeSymbolTable);
     __twr_v121 = (uint64_t)(&_mng_deletefunc115);
     __twr_v122 = *(uint64_t*)(__twr_v121);
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v120)(_mng_symboltable119, _mng_outerscope114, __twr_v122);
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v120)(__twr_v118, _mng_outerscope114, __twr_v122);
     return __twr_v118;
 }
 uint64_t TlDeleteSymbolTable(uint64_t _mng_symboltable123) {
