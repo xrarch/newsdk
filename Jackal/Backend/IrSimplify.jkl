@@ -4,8 +4,8 @@
 
 #INCLUDE "Be.hjk"
 
-FN IrSimplifyForFunction (
-    IN funcsym : ^LexSymbol,
+FN IrSimplify (
+    IN irfunc : ^IrFunction,
 )
 
     // Simplify the IR for a function in a single pass.
@@ -16,5 +16,17 @@ FN IrSimplifyForFunction (
     //  o Constant propagation and folding
     //  o Arithmetic re-association
     //  o Value propagation
+    //
+    // These are done in a single forward scan over the IR. Dead variables will
+    // be created; we don't need dead variable elimination, they will
+    // automagically vanish during DAG instruction selection as nothing relevant
+    // will refer to them.
 
+    inst := irfunc^.Head
+
+    WHILE inst DO
+        
+
+        inst = inst^.Next
+    END
 END

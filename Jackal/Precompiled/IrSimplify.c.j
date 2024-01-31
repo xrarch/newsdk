@@ -123,6 +123,27 @@ extern void IrValueNumberConstantVariable(uint64_t _mng_var156, uint64_t _mng_co
 extern uint64_t IrFindConstant(uint64_t _mng_constant159, uint64_t _mng_op160);
 extern void IrGiveOpaqueValueVariable(uint64_t _mng_var161);
 extern void IrInitializeValueNumber();
-extern void IrSimplifyForFunction(uint64_t _mng_funcsym162);
-void IrSimplifyForFunction(uint64_t _mng_funcsym163) {
+extern void IrSimplify(uint64_t _mng_irfunc162);
+extern uint64_t IrCommutativity[7];
+void IrSimplify(uint64_t _mng_irfunc163) {
+    uint64_t __twr_v164;
+    uint64_t __twr_v165;
+    uint64_t __twr_v166;
+    uint64_t _mng_inst167;
+    uint64_t __twr_v168;
+    uint64_t __twr_v169;
+    uint64_t __twr_v170;
+    __twr_v164 = 0ULL;
+    __twr_v165 = _mng_irfunc163 + __twr_v164;
+    __twr_v166 = *(uint64_t*)(__twr_v165);
+    _mng_inst167 = __twr_v166;
+    if (_mng_inst167) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_l1:;
+    __twr_v168 = 24ULL;
+    __twr_v169 = _mng_inst167 + __twr_v168;
+    __twr_v170 = *(uint64_t*)(__twr_v169);
+    _mng_inst167 = __twr_v170;
+    __twr_l3:;
+    if (_mng_inst167) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_l2:;
 }

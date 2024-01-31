@@ -19,6 +19,16 @@ IrCurrentFunction : ^IrFunction
 IrWhileEndLabel : ^IrInstruction = NULLPTR
 IrWhileBeginLabel : ^IrInstruction = NULLPTR
 
+PUBLIC IrCommutativity : UBYTE[IR_MAX] = {
+    [IR_COMPARE_EQUALS] = TRUE,
+    [IR_COMPARE_NOT_EQUALS] = TRUE,
+    [IR_BIT_AND] = TRUE,
+    [IR_BIT_OR] = TRUE,
+    [IR_ADD] = TRUE,
+    [IR_BIT_XOR] = TRUE,
+    [IR_MULTIPLY] = TRUE,
+}
+
 FN IrCreateInstruction (
     IN type : IrInstructionType,
 ) : ^IrInstruction
@@ -2319,6 +2329,10 @@ FN IrGenerateForFunction (
     funcsym^.InitialValue = IrCurrentFunction
 
     IrGenerateBlock ( funcsym^.SemanticType^.Body.Function.BodyBlock )
+
+    // Run the IR simplifier.
+
+    IrSimplify ( IrCurrentFunction )
 END
 
 FN IrGenerate ()
@@ -2335,8 +2349,6 @@ FN IrGenerate ()
         IrValueNumberBarrier ( FALSE )
 
         IrGenerateForFunction ( funcsym )
-
-        IrSimplifyForFunction ( funcsym )
 
         funcsym = funcsym^.NextFunction
     END

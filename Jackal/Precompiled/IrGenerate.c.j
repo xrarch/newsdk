@@ -123,10 +123,20 @@ extern void IrValueNumberConstantVariable(uint64_t _mng_var156, uint64_t _mng_co
 extern uint64_t IrFindConstant(uint64_t _mng_constant159, uint64_t _mng_op160);
 extern void IrGiveOpaqueValueVariable(uint64_t _mng_var161);
 extern void IrInitializeValueNumber();
-extern void IrSimplifyForFunction(uint64_t _mng_funcsym162);
+extern void IrSimplify(uint64_t _mng_irfunc162);
+extern uint64_t IrCommutativity[7];
 uint64_t IrCurrentFunction;
 uint64_t IrWhileEndLabel = 0ULL;
 uint64_t IrWhileBeginLabel = 0ULL;
+uint64_t IrCommutativity[7] = {
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0001010000000000,
+    0x0100000000000000,
+    0x0001000000000101,
+    0x0000000000010000,
+};
 uint64_t IrCreateInstruction(uint64_t _mng_type163) {
     uint64_t __twr_v164;
     uint64_t __twr_v165;
@@ -3741,6 +3751,8 @@ void IrGenerateForFunction(uint64_t _mng_funcsym1727) {
     uint64_t __twr_v1752;
     uint64_t __twr_v1753;
     uint64_t __twr_v1754;
+    uint64_t __twr_v1755;
+    uint64_t __twr_v1756;
     __twr_v1728 = (uint64_t)(&TlBumpAlloc);
     __twr_v1729 = 16ULL;
     __twr_v1730 = (uint64_t)(&IrCurrentFunction);
@@ -3776,38 +3788,38 @@ void IrGenerateForFunction(uint64_t _mng_funcsym1727) {
     __twr_v1753 = __twr_v1751 + __twr_v1752;
     __twr_v1754 = *(uint64_t*)(__twr_v1753);
     ((void (*)(uint64_t))__twr_v1746)(__twr_v1754);
+    __twr_v1755 = (uint64_t)(&IrSimplify);
+    __twr_v1756 = *(uint64_t*)(__twr_v1737);
+    ((void (*)(uint64_t))__twr_v1755)(__twr_v1756);
 }
 void IrGenerate() {
-    uint64_t __twr_v1755;
-    uint64_t __twr_v1756;
     uint64_t __twr_v1757;
-    uint64_t _mng_funcsym1758;
+    uint64_t __twr_v1758;
     uint64_t __twr_v1759;
-    uint64_t __twr_v1760;
+    uint64_t _mng_funcsym1760;
     uint64_t __twr_v1761;
     uint64_t __twr_v1762;
     uint64_t __twr_v1763;
     uint64_t __twr_v1764;
     uint64_t __twr_v1765;
-    __twr_v1755 = (uint64_t)(&IrInitializeValueNumber);
-    ((void (*)())__twr_v1755)();
-    __twr_v1756 = (uint64_t)(&PrsFunctionListHead);
-    __twr_v1757 = *(uint64_t*)(__twr_v1756);
-    _mng_funcsym1758 = __twr_v1757;
-    if (_mng_funcsym1758) { goto __twr_l175; } else { goto __twr_l176; }
+    uint64_t __twr_v1766;
+    __twr_v1757 = (uint64_t)(&IrInitializeValueNumber);
+    ((void (*)())__twr_v1757)();
+    __twr_v1758 = (uint64_t)(&PrsFunctionListHead);
+    __twr_v1759 = *(uint64_t*)(__twr_v1758);
+    _mng_funcsym1760 = __twr_v1759;
+    if (_mng_funcsym1760) { goto __twr_l175; } else { goto __twr_l176; }
     __twr_l175:;
-    __twr_v1759 = (uint64_t)(&IrValueNumberBarrier);
-    __twr_v1760 = 0ULL;
-    ((void (*)(uint64_t))__twr_v1759)(__twr_v1760);
-    __twr_v1761 = (uint64_t)(&IrGenerateForFunction);
-    ((void (*)(uint64_t))__twr_v1761)(_mng_funcsym1758);
-    __twr_v1762 = (uint64_t)(&IrSimplifyForFunction);
-    ((void (*)(uint64_t))__twr_v1762)(_mng_funcsym1758);
-    __twr_v1763 = 80ULL;
-    __twr_v1764 = _mng_funcsym1758 + __twr_v1763;
-    __twr_v1765 = *(uint64_t*)(__twr_v1764);
-    _mng_funcsym1758 = __twr_v1765;
+    __twr_v1761 = (uint64_t)(&IrValueNumberBarrier);
+    __twr_v1762 = 0ULL;
+    ((void (*)(uint64_t))__twr_v1761)(__twr_v1762);
+    __twr_v1763 = (uint64_t)(&IrGenerateForFunction);
+    ((void (*)(uint64_t))__twr_v1763)(_mng_funcsym1760);
+    __twr_v1764 = 80ULL;
+    __twr_v1765 = _mng_funcsym1760 + __twr_v1764;
+    __twr_v1766 = *(uint64_t*)(__twr_v1765);
+    _mng_funcsym1760 = __twr_v1766;
     __twr_l177:;
-    if (_mng_funcsym1758) { goto __twr_l175; } else { goto __twr_l176; }
+    if (_mng_funcsym1760) { goto __twr_l175; } else { goto __twr_l176; }
     __twr_l176:;
 }

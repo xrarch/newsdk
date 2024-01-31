@@ -247,11 +247,18 @@ FN IrFindValue (
     WHILE listentry != head DO
         var := CONTAINEROF listentry TO IrVariable.ValueHashEntry
 
-        IF var^.ValueKeyOp == op AND
-            var^.ValueKeySrc1 == valuesrc1 AND
-            var^.ValueKeySrc2 == valuesrc2 THEN
+        IF var^.ValueKeyOp == op THEN
+            IF var^.ValueKeySrc1 == valuesrc1 AND
+                var^.ValueKeySrc2 == valuesrc2 THEN
 
-            RETURN var
+                RETURN var
+
+            ELSEIF IrCommutativity[op] AND
+                var^.ValueKeySrc1 == valuesrc2 AND
+                var^.ValueKeySrc2 == valuesrc1 THEN
+
+                RETURN var
+            END
         END
 
         listentry = listentry^.Next
