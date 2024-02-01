@@ -50,6 +50,31 @@ FN IrAllocateStack (
     RETURN offset
 END
 
+FN IrGetStackOffset (
+    IN func : ^IrFunction,
+    IN symbol : ^LexSymbol,
+) : UWORD
+
+    IF symbol^.StackAllocated THEN
+        RETURN symbol^.StackOffset
+    END
+
+    type := symbol^.SemanticType
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    symbol^.StackAllocated = TRUE
+
+    symbol^.StackOffset = IrAllocateStack (
+        func, // func
+        type^.Size, // symbol
+    )
+
+    RETURN symbol^.StackOffset
+END
+
 FN IrCreateInstruction (
     IN type : IrInstructionType,
 ) : ^IrInstruction
@@ -2431,6 +2456,7 @@ FN IrGenerateForFunction (
 
     IrCurrentFunction^.Head = NULLPTR
     IrCurrentFunction^.Tail = NULLPTR
+    IrCurrentFunction^.StackFrameSize = 0
 
     funcsym^.InitialValue = IrCurrentFunction
 

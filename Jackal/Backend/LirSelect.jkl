@@ -4,7 +4,7 @@
 
 #INCLUDE "<inc>/Target.hjk"
 
-LirCurrentFunction : ^IrFunction
+PUBLIC LirCurrentFunction : ^IrFunction
 
 FN LirCreateInstruction (
     IN type : LirInstructionType,
@@ -177,25 +177,17 @@ FN LirSelect (
     RETURN reg
 END
 
-FN LirAllocateStack (
-    IN func : ^IrFunction,
-    IN bytes : UWORD,
-) : UWORD
+FN LirSelectOrGetRegister (
+    IN var : ^IrVariable,
+) : ^LirRegister
 
-    // Allocate stack frame from the current function and return the offset.
+    // Get the contents of the variable in the form of a LIR register.
 
-    offset := func^.StackFrameSize
+    IF var^.DefinedBy THEN
+        RETURN LirSelect ( var^.DefinedBy )
+    END
 
-    newsize := bytes + offset
-
-    // Restore pointer alignment.
-
-    newsize += JklTargetInfo^.PointerAlignment - 1
-    newsize &= ~(JklTargetInfo^.PointerAlignment - 1)
-
-    func^.StackFrameSize = newsize
-
-    RETURN offset
+    RETURN LirGetRegister ( var )
 END
 
 FN LirSelectForFunction (
@@ -209,7 +201,6 @@ FN LirSelectForFunction (
 
     irfunc^.LirHead = NULLPTR
     irfunc^.LirTail = NULLPTR
-    irfunc^.StackFrameSize = 0
 
     inst := irfunc^.Head
 

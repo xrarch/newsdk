@@ -212,3 +212,8 @@ EXTERN FN IrAllocateStack (
     IN func : ^IrFunction,
     IN bytes : UWORD,
 ) : UWORD
+
+EXTERN FN IrGetStackOffset (
+    IN func : ^IrFunction,
+    IN symbol : ^LexSymbol,
+) : UWORD

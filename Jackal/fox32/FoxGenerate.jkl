@@ -10,6 +10,9 @@ EXTERN FN (JklTargetF) FoxCompile ()
 // FORWARD
 EXTERN FoxLirInfo : LirTargetInfoRecord
 
+FoxSp : LirRegister
+FoxFp : LirRegister
+
 FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
@@ -110,14 +113,91 @@ ENUM FoxBits : UBYTE
     FOX_BITS_32,
 
     FOX_BITS_MAX,
+
+    FOX_BITS_UNKNOWN,
 END
 
 ENUM FoxAccessType : UBYTE
     FOX_ACCESS_IMM,
-    FOX_ACCESS_IMM_ASM_NAME,
+    FOX_ACCESS_IMM_NAME,
     FOX_ACCESS_REGISTER,
-    FOX_ACCESS_POINTER,
+    FOX_ACCESS_REG_PTR,
+    FOX_ACCESS_IMM_PTR,
+    FOX_ACCESS_IMM_PTR_NAME,
 END
+
+ENUM FoxRegisters : UBYTE
+    FOX_T0 = 0,
+    FOX_T1 = 1,
+    FOX_T2 = 2,
+    FOX_T3 = 3,
+    FOX_T4 = 4,
+    FOX_T5 = 5,
+    FOX_T6 = 6,
+    FOX_A0 = 7,
+    FOX_A1 = 8,
+    FOX_A2 = 9,
+    FOX_A3 = 10,
+    FOX_S0 = 11,
+    FOX_S1 = 12,
+    FOX_S2 = 13,
+    FOX_S3 = 14,
+    FOX_S4 = 15,
+    FOX_S5 = 16,
+    FOX_S6 = 17,
+    FOX_S7 = 18,
+    FOX_S8 = 19,
+    FOX_S9 = 20,
+    FOX_S10 = 21,
+    FOX_S11 = 22,
+    FOX_S12 = 23,
+    FOX_S13 = 24,
+    FOX_S14 = 25,
+    FOX_S15 = 26,
+    FOX_S16 = 27,
+    FOX_S17 = 28,
+
+    FOX_R31 = 31,
+    FOX_SP = 32,
+    FOX_FP = 34,
+
+    FOX_REG_MAX,
+END
+
+FoxRegisterNames : ^UBYTE[FOX_REG_MAX] = {
+    [FOX_T0] = "t0",
+    [FOX_T1] = "t1",
+    [FOX_T2] = "t2",
+    [FOX_T3] = "t3",
+    [FOX_T4] = "t4",
+    [FOX_T5] = "t5",
+    [FOX_T6] = "t6",
+    [FOX_A0] = "a0",
+    [FOX_A1] = "a1",
+    [FOX_A2] = "a2",
+    [FOX_A3] = "a3",
+    [FOX_S0] = "s0",
+    [FOX_S1] = "s1",
+    [FOX_S2] = "s2",
+    [FOX_S3] = "s3",
+    [FOX_S4] = "s4",
+    [FOX_S5] = "s5",
+    [FOX_S6] = "s6",
+    [FOX_S7] = "s7",
+    [FOX_S8] = "s8",
+    [FOX_S9] = "s9",
+    [FOX_S10] = "s10",
+    [FOX_S11] = "s11",
+    [FOX_S12] = "s12",
+    [FOX_S13] = "s13",
+    [FOX_S14] = "s14",
+    [FOX_S15] = "s15",
+    [FOX_S16] = "s16",
+    [FOX_S17] = "s17",
+    [FOX_R31] = "r31",
+    [FOX_SP] = "sp",
+    [FOX_FP] = "fp",
+}
 
 FoxInstructionNames : ^UBYTE[FOX_MAX] = {
     [FOX_ADD] = "add",
@@ -169,28 +249,124 @@ FoxBitsNames : ^UBYTE[FOX_BITS_MAX] = {
     [FOX_BITS_32] = "",
 }
 
-FN FoxGetPtrOffset (
-    IN src : ^IrVariable,
-    OUT offset : ^UWORD,
-) : UWORD
+FoxPrimTypeToBits : UBYTE[PRIM_TYPE_MAX] = {
+    [PRIM_TYPE_BYTE] = FOX_BITS_8,
+    [PRIM_TYPE_INT] = FOX_BITS_16,
+    [PRIM_TYPE_LONG] = FOX_BITS_32,
 
-    // If the src variable contains a constant offset that fits in a fox32
-    // pointer offset, return it. Caller should have determined it's a
-    // temporary (i.e. it has a DefinedBy instruction).
+    [PRIM_TYPE_UBYTE] = FOX_BITS_8,
+    [PRIM_TYPE_UINT] = FOX_BITS_16,
+    [PRIM_TYPE_ULONG] = FOX_BITS_32,
 
-    inst := src^.DefinedBy
+    [PRIM_TYPE_POINTER] = FOX_BITS_32,
+}
 
-    IF inst^.Type == IR_CONSTANT THEN
-        const := inst^.Body.Constant.Constant
+FN FoxFillSourceForLoad (
+    IN lirinst : ^LirInstruction,
+    IN inst : ^IrInstruction,
+)
 
-        IF const < 256 THEN
-            offset^ = const
+    lirinst^.Body.Machine.Fox.BitSize =
+        FoxPrimTypeToBits[inst^.Body.LoadStore.Type]
 
-            RETURN TRUE
+    src2 := inst^.Source1
+
+    inst2 := src2^.DefinedBy
+
+    IF NOT inst2 THEN
+        // Not a temporary, just trust this named local.
+
+        lirinst^.Source1 = LirGetRegister ( src2 )
+        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
+        lirinst^.Body.Machine.Fox.Constant1 = 0
+
+        LEAVE
+    END
+
+    IF inst2^.Type == IR_STACK_ADDR THEN
+        // It's on the stack frame, this is an SP + OFF. 
+
+        symbol := inst2^.Body.Addr.Symbol
+
+        off := IrGetStackOffset (
+            LirCurrentFunction, // func
+            symbol, // symbol
+        )
+
+        IF off < 256 THEN
+            // Great! We can do this directly.
+
+            lirinst^.Source1 = &FoxSp
+            lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
+            lirinst^.Body.Machine.Fox.Constant1 = off
+
+            LEAVE
+        END
+
+    ELSEIF inst2^.Type == IR_ADDR THEN
+        // Gotta be a named imm.
+        // TODO investigate intentionally sharing common constants to
+        //      reduce code size.
+
+        lirinst^.Source1 = NULLPTR
+
+        lirinst^.Body.Machine.Fox.SrcAccessType =
+            FOX_ACCESS_IMM_PTR_NAME
+
+        lirinst^.Body.Machine.Fox.Constant1 =
+            CAST inst2^.Body.Addr.Symbol TO UWORD
+
+        LEAVE
+
+    ELSEIF inst2^.Type == IR_CONSTANT THEN
+        // Numeric imm.
+        // TODO investigate intentionally sharing common constants to
+        //      reduce code size.
+
+        lirinst^.Source1 = NULLPTR
+
+        lirinst^.Body.Machine.Fox.SrcAccessType =
+            FOX_ACCESS_IMM_PTR
+
+        lirinst^.Body.Machine.Fox.Constant1 =
+            inst2^.Body.Constant.Constant
+
+        LEAVE
+
+    ELSEIF inst2^.Type == IR_ADD THEN
+        // If this is plus a constant less than 256, we can do an
+        // offsetted load. We don't have to check for a constant in the
+        // left side because the simplification pass moved them all to
+        // the right side.
+
+        src3 := inst2^.Source2
+
+        inst3 := src3^.DefinedBy
+
+        IF inst3 AND
+            inst3^.Type == IR_CONSTANT AND
+            inst3^.Body.Constant.Constant < 256 THEN
+
+            // Neat! Get the register for the left side.
+
+            // Fill in the LIR instruction.
+
+            lirinst^.Source1 = LirSelectOrGetRegister ( inst2^.Source1 )
+
+            lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
+
+            lirinst^.Body.Machine.Fox.Constant1 =
+                inst3^.Body.Constant.Constant
+
+            LEAVE
         END
     END
 
-    RETURN FALSE
+    // In any load case not covered above, select.
+
+    lirinst^.Source1 = LirSelect ( inst2 )
+    lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
+    lirinst^.Body.Machine.Fox.Constant1 = 0
 END
 
 FN FoxFillSource (
@@ -199,6 +375,7 @@ FN FoxFillSource (
 )
 
     // Fill the source fields of the instruction appropriately.
+    // Caller should make sure the BitSize field was set on the LIR instruction.
 
     // Fox32 allows these source modes on all instructions:
     //
@@ -208,17 +385,66 @@ FN FoxFillSource (
 
     inst := var^.DefinedBy
 
-    IF inst THEN
-        // Var is a temporary. Check for cases.
+    IF NOT inst THEN
+        // It's a named local.
 
-        IF inst^.Type == IR_STACK_ADDR THEN
-            // It's on the stack frame, this is an SP + OFF. 
+        lirinst^.Source1 = LirGetRegister ( var )
+        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+
+        LEAVE
+    END
+
+    // Var is a temporary. Check for cases.
+
+    IF inst^.Type == IR_LOAD THEN
+        // It's one of the load ones.
+        // We can only select over this if the load width matches.
+
+        bitsize := lirinst^.Body.Machine.Fox.BitSize
+
+        IF bitsize == FOX_BITS_UNKNOWN OR
+            bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type] THEN
+
+            FoxFillSourceForLoad (
+                lirinst, // lirinst
+                inst, // inst
+            )
+
+            LEAVE
         END
+
+    ELSEIF inst^.Type == IR_ADDR THEN
+        // Gotta be a named imm.
+        // TODO investigate sharing to reduce code size
+
+        lirinst^.Source1 = NULLPTR
+
+        lirinst^.Body.Machine.Fox.SrcAccessType =
+            FOX_ACCESS_IMM_NAME
+
+        lirinst^.Body.Machine.Fox.Constant1 =
+            CAST inst^.Body.Addr.Symbol TO UWORD
+
+        LEAVE
+
+    ELSEIF inst^.Type == IR_CONSTANT THEN
+        // Gotta be a numeric imm.
+        // TODO investigate sharing to reduce code size
+
+        lirinst^.Source1 = NULLPTR
+
+        lirinst^.Body.Machine.Fox.SrcAccessType =
+            FOX_ACCESS_IMM_PTR
+
+        lirinst^.Body.Machine.Fox.Constant1 =
+            inst^.Body.Constant.Constant
+
+        LEAVE
     END
 
     // If we got here we've decided to use reg.
 
-    lirinst^.Source1 = srcreg
+    lirinst^.Source1 = LirSelect ( inst )
     lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
 END
 
@@ -226,14 +452,28 @@ FN (LirSelectF) FoxSelectLoad (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
-    // This maps to a fox32 mem-to-reg MOV instruction.
+    // Generate a fox32 mem-to-reg MOV instruction.
 
-    def := inst^.Defines
-    src := inst^.Source1
+    defreg := LirGetRegister ( inst^.Defines )
 
-    IF src^.DefinedBy THEN
-        // The source is a temporary. If its defining instruction was a 
-    END
+    lirinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_MOVZ, // machtype
+    )
+
+    lirinst^.Defines = defreg
+
+    FoxFillSourceForLoad (
+        lirinst, // lirinst
+        inst, // inst
+    )
+
+    lirinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
 END
 
 FN (LirSelectF) FoxSelectMove (
@@ -310,6 +550,14 @@ FoxAsmEmitter : AsmEmitterRecord = {
 FN (JklTargetF) FoxCompile ()
     
     // Compile the program for the fox32 architecture.
+
+    // Initialize the SP and FP registers.
+
+    FoxSp.Type = LIR_MACHINE_REG
+    FoxSp.MachineRegister = FOX_SP
+
+    FoxFp.Type = LIR_MACHINE_REG
+    FoxFp.MachineRegister = FOX_FP
 
     // Perform instruction selection on each function.
 

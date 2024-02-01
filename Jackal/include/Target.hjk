@@ -1,6 +1,15 @@
 #INCLUDE "<inc>/Backend.hjk"
 
+STRUCT LirFoxOperand
+    Reg : ^LirRegister,
+    Constant : ULONG,
+    AccessType : UBYTE,
+END
+
 STRUCT LirFoxSpecific
+    Operand1 : LirFoxOperand,
+    Operand2 : LirFoxOperand,
+
     Constant1 : ULONG,
     Constant2 : ULONG,
     DestAccessType : UBYTE,
@@ -90,6 +99,10 @@ EXTERN FN LirSelect (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
+EXTERN FN LirSelectOrGetRegister (
+    IN var : ^IrVariable,
+) : ^LirRegister
+
 EXTERN FN LirSelectForFunction (
     IN funcsym : ^LexSymbol,
 )
@@ -113,3 +126,5 @@ END
 EXTERN FN XrAsmEmit (
     IN emitter : ^AsmEmitterRecord,
 )
+
+EXTERN LirCurrentFunction : ^IrFunction
