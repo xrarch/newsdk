@@ -266,6 +266,9 @@ FN FoxFillSourceForLoad (
     IN inst : ^IrInstruction,
 )
 
+    // Caller should have made sure the instruction is the right width,
+    // otherwise an intermediate load is required.
+
     lirinst^.Body.Machine.Fox.BitSize =
         FoxPrimTypeToBits[inst^.Body.LoadStore.Type]
 
@@ -452,7 +455,7 @@ FN (LirSelectF) FoxSelectLoad (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
-    // Generate a fox32 mem-to-reg MOV instruction.
+    // Generate a fox32 mem-to-reg MOVZ instruction.
 
     defreg := LirGetRegister ( inst^.Defines )
 

@@ -1305,6 +1305,13 @@ FN (IrSimplifyF) IrSimplifyAdd (
 
             // ADD c, b, (constantA + constantB)
 
+            // TODO we can also fold into IR_STACK_ADDR instructions' SP offset
+            //      this way; we don't actually need to know the SP offset yet,
+            //      we can have an "offset offset" that we set here and it only
+            //      gets actual stack frame space allocated during isel (so that
+            //      we benefit from DVE). also we shouldn't fold adds into
+            //      IR_STACK_ADDR if the C backend is the target.
+
             inst1src2 := inst1^.Source2
 
             IF IrVariableIsConstant ( inst1src2 ) THEN
