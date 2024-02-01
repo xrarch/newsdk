@@ -1,0 +1,145 @@
+//
+// Implements the backbone of instruction selection.
+//
+
+#INCLUDE "<inc>/Target.hjk"
+
+LirCurrentFunction : ^IrFunction
+
+FN LirCreateInstruction (
+    IN type : LirInstructionType,
+    IN machtype : UBYTE,
+) : ^LirInstruction
+
+    lirinst : ^LirInstruction
+
+    status := TlBumpAlloc (
+        SIZEOF LirInstruction, // bytes
+        &lirinst, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create LIR instruction", 0, 0, 0 )
+    END
+
+    lirinst^.Type = type
+    lirinst^.Defines = NULLPTR
+    lirinst^.Source1 = NULLPTR
+    lirinst^.Source2 = NULLPTR
+    lirinst^.MachineInstruction = machtype
+
+    RETURN lirinst
+END
+
+FN LirInsertInstructionTail (
+    IN lirinst : ^LirInstruction,
+)
+
+    // Insert the instruction at the end of the current chain.
+
+    lirinst^.Block = LirCurrentFunction
+    lirinst^.Next = NULLPTR
+    lirinst^.Prev = LirCurrentFunction^.LirTail
+
+    IF NOT LirCurrentFunction^.LirTail THEN
+        LirCurrentFunction^.LirHead = lirinst
+    ELSE
+        LirCurrentFunction^.LirTail^.Next = lirinst
+    END
+
+    LirCurrentFunction^.LirTail = lirinst
+END
+
+FN LirSelect (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    reg := inst^.LirRegister
+
+    IF reg THEN
+        RETURN reg
+    END
+
+    reg = JklTargetInfo^.LirInfo^.SelectionTable[inst^.Type] (
+        inst, // inst
+    )
+
+    IF reg^.Type == LIR_MACHINE_REG THEN
+        // The selected instruction shovels its results into a fixed register.
+        // Create a move instruction whose destination is a virtual register,
+        // with a hint that regalloc should assign it to that machine register.
+        // If regalloc succeeds, the move instruction will be elided.
+
+        #IF 0
+            machreg := reg^.MachineRegister
+
+            reg = JklTargetInfo^.LirInfo^.MoveFunc (
+                reg, // oldregister
+            )
+
+            reg^.Hint = machreg
+
+        #ELSE
+            TlInternalError ( "Machine -> Virt TODO", 0, 0, 0 )
+        #END
+    END
+
+    inst^.LirRegister = reg
+
+    RETURN reg
+END
+
+FN LirSelectForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Call the target's selection function for each instruction in this
+    // function.
+
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+    irfunc^.LirHead = NULLPTR
+    irfunc^.LirTail = NULLPTR
+
+    inst := irfunc^.Head
+
+    LirCurrentFunction = irfunc
+
+    WHILE inst DO
+        // If this IR instruction has a side effect we care about, then call the
+        // target select function to select over the basic block DAG. These are:
+        //
+        //  o Function calls
+        //  o Memory stores
+        //  o Labels
+        //  o Branches
+        //  o Moves to named locals
+
+        IF inst^.Type == IR_LABEL THEN
+            // Just drop in a label, don't bother the target.
+
+            lirinst := inst^.Body.Label.LirLabel
+
+            IF NOT lirinst THEN
+                lirinst = LirCreateInstruction (
+                    LIR_LABEL, // type
+                    0, // machtype
+                )
+
+                inst^.Body.Label.LirLabel = lirinst
+            END
+
+            LirInsertInstructionTail ( lirinst )
+
+        ELSEIF inst^.Type == IR_CALL OR
+            inst^.Type == IR_STORE OR
+            (inst^.Type == IR_MOVE AND inst^.Defines^.Symbol) OR
+            (inst^.Type > IR_BRANCH_LOW_NUMBER AND
+            inst^.Type < IR_BRANCH_HIGH_NUMBER) THEN
+
+            LirSelect ( inst )
+        END
+
+        inst = inst^.Next
+    END
+END

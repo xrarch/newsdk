@@ -170,11 +170,11 @@ void IrEliminateDeadInstruction(uint64_t _mng_inst166) {
     uint64_t __twr_v205;
     __twr_v167 = (uint64_t)(&IrRemoveInstruction);
     ((void (*)(uint64_t))__twr_v167)(_mng_inst166);
-    __twr_v168 = 48ULL;
+    __twr_v168 = 56ULL;
     __twr_v169 = _mng_inst166 + __twr_v168;
     __twr_v170 = *(uint64_t*)(__twr_v169);
     _mng_src1171 = __twr_v170;
-    __twr_v172 = 56ULL;
+    __twr_v172 = 64ULL;
     __twr_v173 = _mng_inst166 + __twr_v172;
     __twr_v174 = *(uint64_t*)(__twr_v173);
     _mng_src2175 = __twr_v174;
@@ -256,7 +256,7 @@ void IrEliminateDeadVariable(uint64_t _mng_var206) {
     _mng_definedbyinst210 = __twr_v209;
     if (__twr_v209) { goto __twr_l10; } else { goto __twr_l11; }
     __twr_l10:;
-    __twr_v211 = 72ULL;
+    __twr_v211 = 88ULL;
     __twr_v212 = _mng_definedbyinst210 + __twr_v211;
     __twr_v213 = *(uint8_t*)(__twr_v212);
     __twr_v214 = 25ULL;
@@ -279,7 +279,7 @@ void IrEliminateDeadVariable(uint64_t _mng_var206) {
     __twr_l15:;
     __twr_v221 = (uint64_t)(&IrEliminateDeadInstruction);
     ((void (*)(uint64_t))__twr_v221)(_mng_inst220);
-    __twr_v222 = 64ULL;
+    __twr_v222 = 72ULL;
     __twr_v223 = _mng_inst220 + __twr_v222;
     __twr_v224 = *(uint64_t*)(__twr_v223);
     _mng_inst220 = __twr_v224;
@@ -439,7 +439,7 @@ void IrEliminateForFunction(uint64_t _mng_funcsym225) {
     _mng_inst230 = __twr_v229;
     if (__twr_v229) { goto __twr_l18; } else { goto __twr_l19; }
     __twr_l18:;
-    __twr_v231 = 40ULL;
+    __twr_v231 = 48ULL;
     __twr_v232 = _mng_inst230 + __twr_v231;
     __twr_v233 = *(uint64_t*)(__twr_v232);
     _mng_def234 = __twr_v233;
@@ -485,17 +485,17 @@ void IrEliminateForFunction(uint64_t _mng_funcsym225) {
     __twr_v257 = 32ULL;
     __twr_v258 = _mng_def234 + __twr_v257;
     __twr_v259 = *(uint64_t*)(__twr_v258);
-    __twr_v260 = 64ULL;
+    __twr_v260 = 72ULL;
     __twr_v261 = _mng_inst230 + __twr_v260;
     *(uint64_t*)(__twr_v261) = __twr_v259;
     *(uint64_t*)(__twr_v258) = _mng_inst230;
     __twr_l27:;
     __twr_l21:;
-    __twr_v262 = 48ULL;
+    __twr_v262 = 56ULL;
     __twr_v263 = _mng_inst230 + __twr_v262;
     __twr_v264 = *(uint64_t*)(__twr_v263);
     _mng_src1265 = __twr_v264;
-    __twr_v266 = 56ULL;
+    __twr_v266 = 64ULL;
     __twr_v267 = _mng_inst230 + __twr_v266;
     __twr_v268 = *(uint64_t*)(__twr_v267);
     _mng_src2269 = __twr_v268;
@@ -579,7 +579,7 @@ void IrEliminateForFunction(uint64_t _mng_funcsym225) {
     *(uint32_t*)(__twr_v315) = __twr_v317;
     __twr_l38:;
     __twr_l36:;
-    __twr_v318 = 72ULL;
+    __twr_v318 = 88ULL;
     __twr_v319 = _mng_inst230 + __twr_v318;
     __twr_v320 = *(uint8_t*)(__twr_v319);
     __twr_v321 = 25ULL;
@@ -636,7 +636,7 @@ void IrEliminateForFunction(uint64_t _mng_funcsym225) {
     if (_mng_arg323) { goto __twr_l45; } else { goto __twr_l46; }
     __twr_l46:;
     __twr_l43:;
-    __twr_v353 = 24ULL;
+    __twr_v353 = 32ULL;
     __twr_v354 = _mng_inst230 + __twr_v353;
     __twr_v355 = *(uint64_t*)(__twr_v354);
     _mng_inst230 = __twr_v355;

@@ -130,6 +130,7 @@ END
 
 STRUCT IrLabelBody
     Symbol : ^LexSymbol,
+    LirLabel : ^LirInstruction,
     Number : ULONG,
 END
 
@@ -191,6 +192,7 @@ STRUCT IrInstruction
     Source2 : ^IrVariable,
 
     NextDefines : ^IrInstruction,
+    LirRegister : ^LirRegister,
 
     Type : IrInstructionType,
 END
@@ -198,4 +200,7 @@ END
 STRUCT IrFunction
     Head : ^IrInstruction,
     Tail : ^IrInstruction,
+
+    LirHead : ^LirInstruction,
+    LirTail : ^LirInstruction,
 END

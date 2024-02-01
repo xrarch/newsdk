@@ -2191,7 +2191,6 @@ FN IrSimplifyForFunction (
                 def, // var
                 inst^.Body.Constant.Constant, // constnat
             )
-
         END
 
         IF def AND inst^.Type != IR_MOVE AND def^.Known THEN

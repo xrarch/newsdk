@@ -115,10 +115,14 @@ extern void PrsInitialize();
 extern uint64_t PrsGlobalListHead;
 extern uint64_t PrsFunctionListHead;
 extern uint64_t PrsEvaluateType(uint64_t _mng_node146);
+extern uint64_t LirSelect(uint64_t _mng_inst147);
+extern void LirSelectForFunction(uint64_t _mng_funcsym148);
 extern void FoxCompile();
-uint64_t FoxTargetInfo[8] = {
+extern uint64_t FoxLirInfo[52];
+uint64_t FoxTargetInfo[9] = {
     (uint64_t)(&"fox32"),
     (uint64_t)(&FoxCompile),
+    (uint64_t)(&FoxLirInfo),
     0x0804020100000404,
     0x0000080402010000,
     0x0000080402010000,
@@ -126,10 +130,95 @@ uint64_t FoxTargetInfo[8] = {
     0x0101000000010101,
     0x0000040A00000001,
 };
+uint64_t FoxSelect(uint64_t _mng_inst149) {
+    uint64_t __twr_v150;
+    uint64_t __twr_v151;
+    uint64_t __twr_v152;
+    __twr_v150 = (uint64_t)(&TlInternalError);
+    __twr_v151 = (uint64_t)(&"TODO FoxSelect");
+    __twr_v152 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v150)(__twr_v151, __twr_v152, __twr_v152, __twr_v152);
+    return __twr_v152;
+}
+uint64_t FoxLirInfo[52] = {
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+};
 void FoxCompile() {
-    uint64_t __twr_v147;
-    uint64_t __twr_v148;
-    __twr_v147 = (uint64_t)(&TlPrintString);
-    __twr_v148 = (uint64_t)(&"TODO compile foxly\n");
-    ((void (*)(uint64_t))__twr_v147)(__twr_v148);
+    uint64_t __twr_v153;
+    uint64_t __twr_v154;
+    uint64_t _mng_funcsym155;
+    uint64_t __twr_v156;
+    uint64_t __twr_v157;
+    uint64_t __twr_v158;
+    uint64_t __twr_v159;
+    uint64_t __twr_v160;
+    uint64_t __twr_v161;
+    __twr_v153 = (uint64_t)(&PrsFunctionListHead);
+    __twr_v154 = *(uint64_t*)(__twr_v153);
+    _mng_funcsym155 = __twr_v154;
+    if (__twr_v154) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_l1:;
+    __twr_v156 = (uint64_t)(&LirSelectForFunction);
+    ((void (*)(uint64_t))__twr_v156)(_mng_funcsym155);
+    __twr_v157 = 80ULL;
+    __twr_v158 = _mng_funcsym155 + __twr_v157;
+    __twr_v159 = *(uint64_t*)(__twr_v158);
+    _mng_funcsym155 = __twr_v159;
+    __twr_l3:;
+    if (_mng_funcsym155) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_l2:;
+    __twr_v160 = (uint64_t)(&TlPrintString);
+    __twr_v161 = (uint64_t)(&"TODO compile foxly\n");
+    ((void (*)(uint64_t))__twr_v160)(__twr_v161);
 }

@@ -512,8 +512,8 @@ void FeCopyPathFileBlock(uint64_t _mng_fileblock290, uint64_t _mng_filepath291) 
     __twr_v295 = 256ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v292)(__twr_v294, _mng_filepath291, __twr_v295);
 }
-extern uint64_t CtTargetInfo[8];
-extern uint64_t FoxTargetInfo[8];
+extern uint64_t CtTargetInfo[9];
+extern uint64_t FoxTargetInfo[9];
 uint64_t TrgInfoRecords[8] = {
     (uint64_t)(&CtTargetInfo),
     (uint64_t)(&FoxTargetInfo),

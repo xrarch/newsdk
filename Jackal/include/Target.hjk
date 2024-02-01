@@ -1,0 +1,65 @@
+#INCLUDE "<inc>/Backend.hjk"
+
+STRUCT LirFoxSpecific
+    Constant1 : ULONG,
+    Constant2 : ULONG,
+    AccessType1 : UBYTE,
+    AccessType2 : UBYTE,
+END
+
+UNION LirMachineSpecific
+    Fox : LirFoxSpecific,
+END
+
+ENUM LirInstructionType : UBYTE
+    LIR_MIN, // MUST be at the start
+
+    LIR_LABEL,
+    LIR_CALL,
+    LIR_UNARY,
+    LIR_BINARY,
+
+    LIR_MAX, // MUST be at the end
+END
+
+ENUM LirRegisterType : UBYTE
+    LIR_MACHINE_REG,
+    LIR_VIRTUAL_REG,
+END
+
+STRUCT LirRegister
+    MachineRegister : UBYTE,
+    Hint : UBYTE,
+    Type : LirRegisterType,
+END
+
+STRUCT LirInstruction
+    Next : ^LirInstruction,
+    Prev : ^LirInstruction,
+    Block : ^IrFunction,
+
+    Defines : ^LirRegister,
+    Source1 : ^LirRegister,
+    Source2 : ^LirRegister,
+
+    Machine : LirMachineSpecific,
+
+    MachineInstruction : UBYTE,
+    Type : LirInstructionType,
+END
+
+FNPTR LirSelectF (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+EXTERN FN LirSelect (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+EXTERN FN LirSelectForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+STRUCT LirTargetInfoRecord
+    SelectionTable : LirSelectF[IR_MAX],
+END

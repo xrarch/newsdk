@@ -49,6 +49,8 @@ FN IrCreateInstruction (
     inst^.Source1 = NULLPTR
     inst^.Source2 = NULLPTR
 
+    inst^.LirRegister = NULLPTR
+
     RETURN inst
 END
 
@@ -63,6 +65,7 @@ FN IrCreateLabel () : ^IrInstruction
     )
 
     label^.Body.Label.Symbol = NULLPTR
+    label^.Body.Label.LirLabel = NULLPTR
     label^.Body.Label.Number = IrLabelNumber
     IrLabelNumber += 1
 

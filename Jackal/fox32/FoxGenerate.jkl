@@ -2,14 +2,18 @@
 // Implements the fox32 code generator.
 //
 
-#INCLUDE "<inc>/Backend.hjk"
+#INCLUDE "<inc>/Target.hjk"
 
 // FORWARD
 EXTERN FN (JklTargetF) FoxCompile ()
 
+// FORWARD
+EXTERN FoxLirInfo : LirTargetInfoRecord
+
 FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
+    [LirInfo] = &FoxLirInfo,
     [PointerAlignment] = 4,
     [PointerSize] = 4,
     [LargestPrimitive] = PRIM_TYPE_ULONG,
@@ -49,9 +53,36 @@ FoxTargetInfo : JklTargetInfoRecord = {
     },
 }
 
+FN (LirSelectF) FoxSelect (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Select the most appropriate instruction.
+
+    TlInternalError ( "TODO FoxSelect", 0, 0, 0 )
+
+    RETURN NULLPTR
+END
+
+FoxLirInfo : LirTargetInfoRecord = {
+    [SelectionTable] = {
+
+    },
+}
+
 FN (JklTargetF) FoxCompile ()
     
     // Compile the program for the fox32 architecture.
+
+    funcsym := PrsFunctionListHead
+
+    WHILE funcsym DO
+        LirSelectForFunction (
+            funcsym, // funcsym
+        )
+
+        funcsym = funcsym^.NextFunction
+    END
 
     TlPrintString ( "TODO compile foxly\n" )
 END

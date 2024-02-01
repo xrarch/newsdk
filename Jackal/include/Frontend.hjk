@@ -55,6 +55,7 @@ EXTERN JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
 STRUCT JklTargetInfoRecord
     Name : ^UBYTE,
     EntryFunc : JklTargetF,
+    LirInfo : ^LirTargetInfoRecord,
     PointerAlignment : UBYTE,
     PointerSize : UBYTE,
     PrimitiveAlignment : UBYTE[PRIM_TYPE_MAX],

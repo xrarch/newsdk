@@ -116,9 +116,10 @@ extern uint64_t PrsGlobalListHead;
 extern uint64_t PrsFunctionListHead;
 extern uint64_t PrsEvaluateType(uint64_t _mng_node146);
 extern void CtTranspile();
-uint64_t CtTargetInfo[8] = {
+uint64_t CtTargetInfo[9] = {
     (uint64_t)(&"CHost"),
     (uint64_t)(&CtTranspile),
+    0x0000000000000000,
     0x0804020100000808,
     0x0000080402010000,
     0x0000080402010000,
@@ -567,7 +568,7 @@ void CtOutputLabelName(uint64_t _mng_label309) {
     __twr_v318 = (uint64_t)(&"__twr_l");
     ((void (*)(uint64_t))__twr_v317)(__twr_v318);
     __twr_v319 = (uint64_t)(&CtInsertNumberFunc);
-    __twr_v320 = 8ULL;
+    __twr_v320 = 16ULL;
     __twr_v321 = _mng_label309 + __twr_v320;
     __twr_v322 = *(uint32_t*)(__twr_v321);
     ((void (*)(uint64_t))__twr_v319)(__twr_v322);
@@ -804,7 +805,7 @@ void CtGenerateLoad(uint64_t _mng_inst395) {
     __twr_v397 = (uint64_t)(&"    ");
     ((void (*)(uint64_t))__twr_v396)(__twr_v397);
     __twr_v398 = (uint64_t)(&CtOutputVariableName);
-    __twr_v399 = 40ULL;
+    __twr_v399 = 48ULL;
     __twr_v400 = _mng_inst395 + __twr_v399;
     __twr_v401 = *(uint64_t*)(__twr_v400);
     ((void (*)(uint64_t))__twr_v398)(__twr_v401);
@@ -819,7 +820,7 @@ void CtGenerateLoad(uint64_t _mng_inst395) {
     ((void (*)(uint64_t))__twr_v396)(__twr_v408);
     __twr_v409 = (uint64_t)(&"*)(");
     ((void (*)(uint64_t))__twr_v396)(__twr_v409);
-    __twr_v410 = 48ULL;
+    __twr_v410 = 56ULL;
     __twr_v411 = _mng_inst395 + __twr_v410;
     __twr_v412 = *(uint64_t*)(__twr_v411);
     ((void (*)(uint64_t))__twr_v398)(__twr_v412);
@@ -838,26 +839,25 @@ void CtGenerateAddr(uint64_t _mng_inst414) {
     uint64_t __twr_v423;
     uint64_t __twr_v424;
     uint64_t __twr_v425;
-    uint64_t __twr_v426;
     __twr_v415 = (uint64_t)(&CtInsertStringFunc);
     __twr_v416 = (uint64_t)(&"    ");
     ((void (*)(uint64_t))__twr_v415)(__twr_v416);
     __twr_v417 = (uint64_t)(&CtOutputVariableName);
-    __twr_v418 = 40ULL;
+    __twr_v418 = 48ULL;
     __twr_v419 = _mng_inst414 + __twr_v418;
     __twr_v420 = *(uint64_t*)(__twr_v419);
     ((void (*)(uint64_t))__twr_v417)(__twr_v420);
     __twr_v421 = (uint64_t)(&" = (uint64_t)(&");
     ((void (*)(uint64_t))__twr_v415)(__twr_v421);
     __twr_v422 = *(uint64_t*)(_mng_inst414);
-    __twr_v423 = 48ULL;
-    __twr_v424 = __twr_v422 + __twr_v423;
-    __twr_v425 = *(uint64_t*)(__twr_v424);
+    __twr_v423 = __twr_v422 + __twr_v418;
+    __twr_v424 = *(uint64_t*)(__twr_v423);
+    ((void (*)(uint64_t))__twr_v415)(__twr_v424);
+    __twr_v425 = (uint64_t)(&");\n");
     ((void (*)(uint64_t))__twr_v415)(__twr_v425);
-    __twr_v426 = (uint64_t)(&");\n");
-    ((void (*)(uint64_t))__twr_v415)(__twr_v426);
 }
-void CtGenerateStackAddr(uint64_t _mng_inst427) {
+void CtGenerateStackAddr(uint64_t _mng_inst426) {
+    uint64_t __twr_v427;
     uint64_t __twr_v428;
     uint64_t __twr_v429;
     uint64_t __twr_v430;
@@ -867,24 +867,24 @@ void CtGenerateStackAddr(uint64_t _mng_inst427) {
     uint64_t __twr_v434;
     uint64_t __twr_v435;
     uint64_t __twr_v436;
-    uint64_t __twr_v437;
-    __twr_v428 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v429 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v428)(__twr_v429);
-    __twr_v430 = (uint64_t)(&CtOutputVariableName);
-    __twr_v431 = 40ULL;
-    __twr_v432 = _mng_inst427 + __twr_v431;
-    __twr_v433 = *(uint64_t*)(__twr_v432);
-    ((void (*)(uint64_t))__twr_v430)(__twr_v433);
-    __twr_v434 = (uint64_t)(&" = (uint64_t)(&");
-    ((void (*)(uint64_t))__twr_v428)(__twr_v434);
-    __twr_v435 = (uint64_t)(&CtOutputSymbolName);
-    __twr_v436 = *(uint64_t*)(_mng_inst427);
-    ((void (*)(uint64_t))__twr_v435)(__twr_v436);
-    __twr_v437 = (uint64_t)(&");\n");
-    ((void (*)(uint64_t))__twr_v428)(__twr_v437);
+    __twr_v427 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v428 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v427)(__twr_v428);
+    __twr_v429 = (uint64_t)(&CtOutputVariableName);
+    __twr_v430 = 48ULL;
+    __twr_v431 = _mng_inst426 + __twr_v430;
+    __twr_v432 = *(uint64_t*)(__twr_v431);
+    ((void (*)(uint64_t))__twr_v429)(__twr_v432);
+    __twr_v433 = (uint64_t)(&" = (uint64_t)(&");
+    ((void (*)(uint64_t))__twr_v427)(__twr_v433);
+    __twr_v434 = (uint64_t)(&CtOutputSymbolName);
+    __twr_v435 = *(uint64_t*)(_mng_inst426);
+    ((void (*)(uint64_t))__twr_v434)(__twr_v435);
+    __twr_v436 = (uint64_t)(&");\n");
+    ((void (*)(uint64_t))__twr_v427)(__twr_v436);
 }
-void CtGenerateStringAddr(uint64_t _mng_inst438) {
+void CtGenerateStringAddr(uint64_t _mng_inst437) {
+    uint64_t __twr_v438;
     uint64_t __twr_v439;
     uint64_t __twr_v440;
     uint64_t __twr_v441;
@@ -895,25 +895,25 @@ void CtGenerateStringAddr(uint64_t _mng_inst438) {
     uint64_t __twr_v446;
     uint64_t __twr_v447;
     uint64_t __twr_v448;
-    uint64_t __twr_v449;
-    __twr_v439 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v440 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v439)(__twr_v440);
-    __twr_v441 = (uint64_t)(&CtOutputVariableName);
-    __twr_v442 = 40ULL;
-    __twr_v443 = _mng_inst438 + __twr_v442;
-    __twr_v444 = *(uint64_t*)(__twr_v443);
-    ((void (*)(uint64_t))__twr_v441)(__twr_v444);
-    __twr_v445 = (uint64_t)(&" = (uint64_t)(&");
-    ((void (*)(uint64_t))__twr_v439)(__twr_v445);
-    __twr_v446 = (uint64_t)(&CtGenerateString);
-    __twr_v447 = 1ULL;
-    __twr_v448 = *(uint64_t*)(_mng_inst438);
-    ((void (*)(uint64_t, uint64_t))__twr_v446)(__twr_v447, __twr_v448);
-    __twr_v449 = (uint64_t)(&");\n");
-    ((void (*)(uint64_t))__twr_v439)(__twr_v449);
+    __twr_v438 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v439 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v438)(__twr_v439);
+    __twr_v440 = (uint64_t)(&CtOutputVariableName);
+    __twr_v441 = 48ULL;
+    __twr_v442 = _mng_inst437 + __twr_v441;
+    __twr_v443 = *(uint64_t*)(__twr_v442);
+    ((void (*)(uint64_t))__twr_v440)(__twr_v443);
+    __twr_v444 = (uint64_t)(&" = (uint64_t)(&");
+    ((void (*)(uint64_t))__twr_v438)(__twr_v444);
+    __twr_v445 = (uint64_t)(&CtGenerateString);
+    __twr_v446 = 1ULL;
+    __twr_v447 = *(uint64_t*)(_mng_inst437);
+    ((void (*)(uint64_t, uint64_t))__twr_v445)(__twr_v446, __twr_v447);
+    __twr_v448 = (uint64_t)(&");\n");
+    ((void (*)(uint64_t))__twr_v438)(__twr_v448);
 }
-void CtGenerateConstant(uint64_t _mng_inst450) {
+void CtGenerateConstant(uint64_t _mng_inst449) {
+    uint64_t __twr_v450;
     uint64_t __twr_v451;
     uint64_t __twr_v452;
     uint64_t __twr_v453;
@@ -924,26 +924,26 @@ void CtGenerateConstant(uint64_t _mng_inst450) {
     uint64_t __twr_v458;
     uint64_t __twr_v459;
     uint64_t __twr_v460;
-    uint64_t __twr_v461;
-    __twr_v451 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v452 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v451)(__twr_v452);
-    __twr_v453 = (uint64_t)(&CtOutputVariableName);
-    __twr_v454 = 40ULL;
-    __twr_v455 = _mng_inst450 + __twr_v454;
-    __twr_v456 = *(uint64_t*)(__twr_v455);
-    ((void (*)(uint64_t))__twr_v453)(__twr_v456);
-    __twr_v457 = (uint64_t)(&" = ");
-    ((void (*)(uint64_t))__twr_v451)(__twr_v457);
-    __twr_v458 = (uint64_t)(&CtInsertNumberFunc);
-    __twr_v459 = *(uint64_t*)(_mng_inst450);
-    ((void (*)(uint64_t))__twr_v458)(__twr_v459);
-    __twr_v460 = (uint64_t)(&"ULL");
-    ((void (*)(uint64_t))__twr_v451)(__twr_v460);
-    __twr_v461 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v451)(__twr_v461);
+    __twr_v450 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v451 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v450)(__twr_v451);
+    __twr_v452 = (uint64_t)(&CtOutputVariableName);
+    __twr_v453 = 48ULL;
+    __twr_v454 = _mng_inst449 + __twr_v453;
+    __twr_v455 = *(uint64_t*)(__twr_v454);
+    ((void (*)(uint64_t))__twr_v452)(__twr_v455);
+    __twr_v456 = (uint64_t)(&" = ");
+    ((void (*)(uint64_t))__twr_v450)(__twr_v456);
+    __twr_v457 = (uint64_t)(&CtInsertNumberFunc);
+    __twr_v458 = *(uint64_t*)(_mng_inst449);
+    ((void (*)(uint64_t))__twr_v457)(__twr_v458);
+    __twr_v459 = (uint64_t)(&"ULL");
+    ((void (*)(uint64_t))__twr_v450)(__twr_v459);
+    __twr_v460 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v450)(__twr_v460);
 }
-void CtGenerateBranchNonZero(uint64_t _mng_inst462) {
+void CtGenerateBranchNonZero(uint64_t _mng_inst461) {
+    uint64_t __twr_v462;
     uint64_t __twr_v463;
     uint64_t __twr_v464;
     uint64_t __twr_v465;
@@ -957,30 +957,30 @@ void CtGenerateBranchNonZero(uint64_t _mng_inst462) {
     uint64_t __twr_v473;
     uint64_t __twr_v474;
     uint64_t __twr_v475;
-    uint64_t __twr_v476;
-    __twr_v463 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v464 = (uint64_t)(&"    if (");
-    ((void (*)(uint64_t))__twr_v463)(__twr_v464);
-    __twr_v465 = (uint64_t)(&CtOutputVariableName);
-    __twr_v466 = 48ULL;
-    __twr_v467 = _mng_inst462 + __twr_v466;
-    __twr_v468 = *(uint64_t*)(__twr_v467);
-    ((void (*)(uint64_t))__twr_v465)(__twr_v468);
-    __twr_v469 = (uint64_t)(&") { goto ");
-    ((void (*)(uint64_t))__twr_v463)(__twr_v469);
-    __twr_v470 = (uint64_t)(&CtOutputLabelName);
-    __twr_v471 = *(uint64_t*)(_mng_inst462);
-    ((void (*)(uint64_t))__twr_v470)(__twr_v471);
-    __twr_v472 = (uint64_t)(&"; } else { goto ");
-    ((void (*)(uint64_t))__twr_v463)(__twr_v472);
-    __twr_v473 = 8ULL;
-    __twr_v474 = _mng_inst462 + __twr_v473;
-    __twr_v475 = *(uint64_t*)(__twr_v474);
-    ((void (*)(uint64_t))__twr_v470)(__twr_v475);
-    __twr_v476 = (uint64_t)(&"; }\n");
-    ((void (*)(uint64_t))__twr_v463)(__twr_v476);
+    __twr_v462 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v463 = (uint64_t)(&"    if (");
+    ((void (*)(uint64_t))__twr_v462)(__twr_v463);
+    __twr_v464 = (uint64_t)(&CtOutputVariableName);
+    __twr_v465 = 56ULL;
+    __twr_v466 = _mng_inst461 + __twr_v465;
+    __twr_v467 = *(uint64_t*)(__twr_v466);
+    ((void (*)(uint64_t))__twr_v464)(__twr_v467);
+    __twr_v468 = (uint64_t)(&") { goto ");
+    ((void (*)(uint64_t))__twr_v462)(__twr_v468);
+    __twr_v469 = (uint64_t)(&CtOutputLabelName);
+    __twr_v470 = *(uint64_t*)(_mng_inst461);
+    ((void (*)(uint64_t))__twr_v469)(__twr_v470);
+    __twr_v471 = (uint64_t)(&"; } else { goto ");
+    ((void (*)(uint64_t))__twr_v462)(__twr_v471);
+    __twr_v472 = 8ULL;
+    __twr_v473 = _mng_inst461 + __twr_v472;
+    __twr_v474 = *(uint64_t*)(__twr_v473);
+    ((void (*)(uint64_t))__twr_v469)(__twr_v474);
+    __twr_v475 = (uint64_t)(&"; }\n");
+    ((void (*)(uint64_t))__twr_v462)(__twr_v475);
 }
-void CtGenerateReturn(uint64_t _mng_inst477) {
+void CtGenerateReturn(uint64_t _mng_inst476) {
+    uint64_t __twr_v477;
     uint64_t __twr_v478;
     uint64_t __twr_v479;
     uint64_t __twr_v480;
@@ -993,29 +993,29 @@ void CtGenerateReturn(uint64_t _mng_inst477) {
     uint64_t __twr_v487;
     uint64_t __twr_v488;
     uint64_t __twr_v489;
-    uint64_t __twr_v490;
-    __twr_v478 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v479 = (uint64_t)(&"    return");
-    ((void (*)(uint64_t))__twr_v478)(__twr_v479);
-    __twr_v480 = 48ULL;
-    __twr_v481 = _mng_inst477 + __twr_v480;
-    __twr_v482 = *(uint64_t*)(__twr_v481);
-    if (__twr_v482) { goto __twr_l43; } else { goto __twr_l42; }
+    __twr_v477 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v478 = (uint64_t)(&"    return");
+    ((void (*)(uint64_t))__twr_v477)(__twr_v478);
+    __twr_v479 = 56ULL;
+    __twr_v480 = _mng_inst476 + __twr_v479;
+    __twr_v481 = *(uint64_t*)(__twr_v480);
+    if (__twr_v481) { goto __twr_l43; } else { goto __twr_l42; }
     __twr_l43:;
-    __twr_v483 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v484 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v483)(__twr_v484);
-    __twr_v485 = (uint64_t)(&CtOutputVariableName);
-    __twr_v486 = 48ULL;
-    __twr_v487 = _mng_inst477 + __twr_v486;
-    __twr_v488 = *(uint64_t*)(__twr_v487);
-    ((void (*)(uint64_t))__twr_v485)(__twr_v488);
+    __twr_v482 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v483 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v482)(__twr_v483);
+    __twr_v484 = (uint64_t)(&CtOutputVariableName);
+    __twr_v485 = 56ULL;
+    __twr_v486 = _mng_inst476 + __twr_v485;
+    __twr_v487 = *(uint64_t*)(__twr_v486);
+    ((void (*)(uint64_t))__twr_v484)(__twr_v487);
     __twr_l42:;
-    __twr_v489 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v490 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v489)(__twr_v490);
+    __twr_v488 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v489 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v488)(__twr_v489);
 }
-void CtGenerateMove(uint64_t _mng_inst491) {
+void CtGenerateMove(uint64_t _mng_inst490) {
+    uint64_t __twr_v491;
     uint64_t __twr_v492;
     uint64_t __twr_v493;
     uint64_t __twr_v494;
@@ -1026,25 +1026,25 @@ void CtGenerateMove(uint64_t _mng_inst491) {
     uint64_t __twr_v499;
     uint64_t __twr_v500;
     uint64_t __twr_v501;
-    uint64_t __twr_v502;
-    __twr_v492 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v493 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v492)(__twr_v493);
-    __twr_v494 = (uint64_t)(&CtOutputVariableName);
-    __twr_v495 = 40ULL;
-    __twr_v496 = _mng_inst491 + __twr_v495;
-    __twr_v497 = *(uint64_t*)(__twr_v496);
-    ((void (*)(uint64_t))__twr_v494)(__twr_v497);
-    __twr_v498 = (uint64_t)(&" = ");
-    ((void (*)(uint64_t))__twr_v492)(__twr_v498);
-    __twr_v499 = 48ULL;
-    __twr_v500 = _mng_inst491 + __twr_v499;
-    __twr_v501 = *(uint64_t*)(__twr_v500);
-    ((void (*)(uint64_t))__twr_v494)(__twr_v501);
-    __twr_v502 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v492)(__twr_v502);
+    __twr_v491 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v492 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v491)(__twr_v492);
+    __twr_v493 = (uint64_t)(&CtOutputVariableName);
+    __twr_v494 = 48ULL;
+    __twr_v495 = _mng_inst490 + __twr_v494;
+    __twr_v496 = *(uint64_t*)(__twr_v495);
+    ((void (*)(uint64_t))__twr_v493)(__twr_v496);
+    __twr_v497 = (uint64_t)(&" = ");
+    ((void (*)(uint64_t))__twr_v491)(__twr_v497);
+    __twr_v498 = 56ULL;
+    __twr_v499 = _mng_inst490 + __twr_v498;
+    __twr_v500 = *(uint64_t*)(__twr_v499);
+    ((void (*)(uint64_t))__twr_v493)(__twr_v500);
+    __twr_v501 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v491)(__twr_v501);
 }
-void CtGenerateNot(uint64_t _mng_inst503) {
+void CtGenerateNot(uint64_t _mng_inst502) {
+    uint64_t __twr_v503;
     uint64_t __twr_v504;
     uint64_t __twr_v505;
     uint64_t __twr_v506;
@@ -1055,25 +1055,25 @@ void CtGenerateNot(uint64_t _mng_inst503) {
     uint64_t __twr_v511;
     uint64_t __twr_v512;
     uint64_t __twr_v513;
-    uint64_t __twr_v514;
-    __twr_v504 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v505 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v504)(__twr_v505);
-    __twr_v506 = (uint64_t)(&CtOutputVariableName);
-    __twr_v507 = 40ULL;
-    __twr_v508 = _mng_inst503 + __twr_v507;
-    __twr_v509 = *(uint64_t*)(__twr_v508);
-    ((void (*)(uint64_t))__twr_v506)(__twr_v509);
-    __twr_v510 = (uint64_t)(&" = !");
-    ((void (*)(uint64_t))__twr_v504)(__twr_v510);
-    __twr_v511 = 48ULL;
-    __twr_v512 = _mng_inst503 + __twr_v511;
-    __twr_v513 = *(uint64_t*)(__twr_v512);
-    ((void (*)(uint64_t))__twr_v506)(__twr_v513);
-    __twr_v514 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v504)(__twr_v514);
+    __twr_v503 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v504 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v503)(__twr_v504);
+    __twr_v505 = (uint64_t)(&CtOutputVariableName);
+    __twr_v506 = 48ULL;
+    __twr_v507 = _mng_inst502 + __twr_v506;
+    __twr_v508 = *(uint64_t*)(__twr_v507);
+    ((void (*)(uint64_t))__twr_v505)(__twr_v508);
+    __twr_v509 = (uint64_t)(&" = !");
+    ((void (*)(uint64_t))__twr_v503)(__twr_v509);
+    __twr_v510 = 56ULL;
+    __twr_v511 = _mng_inst502 + __twr_v510;
+    __twr_v512 = *(uint64_t*)(__twr_v511);
+    ((void (*)(uint64_t))__twr_v505)(__twr_v512);
+    __twr_v513 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v503)(__twr_v513);
 }
-void CtGenerateBranch(uint64_t _mng_inst515, uint64_t _mng_string516) {
+void CtGenerateBranch(uint64_t _mng_inst514, uint64_t _mng_string515) {
+    uint64_t __twr_v516;
     uint64_t __twr_v517;
     uint64_t __twr_v518;
     uint64_t __twr_v519;
@@ -1092,39 +1092,39 @@ void CtGenerateBranch(uint64_t _mng_inst515, uint64_t _mng_string516) {
     uint64_t __twr_v532;
     uint64_t __twr_v533;
     uint64_t __twr_v534;
-    uint64_t __twr_v535;
-    __twr_v517 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v518 = (uint64_t)(&"    if (");
-    ((void (*)(uint64_t))__twr_v517)(__twr_v518);
-    __twr_v519 = (uint64_t)(&CtOutputVariableName);
-    __twr_v520 = 48ULL;
-    __twr_v521 = _mng_inst515 + __twr_v520;
-    __twr_v522 = *(uint64_t*)(__twr_v521);
-    ((void (*)(uint64_t))__twr_v519)(__twr_v522);
+    __twr_v516 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v517 = (uint64_t)(&"    if (");
+    ((void (*)(uint64_t))__twr_v516)(__twr_v517);
+    __twr_v518 = (uint64_t)(&CtOutputVariableName);
+    __twr_v519 = 56ULL;
+    __twr_v520 = _mng_inst514 + __twr_v519;
+    __twr_v521 = *(uint64_t*)(__twr_v520);
+    ((void (*)(uint64_t))__twr_v518)(__twr_v521);
+    __twr_v522 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v516)(__twr_v522);
+    ((void (*)(uint64_t))__twr_v516)(_mng_string515);
     __twr_v523 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v517)(__twr_v523);
-    ((void (*)(uint64_t))__twr_v517)(_mng_string516);
-    __twr_v524 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v517)(__twr_v524);
-    __twr_v525 = 56ULL;
-    __twr_v526 = _mng_inst515 + __twr_v525;
-    __twr_v527 = *(uint64_t*)(__twr_v526);
-    ((void (*)(uint64_t))__twr_v519)(__twr_v527);
-    __twr_v528 = (uint64_t)(&") { goto ");
-    ((void (*)(uint64_t))__twr_v517)(__twr_v528);
-    __twr_v529 = (uint64_t)(&CtOutputLabelName);
-    __twr_v530 = *(uint64_t*)(_mng_inst515);
-    ((void (*)(uint64_t))__twr_v529)(__twr_v530);
-    __twr_v531 = (uint64_t)(&"; } else { goto ");
-    ((void (*)(uint64_t))__twr_v517)(__twr_v531);
-    __twr_v532 = 8ULL;
-    __twr_v533 = _mng_inst515 + __twr_v532;
-    __twr_v534 = *(uint64_t*)(__twr_v533);
-    ((void (*)(uint64_t))__twr_v529)(__twr_v534);
-    __twr_v535 = (uint64_t)(&"; }\n");
-    ((void (*)(uint64_t))__twr_v517)(__twr_v535);
+    ((void (*)(uint64_t))__twr_v516)(__twr_v523);
+    __twr_v524 = 64ULL;
+    __twr_v525 = _mng_inst514 + __twr_v524;
+    __twr_v526 = *(uint64_t*)(__twr_v525);
+    ((void (*)(uint64_t))__twr_v518)(__twr_v526);
+    __twr_v527 = (uint64_t)(&") { goto ");
+    ((void (*)(uint64_t))__twr_v516)(__twr_v527);
+    __twr_v528 = (uint64_t)(&CtOutputLabelName);
+    __twr_v529 = *(uint64_t*)(_mng_inst514);
+    ((void (*)(uint64_t))__twr_v528)(__twr_v529);
+    __twr_v530 = (uint64_t)(&"; } else { goto ");
+    ((void (*)(uint64_t))__twr_v516)(__twr_v530);
+    __twr_v531 = 8ULL;
+    __twr_v532 = _mng_inst514 + __twr_v531;
+    __twr_v533 = *(uint64_t*)(__twr_v532);
+    ((void (*)(uint64_t))__twr_v528)(__twr_v533);
+    __twr_v534 = (uint64_t)(&"; }\n");
+    ((void (*)(uint64_t))__twr_v516)(__twr_v534);
 }
-void CtGenerateCmp(uint64_t _mng_inst536, uint64_t _mng_string537) {
+void CtGenerateCmp(uint64_t _mng_inst535, uint64_t _mng_string536) {
+    uint64_t __twr_v537;
     uint64_t __twr_v538;
     uint64_t __twr_v539;
     uint64_t __twr_v540;
@@ -1140,34 +1140,34 @@ void CtGenerateCmp(uint64_t _mng_inst536, uint64_t _mng_string537) {
     uint64_t __twr_v550;
     uint64_t __twr_v551;
     uint64_t __twr_v552;
-    uint64_t __twr_v553;
-    __twr_v538 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v539 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v538)(__twr_v539);
-    __twr_v540 = (uint64_t)(&CtOutputVariableName);
-    __twr_v541 = 40ULL;
-    __twr_v542 = _mng_inst536 + __twr_v541;
-    __twr_v543 = *(uint64_t*)(__twr_v542);
-    ((void (*)(uint64_t))__twr_v540)(__twr_v543);
-    __twr_v544 = (uint64_t)(&" = (");
-    ((void (*)(uint64_t))__twr_v538)(__twr_v544);
-    __twr_v545 = 48ULL;
-    __twr_v546 = _mng_inst536 + __twr_v545;
-    __twr_v547 = *(uint64_t*)(__twr_v546);
-    ((void (*)(uint64_t))__twr_v540)(__twr_v547);
+    __twr_v537 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v538 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v537)(__twr_v538);
+    __twr_v539 = (uint64_t)(&CtOutputVariableName);
+    __twr_v540 = 48ULL;
+    __twr_v541 = _mng_inst535 + __twr_v540;
+    __twr_v542 = *(uint64_t*)(__twr_v541);
+    ((void (*)(uint64_t))__twr_v539)(__twr_v542);
+    __twr_v543 = (uint64_t)(&" = (");
+    ((void (*)(uint64_t))__twr_v537)(__twr_v543);
+    __twr_v544 = 56ULL;
+    __twr_v545 = _mng_inst535 + __twr_v544;
+    __twr_v546 = *(uint64_t*)(__twr_v545);
+    ((void (*)(uint64_t))__twr_v539)(__twr_v546);
+    __twr_v547 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v537)(__twr_v547);
+    ((void (*)(uint64_t))__twr_v537)(_mng_string536);
     __twr_v548 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v538)(__twr_v548);
-    ((void (*)(uint64_t))__twr_v538)(_mng_string537);
-    __twr_v549 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v538)(__twr_v549);
-    __twr_v550 = 56ULL;
-    __twr_v551 = _mng_inst536 + __twr_v550;
-    __twr_v552 = *(uint64_t*)(__twr_v551);
-    ((void (*)(uint64_t))__twr_v540)(__twr_v552);
-    __twr_v553 = (uint64_t)(&");\n");
-    ((void (*)(uint64_t))__twr_v538)(__twr_v553);
+    ((void (*)(uint64_t))__twr_v537)(__twr_v548);
+    __twr_v549 = 64ULL;
+    __twr_v550 = _mng_inst535 + __twr_v549;
+    __twr_v551 = *(uint64_t*)(__twr_v550);
+    ((void (*)(uint64_t))__twr_v539)(__twr_v551);
+    __twr_v552 = (uint64_t)(&");\n");
+    ((void (*)(uint64_t))__twr_v537)(__twr_v552);
 }
-void CtGenerateSignedBranch(uint64_t _mng_inst554, uint64_t _mng_string555) {
+void CtGenerateSignedBranch(uint64_t _mng_inst553, uint64_t _mng_string554) {
+    uint64_t __twr_v555;
     uint64_t __twr_v556;
     uint64_t __twr_v557;
     uint64_t __twr_v558;
@@ -1186,39 +1186,39 @@ void CtGenerateSignedBranch(uint64_t _mng_inst554, uint64_t _mng_string555) {
     uint64_t __twr_v571;
     uint64_t __twr_v572;
     uint64_t __twr_v573;
-    uint64_t __twr_v574;
-    __twr_v556 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v557 = (uint64_t)(&"    if ((int64_t)(");
-    ((void (*)(uint64_t))__twr_v556)(__twr_v557);
-    __twr_v558 = (uint64_t)(&CtOutputVariableName);
-    __twr_v559 = 48ULL;
-    __twr_v560 = _mng_inst554 + __twr_v559;
-    __twr_v561 = *(uint64_t*)(__twr_v560);
-    ((void (*)(uint64_t))__twr_v558)(__twr_v561);
-    __twr_v562 = (uint64_t)(&") ");
-    ((void (*)(uint64_t))__twr_v556)(__twr_v562);
-    ((void (*)(uint64_t))__twr_v556)(_mng_string555);
-    __twr_v563 = (uint64_t)(&" (int64_t)(");
-    ((void (*)(uint64_t))__twr_v556)(__twr_v563);
-    __twr_v564 = 56ULL;
-    __twr_v565 = _mng_inst554 + __twr_v564;
-    __twr_v566 = *(uint64_t*)(__twr_v565);
-    ((void (*)(uint64_t))__twr_v558)(__twr_v566);
-    __twr_v567 = (uint64_t)(&")) { goto ");
-    ((void (*)(uint64_t))__twr_v556)(__twr_v567);
-    __twr_v568 = (uint64_t)(&CtOutputLabelName);
-    __twr_v569 = *(uint64_t*)(_mng_inst554);
-    ((void (*)(uint64_t))__twr_v568)(__twr_v569);
-    __twr_v570 = (uint64_t)(&"; } else { goto ");
-    ((void (*)(uint64_t))__twr_v556)(__twr_v570);
-    __twr_v571 = 8ULL;
-    __twr_v572 = _mng_inst554 + __twr_v571;
-    __twr_v573 = *(uint64_t*)(__twr_v572);
-    ((void (*)(uint64_t))__twr_v568)(__twr_v573);
-    __twr_v574 = (uint64_t)(&"; }\n");
-    ((void (*)(uint64_t))__twr_v556)(__twr_v574);
+    __twr_v555 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v556 = (uint64_t)(&"    if ((int64_t)(");
+    ((void (*)(uint64_t))__twr_v555)(__twr_v556);
+    __twr_v557 = (uint64_t)(&CtOutputVariableName);
+    __twr_v558 = 56ULL;
+    __twr_v559 = _mng_inst553 + __twr_v558;
+    __twr_v560 = *(uint64_t*)(__twr_v559);
+    ((void (*)(uint64_t))__twr_v557)(__twr_v560);
+    __twr_v561 = (uint64_t)(&") ");
+    ((void (*)(uint64_t))__twr_v555)(__twr_v561);
+    ((void (*)(uint64_t))__twr_v555)(_mng_string554);
+    __twr_v562 = (uint64_t)(&" (int64_t)(");
+    ((void (*)(uint64_t))__twr_v555)(__twr_v562);
+    __twr_v563 = 64ULL;
+    __twr_v564 = _mng_inst553 + __twr_v563;
+    __twr_v565 = *(uint64_t*)(__twr_v564);
+    ((void (*)(uint64_t))__twr_v557)(__twr_v565);
+    __twr_v566 = (uint64_t)(&")) { goto ");
+    ((void (*)(uint64_t))__twr_v555)(__twr_v566);
+    __twr_v567 = (uint64_t)(&CtOutputLabelName);
+    __twr_v568 = *(uint64_t*)(_mng_inst553);
+    ((void (*)(uint64_t))__twr_v567)(__twr_v568);
+    __twr_v569 = (uint64_t)(&"; } else { goto ");
+    ((void (*)(uint64_t))__twr_v555)(__twr_v569);
+    __twr_v570 = 8ULL;
+    __twr_v571 = _mng_inst553 + __twr_v570;
+    __twr_v572 = *(uint64_t*)(__twr_v571);
+    ((void (*)(uint64_t))__twr_v567)(__twr_v572);
+    __twr_v573 = (uint64_t)(&"; }\n");
+    ((void (*)(uint64_t))__twr_v555)(__twr_v573);
 }
-void CtGenerateSignedCmp(uint64_t _mng_inst575, uint64_t _mng_string576) {
+void CtGenerateSignedCmp(uint64_t _mng_inst574, uint64_t _mng_string575) {
+    uint64_t __twr_v576;
     uint64_t __twr_v577;
     uint64_t __twr_v578;
     uint64_t __twr_v579;
@@ -1234,174 +1234,174 @@ void CtGenerateSignedCmp(uint64_t _mng_inst575, uint64_t _mng_string576) {
     uint64_t __twr_v589;
     uint64_t __twr_v590;
     uint64_t __twr_v591;
-    uint64_t __twr_v592;
-    __twr_v577 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v578 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v577)(__twr_v578);
-    __twr_v579 = (uint64_t)(&CtOutputVariableName);
-    __twr_v580 = 40ULL;
-    __twr_v581 = _mng_inst575 + __twr_v580;
-    __twr_v582 = *(uint64_t*)(__twr_v581);
-    ((void (*)(uint64_t))__twr_v579)(__twr_v582);
-    __twr_v583 = (uint64_t)(&" = ((int64_t)(");
-    ((void (*)(uint64_t))__twr_v577)(__twr_v583);
-    __twr_v584 = 48ULL;
-    __twr_v585 = _mng_inst575 + __twr_v584;
-    __twr_v586 = *(uint64_t*)(__twr_v585);
-    ((void (*)(uint64_t))__twr_v579)(__twr_v586);
-    __twr_v587 = (uint64_t)(&") ");
-    ((void (*)(uint64_t))__twr_v577)(__twr_v587);
-    ((void (*)(uint64_t))__twr_v577)(_mng_string576);
-    __twr_v588 = (uint64_t)(&" (int64_t)(");
-    ((void (*)(uint64_t))__twr_v577)(__twr_v588);
-    __twr_v589 = 56ULL;
-    __twr_v590 = _mng_inst575 + __twr_v589;
-    __twr_v591 = *(uint64_t*)(__twr_v590);
-    ((void (*)(uint64_t))__twr_v579)(__twr_v591);
-    __twr_v592 = (uint64_t)(&"));\n");
-    ((void (*)(uint64_t))__twr_v577)(__twr_v592);
+    __twr_v576 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v577 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v576)(__twr_v577);
+    __twr_v578 = (uint64_t)(&CtOutputVariableName);
+    __twr_v579 = 48ULL;
+    __twr_v580 = _mng_inst574 + __twr_v579;
+    __twr_v581 = *(uint64_t*)(__twr_v580);
+    ((void (*)(uint64_t))__twr_v578)(__twr_v581);
+    __twr_v582 = (uint64_t)(&" = ((int64_t)(");
+    ((void (*)(uint64_t))__twr_v576)(__twr_v582);
+    __twr_v583 = 56ULL;
+    __twr_v584 = _mng_inst574 + __twr_v583;
+    __twr_v585 = *(uint64_t*)(__twr_v584);
+    ((void (*)(uint64_t))__twr_v578)(__twr_v585);
+    __twr_v586 = (uint64_t)(&") ");
+    ((void (*)(uint64_t))__twr_v576)(__twr_v586);
+    ((void (*)(uint64_t))__twr_v576)(_mng_string575);
+    __twr_v587 = (uint64_t)(&" (int64_t)(");
+    ((void (*)(uint64_t))__twr_v576)(__twr_v587);
+    __twr_v588 = 64ULL;
+    __twr_v589 = _mng_inst574 + __twr_v588;
+    __twr_v590 = *(uint64_t*)(__twr_v589);
+    ((void (*)(uint64_t))__twr_v578)(__twr_v590);
+    __twr_v591 = (uint64_t)(&"));\n");
+    ((void (*)(uint64_t))__twr_v576)(__twr_v591);
 }
-void CtGenerateBranchEquals(uint64_t _mng_inst593) {
+void CtGenerateBranchEquals(uint64_t _mng_inst592) {
+    uint64_t __twr_v593;
     uint64_t __twr_v594;
-    uint64_t __twr_v595;
-    __twr_v594 = (uint64_t)(&CtGenerateBranch);
-    __twr_v595 = (uint64_t)(&"==");
-    ((void (*)(uint64_t, uint64_t))__twr_v594)(_mng_inst593, __twr_v595);
+    __twr_v593 = (uint64_t)(&CtGenerateBranch);
+    __twr_v594 = (uint64_t)(&"==");
+    ((void (*)(uint64_t, uint64_t))__twr_v593)(_mng_inst592, __twr_v594);
 }
-void CtGenerateCmpEquals(uint64_t _mng_inst596) {
+void CtGenerateCmpEquals(uint64_t _mng_inst595) {
+    uint64_t __twr_v596;
     uint64_t __twr_v597;
-    uint64_t __twr_v598;
-    __twr_v597 = (uint64_t)(&CtGenerateCmp);
-    __twr_v598 = (uint64_t)(&"==");
-    ((void (*)(uint64_t, uint64_t))__twr_v597)(_mng_inst596, __twr_v598);
+    __twr_v596 = (uint64_t)(&CtGenerateCmp);
+    __twr_v597 = (uint64_t)(&"==");
+    ((void (*)(uint64_t, uint64_t))__twr_v596)(_mng_inst595, __twr_v597);
 }
-void CtGenerateBranchNotEquals(uint64_t _mng_inst599) {
+void CtGenerateBranchNotEquals(uint64_t _mng_inst598) {
+    uint64_t __twr_v599;
     uint64_t __twr_v600;
-    uint64_t __twr_v601;
-    __twr_v600 = (uint64_t)(&CtGenerateBranch);
-    __twr_v601 = (uint64_t)(&"!=");
-    ((void (*)(uint64_t, uint64_t))__twr_v600)(_mng_inst599, __twr_v601);
+    __twr_v599 = (uint64_t)(&CtGenerateBranch);
+    __twr_v600 = (uint64_t)(&"!=");
+    ((void (*)(uint64_t, uint64_t))__twr_v599)(_mng_inst598, __twr_v600);
 }
-void CtGenerateCmpNotEquals(uint64_t _mng_inst602) {
+void CtGenerateCmpNotEquals(uint64_t _mng_inst601) {
+    uint64_t __twr_v602;
     uint64_t __twr_v603;
-    uint64_t __twr_v604;
-    __twr_v603 = (uint64_t)(&CtGenerateCmp);
-    __twr_v604 = (uint64_t)(&"!=");
-    ((void (*)(uint64_t, uint64_t))__twr_v603)(_mng_inst602, __twr_v604);
+    __twr_v602 = (uint64_t)(&CtGenerateCmp);
+    __twr_v603 = (uint64_t)(&"!=");
+    ((void (*)(uint64_t, uint64_t))__twr_v602)(_mng_inst601, __twr_v603);
 }
-void CtGenerateBranchLessThan(uint64_t _mng_inst605) {
+void CtGenerateBranchLessThan(uint64_t _mng_inst604) {
+    uint64_t __twr_v605;
     uint64_t __twr_v606;
-    uint64_t __twr_v607;
-    __twr_v606 = (uint64_t)(&CtGenerateBranch);
-    __twr_v607 = (uint64_t)(&"<");
-    ((void (*)(uint64_t, uint64_t))__twr_v606)(_mng_inst605, __twr_v607);
+    __twr_v605 = (uint64_t)(&CtGenerateBranch);
+    __twr_v606 = (uint64_t)(&"<");
+    ((void (*)(uint64_t, uint64_t))__twr_v605)(_mng_inst604, __twr_v606);
 }
-void CtGenerateCmpLessThan(uint64_t _mng_inst608) {
+void CtGenerateCmpLessThan(uint64_t _mng_inst607) {
+    uint64_t __twr_v608;
     uint64_t __twr_v609;
-    uint64_t __twr_v610;
-    __twr_v609 = (uint64_t)(&CtGenerateCmp);
-    __twr_v610 = (uint64_t)(&"<");
-    ((void (*)(uint64_t, uint64_t))__twr_v609)(_mng_inst608, __twr_v610);
+    __twr_v608 = (uint64_t)(&CtGenerateCmp);
+    __twr_v609 = (uint64_t)(&"<");
+    ((void (*)(uint64_t, uint64_t))__twr_v608)(_mng_inst607, __twr_v609);
 }
-void CtGenerateBranchGreaterThan(uint64_t _mng_inst611) {
+void CtGenerateBranchGreaterThan(uint64_t _mng_inst610) {
+    uint64_t __twr_v611;
     uint64_t __twr_v612;
-    uint64_t __twr_v613;
-    __twr_v612 = (uint64_t)(&CtGenerateBranch);
-    __twr_v613 = (uint64_t)(&">");
-    ((void (*)(uint64_t, uint64_t))__twr_v612)(_mng_inst611, __twr_v613);
+    __twr_v611 = (uint64_t)(&CtGenerateBranch);
+    __twr_v612 = (uint64_t)(&">");
+    ((void (*)(uint64_t, uint64_t))__twr_v611)(_mng_inst610, __twr_v612);
 }
-void CtGenerateCmpGreaterThan(uint64_t _mng_inst614) {
+void CtGenerateCmpGreaterThan(uint64_t _mng_inst613) {
+    uint64_t __twr_v614;
     uint64_t __twr_v615;
-    uint64_t __twr_v616;
-    __twr_v615 = (uint64_t)(&CtGenerateCmp);
-    __twr_v616 = (uint64_t)(&">");
-    ((void (*)(uint64_t, uint64_t))__twr_v615)(_mng_inst614, __twr_v616);
+    __twr_v614 = (uint64_t)(&CtGenerateCmp);
+    __twr_v615 = (uint64_t)(&">");
+    ((void (*)(uint64_t, uint64_t))__twr_v614)(_mng_inst613, __twr_v615);
 }
-void CtGenerateBranchLtEq(uint64_t _mng_inst617) {
+void CtGenerateBranchLtEq(uint64_t _mng_inst616) {
+    uint64_t __twr_v617;
     uint64_t __twr_v618;
-    uint64_t __twr_v619;
-    __twr_v618 = (uint64_t)(&CtGenerateBranch);
-    __twr_v619 = (uint64_t)(&"<=");
-    ((void (*)(uint64_t, uint64_t))__twr_v618)(_mng_inst617, __twr_v619);
+    __twr_v617 = (uint64_t)(&CtGenerateBranch);
+    __twr_v618 = (uint64_t)(&"<=");
+    ((void (*)(uint64_t, uint64_t))__twr_v617)(_mng_inst616, __twr_v618);
 }
-void CtGenerateCmpLtEq(uint64_t _mng_inst620) {
+void CtGenerateCmpLtEq(uint64_t _mng_inst619) {
+    uint64_t __twr_v620;
     uint64_t __twr_v621;
-    uint64_t __twr_v622;
-    __twr_v621 = (uint64_t)(&CtGenerateCmp);
-    __twr_v622 = (uint64_t)(&"<=");
-    ((void (*)(uint64_t, uint64_t))__twr_v621)(_mng_inst620, __twr_v622);
+    __twr_v620 = (uint64_t)(&CtGenerateCmp);
+    __twr_v621 = (uint64_t)(&"<=");
+    ((void (*)(uint64_t, uint64_t))__twr_v620)(_mng_inst619, __twr_v621);
 }
-void CtGenerateBranchGtEq(uint64_t _mng_inst623) {
+void CtGenerateBranchGtEq(uint64_t _mng_inst622) {
+    uint64_t __twr_v623;
     uint64_t __twr_v624;
-    uint64_t __twr_v625;
-    __twr_v624 = (uint64_t)(&CtGenerateBranch);
-    __twr_v625 = (uint64_t)(&">=");
-    ((void (*)(uint64_t, uint64_t))__twr_v624)(_mng_inst623, __twr_v625);
+    __twr_v623 = (uint64_t)(&CtGenerateBranch);
+    __twr_v624 = (uint64_t)(&">=");
+    ((void (*)(uint64_t, uint64_t))__twr_v623)(_mng_inst622, __twr_v624);
 }
-void CtGenerateCmpGtEq(uint64_t _mng_inst626) {
+void CtGenerateCmpGtEq(uint64_t _mng_inst625) {
+    uint64_t __twr_v626;
     uint64_t __twr_v627;
-    uint64_t __twr_v628;
-    __twr_v627 = (uint64_t)(&CtGenerateCmp);
-    __twr_v628 = (uint64_t)(&">=");
-    ((void (*)(uint64_t, uint64_t))__twr_v627)(_mng_inst626, __twr_v628);
+    __twr_v626 = (uint64_t)(&CtGenerateCmp);
+    __twr_v627 = (uint64_t)(&">=");
+    ((void (*)(uint64_t, uint64_t))__twr_v626)(_mng_inst625, __twr_v627);
 }
-void CtGenerateBranchLtSigned(uint64_t _mng_inst629) {
+void CtGenerateBranchLtSigned(uint64_t _mng_inst628) {
+    uint64_t __twr_v629;
     uint64_t __twr_v630;
-    uint64_t __twr_v631;
-    __twr_v630 = (uint64_t)(&CtGenerateSignedBranch);
-    __twr_v631 = (uint64_t)(&"<");
-    ((void (*)(uint64_t, uint64_t))__twr_v630)(_mng_inst629, __twr_v631);
+    __twr_v629 = (uint64_t)(&CtGenerateSignedBranch);
+    __twr_v630 = (uint64_t)(&"<");
+    ((void (*)(uint64_t, uint64_t))__twr_v629)(_mng_inst628, __twr_v630);
 }
-void CtGenerateCmpLtSigned(uint64_t _mng_inst632) {
+void CtGenerateCmpLtSigned(uint64_t _mng_inst631) {
+    uint64_t __twr_v632;
     uint64_t __twr_v633;
-    uint64_t __twr_v634;
-    __twr_v633 = (uint64_t)(&CtGenerateSignedCmp);
-    __twr_v634 = (uint64_t)(&"<");
-    ((void (*)(uint64_t, uint64_t))__twr_v633)(_mng_inst632, __twr_v634);
+    __twr_v632 = (uint64_t)(&CtGenerateSignedCmp);
+    __twr_v633 = (uint64_t)(&"<");
+    ((void (*)(uint64_t, uint64_t))__twr_v632)(_mng_inst631, __twr_v633);
 }
-void CtGenerateBranchGtSigned(uint64_t _mng_inst635) {
+void CtGenerateBranchGtSigned(uint64_t _mng_inst634) {
+    uint64_t __twr_v635;
     uint64_t __twr_v636;
-    uint64_t __twr_v637;
-    __twr_v636 = (uint64_t)(&CtGenerateSignedBranch);
-    __twr_v637 = (uint64_t)(&">");
-    ((void (*)(uint64_t, uint64_t))__twr_v636)(_mng_inst635, __twr_v637);
+    __twr_v635 = (uint64_t)(&CtGenerateSignedBranch);
+    __twr_v636 = (uint64_t)(&">");
+    ((void (*)(uint64_t, uint64_t))__twr_v635)(_mng_inst634, __twr_v636);
 }
-void CtGenerateCmpGtSigned(uint64_t _mng_inst638) {
+void CtGenerateCmpGtSigned(uint64_t _mng_inst637) {
+    uint64_t __twr_v638;
     uint64_t __twr_v639;
-    uint64_t __twr_v640;
-    __twr_v639 = (uint64_t)(&CtGenerateSignedCmp);
-    __twr_v640 = (uint64_t)(&">");
-    ((void (*)(uint64_t, uint64_t))__twr_v639)(_mng_inst638, __twr_v640);
+    __twr_v638 = (uint64_t)(&CtGenerateSignedCmp);
+    __twr_v639 = (uint64_t)(&">");
+    ((void (*)(uint64_t, uint64_t))__twr_v638)(_mng_inst637, __twr_v639);
 }
-void CtGenerateBranchLtEqSigned(uint64_t _mng_inst641) {
+void CtGenerateBranchLtEqSigned(uint64_t _mng_inst640) {
+    uint64_t __twr_v641;
     uint64_t __twr_v642;
-    uint64_t __twr_v643;
-    __twr_v642 = (uint64_t)(&CtGenerateSignedBranch);
-    __twr_v643 = (uint64_t)(&"<=");
-    ((void (*)(uint64_t, uint64_t))__twr_v642)(_mng_inst641, __twr_v643);
+    __twr_v641 = (uint64_t)(&CtGenerateSignedBranch);
+    __twr_v642 = (uint64_t)(&"<=");
+    ((void (*)(uint64_t, uint64_t))__twr_v641)(_mng_inst640, __twr_v642);
 }
-void CtGenerateCmpLtEqSigned(uint64_t _mng_inst644) {
+void CtGenerateCmpLtEqSigned(uint64_t _mng_inst643) {
+    uint64_t __twr_v644;
     uint64_t __twr_v645;
-    uint64_t __twr_v646;
-    __twr_v645 = (uint64_t)(&CtGenerateSignedCmp);
-    __twr_v646 = (uint64_t)(&"<=");
-    ((void (*)(uint64_t, uint64_t))__twr_v645)(_mng_inst644, __twr_v646);
+    __twr_v644 = (uint64_t)(&CtGenerateSignedCmp);
+    __twr_v645 = (uint64_t)(&"<=");
+    ((void (*)(uint64_t, uint64_t))__twr_v644)(_mng_inst643, __twr_v645);
 }
-void CtGenerateBranchGtEqSigned(uint64_t _mng_inst647) {
+void CtGenerateBranchGtEqSigned(uint64_t _mng_inst646) {
+    uint64_t __twr_v647;
     uint64_t __twr_v648;
-    uint64_t __twr_v649;
-    __twr_v648 = (uint64_t)(&CtGenerateSignedBranch);
-    __twr_v649 = (uint64_t)(&">=");
-    ((void (*)(uint64_t, uint64_t))__twr_v648)(_mng_inst647, __twr_v649);
+    __twr_v647 = (uint64_t)(&CtGenerateSignedBranch);
+    __twr_v648 = (uint64_t)(&">=");
+    ((void (*)(uint64_t, uint64_t))__twr_v647)(_mng_inst646, __twr_v648);
 }
-void CtGenerateCmpGtEqSigned(uint64_t _mng_inst650) {
+void CtGenerateCmpGtEqSigned(uint64_t _mng_inst649) {
+    uint64_t __twr_v650;
     uint64_t __twr_v651;
-    uint64_t __twr_v652;
-    __twr_v651 = (uint64_t)(&CtGenerateSignedCmp);
-    __twr_v652 = (uint64_t)(&">=");
-    ((void (*)(uint64_t, uint64_t))__twr_v651)(_mng_inst650, __twr_v652);
+    __twr_v650 = (uint64_t)(&CtGenerateSignedCmp);
+    __twr_v651 = (uint64_t)(&">=");
+    ((void (*)(uint64_t, uint64_t))__twr_v650)(_mng_inst649, __twr_v651);
 }
-void CtGenerateArithmetic(uint64_t _mng_inst653, uint64_t _mng_string654) {
+void CtGenerateArithmetic(uint64_t _mng_inst652, uint64_t _mng_string653) {
+    uint64_t __twr_v654;
     uint64_t __twr_v655;
     uint64_t __twr_v656;
     uint64_t __twr_v657;
@@ -1417,34 +1417,34 @@ void CtGenerateArithmetic(uint64_t _mng_inst653, uint64_t _mng_string654) {
     uint64_t __twr_v667;
     uint64_t __twr_v668;
     uint64_t __twr_v669;
-    uint64_t __twr_v670;
-    __twr_v655 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v656 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v655)(__twr_v656);
-    __twr_v657 = (uint64_t)(&CtOutputVariableName);
-    __twr_v658 = 40ULL;
-    __twr_v659 = _mng_inst653 + __twr_v658;
-    __twr_v660 = *(uint64_t*)(__twr_v659);
-    ((void (*)(uint64_t))__twr_v657)(__twr_v660);
-    __twr_v661 = (uint64_t)(&" = ");
-    ((void (*)(uint64_t))__twr_v655)(__twr_v661);
-    __twr_v662 = 48ULL;
-    __twr_v663 = _mng_inst653 + __twr_v662;
-    __twr_v664 = *(uint64_t*)(__twr_v663);
-    ((void (*)(uint64_t))__twr_v657)(__twr_v664);
+    __twr_v654 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v655 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v654)(__twr_v655);
+    __twr_v656 = (uint64_t)(&CtOutputVariableName);
+    __twr_v657 = 48ULL;
+    __twr_v658 = _mng_inst652 + __twr_v657;
+    __twr_v659 = *(uint64_t*)(__twr_v658);
+    ((void (*)(uint64_t))__twr_v656)(__twr_v659);
+    __twr_v660 = (uint64_t)(&" = ");
+    ((void (*)(uint64_t))__twr_v654)(__twr_v660);
+    __twr_v661 = 56ULL;
+    __twr_v662 = _mng_inst652 + __twr_v661;
+    __twr_v663 = *(uint64_t*)(__twr_v662);
+    ((void (*)(uint64_t))__twr_v656)(__twr_v663);
+    __twr_v664 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v654)(__twr_v664);
+    ((void (*)(uint64_t))__twr_v654)(_mng_string653);
     __twr_v665 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v655)(__twr_v665);
-    ((void (*)(uint64_t))__twr_v655)(_mng_string654);
-    __twr_v666 = (uint64_t)(&" ");
-    ((void (*)(uint64_t))__twr_v655)(__twr_v666);
-    __twr_v667 = 56ULL;
-    __twr_v668 = _mng_inst653 + __twr_v667;
-    __twr_v669 = *(uint64_t*)(__twr_v668);
-    ((void (*)(uint64_t))__twr_v657)(__twr_v669);
-    __twr_v670 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v655)(__twr_v670);
+    ((void (*)(uint64_t))__twr_v654)(__twr_v665);
+    __twr_v666 = 64ULL;
+    __twr_v667 = _mng_inst652 + __twr_v666;
+    __twr_v668 = *(uint64_t*)(__twr_v667);
+    ((void (*)(uint64_t))__twr_v656)(__twr_v668);
+    __twr_v669 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v654)(__twr_v669);
 }
-void CtGenerateSignedArithmetic(uint64_t _mng_inst671, uint64_t _mng_string672) {
+void CtGenerateSignedArithmetic(uint64_t _mng_inst670, uint64_t _mng_string671) {
+    uint64_t __twr_v672;
     uint64_t __twr_v673;
     uint64_t __twr_v674;
     uint64_t __twr_v675;
@@ -1460,34 +1460,34 @@ void CtGenerateSignedArithmetic(uint64_t _mng_inst671, uint64_t _mng_string672) 
     uint64_t __twr_v685;
     uint64_t __twr_v686;
     uint64_t __twr_v687;
-    uint64_t __twr_v688;
-    __twr_v673 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v674 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v673)(__twr_v674);
-    __twr_v675 = (uint64_t)(&CtOutputVariableName);
-    __twr_v676 = 40ULL;
-    __twr_v677 = _mng_inst671 + __twr_v676;
-    __twr_v678 = *(uint64_t*)(__twr_v677);
-    ((void (*)(uint64_t))__twr_v675)(__twr_v678);
-    __twr_v679 = (uint64_t)(&" = (int64_t)(");
-    ((void (*)(uint64_t))__twr_v673)(__twr_v679);
-    __twr_v680 = 48ULL;
-    __twr_v681 = _mng_inst671 + __twr_v680;
-    __twr_v682 = *(uint64_t*)(__twr_v681);
-    ((void (*)(uint64_t))__twr_v675)(__twr_v682);
-    __twr_v683 = (uint64_t)(&") ");
-    ((void (*)(uint64_t))__twr_v673)(__twr_v683);
-    ((void (*)(uint64_t))__twr_v673)(_mng_string672);
-    __twr_v684 = (uint64_t)(&" (int64_t)(");
-    ((void (*)(uint64_t))__twr_v673)(__twr_v684);
-    __twr_v685 = 56ULL;
-    __twr_v686 = _mng_inst671 + __twr_v685;
-    __twr_v687 = *(uint64_t*)(__twr_v686);
-    ((void (*)(uint64_t))__twr_v675)(__twr_v687);
-    __twr_v688 = (uint64_t)(&");\n");
-    ((void (*)(uint64_t))__twr_v673)(__twr_v688);
+    __twr_v672 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v673 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v672)(__twr_v673);
+    __twr_v674 = (uint64_t)(&CtOutputVariableName);
+    __twr_v675 = 48ULL;
+    __twr_v676 = _mng_inst670 + __twr_v675;
+    __twr_v677 = *(uint64_t*)(__twr_v676);
+    ((void (*)(uint64_t))__twr_v674)(__twr_v677);
+    __twr_v678 = (uint64_t)(&" = (int64_t)(");
+    ((void (*)(uint64_t))__twr_v672)(__twr_v678);
+    __twr_v679 = 56ULL;
+    __twr_v680 = _mng_inst670 + __twr_v679;
+    __twr_v681 = *(uint64_t*)(__twr_v680);
+    ((void (*)(uint64_t))__twr_v674)(__twr_v681);
+    __twr_v682 = (uint64_t)(&") ");
+    ((void (*)(uint64_t))__twr_v672)(__twr_v682);
+    ((void (*)(uint64_t))__twr_v672)(_mng_string671);
+    __twr_v683 = (uint64_t)(&" (int64_t)(");
+    ((void (*)(uint64_t))__twr_v672)(__twr_v683);
+    __twr_v684 = 64ULL;
+    __twr_v685 = _mng_inst670 + __twr_v684;
+    __twr_v686 = *(uint64_t*)(__twr_v685);
+    ((void (*)(uint64_t))__twr_v674)(__twr_v686);
+    __twr_v687 = (uint64_t)(&");\n");
+    ((void (*)(uint64_t))__twr_v672)(__twr_v687);
 }
-void CtGenerateUnaryArithmetic(uint64_t _mng_inst689, uint64_t _mng_string690) {
+void CtGenerateUnaryArithmetic(uint64_t _mng_inst688, uint64_t _mng_string689) {
+    uint64_t __twr_v690;
     uint64_t __twr_v691;
     uint64_t __twr_v692;
     uint64_t __twr_v693;
@@ -1498,140 +1498,140 @@ void CtGenerateUnaryArithmetic(uint64_t _mng_inst689, uint64_t _mng_string690) {
     uint64_t __twr_v698;
     uint64_t __twr_v699;
     uint64_t __twr_v700;
-    uint64_t __twr_v701;
-    __twr_v691 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v692 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v691)(__twr_v692);
-    __twr_v693 = (uint64_t)(&CtOutputVariableName);
-    __twr_v694 = 40ULL;
-    __twr_v695 = _mng_inst689 + __twr_v694;
-    __twr_v696 = *(uint64_t*)(__twr_v695);
-    ((void (*)(uint64_t))__twr_v693)(__twr_v696);
-    __twr_v697 = (uint64_t)(&" = ");
-    ((void (*)(uint64_t))__twr_v691)(__twr_v697);
-    ((void (*)(uint64_t))__twr_v691)(_mng_string690);
-    __twr_v698 = 48ULL;
-    __twr_v699 = _mng_inst689 + __twr_v698;
-    __twr_v700 = *(uint64_t*)(__twr_v699);
-    ((void (*)(uint64_t))__twr_v693)(__twr_v700);
-    __twr_v701 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v691)(__twr_v701);
+    __twr_v690 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v691 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v690)(__twr_v691);
+    __twr_v692 = (uint64_t)(&CtOutputVariableName);
+    __twr_v693 = 48ULL;
+    __twr_v694 = _mng_inst688 + __twr_v693;
+    __twr_v695 = *(uint64_t*)(__twr_v694);
+    ((void (*)(uint64_t))__twr_v692)(__twr_v695);
+    __twr_v696 = (uint64_t)(&" = ");
+    ((void (*)(uint64_t))__twr_v690)(__twr_v696);
+    ((void (*)(uint64_t))__twr_v690)(_mng_string689);
+    __twr_v697 = 56ULL;
+    __twr_v698 = _mng_inst688 + __twr_v697;
+    __twr_v699 = *(uint64_t*)(__twr_v698);
+    ((void (*)(uint64_t))__twr_v692)(__twr_v699);
+    __twr_v700 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v690)(__twr_v700);
 }
-void CtGenerateBitAnd(uint64_t _mng_inst702) {
+void CtGenerateBitAnd(uint64_t _mng_inst701) {
+    uint64_t __twr_v702;
     uint64_t __twr_v703;
-    uint64_t __twr_v704;
-    __twr_v703 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v704 = (uint64_t)(&"&");
-    ((void (*)(uint64_t, uint64_t))__twr_v703)(_mng_inst702, __twr_v704);
+    __twr_v702 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v703 = (uint64_t)(&"&");
+    ((void (*)(uint64_t, uint64_t))__twr_v702)(_mng_inst701, __twr_v703);
 }
-void CtGenerateBitOr(uint64_t _mng_inst705) {
+void CtGenerateBitOr(uint64_t _mng_inst704) {
+    uint64_t __twr_v705;
     uint64_t __twr_v706;
-    uint64_t __twr_v707;
-    __twr_v706 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v707 = (uint64_t)(&"|");
-    ((void (*)(uint64_t, uint64_t))__twr_v706)(_mng_inst705, __twr_v707);
+    __twr_v705 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v706 = (uint64_t)(&"|");
+    ((void (*)(uint64_t, uint64_t))__twr_v705)(_mng_inst704, __twr_v706);
 }
-void CtGenerateAdd(uint64_t _mng_inst708) {
+void CtGenerateAdd(uint64_t _mng_inst707) {
+    uint64_t __twr_v708;
     uint64_t __twr_v709;
-    uint64_t __twr_v710;
-    __twr_v709 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v710 = (uint64_t)(&"+");
-    ((void (*)(uint64_t, uint64_t))__twr_v709)(_mng_inst708, __twr_v710);
+    __twr_v708 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v709 = (uint64_t)(&"+");
+    ((void (*)(uint64_t, uint64_t))__twr_v708)(_mng_inst707, __twr_v709);
 }
-void CtGenerateSubtract(uint64_t _mng_inst711) {
+void CtGenerateSubtract(uint64_t _mng_inst710) {
+    uint64_t __twr_v711;
     uint64_t __twr_v712;
-    uint64_t __twr_v713;
-    __twr_v712 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v713 = (uint64_t)(&"-");
-    ((void (*)(uint64_t, uint64_t))__twr_v712)(_mng_inst711, __twr_v713);
+    __twr_v711 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v712 = (uint64_t)(&"-");
+    ((void (*)(uint64_t, uint64_t))__twr_v711)(_mng_inst710, __twr_v712);
 }
-void CtGenerateDivide(uint64_t _mng_inst714) {
+void CtGenerateDivide(uint64_t _mng_inst713) {
+    uint64_t __twr_v714;
     uint64_t __twr_v715;
-    uint64_t __twr_v716;
-    __twr_v715 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v716 = (uint64_t)(&"/");
-    ((void (*)(uint64_t, uint64_t))__twr_v715)(_mng_inst714, __twr_v716);
+    __twr_v714 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v715 = (uint64_t)(&"/");
+    ((void (*)(uint64_t, uint64_t))__twr_v714)(_mng_inst713, __twr_v715);
 }
-void CtGenerateDivideSigned(uint64_t _mng_inst717) {
+void CtGenerateDivideSigned(uint64_t _mng_inst716) {
+    uint64_t __twr_v717;
     uint64_t __twr_v718;
-    uint64_t __twr_v719;
-    __twr_v718 = (uint64_t)(&CtGenerateSignedArithmetic);
-    __twr_v719 = (uint64_t)(&"/");
-    ((void (*)(uint64_t, uint64_t))__twr_v718)(_mng_inst717, __twr_v719);
+    __twr_v717 = (uint64_t)(&CtGenerateSignedArithmetic);
+    __twr_v718 = (uint64_t)(&"/");
+    ((void (*)(uint64_t, uint64_t))__twr_v717)(_mng_inst716, __twr_v718);
 }
-void CtGenerateModulo(uint64_t _mng_inst720) {
+void CtGenerateModulo(uint64_t _mng_inst719) {
+    uint64_t __twr_v720;
     uint64_t __twr_v721;
-    uint64_t __twr_v722;
-    __twr_v721 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v722 = (uint64_t)(&"%");
-    ((void (*)(uint64_t, uint64_t))__twr_v721)(_mng_inst720, __twr_v722);
+    __twr_v720 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v721 = (uint64_t)(&"%");
+    ((void (*)(uint64_t, uint64_t))__twr_v720)(_mng_inst719, __twr_v721);
 }
-void CtGenerateBitXor(uint64_t _mng_inst723) {
+void CtGenerateBitXor(uint64_t _mng_inst722) {
+    uint64_t __twr_v723;
     uint64_t __twr_v724;
-    uint64_t __twr_v725;
-    __twr_v724 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v725 = (uint64_t)(&"^");
-    ((void (*)(uint64_t, uint64_t))__twr_v724)(_mng_inst723, __twr_v725);
+    __twr_v723 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v724 = (uint64_t)(&"^");
+    ((void (*)(uint64_t, uint64_t))__twr_v723)(_mng_inst722, __twr_v724);
 }
-void CtGenerateLeftShift(uint64_t _mng_inst726) {
+void CtGenerateLeftShift(uint64_t _mng_inst725) {
+    uint64_t __twr_v726;
     uint64_t __twr_v727;
-    uint64_t __twr_v728;
-    __twr_v727 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v728 = (uint64_t)(&"<<");
-    ((void (*)(uint64_t, uint64_t))__twr_v727)(_mng_inst726, __twr_v728);
+    __twr_v726 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v727 = (uint64_t)(&"<<");
+    ((void (*)(uint64_t, uint64_t))__twr_v726)(_mng_inst725, __twr_v727);
 }
-void CtGenerateRightShift(uint64_t _mng_inst729) {
+void CtGenerateRightShift(uint64_t _mng_inst728) {
+    uint64_t __twr_v729;
     uint64_t __twr_v730;
-    uint64_t __twr_v731;
-    __twr_v730 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v731 = (uint64_t)(&">>");
-    ((void (*)(uint64_t, uint64_t))__twr_v730)(_mng_inst729, __twr_v731);
+    __twr_v729 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v730 = (uint64_t)(&">>");
+    ((void (*)(uint64_t, uint64_t))__twr_v729)(_mng_inst728, __twr_v730);
 }
-void CtGenerateBitNot(uint64_t _mng_inst732) {
+void CtGenerateBitNot(uint64_t _mng_inst731) {
+    uint64_t __twr_v732;
     uint64_t __twr_v733;
-    uint64_t __twr_v734;
-    __twr_v733 = (uint64_t)(&CtGenerateUnaryArithmetic);
-    __twr_v734 = (uint64_t)(&"~");
-    ((void (*)(uint64_t, uint64_t))__twr_v733)(_mng_inst732, __twr_v734);
+    __twr_v732 = (uint64_t)(&CtGenerateUnaryArithmetic);
+    __twr_v733 = (uint64_t)(&"~");
+    ((void (*)(uint64_t, uint64_t))__twr_v732)(_mng_inst731, __twr_v733);
 }
-void CtGenerateMul(uint64_t _mng_inst735) {
+void CtGenerateMul(uint64_t _mng_inst734) {
+    uint64_t __twr_v735;
     uint64_t __twr_v736;
-    uint64_t __twr_v737;
-    __twr_v736 = (uint64_t)(&CtGenerateArithmetic);
-    __twr_v737 = (uint64_t)(&"*");
-    ((void (*)(uint64_t, uint64_t))__twr_v736)(_mng_inst735, __twr_v737);
+    __twr_v735 = (uint64_t)(&CtGenerateArithmetic);
+    __twr_v736 = (uint64_t)(&"*");
+    ((void (*)(uint64_t, uint64_t))__twr_v735)(_mng_inst734, __twr_v736);
 }
-void CtGenerateInverse(uint64_t _mng_inst738) {
+void CtGenerateInverse(uint64_t _mng_inst737) {
+    uint64_t __twr_v738;
     uint64_t __twr_v739;
-    uint64_t __twr_v740;
-    __twr_v739 = (uint64_t)(&CtGenerateUnaryArithmetic);
-    __twr_v740 = (uint64_t)(&"-");
-    ((void (*)(uint64_t, uint64_t))__twr_v739)(_mng_inst738, __twr_v740);
+    __twr_v738 = (uint64_t)(&CtGenerateUnaryArithmetic);
+    __twr_v739 = (uint64_t)(&"-");
+    ((void (*)(uint64_t, uint64_t))__twr_v738)(_mng_inst737, __twr_v739);
 }
 uint64_t CtVarArrayNumber = 0ULL;
-void CtGenerateCall(uint64_t _mng_inst741) {
+void CtGenerateCall(uint64_t _mng_inst740) {
+    uint64_t __twr_v741;
     uint64_t __twr_v742;
     uint64_t __twr_v743;
     uint64_t __twr_v744;
-    uint64_t __twr_v745;
-    uint64_t _mng_type746;
-    uint64_t __twr_v747;
-    uint64_t _mng_arg748;
+    uint64_t _mng_type745;
+    uint64_t __twr_v746;
+    uint64_t _mng_arg747;
+    uint64_t __twr_v748;
     uint64_t __twr_v749;
     uint64_t __twr_v750;
-    uint64_t __twr_v751;
-    uint32_t _mng_count752;
-    uint32_t _mng_cargcount753;
-    uint64_t _mng_varargcount754;
+    uint32_t _mng_count751;
+    uint32_t _mng_cargcount752;
+    uint64_t _mng_varargcount753;
+    uint64_t __twr_v754;
     uint64_t __twr_v755;
     uint64_t __twr_v756;
     uint64_t __twr_v757;
-    uint64_t __twr_v758;
-    uint64_t _mng_firstvararg759;
+    uint64_t _mng_firstvararg758;
+    uint64_t __twr_v759;
     uint64_t __twr_v760;
-    uint64_t __twr_v761;
-    uint64_t _mng_i762;
-    uint64_t _mng_vararg763;
+    uint64_t _mng_i761;
+    uint64_t _mng_vararg762;
+    uint64_t __twr_v763;
     uint64_t __twr_v764;
     uint64_t __twr_v765;
     uint64_t __twr_v766;
@@ -1709,198 +1709,198 @@ void CtGenerateCall(uint64_t _mng_inst741) {
     uint64_t __twr_v838;
     uint64_t __twr_v839;
     uint64_t __twr_v840;
-    uint64_t __twr_v841;
-    __twr_v742 = 0ULL;
-    __twr_v743 = 8ULL;
-    __twr_v744 = _mng_inst741 + __twr_v743;
-    __twr_v745 = *(uint64_t*)(__twr_v744);
-    _mng_type746 = __twr_v745;
-    __twr_v747 = *(uint64_t*)(_mng_inst741);
-    _mng_arg748 = __twr_v747;
-    __twr_v749 = 56ULL;
-    __twr_v750 = __twr_v745 + __twr_v749;
-    __twr_v751 = *(uint32_t*)(__twr_v750);
-    _mng_count752 = __twr_v751;
-    _mng_cargcount753 = __twr_v751;
-    _mng_varargcount754 = __twr_v742;
-    __twr_v755 = 60ULL;
-    __twr_v756 = __twr_v745 + __twr_v755;
-    __twr_v757 = *(uint8_t*)(__twr_v756);
-    if (__twr_v757) { goto __twr_l45; } else { goto __twr_l44; }
+    __twr_v741 = 0ULL;
+    __twr_v742 = 8ULL;
+    __twr_v743 = _mng_inst740 + __twr_v742;
+    __twr_v744 = *(uint64_t*)(__twr_v743);
+    _mng_type745 = __twr_v744;
+    __twr_v746 = *(uint64_t*)(_mng_inst740);
+    _mng_arg747 = __twr_v746;
+    __twr_v748 = 56ULL;
+    __twr_v749 = __twr_v744 + __twr_v748;
+    __twr_v750 = *(uint32_t*)(__twr_v749);
+    _mng_count751 = __twr_v750;
+    _mng_cargcount752 = __twr_v750;
+    _mng_varargcount753 = __twr_v741;
+    __twr_v754 = 60ULL;
+    __twr_v755 = __twr_v744 + __twr_v754;
+    __twr_v756 = *(uint8_t*)(__twr_v755);
+    if (__twr_v756) { goto __twr_l45; } else { goto __twr_l44; }
     __twr_l45:;
-    __twr_v758 = 0ULL;
-    _mng_firstvararg759 = __twr_v758;
-    __twr_v760 = 2ULL;
-    __twr_v761 = _mng_cargcount753 + __twr_v760;
-    _mng_cargcount753 = __twr_v761;
-    _mng_i762 = __twr_v758;
-    _mng_vararg763 = _mng_arg748;
-    if (_mng_arg748) { goto __twr_l46; } else { goto __twr_l47; }
+    __twr_v757 = 0ULL;
+    _mng_firstvararg758 = __twr_v757;
+    __twr_v759 = 2ULL;
+    __twr_v760 = _mng_cargcount752 + __twr_v759;
+    _mng_cargcount752 = __twr_v760;
+    _mng_i761 = __twr_v757;
+    _mng_vararg762 = _mng_arg747;
+    if (_mng_arg747) { goto __twr_l46; } else { goto __twr_l47; }
     __twr_l46:;
-    if (_mng_i762 >= _mng_count752) { goto __twr_l50; } else { goto __twr_l49; }
+    if (_mng_i761 >= _mng_count751) { goto __twr_l50; } else { goto __twr_l49; }
     __twr_l50:;
-    if (_mng_firstvararg759) { goto __twr_l51; } else { goto __twr_l52; }
+    if (_mng_firstvararg758) { goto __twr_l51; } else { goto __twr_l52; }
     __twr_l52:;
-    _mng_firstvararg759 = _mng_vararg763;
+    _mng_firstvararg758 = _mng_vararg762;
     __twr_l51:;
-    __twr_v764 = 1ULL;
-    __twr_v765 = _mng_varargcount754 + __twr_v764;
-    _mng_varargcount754 = __twr_v765;
+    __twr_v763 = 1ULL;
+    __twr_v764 = _mng_varargcount753 + __twr_v763;
+    _mng_varargcount753 = __twr_v764;
     __twr_l49:;
-    __twr_v766 = 1ULL;
-    __twr_v767 = _mng_i762 + __twr_v766;
-    _mng_i762 = __twr_v767;
-    __twr_v768 = *(uint64_t*)(_mng_vararg763);
-    _mng_vararg763 = __twr_v768;
+    __twr_v765 = 1ULL;
+    __twr_v766 = _mng_i761 + __twr_v765;
+    _mng_i761 = __twr_v766;
+    __twr_v767 = *(uint64_t*)(_mng_vararg762);
+    _mng_vararg762 = __twr_v767;
     __twr_l48:;
-    if (_mng_vararg763) { goto __twr_l46; } else { goto __twr_l47; }
+    if (_mng_vararg762) { goto __twr_l46; } else { goto __twr_l47; }
     __twr_l47:;
-    if (_mng_firstvararg759) { goto __twr_l54; } else { goto __twr_l53; }
+    if (_mng_firstvararg758) { goto __twr_l54; } else { goto __twr_l53; }
     __twr_l54:;
-    __twr_v769 = 1ULL;
-    __twr_v770 = (uint64_t)(&CtVarArrayNumber);
-    __twr_v771 = *(uint64_t*)(__twr_v770);
-    __twr_v772 = __twr_v771 + __twr_v769;
-    *(uint64_t*)(__twr_v770) = __twr_v772;
-    __twr_v773 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v774 = (uint64_t)(&"    uint64_t __twr_vrg");
-    ((void (*)(uint64_t))__twr_v773)(__twr_v774);
-    __twr_v775 = (uint64_t)(&CtInsertNumberFunc);
-    __twr_v776 = *(uint64_t*)(__twr_v770);
-    ((void (*)(uint64_t))__twr_v775)(__twr_v776);
-    __twr_v777 = (uint64_t)(&CtInsertByteFunc);
-    __twr_v778 = 91ULL;
-    ((void (*)(uint64_t))__twr_v777)(__twr_v778);
-    ((void (*)(uint64_t))__twr_v775)(_mng_varargcount754);
-    __twr_v779 = (uint64_t)(&"] = {\n");
-    ((void (*)(uint64_t))__twr_v773)(__twr_v779);
-    if (_mng_firstvararg759) { goto __twr_l55; } else { goto __twr_l56; }
+    __twr_v768 = 1ULL;
+    __twr_v769 = (uint64_t)(&CtVarArrayNumber);
+    __twr_v770 = *(uint64_t*)(__twr_v769);
+    __twr_v771 = __twr_v770 + __twr_v768;
+    *(uint64_t*)(__twr_v769) = __twr_v771;
+    __twr_v772 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v773 = (uint64_t)(&"    uint64_t __twr_vrg");
+    ((void (*)(uint64_t))__twr_v772)(__twr_v773);
+    __twr_v774 = (uint64_t)(&CtInsertNumberFunc);
+    __twr_v775 = *(uint64_t*)(__twr_v769);
+    ((void (*)(uint64_t))__twr_v774)(__twr_v775);
+    __twr_v776 = (uint64_t)(&CtInsertByteFunc);
+    __twr_v777 = 91ULL;
+    ((void (*)(uint64_t))__twr_v776)(__twr_v777);
+    ((void (*)(uint64_t))__twr_v774)(_mng_varargcount753);
+    __twr_v778 = (uint64_t)(&"] = {\n");
+    ((void (*)(uint64_t))__twr_v772)(__twr_v778);
+    if (_mng_firstvararg758) { goto __twr_l55; } else { goto __twr_l56; }
     __twr_l55:;
-    __twr_v780 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v781 = (uint64_t)(&"        ");
-    ((void (*)(uint64_t))__twr_v780)(__twr_v781);
-    __twr_v782 = (uint64_t)(&CtOutputVariableName);
-    __twr_v783 = 8ULL;
-    __twr_v784 = _mng_firstvararg759 + __twr_v783;
-    __twr_v785 = *(uint64_t*)(__twr_v784);
-    ((void (*)(uint64_t))__twr_v782)(__twr_v785);
-    __twr_v786 = (uint64_t)(&",\n");
-    ((void (*)(uint64_t))__twr_v780)(__twr_v786);
-    __twr_v787 = *(uint64_t*)(_mng_firstvararg759);
-    _mng_firstvararg759 = __twr_v787;
+    __twr_v779 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v780 = (uint64_t)(&"        ");
+    ((void (*)(uint64_t))__twr_v779)(__twr_v780);
+    __twr_v781 = (uint64_t)(&CtOutputVariableName);
+    __twr_v782 = 8ULL;
+    __twr_v783 = _mng_firstvararg758 + __twr_v782;
+    __twr_v784 = *(uint64_t*)(__twr_v783);
+    ((void (*)(uint64_t))__twr_v781)(__twr_v784);
+    __twr_v785 = (uint64_t)(&",\n");
+    ((void (*)(uint64_t))__twr_v779)(__twr_v785);
+    __twr_v786 = *(uint64_t*)(_mng_firstvararg758);
+    _mng_firstvararg758 = __twr_v786;
     __twr_l57:;
-    if (_mng_firstvararg759) { goto __twr_l55; } else { goto __twr_l56; }
+    if (_mng_firstvararg758) { goto __twr_l55; } else { goto __twr_l56; }
     __twr_l56:;
-    __twr_v788 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v789 = (uint64_t)(&"    };\n");
-    ((void (*)(uint64_t))__twr_v788)(__twr_v789);
+    __twr_v787 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v788 = (uint64_t)(&"    };\n");
+    ((void (*)(uint64_t))__twr_v787)(__twr_v788);
     __twr_l53:;
     __twr_l44:;
-    __twr_v790 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v791 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v790)(__twr_v791);
-    __twr_v792 = 8ULL;
-    __twr_v793 = _mng_type746 + __twr_v792;
-    __twr_v794 = *(uint64_t*)(__twr_v793);
-    if (__twr_v794) { goto __twr_l59; } else { goto __twr_l58; }
+    __twr_v789 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v790 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v789)(__twr_v790);
+    __twr_v791 = 8ULL;
+    __twr_v792 = _mng_type745 + __twr_v791;
+    __twr_v793 = *(uint64_t*)(__twr_v792);
+    if (__twr_v793) { goto __twr_l59; } else { goto __twr_l58; }
     __twr_l59:;
-    __twr_v795 = (uint64_t)(&CtOutputVariableName);
-    __twr_v796 = 40ULL;
-    __twr_v797 = _mng_inst741 + __twr_v796;
-    __twr_v798 = *(uint64_t*)(__twr_v797);
-    ((void (*)(uint64_t))__twr_v795)(__twr_v798);
-    __twr_v799 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v800 = (uint64_t)(&" = ");
-    ((void (*)(uint64_t))__twr_v799)(__twr_v800);
+    __twr_v794 = (uint64_t)(&CtOutputVariableName);
+    __twr_v795 = 48ULL;
+    __twr_v796 = _mng_inst740 + __twr_v795;
+    __twr_v797 = *(uint64_t*)(__twr_v796);
+    ((void (*)(uint64_t))__twr_v794)(__twr_v797);
+    __twr_v798 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v799 = (uint64_t)(&" = ");
+    ((void (*)(uint64_t))__twr_v798)(__twr_v799);
     __twr_l58:;
-    __twr_v801 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v802 = (uint64_t)(&"((");
-    ((void (*)(uint64_t))__twr_v801)(__twr_v802);
-    __twr_v803 = 8ULL;
-    __twr_v804 = _mng_type746 + __twr_v803;
-    __twr_v805 = *(uint64_t*)(__twr_v804);
-    if (__twr_v805) { goto __twr_l61; } else { goto __twr_l62; }
+    __twr_v800 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v801 = (uint64_t)(&"((");
+    ((void (*)(uint64_t))__twr_v800)(__twr_v801);
+    __twr_v802 = 8ULL;
+    __twr_v803 = _mng_type745 + __twr_v802;
+    __twr_v804 = *(uint64_t*)(__twr_v803);
+    if (__twr_v804) { goto __twr_l61; } else { goto __twr_l62; }
     __twr_l61:;
-    __twr_v806 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v807 = (uint64_t)(&"uint64_t ");
-    ((void (*)(uint64_t))__twr_v806)(__twr_v807);
+    __twr_v805 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v806 = (uint64_t)(&"uint64_t ");
+    ((void (*)(uint64_t))__twr_v805)(__twr_v806);
     goto __twr_l60;
     __twr_l62:;
-    __twr_v808 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v809 = (uint64_t)(&"void ");
-    ((void (*)(uint64_t))__twr_v808)(__twr_v809);
+    __twr_v807 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v808 = (uint64_t)(&"void ");
+    ((void (*)(uint64_t))__twr_v807)(__twr_v808);
     __twr_l60:;
-    __twr_v810 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v811 = (uint64_t)(&"(*)(");
-    ((void (*)(uint64_t))__twr_v810)(__twr_v811);
-    if (_mng_cargcount753) { goto __twr_l63; } else { goto __twr_l64; }
+    __twr_v809 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v810 = (uint64_t)(&"(*)(");
+    ((void (*)(uint64_t))__twr_v809)(__twr_v810);
+    if (_mng_cargcount752) { goto __twr_l63; } else { goto __twr_l64; }
     __twr_l63:;
-    __twr_v812 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v813 = (uint64_t)(&"uint64_t");
-    ((void (*)(uint64_t))__twr_v812)(__twr_v813);
-    __twr_v814 = 1ULL;
-    __twr_v815 = _mng_cargcount753 - __twr_v814;
-    _mng_cargcount753 = __twr_v815;
-    if (__twr_v815) { goto __twr_l67; } else { goto __twr_l66; }
+    __twr_v811 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v812 = (uint64_t)(&"uint64_t");
+    ((void (*)(uint64_t))__twr_v811)(__twr_v812);
+    __twr_v813 = 1ULL;
+    __twr_v814 = _mng_cargcount752 - __twr_v813;
+    _mng_cargcount752 = __twr_v814;
+    if (__twr_v814) { goto __twr_l67; } else { goto __twr_l66; }
     __twr_l67:;
-    __twr_v816 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v817 = (uint64_t)(&", ");
-    ((void (*)(uint64_t))__twr_v816)(__twr_v817);
+    __twr_v815 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v816 = (uint64_t)(&", ");
+    ((void (*)(uint64_t))__twr_v815)(__twr_v816);
     __twr_l66:;
     __twr_l65:;
-    if (_mng_cargcount753) { goto __twr_l63; } else { goto __twr_l64; }
+    if (_mng_cargcount752) { goto __twr_l63; } else { goto __twr_l64; }
     __twr_l64:;
-    __twr_v818 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v819 = (uint64_t)(&"))");
-    ((void (*)(uint64_t))__twr_v818)(__twr_v819);
-    __twr_v820 = (uint64_t)(&CtOutputVariableName);
-    __twr_v821 = 48ULL;
-    __twr_v822 = _mng_inst741 + __twr_v821;
-    __twr_v823 = *(uint64_t*)(__twr_v822);
-    ((void (*)(uint64_t))__twr_v820)(__twr_v823);
-    __twr_v824 = (uint64_t)(&")(");
-    ((void (*)(uint64_t))__twr_v818)(__twr_v824);
-    if (_mng_count752) { goto __twr_l68; } else { goto __twr_l69; }
+    __twr_v817 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v818 = (uint64_t)(&"))");
+    ((void (*)(uint64_t))__twr_v817)(__twr_v818);
+    __twr_v819 = (uint64_t)(&CtOutputVariableName);
+    __twr_v820 = 56ULL;
+    __twr_v821 = _mng_inst740 + __twr_v820;
+    __twr_v822 = *(uint64_t*)(__twr_v821);
+    ((void (*)(uint64_t))__twr_v819)(__twr_v822);
+    __twr_v823 = (uint64_t)(&")(");
+    ((void (*)(uint64_t))__twr_v817)(__twr_v823);
+    if (_mng_count751) { goto __twr_l68; } else { goto __twr_l69; }
     __twr_l68:;
-    __twr_v825 = (uint64_t)(&CtOutputVariableName);
-    __twr_v826 = 8ULL;
-    __twr_v827 = _mng_arg748 + __twr_v826;
-    __twr_v828 = *(uint64_t*)(__twr_v827);
-    ((void (*)(uint64_t))__twr_v825)(__twr_v828);
-    __twr_v829 = *(uint64_t*)(_mng_arg748);
-    _mng_arg748 = __twr_v829;
-    if (__twr_v829) { goto __twr_l72; } else { goto __twr_l73; }
+    __twr_v824 = (uint64_t)(&CtOutputVariableName);
+    __twr_v825 = 8ULL;
+    __twr_v826 = _mng_arg747 + __twr_v825;
+    __twr_v827 = *(uint64_t*)(__twr_v826);
+    ((void (*)(uint64_t))__twr_v824)(__twr_v827);
+    __twr_v828 = *(uint64_t*)(_mng_arg747);
+    _mng_arg747 = __twr_v828;
+    if (__twr_v828) { goto __twr_l72; } else { goto __twr_l73; }
     __twr_l73:;
-    if (_mng_varargcount754) { goto __twr_l72; } else { goto __twr_l71; }
+    if (_mng_varargcount753) { goto __twr_l72; } else { goto __twr_l71; }
     __twr_l72:;
-    __twr_v830 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v831 = (uint64_t)(&", ");
-    ((void (*)(uint64_t))__twr_v830)(__twr_v831);
+    __twr_v829 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v830 = (uint64_t)(&", ");
+    ((void (*)(uint64_t))__twr_v829)(__twr_v830);
     __twr_l71:;
-    __twr_v832 = 1ULL;
-    __twr_v833 = _mng_count752 - __twr_v832;
-    _mng_count752 = __twr_v833;
+    __twr_v831 = 1ULL;
+    __twr_v832 = _mng_count751 - __twr_v831;
+    _mng_count751 = __twr_v832;
     __twr_l70:;
-    if (_mng_count752) { goto __twr_l68; } else { goto __twr_l69; }
+    if (_mng_count751) { goto __twr_l68; } else { goto __twr_l69; }
     __twr_l69:;
-    if (_mng_varargcount754) { goto __twr_l75; } else { goto __twr_l74; }
+    if (_mng_varargcount753) { goto __twr_l75; } else { goto __twr_l74; }
     __twr_l75:;
-    __twr_v834 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v835 = (uint64_t)(&"(uint64_t)(&__twr_vrg");
-    ((void (*)(uint64_t))__twr_v834)(__twr_v835);
-    __twr_v836 = (uint64_t)(&CtInsertNumberFunc);
-    __twr_v837 = (uint64_t)(&CtVarArrayNumber);
-    __twr_v838 = *(uint64_t*)(__twr_v837);
-    ((void (*)(uint64_t))__twr_v836)(__twr_v838);
-    __twr_v839 = (uint64_t)(&"), ");
-    ((void (*)(uint64_t))__twr_v834)(__twr_v839);
-    ((void (*)(uint64_t))__twr_v836)(_mng_varargcount754);
+    __twr_v833 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v834 = (uint64_t)(&"(uint64_t)(&__twr_vrg");
+    ((void (*)(uint64_t))__twr_v833)(__twr_v834);
+    __twr_v835 = (uint64_t)(&CtInsertNumberFunc);
+    __twr_v836 = (uint64_t)(&CtVarArrayNumber);
+    __twr_v837 = *(uint64_t*)(__twr_v836);
+    ((void (*)(uint64_t))__twr_v835)(__twr_v837);
+    __twr_v838 = (uint64_t)(&"), ");
+    ((void (*)(uint64_t))__twr_v833)(__twr_v838);
+    ((void (*)(uint64_t))__twr_v835)(_mng_varargcount753);
     __twr_l74:;
-    __twr_v840 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v841 = (uint64_t)(&");\n");
-    ((void (*)(uint64_t))__twr_v840)(__twr_v841);
+    __twr_v839 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v840 = (uint64_t)(&");\n");
+    ((void (*)(uint64_t))__twr_v839)(__twr_v840);
 }
-void CtGenerateStore(uint64_t _mng_inst842) {
+void CtGenerateStore(uint64_t _mng_inst841) {
+    uint64_t __twr_v842;
     uint64_t __twr_v843;
     uint64_t __twr_v844;
     uint64_t __twr_v845;
@@ -1918,34 +1918,33 @@ void CtGenerateStore(uint64_t _mng_inst842) {
     uint64_t __twr_v857;
     uint64_t __twr_v858;
     uint64_t __twr_v859;
-    uint64_t __twr_v860;
-    __twr_v843 = (uint64_t)(&CtInsertStringFunc);
-    __twr_v844 = (uint64_t)(&"    *(");
-    ((void (*)(uint64_t))__twr_v843)(__twr_v844);
-    __twr_v845 = (uint64_t)(&CtTypeNames);
-    __twr_v846 = *(uint8_t*)(_mng_inst842);
-    __twr_v847 = 3ULL;
-    __twr_v848 = __twr_v846 << __twr_v847;
-    __twr_v849 = __twr_v845 + __twr_v848;
-    __twr_v850 = *(uint64_t*)(__twr_v849);
-    ((void (*)(uint64_t))__twr_v843)(__twr_v850);
-    __twr_v851 = (uint64_t)(&"*)(");
-    ((void (*)(uint64_t))__twr_v843)(__twr_v851);
-    __twr_v852 = (uint64_t)(&CtOutputVariableName);
-    __twr_v853 = 48ULL;
-    __twr_v854 = _mng_inst842 + __twr_v853;
-    __twr_v855 = *(uint64_t*)(__twr_v854);
-    ((void (*)(uint64_t))__twr_v852)(__twr_v855);
-    __twr_v856 = (uint64_t)(&") = ");
-    ((void (*)(uint64_t))__twr_v843)(__twr_v856);
-    __twr_v857 = 56ULL;
-    __twr_v858 = _mng_inst842 + __twr_v857;
-    __twr_v859 = *(uint64_t*)(__twr_v858);
-    ((void (*)(uint64_t))__twr_v852)(__twr_v859);
-    __twr_v860 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v843)(__twr_v860);
+    __twr_v842 = (uint64_t)(&CtInsertStringFunc);
+    __twr_v843 = (uint64_t)(&"    *(");
+    ((void (*)(uint64_t))__twr_v842)(__twr_v843);
+    __twr_v844 = (uint64_t)(&CtTypeNames);
+    __twr_v845 = *(uint8_t*)(_mng_inst841);
+    __twr_v846 = 3ULL;
+    __twr_v847 = __twr_v845 << __twr_v846;
+    __twr_v848 = __twr_v844 + __twr_v847;
+    __twr_v849 = *(uint64_t*)(__twr_v848);
+    ((void (*)(uint64_t))__twr_v842)(__twr_v849);
+    __twr_v850 = (uint64_t)(&"*)(");
+    ((void (*)(uint64_t))__twr_v842)(__twr_v850);
+    __twr_v851 = (uint64_t)(&CtOutputVariableName);
+    __twr_v852 = 56ULL;
+    __twr_v853 = _mng_inst841 + __twr_v852;
+    __twr_v854 = *(uint64_t*)(__twr_v853);
+    ((void (*)(uint64_t))__twr_v851)(__twr_v854);
+    __twr_v855 = (uint64_t)(&") = ");
+    ((void (*)(uint64_t))__twr_v842)(__twr_v855);
+    __twr_v856 = 64ULL;
+    __twr_v857 = _mng_inst841 + __twr_v856;
+    __twr_v858 = *(uint64_t*)(__twr_v857);
+    ((void (*)(uint64_t))__twr_v851)(__twr_v858);
+    __twr_v859 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v842)(__twr_v859);
 }
-void CtGenerateNothing(uint64_t _mng_inst861) {
+void CtGenerateNothing(uint64_t _mng_inst860) {
 }
 uint64_t CtGenerateInstructionFunctions[52] = {
     0x0000000000000000,
@@ -2001,7 +2000,8 @@ uint64_t CtGenerateInstructionFunctions[52] = {
     (uint64_t)(&CtGenerateMul),
     (uint64_t)(&CtGenerateInverse),
 };
-void CtGenerateIrInst(uint64_t _mng_inst862) {
+void CtGenerateIrInst(uint64_t _mng_inst861) {
+    uint64_t __twr_v862;
     uint64_t __twr_v863;
     uint64_t __twr_v864;
     uint64_t __twr_v865;
@@ -2009,23 +2009,23 @@ void CtGenerateIrInst(uint64_t _mng_inst862) {
     uint64_t __twr_v867;
     uint64_t __twr_v868;
     uint64_t __twr_v869;
-    uint64_t __twr_v870;
-    __twr_v863 = (uint64_t)(&CtGenerateInstructionFunctions);
-    __twr_v864 = 72ULL;
-    __twr_v865 = _mng_inst862 + __twr_v864;
-    __twr_v866 = *(uint8_t*)(__twr_v865);
-    __twr_v867 = 3ULL;
-    __twr_v868 = __twr_v866 << __twr_v867;
-    __twr_v869 = __twr_v863 + __twr_v868;
-    __twr_v870 = *(uint64_t*)(__twr_v869);
-    ((void (*)(uint64_t))__twr_v870)(_mng_inst862);
+    __twr_v862 = (uint64_t)(&CtGenerateInstructionFunctions);
+    __twr_v863 = 88ULL;
+    __twr_v864 = _mng_inst861 + __twr_v863;
+    __twr_v865 = *(uint8_t*)(__twr_v864);
+    __twr_v866 = 3ULL;
+    __twr_v867 = __twr_v865 << __twr_v866;
+    __twr_v868 = __twr_v862 + __twr_v867;
+    __twr_v869 = *(uint64_t*)(__twr_v868);
+    ((void (*)(uint64_t))__twr_v869)(_mng_inst861);
 }
-void CtGenerateFromIr(uint64_t _mng_irfunc871) {
+void CtGenerateFromIr(uint64_t _mng_irfunc870) {
+    uint64_t __twr_v871;
     uint64_t __twr_v872;
     uint64_t __twr_v873;
     uint64_t __twr_v874;
-    uint64_t __twr_v875;
-    uint64_t _mng_inst876;
+    uint64_t _mng_inst875;
+    uint64_t __twr_v876;
     uint64_t __twr_v877;
     uint64_t __twr_v878;
     uint64_t __twr_v879;
@@ -2035,38 +2035,38 @@ void CtGenerateFromIr(uint64_t _mng_irfunc871) {
     uint64_t __twr_v883;
     uint64_t __twr_v884;
     uint64_t __twr_v885;
-    uint64_t __twr_v886;
-    __twr_v872 = (uint64_t)(&TlUninitializeDynamicBuffer);
-    __twr_v873 = (uint64_t)(&CtFuncBuffer);
-    ((void (*)(uint64_t))__twr_v872)(__twr_v873);
-    __twr_v874 = (uint64_t)(&TlInitializeDynamicBuffer);
-    ((void (*)(uint64_t))__twr_v874)(__twr_v873);
-    __twr_v875 = *(uint64_t*)(_mng_irfunc871);
-    _mng_inst876 = __twr_v875;
-    if (__twr_v875) { goto __twr_l76; } else { goto __twr_l77; }
+    __twr_v871 = (uint64_t)(&TlUninitializeDynamicBuffer);
+    __twr_v872 = (uint64_t)(&CtFuncBuffer);
+    ((void (*)(uint64_t))__twr_v871)(__twr_v872);
+    __twr_v873 = (uint64_t)(&TlInitializeDynamicBuffer);
+    ((void (*)(uint64_t))__twr_v873)(__twr_v872);
+    __twr_v874 = *(uint64_t*)(_mng_irfunc870);
+    _mng_inst875 = __twr_v874;
+    if (__twr_v874) { goto __twr_l76; } else { goto __twr_l77; }
     __twr_l76:;
-    __twr_v877 = (uint64_t)(&CtGenerateIrInst);
-    ((void (*)(uint64_t))__twr_v877)(_mng_inst876);
-    __twr_v878 = 24ULL;
-    __twr_v879 = _mng_inst876 + __twr_v878;
-    __twr_v880 = *(uint64_t*)(__twr_v879);
-    _mng_inst876 = __twr_v880;
+    __twr_v876 = (uint64_t)(&CtGenerateIrInst);
+    ((void (*)(uint64_t))__twr_v876)(_mng_inst875);
+    __twr_v877 = 32ULL;
+    __twr_v878 = _mng_inst875 + __twr_v877;
+    __twr_v879 = *(uint64_t*)(__twr_v878);
+    _mng_inst875 = __twr_v879;
     __twr_l78:;
-    if (_mng_inst876) { goto __twr_l76; } else { goto __twr_l77; }
+    if (_mng_inst875) { goto __twr_l76; } else { goto __twr_l77; }
     __twr_l77:;
-    __twr_v881 = (uint64_t)(&CtCopyBytes);
-    __twr_v882 = (uint64_t)(&CtFuncBuffer);
-    __twr_v883 = 16ULL;
-    __twr_v884 = __twr_v882 + __twr_v883;
-    __twr_v885 = *(uint64_t*)(__twr_v884);
-    __twr_v886 = *(uint64_t*)(__twr_v882);
-    ((void (*)(uint64_t, uint64_t))__twr_v881)(__twr_v885, __twr_v886);
+    __twr_v880 = (uint64_t)(&CtCopyBytes);
+    __twr_v881 = (uint64_t)(&CtFuncBuffer);
+    __twr_v882 = 16ULL;
+    __twr_v883 = __twr_v881 + __twr_v882;
+    __twr_v884 = *(uint64_t*)(__twr_v883);
+    __twr_v885 = *(uint64_t*)(__twr_v881);
+    ((void (*)(uint64_t, uint64_t))__twr_v880)(__twr_v884, __twr_v885);
 }
-void CtGenerateFunction(uint64_t _mng_sym887) {
+void CtGenerateFunction(uint64_t _mng_sym886) {
+    uint64_t __twr_v887;
     uint64_t __twr_v888;
     uint64_t __twr_v889;
-    uint64_t __twr_v890;
-    uint64_t _mng_type891;
+    uint64_t _mng_type890;
+    uint64_t __twr_v891;
     uint64_t __twr_v892;
     uint64_t __twr_v893;
     uint64_t __twr_v894;
@@ -2079,8 +2079,8 @@ void CtGenerateFunction(uint64_t _mng_sym887) {
     uint64_t __twr_v901;
     uint64_t __twr_v902;
     uint64_t __twr_v903;
-    uint64_t __twr_v904;
-    uint64_t _mng_arg905;
+    uint64_t _mng_arg904;
+    uint64_t __twr_v905;
     uint64_t __twr_v906;
     uint64_t __twr_v907;
     uint64_t __twr_v908;
@@ -2155,161 +2155,161 @@ void CtGenerateFunction(uint64_t _mng_sym887) {
     uint64_t __twr_v977;
     uint64_t __twr_v978;
     uint64_t __twr_v979;
-    uint64_t __twr_v980;
-    __twr_v888 = 104ULL;
-    __twr_v889 = _mng_sym887 + __twr_v888;
-    __twr_v890 = *(uint64_t*)(__twr_v889);
-    _mng_type891 = __twr_v890;
-    __twr_v892 = 8ULL;
-    __twr_v893 = __twr_v890 + __twr_v892;
-    __twr_v894 = *(uint64_t*)(__twr_v893);
-    if (__twr_v894) { goto __twr_l80; } else { goto __twr_l81; }
+    __twr_v887 = 104ULL;
+    __twr_v888 = _mng_sym886 + __twr_v887;
+    __twr_v889 = *(uint64_t*)(__twr_v888);
+    _mng_type890 = __twr_v889;
+    __twr_v891 = 8ULL;
+    __twr_v892 = __twr_v889 + __twr_v891;
+    __twr_v893 = *(uint64_t*)(__twr_v892);
+    if (__twr_v893) { goto __twr_l80; } else { goto __twr_l81; }
     __twr_l80:;
-    __twr_v895 = (uint64_t)(&CtInsertString);
-    __twr_v896 = (uint64_t)(&"uint64_t ");
-    ((void (*)(uint64_t))__twr_v895)(__twr_v896);
+    __twr_v894 = (uint64_t)(&CtInsertString);
+    __twr_v895 = (uint64_t)(&"uint64_t ");
+    ((void (*)(uint64_t))__twr_v894)(__twr_v895);
     goto __twr_l79;
     __twr_l81:;
-    __twr_v897 = (uint64_t)(&CtInsertString);
-    __twr_v898 = (uint64_t)(&"void ");
-    ((void (*)(uint64_t))__twr_v897)(__twr_v898);
+    __twr_v896 = (uint64_t)(&CtInsertString);
+    __twr_v897 = (uint64_t)(&"void ");
+    ((void (*)(uint64_t))__twr_v896)(__twr_v897);
     __twr_l79:;
-    __twr_v899 = (uint64_t)(&CtInsertString);
-    __twr_v900 = 48ULL;
-    __twr_v901 = _mng_sym887 + __twr_v900;
-    __twr_v902 = *(uint64_t*)(__twr_v901);
-    ((void (*)(uint64_t))__twr_v899)(__twr_v902);
-    __twr_v903 = (uint64_t)(&"(");
-    ((void (*)(uint64_t))__twr_v899)(__twr_v903);
-    __twr_v904 = *(uint64_t*)(_mng_type891);
-    _mng_arg905 = __twr_v904;
-    if (__twr_v904) { goto __twr_l82; } else { goto __twr_l83; }
+    __twr_v898 = (uint64_t)(&CtInsertString);
+    __twr_v899 = 48ULL;
+    __twr_v900 = _mng_sym886 + __twr_v899;
+    __twr_v901 = *(uint64_t*)(__twr_v900);
+    ((void (*)(uint64_t))__twr_v898)(__twr_v901);
+    __twr_v902 = (uint64_t)(&"(");
+    ((void (*)(uint64_t))__twr_v898)(__twr_v902);
+    __twr_v903 = *(uint64_t*)(_mng_type890);
+    _mng_arg904 = __twr_v903;
+    if (__twr_v903) { goto __twr_l82; } else { goto __twr_l83; }
     __twr_l82:;
-    __twr_v906 = (uint64_t)(&CtIrVariableNumber);
-    __twr_v907 = *(uint64_t*)(__twr_v906);
-    __twr_v908 = 40ULL;
-    __twr_v909 = _mng_arg905 + __twr_v908;
-    __twr_v910 = *(uint64_t*)(__twr_v909);
-    __twr_v911 = 128ULL;
-    __twr_v912 = __twr_v910 + __twr_v911;
-    *(uint64_t*)(__twr_v912) = __twr_v907;
-    __twr_v913 = 1ULL;
-    __twr_v914 = *(uint64_t*)(__twr_v906);
-    __twr_v915 = __twr_v914 + __twr_v913;
-    *(uint64_t*)(__twr_v906) = __twr_v915;
-    __twr_v916 = (uint64_t)(&CtInsertString);
-    __twr_v917 = (uint64_t)(&"uint64_t _mng_");
-    ((void (*)(uint64_t))__twr_v916)(__twr_v917);
-    __twr_v918 = _mng_arg905 + __twr_v908;
-    __twr_v919 = *(uint64_t*)(__twr_v918);
-    __twr_v920 = 48ULL;
-    __twr_v921 = __twr_v919 + __twr_v920;
-    __twr_v922 = *(uint64_t*)(__twr_v921);
-    ((void (*)(uint64_t))__twr_v916)(__twr_v922);
-    __twr_v923 = (uint64_t)(&CtInsertNumber);
-    __twr_v924 = _mng_arg905 + __twr_v908;
-    __twr_v925 = *(uint64_t*)(__twr_v924);
-    __twr_v926 = __twr_v925 + __twr_v911;
-    __twr_v927 = *(uint64_t*)(__twr_v926);
-    ((void (*)(uint64_t))__twr_v923)(__twr_v927);
-    __twr_v928 = *(uint64_t*)(_mng_arg905);
-    _mng_arg905 = __twr_v928;
-    if (__twr_v928) { goto __twr_l86; } else { goto __twr_l87; }
+    __twr_v905 = (uint64_t)(&CtIrVariableNumber);
+    __twr_v906 = *(uint64_t*)(__twr_v905);
+    __twr_v907 = 40ULL;
+    __twr_v908 = _mng_arg904 + __twr_v907;
+    __twr_v909 = *(uint64_t*)(__twr_v908);
+    __twr_v910 = 128ULL;
+    __twr_v911 = __twr_v909 + __twr_v910;
+    *(uint64_t*)(__twr_v911) = __twr_v906;
+    __twr_v912 = 1ULL;
+    __twr_v913 = *(uint64_t*)(__twr_v905);
+    __twr_v914 = __twr_v913 + __twr_v912;
+    *(uint64_t*)(__twr_v905) = __twr_v914;
+    __twr_v915 = (uint64_t)(&CtInsertString);
+    __twr_v916 = (uint64_t)(&"uint64_t _mng_");
+    ((void (*)(uint64_t))__twr_v915)(__twr_v916);
+    __twr_v917 = _mng_arg904 + __twr_v907;
+    __twr_v918 = *(uint64_t*)(__twr_v917);
+    __twr_v919 = 48ULL;
+    __twr_v920 = __twr_v918 + __twr_v919;
+    __twr_v921 = *(uint64_t*)(__twr_v920);
+    ((void (*)(uint64_t))__twr_v915)(__twr_v921);
+    __twr_v922 = (uint64_t)(&CtInsertNumber);
+    __twr_v923 = _mng_arg904 + __twr_v907;
+    __twr_v924 = *(uint64_t*)(__twr_v923);
+    __twr_v925 = __twr_v924 + __twr_v910;
+    __twr_v926 = *(uint64_t*)(__twr_v925);
+    ((void (*)(uint64_t))__twr_v922)(__twr_v926);
+    __twr_v927 = *(uint64_t*)(_mng_arg904);
+    _mng_arg904 = __twr_v927;
+    if (__twr_v927) { goto __twr_l86; } else { goto __twr_l87; }
     __twr_l87:;
-    __twr_v929 = 60ULL;
-    __twr_v930 = _mng_type891 + __twr_v929;
-    __twr_v931 = *(uint8_t*)(__twr_v930);
-    if (__twr_v931) { goto __twr_l86; } else { goto __twr_l85; }
+    __twr_v928 = 60ULL;
+    __twr_v929 = _mng_type890 + __twr_v928;
+    __twr_v930 = *(uint8_t*)(__twr_v929);
+    if (__twr_v930) { goto __twr_l86; } else { goto __twr_l85; }
     __twr_l86:;
-    __twr_v932 = (uint64_t)(&CtInsertString);
-    __twr_v933 = (uint64_t)(&", ");
-    ((void (*)(uint64_t))__twr_v932)(__twr_v933);
+    __twr_v931 = (uint64_t)(&CtInsertString);
+    __twr_v932 = (uint64_t)(&", ");
+    ((void (*)(uint64_t))__twr_v931)(__twr_v932);
     __twr_l85:;
     __twr_l84:;
-    if (_mng_arg905) { goto __twr_l82; } else { goto __twr_l83; }
+    if (_mng_arg904) { goto __twr_l82; } else { goto __twr_l83; }
     __twr_l83:;
-    __twr_v934 = 60ULL;
-    __twr_v935 = _mng_type891 + __twr_v934;
-    __twr_v936 = *(uint8_t*)(__twr_v935);
-    if (__twr_v936) { goto __twr_l89; } else { goto __twr_l88; }
+    __twr_v933 = 60ULL;
+    __twr_v934 = _mng_type890 + __twr_v933;
+    __twr_v935 = *(uint8_t*)(__twr_v934);
+    if (__twr_v935) { goto __twr_l89; } else { goto __twr_l88; }
     __twr_l89:;
-    __twr_v937 = 32ULL;
-    __twr_v938 = _mng_type891 + __twr_v937;
-    __twr_v939 = *(uint64_t*)(__twr_v938);
-    __twr_v940 = 40ULL;
-    __twr_v941 = _mng_type891 + __twr_v940;
-    __twr_v942 = *(uint64_t*)(__twr_v941);
-    __twr_v943 = (uint64_t)(&CtIrVariableNumber);
-    __twr_v944 = *(uint64_t*)(__twr_v943);
-    __twr_v945 = 128ULL;
-    __twr_v946 = __twr_v939 + __twr_v945;
-    *(uint64_t*)(__twr_v946) = __twr_v944;
-    __twr_v947 = 1ULL;
-    __twr_v948 = *(uint64_t*)(__twr_v943);
-    __twr_v949 = __twr_v948 + __twr_v947;
-    *(uint64_t*)(__twr_v943) = __twr_v949;
-    __twr_v950 = *(uint64_t*)(__twr_v943);
-    __twr_v951 = __twr_v942 + __twr_v945;
-    *(uint64_t*)(__twr_v951) = __twr_v950;
-    __twr_v952 = *(uint64_t*)(__twr_v943);
-    __twr_v953 = __twr_v952 + __twr_v947;
-    *(uint64_t*)(__twr_v943) = __twr_v953;
-    __twr_v954 = (uint64_t)(&CtInsertString);
-    __twr_v955 = (uint64_t)(&"uint64_t _mng_");
-    ((void (*)(uint64_t))__twr_v954)(__twr_v955);
-    __twr_v956 = 48ULL;
-    __twr_v957 = __twr_v939 + __twr_v956;
-    __twr_v958 = *(uint64_t*)(__twr_v957);
-    ((void (*)(uint64_t))__twr_v954)(__twr_v958);
-    __twr_v959 = (uint64_t)(&CtInsertNumber);
-    __twr_v960 = __twr_v939 + __twr_v945;
-    __twr_v961 = *(uint64_t*)(__twr_v960);
-    ((void (*)(uint64_t))__twr_v959)(__twr_v961);
-    __twr_v962 = (uint64_t)(&", uint64_t _mng_");
-    ((void (*)(uint64_t))__twr_v954)(__twr_v962);
-    __twr_v963 = __twr_v942 + __twr_v956;
-    __twr_v964 = *(uint64_t*)(__twr_v963);
-    ((void (*)(uint64_t))__twr_v954)(__twr_v964);
-    __twr_v965 = __twr_v942 + __twr_v945;
-    __twr_v966 = *(uint64_t*)(__twr_v965);
-    ((void (*)(uint64_t))__twr_v959)(__twr_v966);
+    __twr_v936 = 32ULL;
+    __twr_v937 = _mng_type890 + __twr_v936;
+    __twr_v938 = *(uint64_t*)(__twr_v937);
+    __twr_v939 = 40ULL;
+    __twr_v940 = _mng_type890 + __twr_v939;
+    __twr_v941 = *(uint64_t*)(__twr_v940);
+    __twr_v942 = (uint64_t)(&CtIrVariableNumber);
+    __twr_v943 = *(uint64_t*)(__twr_v942);
+    __twr_v944 = 128ULL;
+    __twr_v945 = __twr_v938 + __twr_v944;
+    *(uint64_t*)(__twr_v945) = __twr_v943;
+    __twr_v946 = 1ULL;
+    __twr_v947 = *(uint64_t*)(__twr_v942);
+    __twr_v948 = __twr_v947 + __twr_v946;
+    *(uint64_t*)(__twr_v942) = __twr_v948;
+    __twr_v949 = *(uint64_t*)(__twr_v942);
+    __twr_v950 = __twr_v941 + __twr_v944;
+    *(uint64_t*)(__twr_v950) = __twr_v949;
+    __twr_v951 = *(uint64_t*)(__twr_v942);
+    __twr_v952 = __twr_v951 + __twr_v946;
+    *(uint64_t*)(__twr_v942) = __twr_v952;
+    __twr_v953 = (uint64_t)(&CtInsertString);
+    __twr_v954 = (uint64_t)(&"uint64_t _mng_");
+    ((void (*)(uint64_t))__twr_v953)(__twr_v954);
+    __twr_v955 = 48ULL;
+    __twr_v956 = __twr_v938 + __twr_v955;
+    __twr_v957 = *(uint64_t*)(__twr_v956);
+    ((void (*)(uint64_t))__twr_v953)(__twr_v957);
+    __twr_v958 = (uint64_t)(&CtInsertNumber);
+    __twr_v959 = __twr_v938 + __twr_v944;
+    __twr_v960 = *(uint64_t*)(__twr_v959);
+    ((void (*)(uint64_t))__twr_v958)(__twr_v960);
+    __twr_v961 = (uint64_t)(&", uint64_t _mng_");
+    ((void (*)(uint64_t))__twr_v953)(__twr_v961);
+    __twr_v962 = __twr_v941 + __twr_v955;
+    __twr_v963 = *(uint64_t*)(__twr_v962);
+    ((void (*)(uint64_t))__twr_v953)(__twr_v963);
+    __twr_v964 = __twr_v941 + __twr_v944;
+    __twr_v965 = *(uint64_t*)(__twr_v964);
+    ((void (*)(uint64_t))__twr_v958)(__twr_v965);
     __twr_l88:;
-    __twr_v967 = (uint64_t)(&CtInsertString);
-    __twr_v968 = (uint64_t)(&")");
-    ((void (*)(uint64_t))__twr_v967)(__twr_v968);
-    __twr_v969 = 48ULL;
-    __twr_v970 = _mng_type891 + __twr_v969;
-    __twr_v971 = *(uint64_t*)(__twr_v970);
-    if (__twr_v971) { goto __twr_l90; } else { goto __twr_l91; }
+    __twr_v966 = (uint64_t)(&CtInsertString);
+    __twr_v967 = (uint64_t)(&")");
+    ((void (*)(uint64_t))__twr_v966)(__twr_v967);
+    __twr_v968 = 48ULL;
+    __twr_v969 = _mng_type890 + __twr_v968;
+    __twr_v970 = *(uint64_t*)(__twr_v969);
+    if (__twr_v970) { goto __twr_l90; } else { goto __twr_l91; }
     __twr_l91:;
-    __twr_v972 = (uint64_t)(&CtInsertString);
-    __twr_v973 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v972)(__twr_v973);
+    __twr_v971 = (uint64_t)(&CtInsertString);
+    __twr_v972 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v971)(__twr_v972);
     return;
     __twr_l90:;
-    __twr_v974 = (uint64_t)(&CtInsertString);
-    __twr_v975 = (uint64_t)(&" {\n");
-    ((void (*)(uint64_t))__twr_v974)(__twr_v975);
-    __twr_v976 = (uint64_t)(&CtGenerateFromIr);
-    __twr_v977 = 96ULL;
-    __twr_v978 = _mng_sym887 + __twr_v977;
-    __twr_v979 = *(uint64_t*)(__twr_v978);
-    ((void (*)(uint64_t))__twr_v976)(__twr_v979);
-    __twr_v980 = (uint64_t)(&"}\n");
-    ((void (*)(uint64_t))__twr_v974)(__twr_v980);
+    __twr_v973 = (uint64_t)(&CtInsertString);
+    __twr_v974 = (uint64_t)(&" {\n");
+    ((void (*)(uint64_t))__twr_v973)(__twr_v974);
+    __twr_v975 = (uint64_t)(&CtGenerateFromIr);
+    __twr_v976 = 96ULL;
+    __twr_v977 = _mng_sym886 + __twr_v976;
+    __twr_v978 = *(uint64_t*)(__twr_v977);
+    ((void (*)(uint64_t))__twr_v975)(__twr_v978);
+    __twr_v979 = (uint64_t)(&"}\n");
+    ((void (*)(uint64_t))__twr_v973)(__twr_v979);
 }
-extern void CtGenerateInitializer(uint64_t _mng_value981, uint64_t _mng_primtype982, uint64_t _mng_count983);
-void CtGenerateCompoundInitializer(uint64_t _mng_node984, uint64_t _mng_count985) {
+extern void CtGenerateInitializer(uint64_t _mng_value980, uint64_t _mng_primtype981, uint64_t _mng_count982);
+void CtGenerateCompoundInitializer(uint64_t _mng_node983, uint64_t _mng_count984) {
+    uint64_t __twr_v985;
     uint64_t __twr_v986;
     uint64_t __twr_v987;
     uint64_t __twr_v988;
-    uint64_t __twr_v989;
-    uint64_t _mng_bytearray990;
+    uint64_t _mng_bytearray989;
+    uint64_t __twr_v990;
     uint64_t __twr_v991;
     uint64_t __twr_v992;
-    uint64_t __twr_v993;
-    uint64_t _mng_bparray994;
-    uint64_t _mng_i995;
+    uint64_t _mng_bparray993;
+    uint64_t _mng_i994;
+    uint64_t __twr_v995;
     uint64_t __twr_v996;
     uint64_t __twr_v997;
     uint64_t __twr_v998;
@@ -2327,19 +2327,19 @@ void CtGenerateCompoundInitializer(uint64_t _mng_node984, uint64_t _mng_count985
     uint64_t __twr_v1010;
     uint64_t __twr_v1011;
     uint64_t __twr_v1012;
-    uint64_t __twr_v1013;
-    uint64_t _mng_j1014;
+    uint64_t _mng_j1013;
+    uint64_t __twr_v1014;
     uint64_t __twr_v1015;
     uint64_t __twr_v1016;
     uint64_t __twr_v1017;
     uint64_t __twr_v1018;
     uint64_t __twr_v1019;
     uint64_t __twr_v1020;
-    uint64_t __twr_v1021;
-    uint8_t _mng_lonibble1022;
+    uint8_t _mng_lonibble1021;
+    uint64_t __twr_v1022;
     uint64_t __twr_v1023;
-    uint64_t __twr_v1024;
-    uint8_t _mng_hinibble1025;
+    uint8_t _mng_hinibble1024;
+    uint64_t __twr_v1025;
     uint64_t __twr_v1026;
     uint64_t __twr_v1027;
     uint64_t __twr_v1028;
@@ -2359,106 +2359,106 @@ void CtGenerateCompoundInitializer(uint64_t _mng_node984, uint64_t _mng_count985
     uint64_t __twr_v1042;
     uint64_t __twr_v1043;
     uint64_t __twr_v1044;
-    uint64_t __twr_v1045;
-    __twr_v986 = 48ULL;
-    __twr_v987 = _mng_node984 + __twr_v986;
-    __twr_v988 = 0ULL;
-    __twr_v989 = *(uint64_t*)(__twr_v987);
-    _mng_bytearray990 = __twr_v989;
-    __twr_v991 = 56ULL;
-    __twr_v992 = _mng_node984 + __twr_v991;
-    __twr_v993 = *(uint64_t*)(__twr_v992);
-    _mng_bparray994 = __twr_v993;
-    _mng_i995 = __twr_v988;
-    __twr_v996 = (uint64_t)(&CtInsertString);
-    __twr_v997 = (uint64_t)(&"{\n");
-    ((void (*)(uint64_t))__twr_v996)(__twr_v997);
-    if (_mng_count985 >= __twr_v988) { goto __twr_l92; } else { goto __twr_l93; }
+    __twr_v985 = 48ULL;
+    __twr_v986 = _mng_node983 + __twr_v985;
+    __twr_v987 = 0ULL;
+    __twr_v988 = *(uint64_t*)(__twr_v986);
+    _mng_bytearray989 = __twr_v988;
+    __twr_v990 = 56ULL;
+    __twr_v991 = _mng_node983 + __twr_v990;
+    __twr_v992 = *(uint64_t*)(__twr_v991);
+    _mng_bparray993 = __twr_v992;
+    _mng_i994 = __twr_v987;
+    __twr_v995 = (uint64_t)(&CtInsertString);
+    __twr_v996 = (uint64_t)(&"{\n");
+    ((void (*)(uint64_t))__twr_v995)(__twr_v996);
+    if (_mng_count984 >= __twr_v987) { goto __twr_l92; } else { goto __twr_l93; }
     __twr_l92:;
-    __twr_v998 = 3ULL;
-    __twr_v999 = _mng_i995 << __twr_v998;
-    __twr_v1000 = _mng_bparray994 + __twr_v999;
-    __twr_v1001 = *(uint64_t*)(__twr_v1000);
-    if (__twr_v1001) { goto __twr_l96; } else { goto __twr_l97; }
+    __twr_v997 = 3ULL;
+    __twr_v998 = _mng_i994 << __twr_v997;
+    __twr_v999 = _mng_bparray993 + __twr_v998;
+    __twr_v1000 = *(uint64_t*)(__twr_v999);
+    if (__twr_v1000) { goto __twr_l96; } else { goto __twr_l97; }
     __twr_l96:;
-    __twr_v1002 = (uint64_t)(&CtInsertString);
-    __twr_v1003 = (uint64_t)(&"    ");
-    ((void (*)(uint64_t))__twr_v1002)(__twr_v1003);
-    __twr_v1004 = (uint64_t)(&CtGenerateInitializer);
-    __twr_v1005 = 3ULL;
-    __twr_v1006 = _mng_i995 << __twr_v1005;
-    __twr_v1007 = _mng_bparray994 + __twr_v1006;
-    __twr_v1008 = *(uint64_t*)(__twr_v1007);
-    __twr_v1009 = 13ULL;
-    __twr_v1010 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1004)(__twr_v1008, __twr_v1009, __twr_v1010);
+    __twr_v1001 = (uint64_t)(&CtInsertString);
+    __twr_v1002 = (uint64_t)(&"    ");
+    ((void (*)(uint64_t))__twr_v1001)(__twr_v1002);
+    __twr_v1003 = (uint64_t)(&CtGenerateInitializer);
+    __twr_v1004 = 3ULL;
+    __twr_v1005 = _mng_i994 << __twr_v1004;
+    __twr_v1006 = _mng_bparray993 + __twr_v1005;
+    __twr_v1007 = *(uint64_t*)(__twr_v1006);
+    __twr_v1008 = 13ULL;
+    __twr_v1009 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1003)(__twr_v1007, __twr_v1008, __twr_v1009);
     goto __twr_l95;
     __twr_l97:;
-    __twr_v1011 = (uint64_t)(&CtInsertString);
-    __twr_v1012 = (uint64_t)(&"    0x");
-    ((void (*)(uint64_t))__twr_v1011)(__twr_v1012);
-    __twr_v1013 = 8ULL;
-    _mng_j1014 = __twr_v1013;
+    __twr_v1010 = (uint64_t)(&CtInsertString);
+    __twr_v1011 = (uint64_t)(&"    0x");
+    ((void (*)(uint64_t))__twr_v1010)(__twr_v1011);
+    __twr_v1012 = 8ULL;
+    _mng_j1013 = __twr_v1012;
     goto __twr_l98;
     __twr_l98:;
-    __twr_v1015 = 1ULL;
-    __twr_v1016 = _mng_j1014 - __twr_v1015;
-    _mng_j1014 = __twr_v1016;
-    __twr_v1017 = _mng_i995 + __twr_v1016;
-    __twr_v1018 = _mng_bytearray990 + __twr_v1017;
-    __twr_v1019 = *(uint8_t*)(__twr_v1018);
-    __twr_v1020 = 15ULL;
-    __twr_v1021 = __twr_v1019 & __twr_v1020;
-    _mng_lonibble1022 = __twr_v1021;
-    __twr_v1023 = 4ULL;
-    __twr_v1024 = __twr_v1019 >> __twr_v1023;
-    _mng_hinibble1025 = __twr_v1024;
-    __twr_v1026 = 10ULL;
-    if (__twr_v1024 < __twr_v1026) { goto __twr_l102; } else { goto __twr_l103; }
+    __twr_v1014 = 1ULL;
+    __twr_v1015 = _mng_j1013 - __twr_v1014;
+    _mng_j1013 = __twr_v1015;
+    __twr_v1016 = _mng_i994 + __twr_v1015;
+    __twr_v1017 = _mng_bytearray989 + __twr_v1016;
+    __twr_v1018 = *(uint8_t*)(__twr_v1017);
+    __twr_v1019 = 15ULL;
+    __twr_v1020 = __twr_v1018 & __twr_v1019;
+    _mng_lonibble1021 = __twr_v1020;
+    __twr_v1022 = 4ULL;
+    __twr_v1023 = __twr_v1018 >> __twr_v1022;
+    _mng_hinibble1024 = __twr_v1023;
+    __twr_v1025 = 10ULL;
+    if (__twr_v1023 < __twr_v1025) { goto __twr_l102; } else { goto __twr_l103; }
     __twr_l102:;
-    __twr_v1027 = (uint64_t)(&CtInsertByte);
-    __twr_v1028 = 48ULL;
-    __twr_v1029 = _mng_hinibble1025 + __twr_v1028;
-    ((void (*)(uint64_t))__twr_v1027)(__twr_v1029);
+    __twr_v1026 = (uint64_t)(&CtInsertByte);
+    __twr_v1027 = 48ULL;
+    __twr_v1028 = _mng_hinibble1024 + __twr_v1027;
+    ((void (*)(uint64_t))__twr_v1026)(__twr_v1028);
     goto __twr_l101;
     __twr_l103:;
-    __twr_v1030 = (uint64_t)(&CtInsertByte);
-    __twr_v1031 = 55ULL;
-    __twr_v1032 = _mng_hinibble1025 + __twr_v1031;
-    ((void (*)(uint64_t))__twr_v1030)(__twr_v1032);
+    __twr_v1029 = (uint64_t)(&CtInsertByte);
+    __twr_v1030 = 55ULL;
+    __twr_v1031 = _mng_hinibble1024 + __twr_v1030;
+    ((void (*)(uint64_t))__twr_v1029)(__twr_v1031);
     __twr_l101:;
-    __twr_v1033 = 10ULL;
-    if (_mng_lonibble1022 < __twr_v1033) { goto __twr_l105; } else { goto __twr_l106; }
+    __twr_v1032 = 10ULL;
+    if (_mng_lonibble1021 < __twr_v1032) { goto __twr_l105; } else { goto __twr_l106; }
     __twr_l105:;
-    __twr_v1034 = (uint64_t)(&CtInsertByte);
-    __twr_v1035 = 48ULL;
-    __twr_v1036 = _mng_lonibble1022 + __twr_v1035;
-    ((void (*)(uint64_t))__twr_v1034)(__twr_v1036);
+    __twr_v1033 = (uint64_t)(&CtInsertByte);
+    __twr_v1034 = 48ULL;
+    __twr_v1035 = _mng_lonibble1021 + __twr_v1034;
+    ((void (*)(uint64_t))__twr_v1033)(__twr_v1035);
     goto __twr_l104;
     __twr_l106:;
-    __twr_v1037 = (uint64_t)(&CtInsertByte);
-    __twr_v1038 = 55ULL;
-    __twr_v1039 = _mng_lonibble1022 + __twr_v1038;
-    ((void (*)(uint64_t))__twr_v1037)(__twr_v1039);
+    __twr_v1036 = (uint64_t)(&CtInsertByte);
+    __twr_v1037 = 55ULL;
+    __twr_v1038 = _mng_lonibble1021 + __twr_v1037;
+    ((void (*)(uint64_t))__twr_v1036)(__twr_v1038);
     __twr_l104:;
     __twr_l100:;
-    if (_mng_j1014) { goto __twr_l98; } else { goto __twr_l99; }
+    if (_mng_j1013) { goto __twr_l98; } else { goto __twr_l99; }
     __twr_l99:;
     __twr_l95:;
-    __twr_v1040 = (uint64_t)(&CtInsertString);
-    __twr_v1041 = (uint64_t)(&",\n");
-    ((void (*)(uint64_t))__twr_v1040)(__twr_v1041);
-    __twr_v1042 = 8ULL;
-    __twr_v1043 = _mng_i995 + __twr_v1042;
-    _mng_i995 = __twr_v1043;
+    __twr_v1039 = (uint64_t)(&CtInsertString);
+    __twr_v1040 = (uint64_t)(&",\n");
+    ((void (*)(uint64_t))__twr_v1039)(__twr_v1040);
+    __twr_v1041 = 8ULL;
+    __twr_v1042 = _mng_i994 + __twr_v1041;
+    _mng_i994 = __twr_v1042;
     __twr_l94:;
-    if (_mng_i995 < _mng_count985) { goto __twr_l92; } else { goto __twr_l93; }
+    if (_mng_i994 < _mng_count984) { goto __twr_l92; } else { goto __twr_l93; }
     __twr_l93:;
-    __twr_v1044 = (uint64_t)(&CtInsertString);
-    __twr_v1045 = (uint64_t)(&"}");
-    ((void (*)(uint64_t))__twr_v1044)(__twr_v1045);
+    __twr_v1043 = (uint64_t)(&CtInsertString);
+    __twr_v1044 = (uint64_t)(&"}");
+    ((void (*)(uint64_t))__twr_v1043)(__twr_v1044);
 }
-void CtGenerateInitializer(uint64_t _mng_value1046, uint64_t _mng_primtype1047, uint64_t _mng_count1048) {
+void CtGenerateInitializer(uint64_t _mng_value1045, uint64_t _mng_primtype1046, uint64_t _mng_count1047) {
+    uint64_t __twr_v1048;
     uint64_t __twr_v1049;
     uint64_t __twr_v1050;
     uint64_t __twr_v1051;
@@ -2543,136 +2543,136 @@ void CtGenerateInitializer(uint64_t _mng_value1046, uint64_t _mng_primtype1047, 
     uint64_t __twr_v1130;
     uint64_t __twr_v1131;
     uint64_t __twr_v1132;
-    uint64_t __twr_v1133;
-    __twr_v1049 = 40ULL;
-    __twr_v1050 = _mng_value1046 + __twr_v1049;
-    __twr_v1051 = *(uint8_t*)(__twr_v1050);
-    __twr_v1052 = 2ULL;
-    if (__twr_v1051 == __twr_v1052) { goto __twr_l109; } else { goto __twr_l108; }
+    __twr_v1048 = 40ULL;
+    __twr_v1049 = _mng_value1045 + __twr_v1048;
+    __twr_v1050 = *(uint8_t*)(__twr_v1049);
+    __twr_v1051 = 2ULL;
+    if (__twr_v1050 == __twr_v1051) { goto __twr_l109; } else { goto __twr_l108; }
     __twr_l109:;
-    __twr_v1053 = 25ULL;
-    __twr_v1054 = _mng_value1046 + __twr_v1053;
-    __twr_v1055 = *(uint8_t*)(__twr_v1054);
-    __twr_v1056 = 4ULL;
-    if (__twr_v1055 == __twr_v1056) { goto __twr_l107; } else { goto __twr_l108; }
+    __twr_v1052 = 25ULL;
+    __twr_v1053 = _mng_value1045 + __twr_v1052;
+    __twr_v1054 = *(uint8_t*)(__twr_v1053);
+    __twr_v1055 = 4ULL;
+    if (__twr_v1054 == __twr_v1055) { goto __twr_l107; } else { goto __twr_l108; }
     __twr_l107:;
-    __twr_v1057 = 48ULL;
-    __twr_v1058 = _mng_value1046 + __twr_v1057;
-    __twr_v1059 = *(uint64_t*)(__twr_v1058);
-    _mng_value1046 = __twr_v1059;
+    __twr_v1056 = 48ULL;
+    __twr_v1057 = _mng_value1045 + __twr_v1056;
+    __twr_v1058 = *(uint64_t*)(__twr_v1057);
+    _mng_value1045 = __twr_v1058;
     __twr_l110:;
-    __twr_v1060 = 40ULL;
-    __twr_v1061 = _mng_value1046 + __twr_v1060;
-    __twr_v1062 = *(uint8_t*)(__twr_v1061);
-    __twr_v1063 = 2ULL;
-    if (__twr_v1062 == __twr_v1063) { goto __twr_l111; } else { goto __twr_l108; }
+    __twr_v1059 = 40ULL;
+    __twr_v1060 = _mng_value1045 + __twr_v1059;
+    __twr_v1061 = *(uint8_t*)(__twr_v1060);
+    __twr_v1062 = 2ULL;
+    if (__twr_v1061 == __twr_v1062) { goto __twr_l111; } else { goto __twr_l108; }
     __twr_l111:;
-    __twr_v1064 = 25ULL;
-    __twr_v1065 = _mng_value1046 + __twr_v1064;
-    __twr_v1066 = *(uint8_t*)(__twr_v1065);
-    __twr_v1067 = 4ULL;
-    if (__twr_v1066 == __twr_v1067) { goto __twr_l107; } else { goto __twr_l108; }
+    __twr_v1063 = 25ULL;
+    __twr_v1064 = _mng_value1045 + __twr_v1063;
+    __twr_v1065 = *(uint8_t*)(__twr_v1064);
+    __twr_v1066 = 4ULL;
+    if (__twr_v1065 == __twr_v1066) { goto __twr_l107; } else { goto __twr_l108; }
     __twr_l108:;
-    __twr_v1068 = 40ULL;
-    __twr_v1069 = _mng_value1046 + __twr_v1068;
-    __twr_v1070 = *(uint8_t*)(__twr_v1069);
-    __twr_v1071 = 3ULL;
-    if (__twr_v1070 == __twr_v1071) { goto __twr_l113; } else { goto __twr_l112; }
+    __twr_v1067 = 40ULL;
+    __twr_v1068 = _mng_value1045 + __twr_v1067;
+    __twr_v1069 = *(uint8_t*)(__twr_v1068);
+    __twr_v1070 = 3ULL;
+    if (__twr_v1069 == __twr_v1070) { goto __twr_l113; } else { goto __twr_l112; }
     __twr_l113:;
-    __twr_v1072 = (uint64_t)(&CtInsertNumber);
-    __twr_v1073 = 48ULL;
-    __twr_v1074 = _mng_value1046 + __twr_v1073;
-    __twr_v1075 = *(uint64_t*)(__twr_v1074);
-    ((void (*)(uint64_t))__twr_v1072)(__twr_v1075);
-    __twr_v1076 = (uint64_t)(&CtInsertString);
-    __twr_v1077 = (uint64_t)(&"ULL");
-    ((void (*)(uint64_t))__twr_v1076)(__twr_v1077);
+    __twr_v1071 = (uint64_t)(&CtInsertNumber);
+    __twr_v1072 = 48ULL;
+    __twr_v1073 = _mng_value1045 + __twr_v1072;
+    __twr_v1074 = *(uint64_t*)(__twr_v1073);
+    ((void (*)(uint64_t))__twr_v1071)(__twr_v1074);
+    __twr_v1075 = (uint64_t)(&CtInsertString);
+    __twr_v1076 = (uint64_t)(&"ULL");
+    ((void (*)(uint64_t))__twr_v1075)(__twr_v1076);
     return;
     __twr_l112:;
-    __twr_v1078 = 40ULL;
-    __twr_v1079 = _mng_value1046 + __twr_v1078;
-    __twr_v1080 = *(uint8_t*)(__twr_v1079);
-    __twr_v1081 = 4ULL;
-    if (__twr_v1080 == __twr_v1081) { goto __twr_l115; } else { goto __twr_l114; }
+    __twr_v1077 = 40ULL;
+    __twr_v1078 = _mng_value1045 + __twr_v1077;
+    __twr_v1079 = *(uint8_t*)(__twr_v1078);
+    __twr_v1080 = 4ULL;
+    if (__twr_v1079 == __twr_v1080) { goto __twr_l115; } else { goto __twr_l114; }
     __twr_l115:;
-    __twr_v1082 = (uint64_t)(&CtInsertByte);
-    __twr_v1083 = 40ULL;
-    ((void (*)(uint64_t))__twr_v1082)(__twr_v1083);
-    __twr_v1084 = (uint64_t)(&CtInsertString);
-    __twr_v1085 = (uint64_t)(&CtTypeNames);
-    __twr_v1086 = (uint64_t)(&_mng_primtype1047);
-    __twr_v1087 = *(uint8_t*)(__twr_v1086);
-    __twr_v1088 = 3ULL;
-    __twr_v1089 = __twr_v1087 << __twr_v1088;
-    __twr_v1090 = __twr_v1085 + __twr_v1089;
-    __twr_v1091 = *(uint64_t*)(__twr_v1090);
-    ((void (*)(uint64_t))__twr_v1084)(__twr_v1091);
-    __twr_v1092 = (uint64_t)(&")(&");
-    ((void (*)(uint64_t))__twr_v1084)(__twr_v1092);
-    __twr_v1093 = (uint64_t)(&CtGenerateString);
-    __twr_v1094 = 0ULL;
-    __twr_v1095 = *(uint64_t*)(_mng_value1046);
-    ((void (*)(uint64_t, uint64_t))__twr_v1093)(__twr_v1094, __twr_v1095);
-    __twr_v1096 = 41ULL;
-    ((void (*)(uint64_t))__twr_v1082)(__twr_v1096);
+    __twr_v1081 = (uint64_t)(&CtInsertByte);
+    __twr_v1082 = 40ULL;
+    ((void (*)(uint64_t))__twr_v1081)(__twr_v1082);
+    __twr_v1083 = (uint64_t)(&CtInsertString);
+    __twr_v1084 = (uint64_t)(&CtTypeNames);
+    __twr_v1085 = (uint64_t)(&_mng_primtype1046);
+    __twr_v1086 = *(uint8_t*)(__twr_v1085);
+    __twr_v1087 = 3ULL;
+    __twr_v1088 = __twr_v1086 << __twr_v1087;
+    __twr_v1089 = __twr_v1084 + __twr_v1088;
+    __twr_v1090 = *(uint64_t*)(__twr_v1089);
+    ((void (*)(uint64_t))__twr_v1083)(__twr_v1090);
+    __twr_v1091 = (uint64_t)(&")(&");
+    ((void (*)(uint64_t))__twr_v1083)(__twr_v1091);
+    __twr_v1092 = (uint64_t)(&CtGenerateString);
+    __twr_v1093 = 0ULL;
+    __twr_v1094 = *(uint64_t*)(_mng_value1045);
+    ((void (*)(uint64_t, uint64_t))__twr_v1092)(__twr_v1093, __twr_v1094);
+    __twr_v1095 = 41ULL;
+    ((void (*)(uint64_t))__twr_v1081)(__twr_v1095);
     return;
     __twr_l114:;
-    __twr_v1097 = 40ULL;
-    __twr_v1098 = _mng_value1046 + __twr_v1097;
-    __twr_v1099 = *(uint8_t*)(__twr_v1098);
-    __twr_v1100 = 5ULL;
-    if (__twr_v1099 == __twr_v1100) { goto __twr_l117; } else { goto __twr_l116; }
+    __twr_v1096 = 40ULL;
+    __twr_v1097 = _mng_value1045 + __twr_v1096;
+    __twr_v1098 = *(uint8_t*)(__twr_v1097);
+    __twr_v1099 = 5ULL;
+    if (__twr_v1098 == __twr_v1099) { goto __twr_l117; } else { goto __twr_l116; }
     __twr_l117:;
-    __twr_v1101 = (uint64_t)(&CtGenerateCompoundInitializer);
-    ((void (*)(uint64_t, uint64_t))__twr_v1101)(_mng_value1046, _mng_count1048);
+    __twr_v1100 = (uint64_t)(&CtGenerateCompoundInitializer);
+    ((void (*)(uint64_t, uint64_t))__twr_v1100)(_mng_value1045, _mng_count1047);
     return;
     __twr_l116:;
-    __twr_v1102 = 40ULL;
-    __twr_v1103 = _mng_value1046 + __twr_v1102;
-    __twr_v1104 = *(uint8_t*)(__twr_v1103);
-    __twr_v1105 = 2ULL;
-    if (__twr_v1104 == __twr_v1105) { goto __twr_l120; } else { goto __twr_l118; }
+    __twr_v1101 = 40ULL;
+    __twr_v1102 = _mng_value1045 + __twr_v1101;
+    __twr_v1103 = *(uint8_t*)(__twr_v1102);
+    __twr_v1104 = 2ULL;
+    if (__twr_v1103 == __twr_v1104) { goto __twr_l120; } else { goto __twr_l118; }
     __twr_l120:;
-    __twr_v1106 = 25ULL;
-    __twr_v1107 = _mng_value1046 + __twr_v1106;
-    __twr_v1108 = *(uint8_t*)(__twr_v1107);
-    __twr_v1109 = 82ULL;
-    if (__twr_v1108 == __twr_v1109) { goto __twr_l119; } else { goto __twr_l118; }
+    __twr_v1105 = 25ULL;
+    __twr_v1106 = _mng_value1045 + __twr_v1105;
+    __twr_v1107 = *(uint8_t*)(__twr_v1106);
+    __twr_v1108 = 82ULL;
+    if (__twr_v1107 == __twr_v1108) { goto __twr_l119; } else { goto __twr_l118; }
     __twr_l119:;
-    __twr_v1110 = (uint64_t)(&CtInsertByte);
-    __twr_v1111 = 40ULL;
-    ((void (*)(uint64_t))__twr_v1110)(__twr_v1111);
-    __twr_v1112 = (uint64_t)(&CtInsertString);
-    __twr_v1113 = (uint64_t)(&CtTypeNames);
-    __twr_v1114 = (uint64_t)(&_mng_primtype1047);
-    __twr_v1115 = *(uint8_t*)(__twr_v1114);
-    __twr_v1116 = 3ULL;
-    __twr_v1117 = __twr_v1115 << __twr_v1116;
-    __twr_v1118 = __twr_v1113 + __twr_v1117;
-    __twr_v1119 = *(uint64_t*)(__twr_v1118);
-    ((void (*)(uint64_t))__twr_v1112)(__twr_v1119);
-    __twr_v1120 = (uint64_t)(&")(&");
-    ((void (*)(uint64_t))__twr_v1112)(__twr_v1120);
-    __twr_v1121 = 48ULL;
-    __twr_v1122 = _mng_value1046 + __twr_v1121;
+    __twr_v1109 = (uint64_t)(&CtInsertByte);
+    __twr_v1110 = 40ULL;
+    ((void (*)(uint64_t))__twr_v1109)(__twr_v1110);
+    __twr_v1111 = (uint64_t)(&CtInsertString);
+    __twr_v1112 = (uint64_t)(&CtTypeNames);
+    __twr_v1113 = (uint64_t)(&_mng_primtype1046);
+    __twr_v1114 = *(uint8_t*)(__twr_v1113);
+    __twr_v1115 = 3ULL;
+    __twr_v1116 = __twr_v1114 << __twr_v1115;
+    __twr_v1117 = __twr_v1112 + __twr_v1116;
+    __twr_v1118 = *(uint64_t*)(__twr_v1117);
+    ((void (*)(uint64_t))__twr_v1111)(__twr_v1118);
+    __twr_v1119 = (uint64_t)(&")(&");
+    ((void (*)(uint64_t))__twr_v1111)(__twr_v1119);
+    __twr_v1120 = 48ULL;
+    __twr_v1121 = _mng_value1045 + __twr_v1120;
+    __twr_v1122 = *(uint64_t*)(__twr_v1121);
     __twr_v1123 = *(uint64_t*)(__twr_v1122);
-    __twr_v1124 = *(uint64_t*)(__twr_v1123);
-    __twr_v1125 = __twr_v1124 + __twr_v1121;
-    __twr_v1126 = *(uint64_t*)(__twr_v1125);
-    ((void (*)(uint64_t))__twr_v1112)(__twr_v1126);
-    __twr_v1127 = 41ULL;
-    ((void (*)(uint64_t))__twr_v1110)(__twr_v1127);
+    __twr_v1124 = __twr_v1123 + __twr_v1120;
+    __twr_v1125 = *(uint64_t*)(__twr_v1124);
+    ((void (*)(uint64_t))__twr_v1111)(__twr_v1125);
+    __twr_v1126 = 41ULL;
+    ((void (*)(uint64_t))__twr_v1109)(__twr_v1126);
     return;
     __twr_l118:;
-    __twr_v1128 = (uint64_t)(&TlInternalError);
-    __twr_v1129 = (uint64_t)(&"Didn't expect this value here");
-    __twr_v1130 = 40ULL;
-    __twr_v1131 = _mng_value1046 + __twr_v1130;
-    __twr_v1132 = *(uint8_t*)(__twr_v1131);
-    __twr_v1133 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1128)(__twr_v1129, __twr_v1132, __twr_v1133, __twr_v1133);
+    __twr_v1127 = (uint64_t)(&TlInternalError);
+    __twr_v1128 = (uint64_t)(&"Didn't expect this value here");
+    __twr_v1129 = 40ULL;
+    __twr_v1130 = _mng_value1045 + __twr_v1129;
+    __twr_v1131 = *(uint8_t*)(__twr_v1130);
+    __twr_v1132 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1127)(__twr_v1128, __twr_v1131, __twr_v1132, __twr_v1132);
 }
-void CtGenerateGlobal(uint64_t _mng_sym1134) {
+void CtGenerateGlobal(uint64_t _mng_sym1133) {
+    uint64_t __twr_v1134;
     uint64_t __twr_v1135;
     uint64_t __twr_v1136;
     uint64_t __twr_v1137;
@@ -2681,8 +2681,8 @@ void CtGenerateGlobal(uint64_t _mng_sym1134) {
     uint64_t __twr_v1140;
     uint64_t __twr_v1141;
     uint64_t __twr_v1142;
-    uint64_t __twr_v1143;
-    uint64_t _mng_type1144;
+    uint64_t _mng_type1143;
+    uint64_t __twr_v1144;
     uint64_t __twr_v1145;
     uint64_t __twr_v1146;
     uint64_t __twr_v1147;
@@ -2695,8 +2695,8 @@ void CtGenerateGlobal(uint64_t _mng_sym1134) {
     uint64_t __twr_v1154;
     uint64_t __twr_v1155;
     uint64_t __twr_v1156;
-    uint64_t __twr_v1157;
-    uint64_t _mng_bound1158;
+    uint64_t _mng_bound1157;
+    uint64_t __twr_v1158;
     uint64_t __twr_v1159;
     uint64_t __twr_v1160;
     uint64_t __twr_v1161;
@@ -2714,8 +2714,8 @@ void CtGenerateGlobal(uint64_t _mng_sym1134) {
     uint64_t __twr_v1173;
     uint64_t __twr_v1174;
     uint64_t __twr_v1175;
-    uint64_t __twr_v1176;
-    uint8_t _mng_primtype1177;
+    uint8_t _mng_primtype1176;
+    uint64_t __twr_v1177;
     uint64_t __twr_v1178;
     uint64_t __twr_v1179;
     uint64_t __twr_v1180;
@@ -2773,167 +2773,167 @@ void CtGenerateGlobal(uint64_t _mng_sym1134) {
     uint64_t __twr_v1232;
     uint64_t __twr_v1233;
     uint64_t __twr_v1234;
-    uint64_t __twr_v1235;
-    __twr_v1135 = 112ULL;
-    __twr_v1136 = _mng_sym1134 + __twr_v1135;
-    __twr_v1137 = *(uint32_t*)(__twr_v1136);
-    __twr_v1138 = 1ULL;
-    if (__twr_v1137 == __twr_v1138) { goto __twr_l122; } else { goto __twr_l121; }
+    __twr_v1134 = 112ULL;
+    __twr_v1135 = _mng_sym1133 + __twr_v1134;
+    __twr_v1136 = *(uint32_t*)(__twr_v1135);
+    __twr_v1137 = 1ULL;
+    if (__twr_v1136 == __twr_v1137) { goto __twr_l122; } else { goto __twr_l121; }
     __twr_l122:;
-    __twr_v1139 = (uint64_t)(&CtInsertString);
-    __twr_v1140 = (uint64_t)(&"extern ");
-    ((void (*)(uint64_t))__twr_v1139)(__twr_v1140);
+    __twr_v1138 = (uint64_t)(&CtInsertString);
+    __twr_v1139 = (uint64_t)(&"extern ");
+    ((void (*)(uint64_t))__twr_v1138)(__twr_v1139);
     __twr_l121:;
-    __twr_v1141 = 104ULL;
-    __twr_v1142 = _mng_sym1134 + __twr_v1141;
-    __twr_v1143 = *(uint64_t*)(__twr_v1142);
-    _mng_type1144 = __twr_v1143;
-    __twr_v1145 = 72ULL;
-    __twr_v1146 = __twr_v1143 + __twr_v1145;
-    __twr_v1147 = *(uint8_t*)(__twr_v1146);
-    __twr_v1148 = 3ULL;
-    if (__twr_v1147 == __twr_v1148) { goto __twr_l123; } else { goto __twr_l124; }
+    __twr_v1140 = 104ULL;
+    __twr_v1141 = _mng_sym1133 + __twr_v1140;
+    __twr_v1142 = *(uint64_t*)(__twr_v1141);
+    _mng_type1143 = __twr_v1142;
+    __twr_v1144 = 72ULL;
+    __twr_v1145 = __twr_v1142 + __twr_v1144;
+    __twr_v1146 = *(uint8_t*)(__twr_v1145);
+    __twr_v1147 = 3ULL;
+    if (__twr_v1146 == __twr_v1147) { goto __twr_l123; } else { goto __twr_l124; }
     __twr_l123:;
-    __twr_v1149 = *(uint64_t*)(_mng_type1144);
-    __twr_v1150 = 104ULL;
-    __twr_v1151 = __twr_v1149 + __twr_v1150;
-    __twr_v1152 = *(uint64_t*)(__twr_v1151);
-    _mng_type1144 = __twr_v1152;
+    __twr_v1148 = *(uint64_t*)(_mng_type1143);
+    __twr_v1149 = 104ULL;
+    __twr_v1150 = __twr_v1148 + __twr_v1149;
+    __twr_v1151 = *(uint64_t*)(__twr_v1150);
+    _mng_type1143 = __twr_v1151;
     __twr_l125:;
-    __twr_v1153 = 72ULL;
-    __twr_v1154 = _mng_type1144 + __twr_v1153;
-    __twr_v1155 = *(uint8_t*)(__twr_v1154);
-    __twr_v1156 = 3ULL;
-    if (__twr_v1155 == __twr_v1156) { goto __twr_l123; } else { goto __twr_l124; }
+    __twr_v1152 = 72ULL;
+    __twr_v1153 = _mng_type1143 + __twr_v1152;
+    __twr_v1154 = *(uint8_t*)(__twr_v1153);
+    __twr_v1155 = 3ULL;
+    if (__twr_v1154 == __twr_v1155) { goto __twr_l123; } else { goto __twr_l124; }
     __twr_l124:;
-    __twr_v1157 = 0ULL;
-    _mng_bound1158 = __twr_v1157;
-    __twr_v1159 = 72ULL;
-    __twr_v1160 = _mng_type1144 + __twr_v1159;
-    __twr_v1161 = *(uint8_t*)(__twr_v1160);
-    __twr_v1162 = 4ULL;
-    if (__twr_v1161 == __twr_v1162) { goto __twr_l127; } else { goto __twr_l126; }
+    __twr_v1156 = 0ULL;
+    _mng_bound1157 = __twr_v1156;
+    __twr_v1158 = 72ULL;
+    __twr_v1159 = _mng_type1143 + __twr_v1158;
+    __twr_v1160 = *(uint8_t*)(__twr_v1159);
+    __twr_v1161 = 4ULL;
+    if (__twr_v1160 == __twr_v1161) { goto __twr_l127; } else { goto __twr_l126; }
     __twr_l127:;
-    __twr_v1163 = (uint64_t)(&CtGenerateFunction);
-    ((void (*)(uint64_t))__twr_v1163)(_mng_sym1134);
+    __twr_v1162 = (uint64_t)(&CtGenerateFunction);
+    ((void (*)(uint64_t))__twr_v1162)(_mng_sym1133);
     return;
     __twr_l126:;
-    __twr_v1164 = 72ULL;
-    __twr_v1165 = _mng_type1144 + __twr_v1164;
-    __twr_v1166 = *(uint8_t*)(__twr_v1165);
-    __twr_v1167 = 1ULL;
-    if (__twr_v1166 == __twr_v1167) { goto __twr_l129; } else { goto __twr_l131; }
+    __twr_v1163 = 72ULL;
+    __twr_v1164 = _mng_type1143 + __twr_v1163;
+    __twr_v1165 = *(uint8_t*)(__twr_v1164);
+    __twr_v1166 = 1ULL;
+    if (__twr_v1165 == __twr_v1166) { goto __twr_l129; } else { goto __twr_l131; }
     __twr_l131:;
-    __twr_v1168 = 72ULL;
-    __twr_v1169 = _mng_type1144 + __twr_v1168;
-    __twr_v1170 = *(uint8_t*)(__twr_v1169);
-    __twr_v1171 = 5ULL;
-    if (__twr_v1170 == __twr_v1171) { goto __twr_l129; } else { goto __twr_l130; }
+    __twr_v1167 = 72ULL;
+    __twr_v1168 = _mng_type1143 + __twr_v1167;
+    __twr_v1169 = *(uint8_t*)(__twr_v1168);
+    __twr_v1170 = 5ULL;
+    if (__twr_v1169 == __twr_v1170) { goto __twr_l129; } else { goto __twr_l130; }
     __twr_l129:;
-    __twr_v1172 = 64ULL;
-    __twr_v1173 = _mng_type1144 + __twr_v1172;
-    __twr_v1174 = *(uint64_t*)(__twr_v1173);
-    _mng_bound1158 = __twr_v1174;
-    __twr_v1175 = 13ULL;
-    __twr_v1176 = (uint64_t)(&_mng_primtype1177);
-    *(uint8_t*)(__twr_v1176) = __twr_v1175;
+    __twr_v1171 = 64ULL;
+    __twr_v1172 = _mng_type1143 + __twr_v1171;
+    __twr_v1173 = *(uint64_t*)(__twr_v1172);
+    _mng_bound1157 = __twr_v1173;
+    __twr_v1174 = 13ULL;
+    __twr_v1175 = (uint64_t)(&_mng_primtype1176);
+    *(uint8_t*)(__twr_v1175) = __twr_v1174;
     goto __twr_l128;
     __twr_l130:;
-    __twr_v1178 = 72ULL;
-    __twr_v1179 = _mng_type1144 + __twr_v1178;
-    __twr_v1180 = *(uint8_t*)(__twr_v1179);
-    __twr_v1181 = 2ULL;
-    if (__twr_v1180 == __twr_v1181) { goto __twr_l132; } else { goto __twr_l133; }
+    __twr_v1177 = 72ULL;
+    __twr_v1178 = _mng_type1143 + __twr_v1177;
+    __twr_v1179 = *(uint8_t*)(__twr_v1178);
+    __twr_v1180 = 2ULL;
+    if (__twr_v1179 == __twr_v1180) { goto __twr_l132; } else { goto __twr_l133; }
     __twr_l132:;
-    __twr_v1182 = 13ULL;
-    __twr_v1183 = (uint64_t)(&_mng_primtype1177);
-    *(uint8_t*)(__twr_v1183) = __twr_v1182;
+    __twr_v1181 = 13ULL;
+    __twr_v1182 = (uint64_t)(&_mng_primtype1176);
+    *(uint8_t*)(__twr_v1182) = __twr_v1181;
     goto __twr_l128;
     __twr_l133:;
-    __twr_v1184 = 72ULL;
-    __twr_v1185 = _mng_type1144 + __twr_v1184;
-    __twr_v1186 = *(uint8_t*)(__twr_v1185);
-    __twr_v1187 = 0ULL;
-    if (__twr_v1186 == __twr_v1187) { goto __twr_l134; } else { goto __twr_l135; }
+    __twr_v1183 = 72ULL;
+    __twr_v1184 = _mng_type1143 + __twr_v1183;
+    __twr_v1185 = *(uint8_t*)(__twr_v1184);
+    __twr_v1186 = 0ULL;
+    if (__twr_v1185 == __twr_v1186) { goto __twr_l134; } else { goto __twr_l135; }
     __twr_l134:;
-    __twr_v1188 = *(uint8_t*)(_mng_type1144);
-    __twr_v1189 = (uint64_t)(&_mng_primtype1177);
-    *(uint8_t*)(__twr_v1189) = __twr_v1188;
+    __twr_v1187 = *(uint8_t*)(_mng_type1143);
+    __twr_v1188 = (uint64_t)(&_mng_primtype1176);
+    *(uint8_t*)(__twr_v1188) = __twr_v1187;
     goto __twr_l128;
     __twr_l135:;
-    __twr_v1190 = (uint64_t)(&TlInternalError);
-    __twr_v1191 = (uint64_t)(&"Didn't expect this type here");
-    __twr_v1192 = 72ULL;
-    __twr_v1193 = _mng_type1144 + __twr_v1192;
-    __twr_v1194 = *(uint8_t*)(__twr_v1193);
-    __twr_v1195 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1190)(__twr_v1191, __twr_v1194, __twr_v1195, __twr_v1195);
+    __twr_v1189 = (uint64_t)(&TlInternalError);
+    __twr_v1190 = (uint64_t)(&"Didn't expect this type here");
+    __twr_v1191 = 72ULL;
+    __twr_v1192 = _mng_type1143 + __twr_v1191;
+    __twr_v1193 = *(uint8_t*)(__twr_v1192);
+    __twr_v1194 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1189)(__twr_v1190, __twr_v1193, __twr_v1194, __twr_v1194);
     __twr_l128:;
-    __twr_v1196 = (uint64_t)(&CtInsertString);
-    __twr_v1197 = (uint64_t)(&CtTypeNames);
-    __twr_v1198 = (uint64_t)(&_mng_primtype1177);
-    __twr_v1199 = *(uint8_t*)(__twr_v1198);
-    __twr_v1200 = 3ULL;
-    __twr_v1201 = __twr_v1199 << __twr_v1200;
-    __twr_v1202 = __twr_v1197 + __twr_v1201;
-    __twr_v1203 = *(uint64_t*)(__twr_v1202);
-    ((void (*)(uint64_t))__twr_v1196)(__twr_v1203);
-    __twr_v1204 = (uint64_t)(&CtInsertByte);
-    __twr_v1205 = 32ULL;
-    ((void (*)(uint64_t))__twr_v1204)(__twr_v1205);
-    __twr_v1206 = 48ULL;
-    __twr_v1207 = _mng_sym1134 + __twr_v1206;
-    __twr_v1208 = *(uint64_t*)(__twr_v1207);
-    ((void (*)(uint64_t))__twr_v1196)(__twr_v1208);
-    if (_mng_bound1158) { goto __twr_l137; } else { goto __twr_l136; }
+    __twr_v1195 = (uint64_t)(&CtInsertString);
+    __twr_v1196 = (uint64_t)(&CtTypeNames);
+    __twr_v1197 = (uint64_t)(&_mng_primtype1176);
+    __twr_v1198 = *(uint8_t*)(__twr_v1197);
+    __twr_v1199 = 3ULL;
+    __twr_v1200 = __twr_v1198 << __twr_v1199;
+    __twr_v1201 = __twr_v1196 + __twr_v1200;
+    __twr_v1202 = *(uint64_t*)(__twr_v1201);
+    ((void (*)(uint64_t))__twr_v1195)(__twr_v1202);
+    __twr_v1203 = (uint64_t)(&CtInsertByte);
+    __twr_v1204 = 32ULL;
+    ((void (*)(uint64_t))__twr_v1203)(__twr_v1204);
+    __twr_v1205 = 48ULL;
+    __twr_v1206 = _mng_sym1133 + __twr_v1205;
+    __twr_v1207 = *(uint64_t*)(__twr_v1206);
+    ((void (*)(uint64_t))__twr_v1195)(__twr_v1207);
+    if (_mng_bound1157) { goto __twr_l137; } else { goto __twr_l136; }
     __twr_l137:;
-    __twr_v1209 = (uint64_t)(&CtInsertByte);
-    __twr_v1210 = 91ULL;
-    ((void (*)(uint64_t))__twr_v1209)(__twr_v1210);
-    __twr_v1211 = (uint64_t)(&CtInsertNumber);
-    __twr_v1212 = 7ULL;
-    __twr_v1213 = _mng_bound1158 + __twr_v1212;
-    __twr_v1214 = 18446744073709551608ULL;
-    __twr_v1215 = __twr_v1213 & __twr_v1214;
-    __twr_v1216 = 3ULL;
-    __twr_v1217 = __twr_v1215 >> __twr_v1216;
-    ((void (*)(uint64_t))__twr_v1211)(__twr_v1217);
-    __twr_v1218 = 93ULL;
-    ((void (*)(uint64_t))__twr_v1209)(__twr_v1218);
+    __twr_v1208 = (uint64_t)(&CtInsertByte);
+    __twr_v1209 = 91ULL;
+    ((void (*)(uint64_t))__twr_v1208)(__twr_v1209);
+    __twr_v1210 = (uint64_t)(&CtInsertNumber);
+    __twr_v1211 = 7ULL;
+    __twr_v1212 = _mng_bound1157 + __twr_v1211;
+    __twr_v1213 = 18446744073709551608ULL;
+    __twr_v1214 = __twr_v1212 & __twr_v1213;
+    __twr_v1215 = 3ULL;
+    __twr_v1216 = __twr_v1214 >> __twr_v1215;
+    ((void (*)(uint64_t))__twr_v1210)(__twr_v1216);
+    __twr_v1217 = 93ULL;
+    ((void (*)(uint64_t))__twr_v1208)(__twr_v1217);
     __twr_l136:;
-    __twr_v1219 = 96ULL;
-    __twr_v1220 = _mng_sym1134 + __twr_v1219;
-    __twr_v1221 = *(uint64_t*)(__twr_v1220);
-    if (__twr_v1221) { goto __twr_l139; } else { goto __twr_l138; }
+    __twr_v1218 = 96ULL;
+    __twr_v1219 = _mng_sym1133 + __twr_v1218;
+    __twr_v1220 = *(uint64_t*)(__twr_v1219);
+    if (__twr_v1220) { goto __twr_l139; } else { goto __twr_l138; }
     __twr_l139:;
-    __twr_v1222 = (uint64_t)(&CtInsertString);
-    __twr_v1223 = (uint64_t)(&" = ");
-    ((void (*)(uint64_t))__twr_v1222)(__twr_v1223);
-    __twr_v1224 = (uint64_t)(&CtGenerateInitializer);
-    __twr_v1225 = 96ULL;
-    __twr_v1226 = _mng_sym1134 + __twr_v1225;
-    __twr_v1227 = *(uint64_t*)(__twr_v1226);
-    __twr_v1228 = (uint64_t)(&_mng_primtype1177);
-    __twr_v1229 = *(uint8_t*)(__twr_v1228);
-    __twr_v1230 = 7ULL;
-    __twr_v1231 = _mng_bound1158 + __twr_v1230;
-    __twr_v1232 = 18446744073709551608ULL;
-    __twr_v1233 = __twr_v1231 & __twr_v1232;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1224)(__twr_v1227, __twr_v1229, __twr_v1233);
+    __twr_v1221 = (uint64_t)(&CtInsertString);
+    __twr_v1222 = (uint64_t)(&" = ");
+    ((void (*)(uint64_t))__twr_v1221)(__twr_v1222);
+    __twr_v1223 = (uint64_t)(&CtGenerateInitializer);
+    __twr_v1224 = 96ULL;
+    __twr_v1225 = _mng_sym1133 + __twr_v1224;
+    __twr_v1226 = *(uint64_t*)(__twr_v1225);
+    __twr_v1227 = (uint64_t)(&_mng_primtype1176);
+    __twr_v1228 = *(uint8_t*)(__twr_v1227);
+    __twr_v1229 = 7ULL;
+    __twr_v1230 = _mng_bound1157 + __twr_v1229;
+    __twr_v1231 = 18446744073709551608ULL;
+    __twr_v1232 = __twr_v1230 & __twr_v1231;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1223)(__twr_v1226, __twr_v1228, __twr_v1232);
     __twr_l138:;
-    __twr_v1234 = (uint64_t)(&CtInsertString);
-    __twr_v1235 = (uint64_t)(&";\n");
-    ((void (*)(uint64_t))__twr_v1234)(__twr_v1235);
+    __twr_v1233 = (uint64_t)(&CtInsertString);
+    __twr_v1234 = (uint64_t)(&";\n");
+    ((void (*)(uint64_t))__twr_v1233)(__twr_v1234);
 }
 void CtTranspile() {
+    uint64_t __twr_v1235;
     uint64_t __twr_v1236;
     uint64_t __twr_v1237;
     uint64_t __twr_v1238;
     uint64_t __twr_v1239;
     uint64_t __twr_v1240;
     uint64_t __twr_v1241;
-    uint64_t __twr_v1242;
-    uint64_t _mng_sym1243;
+    uint64_t _mng_sym1242;
+    uint64_t __twr_v1243;
     uint64_t __twr_v1244;
     uint64_t __twr_v1245;
     uint64_t __twr_v1246;
@@ -2946,36 +2946,35 @@ void CtTranspile() {
     uint64_t __twr_v1253;
     uint64_t __twr_v1254;
     uint64_t __twr_v1255;
-    uint64_t __twr_v1256;
-    __twr_v1236 = (uint64_t)(&TlInitializeDynamicBuffer);
-    __twr_v1237 = (uint64_t)(&CtBigBuffer);
-    ((void (*)(uint64_t))__twr_v1236)(__twr_v1237);
-    __twr_v1238 = (uint64_t)(&CtFuncBuffer);
-    ((void (*)(uint64_t))__twr_v1236)(__twr_v1238);
-    __twr_v1239 = (uint64_t)(&CtInsertString);
-    __twr_v1240 = (uint64_t)(&"#include <stdint.h>\n");
-    ((void (*)(uint64_t))__twr_v1239)(__twr_v1240);
-    __twr_v1241 = (uint64_t)(&PrsGlobalListHead);
-    __twr_v1242 = *(uint64_t*)(__twr_v1241);
-    _mng_sym1243 = __twr_v1242;
-    if (__twr_v1242) { goto __twr_l140; } else { goto __twr_l141; }
+    __twr_v1235 = (uint64_t)(&TlInitializeDynamicBuffer);
+    __twr_v1236 = (uint64_t)(&CtBigBuffer);
+    ((void (*)(uint64_t))__twr_v1235)(__twr_v1236);
+    __twr_v1237 = (uint64_t)(&CtFuncBuffer);
+    ((void (*)(uint64_t))__twr_v1235)(__twr_v1237);
+    __twr_v1238 = (uint64_t)(&CtInsertString);
+    __twr_v1239 = (uint64_t)(&"#include <stdint.h>\n");
+    ((void (*)(uint64_t))__twr_v1238)(__twr_v1239);
+    __twr_v1240 = (uint64_t)(&PrsGlobalListHead);
+    __twr_v1241 = *(uint64_t*)(__twr_v1240);
+    _mng_sym1242 = __twr_v1241;
+    if (__twr_v1241) { goto __twr_l140; } else { goto __twr_l141; }
     __twr_l140:;
-    __twr_v1244 = (uint64_t)(&CtGenerateGlobal);
-    ((void (*)(uint64_t))__twr_v1244)(_mng_sym1243);
-    __twr_v1245 = 64ULL;
-    __twr_v1246 = _mng_sym1243 + __twr_v1245;
-    __twr_v1247 = *(uint64_t*)(__twr_v1246);
-    _mng_sym1243 = __twr_v1247;
+    __twr_v1243 = (uint64_t)(&CtGenerateGlobal);
+    ((void (*)(uint64_t))__twr_v1243)(_mng_sym1242);
+    __twr_v1244 = 64ULL;
+    __twr_v1245 = _mng_sym1242 + __twr_v1244;
+    __twr_v1246 = *(uint64_t*)(__twr_v1245);
+    _mng_sym1242 = __twr_v1246;
     __twr_l142:;
-    if (_mng_sym1243) { goto __twr_l140; } else { goto __twr_l141; }
+    if (_mng_sym1242) { goto __twr_l140; } else { goto __twr_l141; }
     __twr_l141:;
-    __twr_v1248 = (uint64_t)(&TlWriteFile);
-    __twr_v1249 = (uint64_t)(&FeOutputFileHandle);
-    __twr_v1250 = *(uint64_t*)(__twr_v1249);
-    __twr_v1251 = (uint64_t)(&CtBigBuffer);
-    __twr_v1252 = *(uint64_t*)(__twr_v1251);
-    __twr_v1253 = 16ULL;
-    __twr_v1254 = __twr_v1251 + __twr_v1253;
-    __twr_v1255 = *(uint64_t*)(__twr_v1254);
-    __twr_v1256 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1248)(__twr_v1250, __twr_v1252, __twr_v1255);
+    __twr_v1247 = (uint64_t)(&TlWriteFile);
+    __twr_v1248 = (uint64_t)(&FeOutputFileHandle);
+    __twr_v1249 = *(uint64_t*)(__twr_v1248);
+    __twr_v1250 = (uint64_t)(&CtBigBuffer);
+    __twr_v1251 = *(uint64_t*)(__twr_v1250);
+    __twr_v1252 = 16ULL;
+    __twr_v1253 = __twr_v1250 + __twr_v1252;
+    __twr_v1254 = *(uint64_t*)(__twr_v1253);
+    __twr_v1255 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1247)(__twr_v1249, __twr_v1251, __twr_v1254);
 }
