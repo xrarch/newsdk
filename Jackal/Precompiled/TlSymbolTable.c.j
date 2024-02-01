@@ -59,102 +59,94 @@ void TlInitializeSymbolTable(uint64_t _mng_symboltable102, uint64_t _mng_outersc
     uint64_t __twr_v107;
     uint64_t __twr_v108;
     uint64_t __twr_v109;
-    uint64_t __twr_v110;
-    uint64_t __twr_v111;
     *(uint64_t*)(_mng_symboltable102) = _mng_outerscope103;
-    __twr_v105 = (uint64_t)(&_mng_deletefunc104);
-    __twr_v106 = *(uint64_t*)(__twr_v105);
-    __twr_v107 = 1576ULL;
-    __twr_v108 = _mng_symboltable102 + __twr_v107;
-    *(uint64_t*)(__twr_v108) = __twr_v106;
-    __twr_v109 = (uint64_t)(&TlInitializeHashTable);
-    __twr_v110 = 8ULL;
-    __twr_v111 = _mng_symboltable102 + __twr_v110;
-    ((void (*)(uint64_t))__twr_v109)(__twr_v111);
+    __twr_v105 = 1576ULL;
+    __twr_v106 = _mng_symboltable102 + __twr_v105;
+    *(uint64_t*)(__twr_v106) = _mng_deletefunc104;
+    __twr_v107 = (uint64_t)(&TlInitializeHashTable);
+    __twr_v108 = 8ULL;
+    __twr_v109 = _mng_symboltable102 + __twr_v108;
+    ((void (*)(uint64_t))__twr_v107)(__twr_v109);
 }
-uint64_t TlCreateSymbolTable(uint64_t _mng_outerscope112, uint64_t _mng_deletefunc113) {
+uint64_t TlCreateSymbolTable(uint64_t _mng_outerscope110, uint64_t _mng_deletefunc111) {
+    uint64_t __twr_v112;
+    uint64_t __twr_v113;
     uint64_t __twr_v114;
     uint64_t __twr_v115;
-    uint64_t __twr_v116;
+    __twr_v112 = (uint64_t)(&TlAllocateFromZone);
+    __twr_v113 = (uint64_t)(&TlSymbolTableZone);
+    __twr_v114 = ((uint64_t (*)(uint64_t))__twr_v112)(__twr_v113);
+    __twr_v115 = (uint64_t)(&TlInitializeSymbolTable);
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v115)(__twr_v114, _mng_outerscope110, _mng_deletefunc111);
+    return __twr_v114;
+}
+uint64_t TlDeleteSymbolTable(uint64_t _mng_symboltable116) {
     uint64_t __twr_v117;
     uint64_t __twr_v118;
     uint64_t __twr_v119;
-    __twr_v114 = (uint64_t)(&TlAllocateFromZone);
-    __twr_v115 = (uint64_t)(&TlSymbolTableZone);
-    __twr_v116 = ((uint64_t (*)(uint64_t))__twr_v114)(__twr_v115);
-    __twr_v117 = (uint64_t)(&TlInitializeSymbolTable);
-    __twr_v118 = (uint64_t)(&_mng_deletefunc113);
-    __twr_v119 = *(uint64_t*)(__twr_v118);
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v117)(__twr_v116, _mng_outerscope112, __twr_v119);
-    return __twr_v116;
-}
-uint64_t TlDeleteSymbolTable(uint64_t _mng_symboltable120) {
+    uint64_t __twr_v120;
     uint64_t __twr_v121;
     uint64_t __twr_v122;
     uint64_t __twr_v123;
     uint64_t __twr_v124;
     uint64_t __twr_v125;
-    uint64_t __twr_v126;
-    uint64_t __twr_v127;
+    __twr_v117 = *(uint64_t*)(_mng_symboltable116);
+    __twr_v118 = (uint64_t)(&TlEnumerateHashTable);
+    __twr_v119 = 8ULL;
+    __twr_v120 = _mng_symboltable116 + __twr_v119;
+    __twr_v121 = 1576ULL;
+    __twr_v122 = _mng_symboltable116 + __twr_v121;
+    __twr_v123 = *(uint64_t*)(__twr_v122);
+    ((void (*)(uint64_t, uint64_t))__twr_v118)(__twr_v120, __twr_v123);
+    __twr_v124 = (uint64_t)(&TlFreeToZone);
+    __twr_v125 = (uint64_t)(&TlSymbolTableZone);
+    ((void (*)(uint64_t, uint64_t))__twr_v124)(__twr_v125, _mng_symboltable116);
+    return __twr_v117;
+}
+uint64_t TlLookupSymbolTable(uint64_t _mng_symboltable126, uint64_t _mng_name127) {
     uint64_t __twr_v128;
     uint64_t __twr_v129;
-    __twr_v121 = *(uint64_t*)(_mng_symboltable120);
-    __twr_v122 = (uint64_t)(&TlEnumerateHashTable);
-    __twr_v123 = 8ULL;
-    __twr_v124 = _mng_symboltable120 + __twr_v123;
-    __twr_v125 = 1576ULL;
-    __twr_v126 = _mng_symboltable120 + __twr_v125;
-    __twr_v127 = *(uint64_t*)(__twr_v126);
-    ((void (*)(uint64_t, uint64_t))__twr_v122)(__twr_v124, __twr_v127);
-    __twr_v128 = (uint64_t)(&TlFreeToZone);
-    __twr_v129 = (uint64_t)(&TlSymbolTableZone);
-    ((void (*)(uint64_t, uint64_t))__twr_v128)(__twr_v129, _mng_symboltable120);
-    return __twr_v121;
-}
-uint64_t TlLookupSymbolTable(uint64_t _mng_symboltable130, uint64_t _mng_name131) {
+    uint64_t _mng_hash130;
+    uint64_t __twr_v131;
     uint64_t __twr_v132;
     uint64_t __twr_v133;
-    uint64_t _mng_hash134;
-    uint64_t __twr_v135;
+    uint64_t __twr_v134;
+    uint64_t _mng_entry135;
     uint64_t __twr_v136;
     uint64_t __twr_v137;
-    uint64_t __twr_v138;
-    uint64_t _mng_entry139;
-    uint64_t __twr_v140;
-    uint64_t __twr_v141;
-    __twr_v132 = (uint64_t)(&TlHashString);
-    __twr_v133 = ((uint64_t (*)(uint64_t))__twr_v132)(_mng_name131);
-    _mng_hash134 = __twr_v133;
-    if (_mng_symboltable130) { goto __twr_l1; } else { goto __twr_l2; }
+    __twr_v128 = (uint64_t)(&TlHashString);
+    __twr_v129 = ((uint64_t (*)(uint64_t))__twr_v128)(_mng_name127);
+    _mng_hash130 = __twr_v129;
+    if (_mng_symboltable126) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l1:;
-    __twr_v135 = (uint64_t)(&TlLookupHashTableByHash);
-    __twr_v136 = 8ULL;
-    __twr_v137 = _mng_symboltable130 + __twr_v136;
-    __twr_v138 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v135)(__twr_v137, _mng_name131, _mng_hash134);
-    _mng_entry139 = __twr_v138;
-    if (__twr_v138) { goto __twr_l5; } else { goto __twr_l4; }
+    __twr_v131 = (uint64_t)(&TlLookupHashTableByHash);
+    __twr_v132 = 8ULL;
+    __twr_v133 = _mng_symboltable126 + __twr_v132;
+    __twr_v134 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v131)(__twr_v133, _mng_name127, _mng_hash130);
+    _mng_entry135 = __twr_v134;
+    if (__twr_v134) { goto __twr_l5; } else { goto __twr_l4; }
     __twr_l5:;
-    return _mng_entry139;
+    return _mng_entry135;
     __twr_l4:;
-    __twr_v140 = *(uint64_t*)(_mng_symboltable130);
-    _mng_symboltable130 = __twr_v140;
+    __twr_v136 = *(uint64_t*)(_mng_symboltable126);
+    _mng_symboltable126 = __twr_v136;
     __twr_l3:;
-    if (_mng_symboltable130) { goto __twr_l1; } else { goto __twr_l2; }
+    if (_mng_symboltable126) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l2:;
-    __twr_v141 = 0ULL;
-    return __twr_v141;
+    __twr_v137 = 0ULL;
+    return __twr_v137;
 }
-void TlInsertSymbolTable(uint64_t _mng_symboltable142, uint64_t _mng_entry143, uint64_t _mng_name144) {
+void TlInsertSymbolTable(uint64_t _mng_symboltable138, uint64_t _mng_entry139, uint64_t _mng_name140) {
+    uint64_t __twr_v141;
+    uint64_t __twr_v142;
+    uint64_t __twr_v143;
+    __twr_v141 = (uint64_t)(&TlInsertHashTable);
+    __twr_v142 = 8ULL;
+    __twr_v143 = _mng_symboltable138 + __twr_v142;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v141)(__twr_v143, _mng_entry139, _mng_name140);
+}
+void TlRemoveSymbolTable(uint64_t _mng_entry144) {
     uint64_t __twr_v145;
-    uint64_t __twr_v146;
-    uint64_t __twr_v147;
-    __twr_v145 = (uint64_t)(&TlInsertHashTable);
-    __twr_v146 = 8ULL;
-    __twr_v147 = _mng_symboltable142 + __twr_v146;
-    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v145)(__twr_v147, _mng_entry143, _mng_name144);
-}
-void TlRemoveSymbolTable(uint64_t _mng_entry148) {
-    uint64_t __twr_v149;
-    __twr_v149 = (uint64_t)(&TlRemoveHashTable);
-    ((void (*)(uint64_t))__twr_v149)(_mng_entry148);
+    __twr_v145 = (uint64_t)(&TlRemoveHashTable);
+    ((void (*)(uint64_t))__twr_v145)(_mng_entry144);
 }

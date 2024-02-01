@@ -116,6 +116,7 @@ END
 STRUCT IrVariable
     Symbol : ^LexSymbol,
     DefinedBy : ^IrInstruction,
+    LirRegister : ^LirRegister,
 
     Opt : IrVariableOptInfo,
 
@@ -203,4 +204,11 @@ STRUCT IrFunction
 
     LirHead : ^LirInstruction,
     LirTail : ^LirInstruction,
+
+    StackFrameSize : UWORD,
 END
+
+EXTERN FN IrAllocateStack (
+    IN func : ^IrFunction,
+    IN bytes : UWORD,
+) : UWORD

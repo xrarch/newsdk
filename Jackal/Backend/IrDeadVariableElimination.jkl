@@ -199,7 +199,9 @@ END
 FN IrEliminateDeadVariables ()
 
     // Eliminate all the dead variables. The simplification pass makes a LOT of
-    // them.
+    // them. Another purpose of this is to produce final refcounts for
+    // temporaries to help target code decide whether to reuse their value or
+    // not.
 
     // Initialize the dead variable list head.
 

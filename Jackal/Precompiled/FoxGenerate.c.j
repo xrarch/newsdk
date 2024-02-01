@@ -115,26 +115,29 @@ extern void PrsInitialize();
 extern uint64_t PrsGlobalListHead;
 extern uint64_t PrsFunctionListHead;
 extern uint64_t PrsEvaluateType(uint64_t _mng_node146);
-extern uint64_t LirCreateInstruction(uint64_t _mng_type147, uint64_t _mng_machtype148);
-extern void LirInsertInstructionTail(uint64_t _mng_lirinst149);
-extern void LirRemoveInstruction(uint64_t _mng_lirinst150);
-extern uint64_t LirGetLabel(uint64_t _mng_oldlabel151);
-extern uint64_t LirSelect(uint64_t _mng_inst152);
-extern void LirSelectForFunction(uint64_t _mng_funcsym153);
-extern void LirAllocateRegistersForFunction(uint64_t _mng_funcsym154);
-extern void XrAsmEmit(uint64_t _mng_emitter155);
+extern uint64_t IrAllocateStack(uint64_t _mng_func147, uint64_t _mng_bytes148);
+extern uint64_t LirCreateInstruction(uint64_t _mng_type149, uint64_t _mng_machtype150);
+extern void LirInsertInstructionTail(uint64_t _mng_lirinst151);
+extern void LirRemoveInstruction(uint64_t _mng_lirinst152);
+extern uint64_t LirGetLabel(uint64_t _mng_oldlabel153);
+extern uint64_t LirCreateRegister();
+extern uint64_t LirGetRegister(uint64_t _mng_oldvariable154);
+extern uint64_t LirSelect(uint64_t _mng_inst155);
+extern void LirSelectForFunction(uint64_t _mng_funcsym156);
+extern void LirAllocateRegistersForFunction(uint64_t _mng_funcsym157);
+extern void XrAsmEmit(uint64_t _mng_emitter158);
 extern void FoxCompile();
 extern uint64_t FoxLirInfo[52];
 uint64_t FoxTargetInfo[9] = {
     (uint64_t)(&"fox32"),
     (uint64_t)(&FoxCompile),
     (uint64_t)(&FoxLirInfo),
-    0x0804020100000404,
-    0x0000080402010000,
-    0x0000080402010000,
-    0x0001000008040201,
-    0x0101000000010101,
-    0x0000040A00000001,
+    0x0402010000040404,
+    0x0008040201000008,
+    0x0008040201000000,
+    0x0100000804020100,
+    0x0100000001010100,
+    0x00040A0000000101,
 };
 uint64_t FoxInstructionNames[33] = {
     (uint64_t)(&"add"),
@@ -171,37 +174,244 @@ uint64_t FoxInstructionNames[33] = {
     (uint64_t)(&"idiv"),
     (uint64_t)(&"irem"),
 };
-uint64_t FoxConditionNames[6] = {
-    (uint64_t)(&"ifz"),
-    (uint64_t)(&"ifnz"),
-    (uint64_t)(&"iflt"),
-    (uint64_t)(&"ifgteq"),
-    (uint64_t)(&"ifgt"),
-    (uint64_t)(&"iflteq"),
+uint64_t FoxConditionNames[7] = {
+    (uint64_t)(&""),
+    (uint64_t)(&"ifz "),
+    (uint64_t)(&"ifnz "),
+    (uint64_t)(&"iflt "),
+    (uint64_t)(&"ifgteq "),
+    (uint64_t)(&"ifgt "),
+    (uint64_t)(&"iflteq "),
 };
 uint64_t FoxBitsNames[3] = {
     (uint64_t)(&".8"),
     (uint64_t)(&".16"),
     (uint64_t)(&""),
 };
-uint64_t FoxSelect(uint64_t _mng_inst156) {
-    uint64_t __twr_v157;
-    uint64_t __twr_v158;
-    uint64_t __twr_v159;
-    __twr_v157 = (uint64_t)(&TlInternalError);
-    __twr_v158 = (uint64_t)(&"TODO FoxSelect");
-    __twr_v159 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v157)(__twr_v158, __twr_v159, __twr_v159, __twr_v159);
-    return __twr_v159;
+uint64_t FoxGetPtrOffset(uint64_t _mng_src159, uint64_t _mng_offset160) {
+    uint64_t __twr_v161;
+    uint64_t __twr_v162;
+    uint64_t __twr_v163;
+    uint64_t _mng_inst164;
+    uint64_t __twr_v165;
+    uint64_t __twr_v166;
+    uint64_t __twr_v167;
+    uint64_t __twr_v168;
+    uint64_t __twr_v169;
+    uint64_t _mng_const170;
+    uint64_t __twr_v171;
+    uint64_t __twr_v172;
+    uint64_t __twr_v173;
+    __twr_v161 = 8ULL;
+    __twr_v162 = _mng_src159 + __twr_v161;
+    __twr_v163 = *(uint64_t*)(__twr_v162);
+    _mng_inst164 = __twr_v163;
+    __twr_v165 = 88ULL;
+    __twr_v166 = __twr_v163 + __twr_v165;
+    __twr_v167 = *(uint8_t*)(__twr_v166);
+    __twr_v168 = 5ULL;
+    if (__twr_v167 == __twr_v168) { goto __twr_l2; } else { goto __twr_l1; }
+    __twr_l2:;
+    __twr_v169 = *(uint64_t*)(_mng_inst164);
+    _mng_const170 = __twr_v169;
+    __twr_v171 = 256ULL;
+    if (__twr_v169 < __twr_v171) { goto __twr_l4; } else { goto __twr_l3; }
+    __twr_l4:;
+    *(uint64_t*)(_mng_offset160) = _mng_const170;
+    __twr_v172 = 1ULL;
+    return __twr_v172;
+    __twr_l3:;
+    __twr_l1:;
+    __twr_v173 = 0ULL;
+    return __twr_v173;
+}
+void FoxFillSource(uint64_t _mng_lirinst174, uint64_t _mng_var175) {
+    uint64_t __twr_v176;
+    uint64_t __twr_v177;
+    uint64_t __twr_v178;
+    uint64_t _mng_inst179;
+    uint64_t __twr_v180;
+    uint64_t __twr_v181;
+    uint64_t __twr_v182;
+    uint64_t __twr_v183;
+    uint64_t __twr_v184;
+    uint64_t __twr_v185;
+    uint64_t _mng_srcreg186;
+    uint64_t __twr_v187;
+    uint64_t __twr_v188;
+    uint64_t __twr_v189;
+    __twr_v176 = 8ULL;
+    __twr_v177 = _mng_var175 + __twr_v176;
+    __twr_v178 = *(uint64_t*)(__twr_v177);
+    _mng_inst179 = __twr_v178;
+    if (__twr_v178) { goto __twr_l6; } else { goto __twr_l5; }
+    __twr_l6:;
+    __twr_v180 = 88ULL;
+    __twr_v181 = _mng_inst179 + __twr_v180;
+    __twr_v182 = *(uint8_t*)(__twr_v181);
+    __twr_v183 = 3ULL;
+    if (__twr_v182 == __twr_v183) { goto __twr_l8; } else { goto __twr_l7; }
+    __twr_l8:;
+    __twr_l7:;
+    __twr_l5:;
+    __twr_v184 = 32ULL;
+    __twr_v185 = _mng_lirinst174 + __twr_v184;
+    *(uint64_t*)(__twr_v185) = _mng_srcreg186;
+    __twr_v187 = 2ULL;
+    __twr_v188 = 57ULL;
+    __twr_v189 = _mng_lirinst174 + __twr_v188;
+    *(uint8_t*)(__twr_v189) = __twr_v187;
+}
+uint64_t FoxSelectLoad(uint64_t _mng_inst190) {
+    uint64_t __twr_v191;
+    uint64_t __twr_v192;
+    uint64_t __twr_v193;
+    uint64_t __twr_v194;
+    uint64_t __twr_v195;
+    uint64_t __twr_v196;
+    __twr_v191 = 56ULL;
+    __twr_v192 = _mng_inst190 + __twr_v191;
+    __twr_v193 = *(uint64_t*)(__twr_v192);
+    __twr_v194 = 8ULL;
+    __twr_v195 = __twr_v193 + __twr_v194;
+    __twr_v196 = *(uint64_t*)(__twr_v195);
+    if (__twr_v196) { goto __twr_l10; } else { goto __twr_l9; }
+    __twr_l10:;
+    __twr_l9:;
+}
+uint64_t FoxSelectMove(uint64_t _mng_inst197) {
+    uint64_t __twr_v198;
+    uint64_t __twr_v199;
+    uint64_t __twr_v200;
+    uint64_t _mng_def201;
+    uint64_t __twr_v202;
+    uint64_t __twr_v203;
+    uint64_t __twr_v204;
+    uint64_t _mng_src205;
+    uint64_t __twr_v206;
+    uint64_t __twr_v207;
+    uint64_t __twr_v208;
+    uint64_t __twr_v209;
+    uint64_t __twr_v210;
+    uint64_t __twr_v211;
+    uint64_t __twr_v212;
+    uint64_t __twr_v213;
+    uint64_t __twr_v214;
+    uint64_t __twr_v215;
+    uint64_t __twr_v216;
+    uint64_t __twr_v217;
+    uint64_t __twr_v218;
+    uint64_t __twr_v219;
+    uint64_t __twr_v220;
+    uint64_t __twr_v221;
+    uint64_t __twr_v222;
+    uint64_t __twr_v223;
+    uint64_t __twr_v224;
+    uint64_t __twr_v225;
+    uint64_t _mng_srcreg226;
+    uint64_t __twr_v227;
+    uint64_t __twr_v228;
+    uint64_t __twr_v229;
+    uint64_t __twr_v230;
+    uint64_t __twr_v231;
+    uint64_t __twr_v232;
+    uint64_t __twr_v233;
+    uint64_t __twr_v234;
+    uint64_t __twr_v235;
+    uint64_t __twr_v236;
+    uint64_t __twr_v237;
+    uint64_t __twr_v238;
+    uint64_t __twr_v239;
+    uint64_t __twr_v240;
+    uint64_t __twr_v241;
+    uint64_t __twr_v242;
+    uint64_t __twr_v243;
+    uint64_t __twr_v244;
+    uint64_t __twr_v245;
+    uint64_t __twr_v246;
+    uint64_t __twr_v247;
+    uint64_t __twr_v248;
+    uint64_t __twr_v249;
+    __twr_v198 = 48ULL;
+    __twr_v199 = _mng_inst197 + __twr_v198;
+    __twr_v200 = *(uint64_t*)(__twr_v199);
+    _mng_def201 = __twr_v200;
+    __twr_v202 = 56ULL;
+    __twr_v203 = _mng_inst197 + __twr_v202;
+    __twr_v204 = *(uint64_t*)(__twr_v203);
+    _mng_src205 = __twr_v204;
+    __twr_v206 = 8ULL;
+    __twr_v207 = __twr_v204 + __twr_v206;
+    __twr_v208 = *(uint64_t*)(__twr_v207);
+    if (__twr_v208) { goto __twr_l12; } else { goto __twr_l13; }
+    __twr_l12:;
+    __twr_v209 = 48ULL;
+    __twr_v210 = _mng_src205 + __twr_v209;
+    __twr_v211 = *(uint32_t*)(__twr_v210);
+    __twr_v212 = 1ULL;
+    if (__twr_v211 == __twr_v212) { goto __twr_l15; } else { goto __twr_l14; }
+    __twr_l15:;
+    __twr_v213 = 8ULL;
+    __twr_v214 = _mng_src205 + __twr_v213;
+    __twr_v215 = *(uint64_t*)(__twr_v214);
+    __twr_v216 = 48ULL;
+    __twr_v217 = __twr_v215 + __twr_v216;
+    *(uint64_t*)(__twr_v217) = _mng_def201;
+    __twr_v218 = (uint64_t)(&LirSelect);
+    __twr_v219 = *(uint64_t*)(__twr_v214);
+    __twr_v220 = ((uint64_t (*)(uint64_t))__twr_v218)(__twr_v219);
+    return __twr_v220;
+    __twr_l14:;
+    __twr_v221 = (uint64_t)(&LirSelect);
+    __twr_v222 = 8ULL;
+    __twr_v223 = _mng_src205 + __twr_v222;
+    __twr_v224 = *(uint64_t*)(__twr_v223);
+    __twr_v225 = ((uint64_t (*)(uint64_t))__twr_v221)(__twr_v224);
+    _mng_srcreg226 = __twr_v225;
+    goto __twr_l11;
+    __twr_l13:;
+    __twr_v227 = (uint64_t)(&LirGetRegister);
+    __twr_v228 = ((uint64_t (*)(uint64_t))__twr_v227)(_mng_src205);
+    _mng_srcreg226 = __twr_v228;
+    __twr_l11:;
+    __twr_v229 = (uint64_t)(&LirGetRegister);
+    __twr_v230 = ((uint64_t (*)(uint64_t))__twr_v229)(_mng_def201);
+    __twr_v231 = (uint64_t)(&LirCreateInstruction);
+    __twr_v232 = 3ULL;
+    __twr_v233 = 15ULL;
+    __twr_v234 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v231)(__twr_v232, __twr_v233);
+    __twr_v235 = 24ULL;
+    __twr_v236 = __twr_v234 + __twr_v235;
+    *(uint64_t*)(__twr_v236) = __twr_v230;
+    __twr_v237 = 32ULL;
+    __twr_v238 = __twr_v234 + __twr_v237;
+    *(uint64_t*)(__twr_v238) = _mng_srcreg226;
+    __twr_v239 = 2ULL;
+    __twr_v240 = 0ULL;
+    __twr_v241 = 56ULL;
+    __twr_v242 = __twr_v234 + __twr_v241;
+    *(uint8_t*)(__twr_v242) = __twr_v239;
+    __twr_v243 = 57ULL;
+    __twr_v244 = __twr_v234 + __twr_v243;
+    *(uint8_t*)(__twr_v244) = __twr_v239;
+    __twr_v245 = 58ULL;
+    __twr_v246 = __twr_v234 + __twr_v245;
+    *(uint8_t*)(__twr_v246) = __twr_v240;
+    __twr_v247 = 59ULL;
+    __twr_v248 = __twr_v234 + __twr_v247;
+    *(uint8_t*)(__twr_v248) = __twr_v239;
+    __twr_v249 = (uint64_t)(&LirInsertInstructionTail);
+    ((void (*)(uint64_t))__twr_v249)(__twr_v234);
+    return __twr_v230;
 }
 uint64_t FoxLirInfo[52] = {
     0x0000000000000000,
+    (uint64_t)(&FoxSelectLoad),
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
-    0x0000000000000000,
-    0x0000000000000000,
+    (uint64_t)(&FoxSelectMove),
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
@@ -248,63 +458,63 @@ uint64_t FoxLirInfo[52] = {
     0x0000000000000000,
     0x0000000000000000,
 };
-void FoxEmitFunction(uint64_t _mng_funcsym160) {
-    uint64_t __twr_v161;
-    uint64_t __twr_v162;
-    uint64_t __twr_v163;
-    __twr_v161 = (uint64_t)(&TlInternalError);
-    __twr_v162 = (uint64_t)(&"TODO FoxEmitFunction");
-    __twr_v163 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v161)(__twr_v162, __twr_v163, __twr_v163, __twr_v163);
+void FoxEmitFunction(uint64_t _mng_funcsym250) {
+    uint64_t __twr_v251;
+    uint64_t __twr_v252;
+    uint64_t __twr_v253;
+    __twr_v251 = (uint64_t)(&TlInternalError);
+    __twr_v252 = (uint64_t)(&"TODO FoxEmitFunction");
+    __twr_v253 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v251)(__twr_v252, __twr_v253, __twr_v253, __twr_v253);
 }
 uint64_t FoxAsmEmitter[1] = {
     (uint64_t)(&FoxEmitFunction),
 };
 void FoxCompile() {
-    uint64_t __twr_v164;
-    uint64_t __twr_v165;
-    uint64_t _mng_funcsym166;
-    uint64_t __twr_v167;
-    uint64_t __twr_v168;
-    uint64_t __twr_v169;
-    uint64_t __twr_v170;
-    uint64_t __twr_v171;
-    uint64_t __twr_v172;
-    uint64_t __twr_v173;
-    uint64_t __twr_v174;
-    uint64_t __twr_v175;
-    uint64_t __twr_v176;
-    uint64_t __twr_v177;
-    uint64_t __twr_v178;
-    __twr_v164 = (uint64_t)(&PrsFunctionListHead);
-    __twr_v165 = *(uint64_t*)(__twr_v164);
-    _mng_funcsym166 = __twr_v165;
-    if (__twr_v165) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l1:;
-    __twr_v167 = (uint64_t)(&LirSelectForFunction);
-    ((void (*)(uint64_t))__twr_v167)(_mng_funcsym166);
-    __twr_v168 = 80ULL;
-    __twr_v169 = _mng_funcsym166 + __twr_v168;
-    __twr_v170 = *(uint64_t*)(__twr_v169);
-    _mng_funcsym166 = __twr_v170;
-    __twr_l3:;
-    if (_mng_funcsym166) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l2:;
-    __twr_v171 = (uint64_t)(&PrsFunctionListHead);
-    __twr_v172 = *(uint64_t*)(__twr_v171);
-    _mng_funcsym166 = __twr_v172;
-    if (__twr_v172) { goto __twr_l4; } else { goto __twr_l5; }
-    __twr_l4:;
-    __twr_v173 = (uint64_t)(&LirAllocateRegistersForFunction);
-    ((void (*)(uint64_t))__twr_v173)(_mng_funcsym166);
-    __twr_v174 = 80ULL;
-    __twr_v175 = _mng_funcsym166 + __twr_v174;
-    __twr_v176 = *(uint64_t*)(__twr_v175);
-    _mng_funcsym166 = __twr_v176;
-    __twr_l6:;
-    if (_mng_funcsym166) { goto __twr_l4; } else { goto __twr_l5; }
-    __twr_l5:;
-    __twr_v177 = (uint64_t)(&XrAsmEmit);
-    __twr_v178 = (uint64_t)(&FoxAsmEmitter);
-    ((void (*)(uint64_t))__twr_v177)(__twr_v178);
+    uint64_t __twr_v254;
+    uint64_t __twr_v255;
+    uint64_t _mng_funcsym256;
+    uint64_t __twr_v257;
+    uint64_t __twr_v258;
+    uint64_t __twr_v259;
+    uint64_t __twr_v260;
+    uint64_t __twr_v261;
+    uint64_t __twr_v262;
+    uint64_t __twr_v263;
+    uint64_t __twr_v264;
+    uint64_t __twr_v265;
+    uint64_t __twr_v266;
+    uint64_t __twr_v267;
+    uint64_t __twr_v268;
+    __twr_v254 = (uint64_t)(&PrsFunctionListHead);
+    __twr_v255 = *(uint64_t*)(__twr_v254);
+    _mng_funcsym256 = __twr_v255;
+    if (__twr_v255) { goto __twr_l16; } else { goto __twr_l17; }
+    __twr_l16:;
+    __twr_v257 = (uint64_t)(&LirSelectForFunction);
+    ((void (*)(uint64_t))__twr_v257)(_mng_funcsym256);
+    __twr_v258 = 80ULL;
+    __twr_v259 = _mng_funcsym256 + __twr_v258;
+    __twr_v260 = *(uint64_t*)(__twr_v259);
+    _mng_funcsym256 = __twr_v260;
+    __twr_l18:;
+    if (_mng_funcsym256) { goto __twr_l16; } else { goto __twr_l17; }
+    __twr_l17:;
+    __twr_v261 = (uint64_t)(&PrsFunctionListHead);
+    __twr_v262 = *(uint64_t*)(__twr_v261);
+    _mng_funcsym256 = __twr_v262;
+    if (__twr_v262) { goto __twr_l19; } else { goto __twr_l20; }
+    __twr_l19:;
+    __twr_v263 = (uint64_t)(&LirAllocateRegistersForFunction);
+    ((void (*)(uint64_t))__twr_v263)(_mng_funcsym256);
+    __twr_v264 = 80ULL;
+    __twr_v265 = _mng_funcsym256 + __twr_v264;
+    __twr_v266 = *(uint64_t*)(__twr_v265);
+    _mng_funcsym256 = __twr_v266;
+    __twr_l21:;
+    if (_mng_funcsym256) { goto __twr_l19; } else { goto __twr_l20; }
+    __twr_l20:;
+    __twr_v267 = (uint64_t)(&XrAsmEmit);
+    __twr_v268 = (uint64_t)(&FoxAsmEmitter);
+    ((void (*)(uint64_t))__twr_v267)(__twr_v268);
 }

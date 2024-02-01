@@ -16,6 +16,7 @@ EXTERN FN (JklTargetF) CtTranspile ()
 CtTargetInfo : JklTargetInfoRecord = {
     [Name] = "CHost",
     [EntryFunc] = &CtTranspile,
+    [StackAlignment] = 8,
     [PointerAlignment] = 8,
     [PointerSize] = 8,
     [LargestPrimitive] = PRIM_TYPE_UQUAD,

@@ -29,6 +29,27 @@ PUBLIC IrCommutativity : UBYTE[IR_MAX] = {
     [IR_MULTIPLY] = TRUE,
 }
 
+FN IrAllocateStack (
+    IN func : ^IrFunction,
+    IN bytes : UWORD,
+) : UWORD
+
+    // Allocate stack frame from the function and return the offset.
+
+    offset := func^.StackFrameSize
+
+    newsize := bytes + offset
+
+    // Restore stack alignment.
+
+    newsize += JklTargetInfo^.StackAlignment - 1
+    newsize &= ~(JklTargetInfo^.StackAlignment - 1)
+
+    func^.StackFrameSize = newsize
+
+    RETURN offset
+END
+
 FN IrCreateInstruction (
     IN type : IrInstructionType,
 ) : ^IrInstruction
@@ -90,6 +111,7 @@ FN IrCreateVariable (
     var^.DefinedBy = definedby
     var^.Annotation = IR_VAR_UNINITIALIZED
     var^.Symbol = NULLPTR
+    var^.LirRegister = NULLPTR
     var^.Number = 0
 
     var^.Opt.Vn.AcquiredByLoad = FALSE
@@ -99,6 +121,7 @@ FN IrCreateVariable (
     var^.Known = FALSE
     var^.Escaped = FALSE
     var^.ConsideredForDve = FALSE
+
 
     RETURN var
 END
@@ -497,6 +520,10 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
     END
 
     type := symbol^.SemanticType
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
 
     var : ^IrVariable
 
@@ -1361,18 +1388,31 @@ FN (IrExpressionGenerationF) IrGenerateAddrOf (
 
         var^.Escaped = TRUE
 
-        inst := IrCreateInstruction (
-            IR_STACK_ADDR, // type
+        retvar := IrFindConstant (
+            CAST var^.Symbol TO UWORD, // constant
+            IR_STACK_ADDR, // op
         )
 
-        retvar := IrCreateVariable (
-            inst, // definedby
-        )
+        IF NOT retvar THEN
+            inst := IrCreateInstruction (
+                IR_STACK_ADDR, // type
+            )
 
-        inst^.Defines = retvar
-        inst^.Body.Addr.Symbol = var^.Symbol
+            retvar = IrCreateVariable (
+                inst, // definedby
+            )
 
-        IrInsertInstructionTail ( inst )
+            inst^.Defines = retvar
+            inst^.Body.Addr.Symbol = var^.Symbol
+
+            IrInsertInstructionTail ( inst )
+
+            IrValueNumberConstantVariable (
+                retvar, // var
+                CAST var^.Symbol TO UWORD, // constant
+                IR_STACK_ADDR, // op
+            )
+        END
 
         var = retvar
     END

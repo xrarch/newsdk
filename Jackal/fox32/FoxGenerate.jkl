@@ -14,6 +14,7 @@ FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
     [LirInfo] = &FoxLirInfo,
+    [StackAlignment] = 4,
     [PointerAlignment] = 4,
     [PointerSize] = 4,
     [LargestPrimitive] = PRIM_TYPE_ULONG,
@@ -92,6 +93,7 @@ ENUM FoxInstructionTypes : UBYTE
 END
 
 ENUM FoxConditionTypes : UBYTE
+    FOX_COND_ALWAYS,
     FOX_COND_IFZ,
     FOX_COND_IFNZ,
     FOX_COND_IFLT,
@@ -112,6 +114,7 @@ END
 
 ENUM FoxAccessType : UBYTE
     FOX_ACCESS_IMM,
+    FOX_ACCESS_IMM_ASM_NAME,
     FOX_ACCESS_REGISTER,
     FOX_ACCESS_POINTER,
 END
@@ -151,12 +154,13 @@ FoxInstructionNames : ^UBYTE[FOX_MAX] = {
 }
 
 FoxConditionNames : ^UBYTE[FOX_COND_MAX] = {
-    [FOX_COND_IFZ] = "ifz",
-    [FOX_COND_IFNZ] = "ifnz",
-    [FOX_COND_IFLT] = "iflt",
-    [FOX_COND_IFGTEQ] = "ifgteq",
-    [FOX_COND_IFGT] = "ifgt",
-    [FOX_COND_IFLTEQ] = "iflteq",
+    [FOX_COND_ALWAYS] = "",
+    [FOX_COND_IFZ] = "ifz ",
+    [FOX_COND_IFNZ] = "ifnz ",
+    [FOX_COND_IFLT] = "iflt ",
+    [FOX_COND_IFGTEQ] = "ifgteq ",
+    [FOX_COND_IFGT] = "ifgt ",
+    [FOX_COND_IFLTEQ] = "iflteq ",
 }
 
 FoxBitsNames : ^UBYTE[FOX_BITS_MAX] = {
@@ -165,20 +169,128 @@ FoxBitsNames : ^UBYTE[FOX_BITS_MAX] = {
     [FOX_BITS_32] = "",
 }
 
-FN (LirSelectF) FoxSelect (
+FN FoxGetPtrOffset (
+    IN src : ^IrVariable,
+    OUT offset : ^UWORD,
+) : UWORD
+
+    // If the src variable contains a constant offset that fits in a fox32
+    // pointer offset, return it. Caller should have determined it's a
+    // temporary (i.e. it has a DefinedBy instruction).
+
+    inst := src^.DefinedBy
+
+    IF inst^.Type == IR_CONSTANT THEN
+        const := inst^.Body.Constant.Constant
+
+        IF const < 256 THEN
+            offset^ = const
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN FoxFillSource (
+    IN lirinst : ^LirInstruction,
+    IN var : ^IrVariable,
+)
+
+    // Fill the source fields of the instruction appropriately.
+
+    // Fox32 allows these source modes on all instructions:
+    //
+    // REG [REG] [REG + OFF] IMM
+
+    srcreg : ^LirRegister
+
+    inst := var^.DefinedBy
+
+    IF inst THEN
+        // Var is a temporary. Check for cases.
+
+        IF inst^.Type == IR_STACK_ADDR THEN
+            // It's on the stack frame, this is an SP + OFF. 
+        END
+    END
+
+    // If we got here we've decided to use reg.
+
+    lirinst^.Source1 = srcreg
+    lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+END
+
+FN (LirSelectF) FoxSelectLoad (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // This maps to a fox32 mem-to-reg MOV instruction.
+
+    def := inst^.Defines
+    src := inst^.Source1
+
+    IF src^.DefinedBy THEN
+        // The source is a temporary. If its defining instruction was a 
+    END
+END
+
+FN (LirSelectF) FoxSelectMove (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
     // Select the most appropriate instruction.
 
-    TlInternalError ( "TODO FoxSelect", 0, 0, 0 )
+    def := inst^.Defines
+    src := inst^.Source1
+    srcreg : ^LirRegister
 
-    RETURN NULLPTR
+    IF src^.DefinedBy THEN
+        // The source is a temporary.
+
+        IF src^.Opt.Dve.References == 1 THEN
+            // This is the only reference to the temporary, so don't bother
+            // sharing; twiddle its defining instruction to define us and then
+            // generate that instead.
+
+            src^.DefinedBy^.Defines = def
+
+            RETURN LirSelect ( src^.DefinedBy )
+        END
+
+        srcreg = LirSelect ( src^.DefinedBy )
+
+    ELSE
+        srcreg = LirGetRegister ( src )
+    END
+
+    // Generate a fox32 reg-to-reg MOV instruction.
+
+    defreg := LirGetRegister ( def )
+
+    lirinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_MOV, // machtype
+    )
+
+    lirinst^.Defines = defreg
+    lirinst^.Source1 = srcreg
+
+    lirinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
 END
 
 FoxLirInfo : LirTargetInfoRecord = {
     [SelectionTable] = {
-
+        [IR_LOAD] = &FoxSelectLoad,
+        [IR_MOVE] = &FoxSelectMove,
     },
 }
 
@@ -186,7 +298,7 @@ FN (AsmEmitF) FoxEmitFunction (
     IN funcsym : ^LexSymbol,
 )
 
-    // Emit a function.
+    // Emit the final assembly language for a function.
 
     TlInternalError ( "TODO FoxEmitFunction", 0, 0, 0 )
 END

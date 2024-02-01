@@ -3,8 +3,8 @@
 STRUCT LirFoxSpecific
     Constant1 : ULONG,
     Constant2 : ULONG,
-    AccessType1 : UBYTE,
-    AccessType2 : UBYTE,
+    DestAccessType : UBYTE,
+    SrcAccessType : UBYTE,
     Condition : UBYTE,
     BitSize : UBYTE,
 END
@@ -79,6 +79,12 @@ EXTERN FN LirRemoveInstruction (
 EXTERN FN LirGetLabel (
     IN oldlabel : ^IrInstruction,
 ) : ^LirInstruction
+
+EXTERN FN LirCreateRegister () : ^LirRegister
+
+EXTERN FN LirGetRegister (
+    IN oldvariable : ^IrVariable,
+) : ^LirRegister
 
 EXTERN FN LirSelect (
     IN inst : ^IrInstruction,

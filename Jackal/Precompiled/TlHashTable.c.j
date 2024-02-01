@@ -444,8 +444,6 @@ void TlEnumerateHashTable(uint64_t _mng_hashtable264, uint64_t _mng_enumfunc265)
     uint64_t __twr_v269;
     uint64_t __twr_v270;
     uint64_t __twr_v271;
-    uint64_t __twr_v272;
-    uint64_t __twr_v273;
     _mng_head266 = _mng_hashtable264;
     __twr_v267 = *(uint64_t*)(_mng_hashtable264);
     _mng_listentry268 = __twr_v267;
@@ -454,17 +452,17 @@ void TlEnumerateHashTable(uint64_t _mng_hashtable264, uint64_t _mng_enumfunc265)
     __twr_v269 = *(uint64_t*)(_mng_listentry268);
     __twr_v270 = 16ULL;
     __twr_v271 = _mng_listentry268 - __twr_v270;
-    __twr_v272 = (uint64_t)(&_mng_enumfunc265);
-    __twr_v273 = *(uint64_t*)(__twr_v272);
-    ((void (*)(uint64_t))__twr_v273)(__twr_v271);
+    ((void (*)(uint64_t))_mng_enumfunc265)(__twr_v271);
     _mng_listentry268 = __twr_v269;
     __twr_l31:;
     if (_mng_listentry268 != _mng_head266) { goto __twr_l29; } else { goto __twr_l30; }
     __twr_l30:;
 }
-uint64_t TlHashString(uint64_t _mng_str274) {
+uint64_t TlHashString(uint64_t _mng_str272) {
+    uint64_t __twr_v273;
+    uint64_t _mng_hash274;
     uint64_t __twr_v275;
-    uint64_t _mng_hash276;
+    uint64_t __twr_v276;
     uint64_t __twr_v277;
     uint64_t __twr_v278;
     uint64_t __twr_v279;
@@ -486,45 +484,43 @@ uint64_t TlHashString(uint64_t _mng_str274) {
     uint64_t __twr_v295;
     uint64_t __twr_v296;
     uint64_t __twr_v297;
-    uint64_t __twr_v298;
-    uint64_t __twr_v299;
-    __twr_v275 = 0ULL;
-    _mng_hash276 = __twr_v275;
-    __twr_v277 = *(uint8_t*)(_mng_str274);
-    if (__twr_v277) { goto __twr_l32; } else { goto __twr_l33; }
+    __twr_v273 = 0ULL;
+    _mng_hash274 = __twr_v273;
+    __twr_v275 = *(uint8_t*)(_mng_str272);
+    if (__twr_v275) { goto __twr_l32; } else { goto __twr_l33; }
     __twr_l32:;
-    __twr_v278 = *(uint8_t*)(_mng_str274);
-    __twr_v279 = _mng_hash276 + __twr_v278;
-    _mng_hash276 = __twr_v279;
-    __twr_v280 = 10ULL;
-    __twr_v281 = __twr_v279 << __twr_v280;
-    __twr_v282 = __twr_v279 + __twr_v281;
-    _mng_hash276 = __twr_v282;
-    __twr_v283 = 6ULL;
-    __twr_v284 = __twr_v282 >> __twr_v283;
-    __twr_v285 = __twr_v282 ^ __twr_v284;
-    _mng_hash276 = __twr_v285;
-    __twr_v286 = 1ULL;
-    __twr_v287 = _mng_str274 + __twr_v286;
-    _mng_str274 = __twr_v287;
+    __twr_v276 = *(uint8_t*)(_mng_str272);
+    __twr_v277 = _mng_hash274 + __twr_v276;
+    _mng_hash274 = __twr_v277;
+    __twr_v278 = 10ULL;
+    __twr_v279 = __twr_v277 << __twr_v278;
+    __twr_v280 = __twr_v277 + __twr_v279;
+    _mng_hash274 = __twr_v280;
+    __twr_v281 = 6ULL;
+    __twr_v282 = __twr_v280 >> __twr_v281;
+    __twr_v283 = __twr_v280 ^ __twr_v282;
+    _mng_hash274 = __twr_v283;
+    __twr_v284 = 1ULL;
+    __twr_v285 = _mng_str272 + __twr_v284;
+    _mng_str272 = __twr_v285;
     __twr_l34:;
-    __twr_v288 = *(uint8_t*)(_mng_str274);
-    if (__twr_v288) { goto __twr_l32; } else { goto __twr_l33; }
+    __twr_v286 = *(uint8_t*)(_mng_str272);
+    if (__twr_v286) { goto __twr_l32; } else { goto __twr_l33; }
     __twr_l33:;
-    __twr_v289 = 3ULL;
-    __twr_v290 = _mng_hash276 << __twr_v289;
-    __twr_v291 = _mng_hash276 + __twr_v290;
-    _mng_hash276 = __twr_v291;
-    __twr_v292 = 11ULL;
-    __twr_v293 = __twr_v291 >> __twr_v292;
-    __twr_v294 = __twr_v291 ^ __twr_v293;
-    _mng_hash276 = __twr_v294;
-    __twr_v295 = 15ULL;
-    __twr_v296 = __twr_v294 << __twr_v295;
-    __twr_v297 = __twr_v294 + __twr_v296;
-    _mng_hash276 = __twr_v297;
-    __twr_v298 = 97ULL;
-    __twr_v299 = __twr_v297 % __twr_v298;
-    _mng_hash276 = __twr_v299;
-    return __twr_v299;
+    __twr_v287 = 3ULL;
+    __twr_v288 = _mng_hash274 << __twr_v287;
+    __twr_v289 = _mng_hash274 + __twr_v288;
+    _mng_hash274 = __twr_v289;
+    __twr_v290 = 11ULL;
+    __twr_v291 = __twr_v289 >> __twr_v290;
+    __twr_v292 = __twr_v289 ^ __twr_v291;
+    _mng_hash274 = __twr_v292;
+    __twr_v293 = 15ULL;
+    __twr_v294 = __twr_v292 << __twr_v293;
+    __twr_v295 = __twr_v292 + __twr_v294;
+    _mng_hash274 = __twr_v295;
+    __twr_v296 = 97ULL;
+    __twr_v297 = __twr_v295 % __twr_v296;
+    _mng_hash274 = __twr_v297;
+    return __twr_v297;
 }

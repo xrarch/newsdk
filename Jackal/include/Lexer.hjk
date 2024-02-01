@@ -239,16 +239,14 @@ STRUCT LexSymbol
 
     SemanticType : ^LexSemanticType,
 
-    Flags : ULONG,
-    Type : LexSymbolType,
-
-    // Backend private stuff.
-
     IrContext : ^VOID,
-
-    // Target private stuff.
+    StackOffset : UWORD,
 
     TrgContext : ^VOID,
+
+    Flags : ULONG,
+    Type : LexSymbolType,
+    StackAllocated : UBYTE,
 END
 
 ENUM LexSemanticSubtype : UBYTE

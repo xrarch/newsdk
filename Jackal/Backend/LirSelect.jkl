@@ -31,6 +31,24 @@ FN LirCreateInstruction (
     RETURN lirinst
 END
 
+FN LirCreateRegister () : ^LirRegister
+
+    reg : ^LirRegister
+
+    status := TlBumpAlloc (
+        SIZEOF LirRegister, // bytes
+        &reg, // OUT ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create LIR register", 0, 0, 0 )
+    END
+
+    reg^.Type = LIR_VIRTUAL_REG
+
+    RETURN reg
+END
+
 FN LirInsertInstructionTail (
     IN lirinst : ^LirInstruction,
 )
@@ -101,6 +119,25 @@ FN LirGetLabel (
     RETURN lirinst
 END
 
+FN LirGetRegister (
+    IN oldvariable : ^IrVariable,
+) : ^LirRegister
+
+    // Get the LIR version of an IR variable.
+
+    lirreg := oldvariable^.LirRegister
+
+    IF lirreg THEN
+        RETURN lirreg
+    END
+
+    lirreg = LirCreateRegister ()
+
+    oldvariable^.LirRegister = lirreg
+
+    RETURN lirreg
+END
+
 FN LirSelect (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
@@ -140,6 +177,27 @@ FN LirSelect (
     RETURN reg
 END
 
+FN LirAllocateStack (
+    IN func : ^IrFunction,
+    IN bytes : UWORD,
+) : UWORD
+
+    // Allocate stack frame from the current function and return the offset.
+
+    offset := func^.StackFrameSize
+
+    newsize := bytes + offset
+
+    // Restore pointer alignment.
+
+    newsize += JklTargetInfo^.PointerAlignment - 1
+    newsize &= ~(JklTargetInfo^.PointerAlignment - 1)
+
+    func^.StackFrameSize = newsize
+
+    RETURN offset
+END
+
 FN LirSelectForFunction (
     IN funcsym : ^LexSymbol,
 )
@@ -151,6 +209,7 @@ FN LirSelectForFunction (
 
     irfunc^.LirHead = NULLPTR
     irfunc^.LirTail = NULLPTR
+    irfunc^.StackFrameSize = 0
 
     inst := irfunc^.Head
 
