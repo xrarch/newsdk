@@ -1,0 +1,19 @@
+//
+// Implements common support for XR/SDK assembly generation. Not required to be
+// used by target code but is common between fox32, XR/17032, and amd64.
+//
+
+#INCLUDE "<inc>/Target.hjk"
+
+FN XrAsmEmit (
+    IN emitter : ^AsmEmitterRecord,
+)
+
+    // Emit XR/SDK assembly for the program.
+
+    // For each global, output the data, with appropriate storage specifiers.
+    // Call the target-specific emitter for each function. Also remember to
+    // output the ASM blocks.
+
+    TlInternalError ( "TODO XrAsmEmit", 0, 0, 0 )
+END

@@ -53,6 +53,118 @@ FoxTargetInfo : JklTargetInfoRecord = {
     },
 }
 
+ENUM FoxInstructionTypes : UBYTE
+    FOX_ADD,
+    FOX_MUL,
+    FOX_AND,
+    FOX_SLA,
+    FOX_SRA,
+    FOX_BSE,
+    FOX_CMP,
+    FOX_JMP,
+    FOX_RJMP,
+    FOX_PUSH,
+    FOX_INC,
+    FOX_OR,
+    FOX_IMUL,
+    FOX_SRL,
+    FOX_BCL,
+    FOX_MOV,
+    FOX_CALL,
+    FOX_RCALL,
+    FOX_POP,
+    FOX_BRK,
+    FOX_SUB,
+    FOX_DIV,
+    FOX_XOR,
+    FOX_ROL,
+    FOX_ROR,
+    FOX_BTS,
+    FOX_MOVZ,
+    FOX_RET,
+    FOX_DEC,
+    FOX_REM,
+    FOX_NOT,
+    FOX_IDIV,
+    FOX_IREM,
+
+    FOX_MAX,
+END
+
+ENUM FoxConditionTypes : UBYTE
+    FOX_COND_IFZ,
+    FOX_COND_IFNZ,
+    FOX_COND_IFLT,
+    FOX_COND_IFGTEQ,
+    FOX_COND_IFGT,
+    FOX_COND_IFLTEQ,
+
+    FOX_COND_MAX,
+END
+
+ENUM FoxBits : UBYTE
+    FOX_BITS_8,
+    FOX_BITS_16,
+    FOX_BITS_32,
+
+    FOX_BITS_MAX,
+END
+
+ENUM FoxAccessType : UBYTE
+    FOX_ACCESS_IMM,
+    FOX_ACCESS_REGISTER,
+    FOX_ACCESS_POINTER,
+END
+
+FoxInstructionNames : ^UBYTE[FOX_MAX] = {
+    [FOX_ADD] = "add",
+    [FOX_MUL] = "mul",
+    [FOX_AND] = "and",
+    [FOX_SLA] = "sla",
+    [FOX_SRA] = "sra",
+    [FOX_BSE] = "bse",
+    [FOX_CMP] = "cmp",
+    [FOX_RJMP] = "rjmp",
+    [FOX_PUSH] = "push",
+    [FOX_INC] = "inc",
+    [FOX_OR] = "or",
+    [FOX_IMUL] = "imul",
+    [FOX_SRL] = "srl",
+    [FOX_BCL] = "bcl",
+    [FOX_MOV] = "mov",
+    [FOX_CALL] = "call",
+    [FOX_POP] = "pop",
+    [FOX_BRK] = "brk",
+    [FOX_SUB] = "sub",
+    [FOX_DIV] = "div",
+    [FOX_XOR] = "xor",
+    [FOX_ROL] = "rol",
+    [FOX_ROR] = "ror",
+    [FOX_BTS] = "bts",
+    [FOX_MOVZ] = "movz",
+    [FOX_RET] = "ret",
+    [FOX_DEC] = "dec",
+    [FOX_REM] = "rem",
+    [FOX_NOT] = "not",
+    [FOX_IDIV] = "idiv",
+    [FOX_IREM] = "irem",
+}
+
+FoxConditionNames : ^UBYTE[FOX_COND_MAX] = {
+    [FOX_COND_IFZ] = "ifz",
+    [FOX_COND_IFNZ] = "ifnz",
+    [FOX_COND_IFLT] = "iflt",
+    [FOX_COND_IFGTEQ] = "ifgteq",
+    [FOX_COND_IFGT] = "ifgt",
+    [FOX_COND_IFLTEQ] = "iflteq",
+}
+
+FoxBitsNames : ^UBYTE[FOX_BITS_MAX] = {
+    [FOX_BITS_8] = ".8",
+    [FOX_BITS_16] = ".16",
+    [FOX_BITS_32] = "",
+}
+
 FN (LirSelectF) FoxSelect (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
@@ -70,9 +182,24 @@ FoxLirInfo : LirTargetInfoRecord = {
     },
 }
 
+FN (AsmEmitF) FoxEmitFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Emit a function.
+
+    TlInternalError ( "TODO FoxEmitFunction", 0, 0, 0 )
+END
+
+FoxAsmEmitter : AsmEmitterRecord = {
+    [EmitFunc] = &FoxEmitFunction
+}
+
 FN (JklTargetF) FoxCompile ()
     
     // Compile the program for the fox32 architecture.
+
+    // Perform instruction selection on each function.
 
     funcsym := PrsFunctionListHead
 
@@ -84,5 +211,21 @@ FN (JklTargetF) FoxCompile ()
         funcsym = funcsym^.NextFunction
     END
 
-    TlPrintString ( "TODO compile foxly\n" )
+    // Do regalloc over the low level IR (LIR).
+
+    funcsym = PrsFunctionListHead
+
+    WHILE funcsym DO
+        LirAllocateRegistersForFunction (
+            funcsym, // funcsym
+        )
+
+        funcsym = funcsym^.NextFunction
+    END
+
+    // Emit the final assembly language.
+
+    XrAsmEmit (
+        &FoxAsmEmitter, // emitter
+    )
 END

@@ -5,6 +5,8 @@ STRUCT LirFoxSpecific
     Constant2 : ULONG,
     AccessType1 : UBYTE,
     AccessType2 : UBYTE,
+    Condition : UBYTE,
+    BitSize : UBYTE,
 END
 
 UNION LirMachineSpecific
@@ -33,6 +35,15 @@ STRUCT LirRegister
     Type : LirRegisterType,
 END
 
+STRUCT LirLabelBody
+    References : ULONG,
+END
+
+UNION LirInstructionBody
+    Machine : LirMachineSpecific,
+    Label : LirLabelBody,
+END
+
 STRUCT LirInstruction
     Next : ^LirInstruction,
     Prev : ^LirInstruction,
@@ -42,7 +53,7 @@ STRUCT LirInstruction
     Source1 : ^LirRegister,
     Source2 : ^LirRegister,
 
-    Machine : LirMachineSpecific,
+    Body : LirInstructionBody,
 
     MachineInstruction : UBYTE,
     Type : LirInstructionType,
@@ -52,6 +63,23 @@ FNPTR LirSelectF (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
+EXTERN FN LirCreateInstruction (
+    IN type : LirInstructionType,
+    IN machtype : UBYTE,
+) : ^LirInstruction
+
+EXTERN FN LirInsertInstructionTail (
+    IN lirinst : ^LirInstruction,
+)
+
+EXTERN FN LirRemoveInstruction (
+    IN lirinst : ^LirInstruction,
+)
+
+EXTERN FN LirGetLabel (
+    IN oldlabel : ^IrInstruction,
+) : ^LirInstruction
+
 EXTERN FN LirSelect (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
@@ -60,6 +88,22 @@ EXTERN FN LirSelectForFunction (
     IN funcsym : ^LexSymbol,
 )
 
+EXTERN FN LirAllocateRegistersForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
 STRUCT LirTargetInfoRecord
     SelectionTable : LirSelectF[IR_MAX],
 END
+
+FNPTR AsmEmitF (
+    IN funcsym : ^LexSymbol,
+)
+
+STRUCT AsmEmitterRecord
+    EmitFunc : AsmEmitF,
+END
+
+EXTERN FN XrAsmEmit (
+    IN emitter : ^AsmEmitterRecord,
+)

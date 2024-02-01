@@ -1,0 +1,16 @@
+//
+// Implements linear scan register allocation.
+//
+
+#INCLUDE "<inc>/Target.hjk"
+
+FN LirAllocateRegistersForFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Perform linear scan register allocation over the function LIR.
+
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+    TlInternalError ( "LirAllocateRegistersForFunction: TODO", 0, 0, 0 )
+END

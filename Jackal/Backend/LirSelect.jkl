@@ -50,6 +50,57 @@ FN LirInsertInstructionTail (
     LirCurrentFunction^.LirTail = lirinst
 END
 
+FN LirRemoveInstruction (
+    IN lirinst : ^LirInstruction,
+)
+
+    // Remove the instruction from the chain.
+
+    block := lirinst^.Block
+
+    p := lirinst^.Prev
+
+    IF p THEN
+        p^.Next = lirinst^.Next
+    ELSE // no prev means we were the head
+        block^.LirHead = lirinst^.Next
+    END
+
+    p = lirinst^.Next
+
+    IF p THEN
+        p^.Prev = lirinst^.Prev
+    ELSE // no next means we were the tail
+        block^.LirTail = lirinst^.Prev
+    END
+END
+
+FN LirGetLabel (
+    IN oldlabel : ^IrInstruction,
+) : ^LirInstruction
+
+    // Get the LIR version of an IR label.
+
+    lirinst := oldlabel^.Body.Label.LirLabel
+
+    IF lirinst THEN
+        lirinst^.Body.Label.References += 1
+
+        RETURN lirinst
+    END
+
+    lirinst = LirCreateInstruction (
+        LIR_LABEL, // type
+        0, // machtype
+    )
+
+    oldlabel^.Body.Label.LirLabel = lirinst
+
+    lirinst^.Body.Label.References = 1
+
+    RETURN lirinst
+END
+
 FN LirSelect (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
@@ -127,6 +178,8 @@ FN LirSelectForFunction (
                 )
 
                 inst^.Body.Label.LirLabel = lirinst
+
+                lirinst^.Body.Label.References = 0
             END
 
             LirInsertInstructionTail ( lirinst )
