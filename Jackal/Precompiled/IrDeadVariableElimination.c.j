@@ -261,7 +261,7 @@ void IrEliminateDeadVariable(uint64_t _mng_var210) {
     __twr_v215 = 88ULL;
     __twr_v216 = _mng_definedbyinst214 + __twr_v215;
     __twr_v217 = *(uint8_t*)(__twr_v216);
-    __twr_v218 = 26ULL;
+    __twr_v218 = 25ULL;
     if (__twr_v217 != __twr_v218) { goto __twr_l12; } else { goto __twr_l13; }
     __twr_l13:;
     return;
@@ -584,7 +584,7 @@ void IrEliminateForFunction(uint64_t _mng_funcsym229) {
     __twr_v322 = 88ULL;
     __twr_v323 = _mng_inst234 + __twr_v322;
     __twr_v324 = *(uint8_t*)(__twr_v323);
-    __twr_v325 = 26ULL;
+    __twr_v325 = 25ULL;
     if (__twr_v324 != __twr_v325) { goto __twr_l43; } else { goto __twr_l44; }
     __twr_l44:;
     __twr_v326 = *(uint64_t*)(_mng_inst234);

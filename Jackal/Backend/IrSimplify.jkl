@@ -208,12 +208,7 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_ZERO
@@ -257,12 +252,7 @@ FN (IrSimplifyF) IrSimplifyBranchZero (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_NONZERO
@@ -309,12 +299,7 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_NOT_EQUALS
@@ -376,12 +361,7 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_EQUALS
@@ -443,12 +423,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_GTEQ
@@ -512,12 +487,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_LTEQ
@@ -581,12 +551,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_GREATER_THAN
@@ -650,12 +615,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_LESS_THAN
@@ -967,12 +927,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_GTEQ_SIGNED
@@ -1036,12 +991,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_LTEQ_SIGNED
@@ -1105,12 +1055,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_GREATER_THAN_SIGNED
@@ -1174,12 +1119,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
         RETURN FALSE
     END
 
-    nextinst := inst^.Next
-
-    IF nextinst AND
-        nextinst^.Type == IR_LABEL AND
-        inst^.Body.Branch.TrueLabel == nextinst THEN
-
+    IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
         // Invert the branch so that the fall-through case is the false case.
 
         inst^.Type = IR_BRANCH_LESS_THAN_SIGNED

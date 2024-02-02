@@ -151,7 +151,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type162, uint64_t _mng_machtype163) 
     uint64_t __twr_v181;
     uint64_t __twr_v182;
     __twr_v164 = (uint64_t)(&TlBumpAlloc);
-    __twr_v165 = 94ULL;
+    __twr_v165 = 77ULL;
     __twr_v166 = (uint64_t)(&_mng_lirinst167);
     __twr_v168 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v164)(__twr_v165, __twr_v166);
     if (!(__twr_v168)) { goto __twr_l1; } else { goto __twr_l2; }
@@ -161,7 +161,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type162, uint64_t _mng_machtype163) 
     __twr_v171 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v169)(__twr_v170, __twr_v171, __twr_v171, __twr_v171);
     __twr_l1:;
-    __twr_v172 = 93ULL;
+    __twr_v172 = 76ULL;
     __twr_v173 = _mng_lirinst167 + __twr_v172;
     *(uint8_t*)(__twr_v173) = _mng_type162;
     __twr_v174 = 0ULL;
@@ -174,7 +174,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type162, uint64_t _mng_machtype163) 
     __twr_v179 = 40ULL;
     __twr_v180 = _mng_lirinst167 + __twr_v179;
     *(uint64_t*)(__twr_v180) = __twr_v174;
-    __twr_v181 = 92ULL;
+    __twr_v181 = 75ULL;
     __twr_v182 = _mng_lirinst167 + __twr_v181;
     *(uint8_t*)(__twr_v182) = _mng_machtype163;
     return _mng_lirinst167;
@@ -575,7 +575,7 @@ void LirSelectForFunction(uint64_t _mng_funcsym310) {
     __twr_v322 = 88ULL;
     __twr_v323 = _mng_inst320 + __twr_v322;
     __twr_v324 = *(uint8_t*)(__twr_v323);
-    __twr_v325 = 22ULL;
+    __twr_v325 = 21ULL;
     if (__twr_v324 != __twr_v325) { goto __twr_l29; } else { goto __twr_l28; }
     __twr_l28:;
     __twr_v326 = 8ULL;
@@ -603,13 +603,13 @@ void LirSelectForFunction(uint64_t _mng_funcsym310) {
     __twr_v339 = 88ULL;
     __twr_v340 = _mng_inst320 + __twr_v339;
     __twr_v341 = *(uint8_t*)(__twr_v340);
-    __twr_v342 = 26ULL;
+    __twr_v342 = 25ULL;
     if (__twr_v341 == __twr_v342) { goto __twr_l32; } else { goto __twr_l35; }
     __twr_l35:;
     __twr_v343 = 88ULL;
     __twr_v344 = _mng_inst320 + __twr_v343;
     __twr_v345 = *(uint8_t*)(__twr_v344);
-    __twr_v346 = 27ULL;
+    __twr_v346 = 26ULL;
     if (__twr_v345 == __twr_v346) { goto __twr_l32; } else { goto __twr_l34; }
     __twr_l34:;
     __twr_v347 = 88ULL;
@@ -627,13 +627,13 @@ void LirSelectForFunction(uint64_t _mng_funcsym310) {
     __twr_v355 = 88ULL;
     __twr_v356 = _mng_inst320 + __twr_v355;
     __twr_v357 = *(uint8_t*)(__twr_v356);
-    __twr_v358 = 8ULL;
+    __twr_v358 = 7ULL;
     if (__twr_v357 <= __twr_v358) { goto __twr_l27; } else { goto __twr_l37; }
     __twr_l37:;
     __twr_v359 = 88ULL;
     __twr_v360 = _mng_inst320 + __twr_v359;
     __twr_v361 = *(uint8_t*)(__twr_v360);
-    __twr_v362 = 24ULL;
+    __twr_v362 = 23ULL;
     if (__twr_v361 >= __twr_v362) { goto __twr_l27; } else { goto __twr_l32; }
     __twr_l32:;
     __twr_v363 = (uint64_t)(&LirSelect);

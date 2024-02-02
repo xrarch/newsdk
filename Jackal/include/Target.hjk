@@ -1,19 +1,14 @@
 #INCLUDE "<inc>/Backend.hjk"
 
 STRUCT LirFoxOperand
-    Reg : ^LirRegister,
-    Constant : ULONG,
+    Constant : UWORD,
     AccessType : UBYTE,
 END
 
 STRUCT LirFoxSpecific
-    Operand1 : LirFoxOperand,
-    Operand2 : LirFoxOperand,
+    Op1 : LirFoxOperand,
+    Op2 : LirFoxOperand,
 
-    Constant1 : ULONG,
-    Constant2 : ULONG,
-    DestAccessType : UBYTE,
-    SrcAccessType : UBYTE,
     Condition : UBYTE,
     BitSize : UBYTE,
 END
@@ -29,6 +24,7 @@ ENUM LirInstructionType : UBYTE
     LIR_CALL,
     LIR_UNARY,
     LIR_BINARY,
+    LIR_RETURN,
 
     LIR_MAX, // MUST be at the end
 END

@@ -4,6 +4,12 @@
 
 #INCLUDE "<inc>/Target.hjk"
 
+#MACRO FoxSetIfUnknown ( inst ) [
+    IF (inst)^.Body.Machine.Fox.BitSize == FOX_BITS_UNKNOWN THEN
+        (inst)^.Body.Machine.Fox.BitSize = FOX_BITS_32
+    END
+]
+
 // FORWARD
 EXTERN FN (JklTargetF) FoxCompile ()
 
@@ -118,49 +124,52 @@ ENUM FoxBits : UBYTE
 END
 
 ENUM FoxAccessType : UBYTE
-    FOX_ACCESS_IMM,
-    FOX_ACCESS_IMM_NAME,
     FOX_ACCESS_REGISTER,
     FOX_ACCESS_REG_PTR,
+    FOX_ACCESS_IMM,
+    FOX_ACCESS_IMM_NAME,
     FOX_ACCESS_IMM_PTR,
     FOX_ACCESS_IMM_PTR_NAME,
-    FOX_ACCESS_STRING,
+    FOX_ACCESS_IMM_STRING,
+    FOX_ACCESS_IMM_LABEL,
 END
 
 ENUM FoxRegisters : UBYTE
-    FOX_T0 = 0,
-    FOX_T1 = 1,
-    FOX_T2 = 2,
-    FOX_T3 = 3,
-    FOX_T4 = 4,
-    FOX_T5 = 5,
-    FOX_T6 = 6,
-    FOX_A0 = 7,
-    FOX_A1 = 8,
-    FOX_A2 = 9,
-    FOX_A3 = 10,
-    FOX_S0 = 11,
-    FOX_S1 = 12,
-    FOX_S2 = 13,
-    FOX_S3 = 14,
-    FOX_S4 = 15,
-    FOX_S5 = 16,
-    FOX_S6 = 17,
-    FOX_S7 = 18,
-    FOX_S8 = 19,
-    FOX_S9 = 20,
-    FOX_S10 = 21,
-    FOX_S11 = 22,
-    FOX_S12 = 23,
-    FOX_S13 = 24,
-    FOX_S14 = 25,
-    FOX_S15 = 26,
-    FOX_S16 = 27,
-    FOX_S17 = 28,
+    FOX_NULL,
 
-    FOX_R31 = 31,
-    FOX_SP = 32,
-    FOX_FP = 34,
+    FOX_T0,
+    FOX_T1,
+    FOX_T2,
+    FOX_T3,
+    FOX_T4,
+    FOX_T5,
+    FOX_T6,
+    FOX_A0,
+    FOX_A1,
+    FOX_A2,
+    FOX_A3,
+    FOX_S0,
+    FOX_S1,
+    FOX_S2,
+    FOX_S3,
+    FOX_S4,
+    FOX_S5,
+    FOX_S6,
+    FOX_S7,
+    FOX_S8,
+    FOX_S9,
+    FOX_S10,
+    FOX_S11,
+    FOX_S12,
+    FOX_S13,
+    FOX_S14,
+    FOX_S15,
+    FOX_S16,
+    FOX_S17,
+
+    FOX_R31,
+    FOX_SP,
+    FOX_FP,
 
     FOX_REG_MAX,
 END
@@ -262,13 +271,14 @@ FoxPrimTypeToBits : UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_POINTER] = FOX_BITS_32,
 }
 
-FN FoxFillSourceForLoad (
+FN FoxFillOperandForAccess (
     IN lirinst : ^LirInstruction,
+    IN operand : ^LirFoxOperand,
     IN inst : ^IrInstruction,
-)
+) : ^LirRegister
 
     // Caller should have made sure the instruction is the right width,
-    // otherwise an intermediate load is required.
+    // otherwise an intermediate access is required.
 
     lirinst^.Body.Machine.Fox.BitSize =
         FoxPrimTypeToBits[inst^.Body.LoadStore.Type]
@@ -280,11 +290,10 @@ FN FoxFillSourceForLoad (
     IF NOT inst2 THEN
         // Not a temporary, just trust this named local.
 
-        lirinst^.Source2 = LirGetRegister ( src2 )
-        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-        lirinst^.Body.Machine.Fox.Constant2 = 0
+        operand^.AccessType = FOX_ACCESS_REG_PTR
+        operand^.Constant = 0
 
-        LEAVE
+        RETURN LirGetRegister ( src2 )
     END
 
     IF inst2^.Type == IR_STACK_ADDR THEN
@@ -300,11 +309,10 @@ FN FoxFillSourceForLoad (
         IF off < 256 THEN
             // Great! We can do this directly.
 
-            lirinst^.Source2 = &FoxSp
-            lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-            lirinst^.Body.Machine.Fox.Constant2 = off
+            operand^.AccessType = FOX_ACCESS_REG_PTR
+            operand^.Constant = off
 
-            LEAVE
+            RETURN &FoxSp
         END
 
     ELSEIF inst2^.Type == IR_ADDR THEN
@@ -312,28 +320,20 @@ FN FoxFillSourceForLoad (
         // TODO investigate intentionally sharing common constants to
         //      reduce code size.
 
-        lirinst^.Body.Machine.Fox.SrcAccessType =
-            FOX_ACCESS_IMM_PTR_NAME
+        operand^.AccessType = FOX_ACCESS_IMM_PTR_NAME
+        operand^.Constant = CAST inst2^.Body.Addr.Symbol TO UWORD
 
-        lirinst^.Body.Machine.Fox.Constant2 =
-            CAST inst2^.Body.Addr.Symbol TO UWORD
-
-        LEAVE
+        RETURN NULLPTR
 
     ELSEIF inst2^.Type == IR_CONSTANT THEN
         // Numeric imm.
         // TODO investigate intentionally sharing common constants to
         //      reduce code size.
 
-        lirinst^.Source2 = NULLPTR
+        operand^.AccessType = FOX_ACCESS_IMM_PTR
+        operand^.Constant = inst2^.Body.Constant.Constant
 
-        lirinst^.Body.Machine.Fox.SrcAccessType =
-            FOX_ACCESS_IMM_PTR
-
-        lirinst^.Body.Machine.Fox.Constant2 =
-            inst2^.Body.Constant.Constant
-
-        LEAVE
+        RETURN NULLPTR
 
     ELSEIF inst2^.Type == IR_ADD THEN
         // If this is plus a constant less than 256, we can do an
@@ -353,28 +353,26 @@ FN FoxFillSourceForLoad (
 
             // Fill in the LIR instruction.
 
-            lirinst^.Source2 = LirSelectOrGetRegister ( inst2^.Source1 )
+            operand^.AccessType = FOX_ACCESS_REG_PTR
+            operand^.Constant = inst3^.Body.Constant.Constant
 
-            lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-
-            lirinst^.Body.Machine.Fox.Constant2 =
-                inst3^.Body.Constant.Constant
-
-            LEAVE
+            RETURN LirSelectOrGetRegister ( inst2^.Source1 )
         END
     END
 
     // In any load case not covered above, select.
 
-    lirinst^.Source2 = LirSelect ( inst2 )
-    lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-    lirinst^.Body.Machine.Fox.Constant2 = 0
+    operand^.AccessType = FOX_ACCESS_REG_PTR
+    operand^.Constant = 0
+
+    RETURN LirSelect ( inst2 )
 END
 
-FN FoxFillSource (
+FN FoxFillOperand (
     IN lirinst : ^LirInstruction,
+    IN operand : ^LirFoxOperand,
     IN var : ^IrVariable,
-)
+) : ^LirRegister
 
     // Fill the source fields of the instruction appropriately.
     // Caller should make sure the BitSize field was set on the LIR instruction.
@@ -383,17 +381,14 @@ FN FoxFillSource (
     //
     // REG [REG] [REG + OFF] IMM
 
-    srcreg : ^LirRegister
-
     inst := var^.DefinedBy
 
     IF NOT inst THEN
         // It's a named local.
 
-        lirinst^.Source2 = LirGetRegister ( var )
-        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+        operand^.AccessType = FOX_ACCESS_REGISTER
 
-        LEAVE
+        RETURN LirGetRegister ( var )
     END
 
     // Var is a temporary. Check for cases.
@@ -411,43 +406,37 @@ FN FoxFillSource (
         IF bitsize == FOX_BITS_UNKNOWN OR
             bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type] THEN
 
-            FoxFillSourceForLoad (
+            RETURN FoxFillOperandForAccess (
                 lirinst, // lirinst
+                operand, // operand
                 inst, // inst
             )
-
-            LEAVE
         END
 
     ELSEIF inst^.Type == IR_ADDR THEN
         // Gotta be a named imm.
         // TODO investigate sharing to reduce code size
 
-        lirinst^.Body.Machine.Fox.SrcAccessType =
-            FOX_ACCESS_IMM_NAME
+        operand^.AccessType = FOX_ACCESS_IMM_NAME
+        operand^.Constant = CAST inst^.Body.Addr.Symbol TO UWORD
 
-        lirinst^.Body.Machine.Fox.Constant2 =
-            CAST inst^.Body.Addr.Symbol TO UWORD
-
-        LEAVE
+        RETURN NULLPTR
 
     ELSEIF inst^.Type == IR_CONSTANT THEN
         // Gotta be a numeric imm.
         // TODO investigate sharing to reduce code size
 
-        lirinst^.Body.Machine.Fox.SrcAccessType =
-            FOX_ACCESS_IMM_PTR
+        operand^.AccessType = FOX_ACCESS_IMM_PTR
+        operand^.Constant = inst^.Body.Constant.Constant
 
-        lirinst^.Body.Machine.Fox.Constant2 =
-            inst^.Body.Constant.Constant
-
-        LEAVE
+        RETURN NULLPTR
     END
 
     // If we got here we've decided to use reg.
 
-    lirinst^.Source1 = LirSelect ( inst )
-    lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+    operand^.AccessType = FOX_ACCESS_REGISTER
+
+    RETURN LirSelect ( inst )
 END
 
 FN (LirSelectF) FoxSelectLoad (
@@ -465,12 +454,13 @@ FN (LirSelectF) FoxSelectLoad (
 
     lirinst^.Defines = defreg
 
-    FoxFillSourceForLoad (
+    lirinst^.Source2 = FoxFillOperandForAccess (
         lirinst, // lirinst
+        &lirinst^.Body.Machine.Fox.Op2, // operand
         inst, // inst
     )
 
-    lirinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
 
     LirInsertInstructionTail ( lirinst )
@@ -494,27 +484,27 @@ FN (LirSelectF) FoxSelectAddr (
     lirinst^.Defines = defreg
 
     IF inst^.Type == IR_ADDR THEN
-        lirinst^.Body.Machine.Fox.Constant2 =
+        lirinst^.Body.Machine.Fox.Op2.Constant =
             CAST inst^.Body.Addr.Symbol TO UWORD
     
-            lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_IMM_NAME
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM_NAME
 
     ELSEIF inst^.Type == IR_STRING_ADDR THEN
         // This will get resolved to a label pointing to a string during
         // code emission.
 
-        lirinst^.Body.Machine.Fox.Constant2 =
+        lirinst^.Body.Machine.Fox.Op2.Constant =
             CAST inst^.Body.String.String TO UWORD
 
-        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_STRING
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM_STRING
     
     ELSEIF inst^.Type == IR_CONSTANT THEN
-        lirinst^.Body.Machine.Fox.Constant2 = inst^.Body.Constant.Constant
+        lirinst^.Body.Machine.Fox.Op2.Constant = inst^.Body.Constant.Constant
 
-        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_IMM
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
     END
 
-    lirinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -545,8 +535,8 @@ FN (LirSelectF) FoxSelectStackAddr (
     movinst^.Defines = defreg
     movinst^.Source2 = &FoxSp
 
-    movinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
-    movinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
     movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -568,9 +558,9 @@ FN (LirSelectF) FoxSelectStackAddr (
     addinst^.Defines = defreg
     addinst^.Source1 = defreg
 
-    addinst^.Body.Machine.Fox.Constant2 = off
-    addinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
-    addinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_IMM
+    addinst^.Body.Machine.Fox.Op2.Constant = off
+    addinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    addinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
     addinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     addinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -618,16 +608,151 @@ FN (LirSelectF) FoxSelectMove (
     )
 
     lirinst^.Defines = defreg
-    lirinst^.Source1 = srcreg
+    lirinst^.Source2 = srcreg
 
-    lirinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
-    lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
     LirInsertInstructionTail ( lirinst )
 
     RETURN defreg
+END
+
+FN (LirSelectF) FoxSelectReturn (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    srcreg := LirSelectOrGetRegister ( inst^.Source1 )
+
+    // Hint for regalloc to assign it to a3 (per our ABI). If it doesn't, we
+    // will have to manually move it there during code emission.
+
+    srcreg^.Hint = FOX_A3
+
+    // Add a LIR return instruction. We can't directly generate a jump to the
+    // epilogue or something because we don't know how to return this value
+    // until after regalloc; so, we don't generate that jump until emission.
+
+    lirinst := LirCreateInstruction (
+        LIR_RETURN, // type
+        0, // machtype
+    )
+
+    lirinst^.Source2 = srcreg
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN NULLPTR
+END
+
+FN FoxGenerateFalseBranch (
+    IN inst : ^IrInstruction,
+)
+
+    IF inst^.Body.Branch.FalseLabel == inst^.Next THEN
+        // The false label is the fall-through, don't generate the false branch.
+
+        LEAVE
+    END
+
+    // Generate the false branch.
+
+    jmpinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_RJMP, // machtype
+    )
+
+    jmpinst^.Body.Machine.Fox.Op1.Constant =
+        CAST LirGetLabel ( inst^.Body.Branch.FalseLabel ) TO UWORD
+
+    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( jmpinst )
+END
+
+FN (LirSelectF) FoxSelectZeroBranch (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Output CMP with IMM 0 and then IFNZ JMP.
+
+    cmpinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_CMP, // machtype
+    )
+
+    cmpinst^.Body.Machine.Fox.Op2.Constant = 0
+    cmpinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
+    cmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    cmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_UNKNOWN
+
+    cmpinst^.Source1 = FoxFillOperand (
+        cmpinst, // lirinst
+        &cmpinst^.Body.Machine.Fox.Op1, // operand
+        inst^.Source1, // var
+    )
+
+    FoxSetIfUnknown ( cmpinst )
+
+    LirInsertInstructionTail ( cmpinst )
+
+    jmpinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_RJMP, // machtype
+    )
+
+    jmpinst^.Body.Machine.Fox.Op1.Constant =
+        CAST LirGetLabel ( inst^.Body.Branch.TrueLabel ) TO UWORD
+
+    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+
+    IF inst^.Type == IR_BRANCH_NONZERO THEN
+        jmpinst^.Body.Machine.Fox.Condition = FOX_COND_IFNZ
+
+    ELSE
+        jmpinst^.Body.Machine.Fox.Condition = FOX_COND_IFZ
+    END
+
+    jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( jmpinst )
+
+    // Generate an unconditional branch to the false label if required.
+
+    FoxGenerateFalseBranch ( inst )
+
+    RETURN NULLPTR
+END
+
+FN (LirSelectF) FoxSelectJump (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    IF inst^.Body.Jump.Label == inst^.Next THEN
+        // Don't generate the jump; allow fall-through.
+
+        RETURN NULLPTR
+    END
+
+    jmpinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_RJMP, // machtype
+    )
+
+    jmpinst^.Body.Machine.Fox.Op1.Constant =
+        CAST LirGetLabel ( inst^.Body.Jump.Label ) TO UWORD
+
+    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( jmpinst )
+
+    RETURN NULLPTR
 END
 
 FoxLirInfo : LirTargetInfoRecord = {
@@ -638,6 +763,13 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_STACK_ADDR] = &FoxSelectStackAddr,
         [IR_CONSTANT] = &FoxSelectAddr,
         [IR_MOVE] = &FoxSelectMove,
+
+        [IR_RETURN] = &FoxSelectReturn,
+
+        [IR_BRANCH_NONZERO] = &FoxSelectZeroBranch,
+        [IR_BRANCH_ZERO] = &FoxSelectZeroBranch,
+
+        [IR_JUMP] = &FoxSelectJump,
     },
 }
 
