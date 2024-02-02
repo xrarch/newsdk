@@ -152,7 +152,7 @@ FN LirSelect (
         inst, // inst
     )
 
-    IF reg^.Type == LIR_MACHINE_REG THEN
+    IF reg AND reg^.Type == LIR_MACHINE_REG THEN
         // The selected instruction shovels its results into a fixed register.
         // Create a move instruction whose destination is a virtual register,
         // with a hint that regalloc should assign it to that machine register.
