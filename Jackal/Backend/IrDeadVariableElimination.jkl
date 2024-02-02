@@ -75,6 +75,25 @@ FN IrEliminateDeadVariable (
     END
 END
 
+FN IrUndeadifyVariable (
+    IN var : ^IrVariable,
+)
+
+    IF NOT var^.ConsideredForDve THEN
+        var^.Opt.Dve.References = 1
+        var^.ConsideredForDve = TRUE
+
+    ELSE
+        IF NOT var^.Opt.Dve.References THEN
+            // Not dead after all.
+
+            TlRemoveEntryList ( &var^.Opt.Dve.DeadListEntry )
+        END
+
+        var^.Opt.Dve.References += 1
+    END
+END
+
 FN IrEliminateForFunction (
     IN funcsym : ^LexSymbol,
 )
@@ -118,35 +137,11 @@ FN IrEliminateForFunction (
         src2 := inst^.Source2
 
         IF src1 THEN
-            IF NOT src1^.ConsideredForDve THEN
-                src1^.Opt.Dve.References = 1
-                src1^.ConsideredForDve = TRUE
-
-            ELSE
-                IF NOT src1^.Opt.Dve.References THEN
-                    // Not dead after all.
-
-                    TlRemoveEntryList ( &src1^.Opt.Dve.DeadListEntry )
-                END
-
-                src1^.Opt.Dve.References += 1
-            END
+            IrUndeadifyVariable ( src1 )
         END
 
         IF src2 THEN
-            IF NOT src2^.ConsideredForDve THEN
-                src2^.Opt.Dve.References = 1
-                src2^.ConsideredForDve = TRUE
-
-            ELSE
-                IF NOT src2^.Opt.Dve.References THEN
-                    // Not dead after all.
-
-                    TlRemoveEntryList ( &src2^.Opt.Dve.DeadListEntry )
-                END
-
-                src2^.Opt.Dve.References += 1
-            END
+            IrUndeadifyVariable ( src2 )
         END
 
         IF inst^.Type == IR_CALL THEN
@@ -157,19 +152,7 @@ FN IrEliminateForFunction (
             WHILE arg DO
                 var := arg^.Variable
 
-                IF NOT var^.ConsideredForDve THEN
-                    var^.Opt.Dve.References = 1
-                    var^.ConsideredForDve = TRUE
-
-                ELSE
-                    IF NOT var^.Opt.Dve.References THEN
-                        // Not dead after all.
-
-                        TlRemoveEntryList ( &var^.Opt.Dve.DeadListEntry )
-                    END
-
-                    var^.Opt.Dve.References += 1
-                END
+                IrUndeadifyVariable ( var )
 
                 arg = arg^.Next
             END
