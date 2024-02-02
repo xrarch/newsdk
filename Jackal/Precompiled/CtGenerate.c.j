@@ -2428,7 +2428,6 @@ void CtGenerateCompoundInitializer(uint64_t _mng_node997, uint64_t _mng_count998
     ((void (*)(uint64_t))__twr_v1024)(__twr_v1025);
     __twr_v1026 = 8ULL;
     _mng_j1027 = __twr_v1026;
-    goto __twr_l98;
     __twr_l98:;
     __twr_v1028 = 1ULL;
     __twr_v1029 = _mng_j1027 - __twr_v1028;

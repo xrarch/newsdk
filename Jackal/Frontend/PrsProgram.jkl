@@ -4212,14 +4212,14 @@ FN PrsParseFnSignature (
     ) THEN
         // There's a return type!
 
-        LexLeaveMacroFreeZone ()
-
         returntype := PrsCreateType ()
 
         PrsType (
             returntype, // type
             0, // depth
         )
+
+        LexLeaveMacroFreeZone ()
 
         IF NOT PrsTypeIsValue (
             &nametoken, // errtoken

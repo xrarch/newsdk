@@ -9775,8 +9775,8 @@ uint64_t PrsParseFnSignature(uint64_t _mng_flags3922, uint64_t _mng_fnptr3923, u
     uint64_t __twr_v4271;
     uint64_t __twr_v4272;
     uint64_t __twr_v4273;
-    uint64_t __twr_v4274;
-    uint64_t _mng_returntype4275;
+    uint64_t _mng_returntype4274;
+    uint64_t __twr_v4275;
     uint64_t __twr_v4276;
     uint64_t __twr_v4277;
     uint64_t __twr_v4278;
@@ -10317,17 +10317,17 @@ uint64_t PrsParseFnSignature(uint64_t _mng_flags3922, uint64_t _mng_fnptr3923, u
     __twr_v4271 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v4268)(__twr_v4269, __twr_v4270, __twr_v4269);
     if (!(__twr_v4271)) { goto __twr_l849; } else { goto __twr_l848; }
     __twr_l848:;
-    __twr_v4272 = (uint64_t)(&LexLeaveMacroFreeZone);
-    ((void (*)())__twr_v4272)();
-    __twr_v4273 = (uint64_t)(&PrsCreateType);
-    __twr_v4274 = ((uint64_t (*)())__twr_v4273)();
-    _mng_returntype4275 = __twr_v4274;
-    __twr_v4276 = (uint64_t)(&PrsType);
-    __twr_v4277 = 0ULL;
-    ((void (*)(uint64_t, uint64_t))__twr_v4276)(__twr_v4274, __twr_v4277);
+    __twr_v4272 = (uint64_t)(&PrsCreateType);
+    __twr_v4273 = ((uint64_t (*)())__twr_v4272)();
+    _mng_returntype4274 = __twr_v4273;
+    __twr_v4275 = (uint64_t)(&PrsType);
+    __twr_v4276 = 0ULL;
+    ((void (*)(uint64_t, uint64_t))__twr_v4275)(__twr_v4273, __twr_v4276);
+    __twr_v4277 = (uint64_t)(&LexLeaveMacroFreeZone);
+    ((void (*)())__twr_v4277)();
     __twr_v4278 = (uint64_t)(&PrsTypeIsValue);
     __twr_v4279 = (uint64_t)(&_mng_nametoken3996);
-    __twr_v4280 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v4278)(__twr_v4279, __twr_v4274);
+    __twr_v4280 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v4278)(__twr_v4279, __twr_v4273);
     if (__twr_v4280) { goto __twr_l850; } else { goto __twr_l851; }
     __twr_l851:;
     __twr_v4281 = (uint64_t)(&LexTokenError);
@@ -10338,7 +10338,7 @@ uint64_t PrsParseFnSignature(uint64_t _mng_flags3922, uint64_t _mng_fnptr3923, u
     __twr_l850:;
     __twr_v4285 = 8ULL;
     __twr_v4286 = _mng_type4022 + __twr_v4285;
-    *(uint64_t*)(__twr_v4286) = _mng_returntype4275;
+    *(uint64_t*)(__twr_v4286) = _mng_returntype4274;
     goto __twr_l847;
     __twr_l849:;
     __twr_v4287 = (uint64_t)(&LexLeaveMacroFreeZone);

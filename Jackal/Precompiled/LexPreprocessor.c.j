@@ -1674,7 +1674,6 @@ void LexExpandMacro(uint64_t _mng_macro600, uint64_t _mng_token601) {
     __twr_v706 = __twr_v686 + __twr_v705;
     ((void (*)(uint64_t))__twr_v704)(__twr_v706);
     _mng_foundclose707 = __twr_v695;
-    goto __twr_l161;
     __twr_l161:;
     __twr_v708 = 2ULL;
     __twr_v709 = _mng_foundclose707 & __twr_v708;

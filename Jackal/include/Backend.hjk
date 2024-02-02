@@ -63,7 +63,9 @@ ENUM IrInstructionType : UBYTE
     IR_MULTIPLY,
     IR_INVERSE,
 
-    IR_MAX, // MUST be at the end
+    IR_MAX, // MUST be at the end (other than DEAD)
+
+    IR_DEAD,
 END
 
 ENUM IrVariableAnnotation : UBYTE
@@ -218,3 +220,10 @@ EXTERN FN IrGetStackOffset (
     IN func : ^IrFunction,
     IN symbol : ^LexSymbol,
 ) : UWORD
+
+#MACRO IrIsUselessBranch ( inst ) [
+    (((inst)^.Body.Branch.TrueLabel == (inst)^.Next) AND
+    ((inst)^.Body.Branch.FalseLabel == (inst)^.Next^.Next)) OR
+    (((inst)^.Body.Branch.FalseLabel == (inst)^.Next) AND
+    ((inst)^.Body.Branch.TrueLabel == (inst)^.Next^.Next))
+]

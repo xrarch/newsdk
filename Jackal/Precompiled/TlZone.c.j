@@ -109,7 +109,6 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone113) {
     uint64_t __twr_v139;
     uint64_t __twr_v140;
     uint64_t __twr_v141;
-    uint64_t __twr_v142;
     __twr_v114 = 8ULL;
     __twr_v115 = _mng_zone113 + __twr_v114;
     __twr_v116 = *(uint64_t*)(__twr_v115);
@@ -141,32 +140,30 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone113) {
     _mng_chunk127 = __twr_v132;
     __twr_v133 = 1ULL;
     _mng_i134 = __twr_v133;
-    __twr_v135 = 32ULL;
-    goto __twr_l7;
     __twr_l7:;
-    __twr_v136 = 8ULL;
-    __twr_v137 = _mng_zone113 + __twr_v136;
-    __twr_v138 = *(uint64_t*)(__twr_v137);
-    *(uint64_t*)(_mng_chunk127) = __twr_v138;
-    *(uint64_t*)(__twr_v137) = _mng_chunk127;
-    __twr_v139 = 1ULL;
-    __twr_v140 = _mng_i134 + __twr_v139;
-    _mng_i134 = __twr_v140;
-    __twr_v141 = _mng_chunk127 + _mng_blocksize122;
-    _mng_chunk127 = __twr_v141;
+    __twr_v135 = 8ULL;
+    __twr_v136 = _mng_zone113 + __twr_v135;
+    __twr_v137 = *(uint64_t*)(__twr_v136);
+    *(uint64_t*)(_mng_chunk127) = __twr_v137;
+    *(uint64_t*)(__twr_v136) = _mng_chunk127;
+    __twr_v138 = 1ULL;
+    __twr_v139 = _mng_i134 + __twr_v138;
+    _mng_i134 = __twr_v139;
+    __twr_v140 = _mng_chunk127 + _mng_blocksize122;
+    _mng_chunk127 = __twr_v140;
     __twr_l9:;
-    __twr_v142 = 32ULL;
-    if (_mng_i134 < __twr_v142) { goto __twr_l7; } else { goto __twr_l8; }
+    __twr_v141 = 32ULL;
+    if (_mng_i134 < __twr_v141) { goto __twr_l7; } else { goto __twr_l8; }
     __twr_l8:;
     return _mng_block117;
 }
-void TlFreeToZone(uint64_t _mng_zone143, uint64_t _mng_block144) {
+void TlFreeToZone(uint64_t _mng_zone142, uint64_t _mng_block143) {
+    uint64_t __twr_v144;
     uint64_t __twr_v145;
     uint64_t __twr_v146;
-    uint64_t __twr_v147;
-    __twr_v145 = 8ULL;
-    __twr_v146 = _mng_zone143 + __twr_v145;
-    __twr_v147 = *(uint64_t*)(__twr_v146);
-    *(uint64_t*)(_mng_block144) = __twr_v147;
-    *(uint64_t*)(__twr_v146) = _mng_block144;
+    __twr_v144 = 8ULL;
+    __twr_v145 = _mng_zone142 + __twr_v144;
+    __twr_v146 = *(uint64_t*)(__twr_v145);
+    *(uint64_t*)(_mng_block143) = __twr_v146;
+    *(uint64_t*)(__twr_v145) = _mng_block143;
 }

@@ -23,6 +23,16 @@ IrConstantTable : IrConstantTableRecord
     ((var)^.DefinedBy^.Body.Constant.Constant)
 ]
 
+#MACRO IrEliminateUselessBranch ( inst ) [
+    IF IrIsUselessBranch ( inst ) THEN
+        IrRemoveInstruction ( inst )
+
+        inst^.Type = IR_DEAD
+
+        RETURN FALSE
+    END
+]
+
 FN IrCacheConstant (
     IN var : ^IrVariable,
     IN constant : UWORD,
@@ -185,6 +195,8 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
 
     IF src1^.Symbol THEN
@@ -205,7 +217,7 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -229,6 +241,8 @@ FN (IrSimplifyF) IrSimplifyBranchZero (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
 
     IF src1^.Symbol THEN
@@ -249,7 +263,7 @@ FN (IrSimplifyF) IrSimplifyBranchZero (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -272,6 +286,8 @@ END
 FN (IrSimplifyF) IrSimplifyBranchEquals (
     IN inst : ^IrInstruction,
 ) : UBYTE
+
+    IrEliminateUselessBranch ( inst )
 
     src1 := inst^.Source1
     src2 := inst^.Source2
@@ -296,7 +312,7 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -335,6 +351,8 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -358,7 +376,7 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -397,6 +415,8 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -420,7 +440,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -461,6 +481,8 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -484,7 +506,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -525,6 +547,8 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -548,7 +572,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -589,6 +613,8 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -612,7 +638,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -901,6 +927,8 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -924,7 +952,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -965,6 +993,8 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -988,7 +1018,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -1029,6 +1059,8 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -1052,7 +1084,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -1093,6 +1125,8 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
     IN inst : ^IrInstruction,
 ) : UBYTE
 
+    IrEliminateUselessBranch ( inst )
+
     src1 := inst^.Source1
     src2 := inst^.Source2
 
@@ -1116,7 +1150,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
 
-        RETURN FALSE
+        RETURN TRUE
     END
 
     IF inst^.Body.Branch.TrueLabel == inst^.Next THEN
@@ -2283,8 +2317,25 @@ FN (IrSimplifyF) IrSimplifyCall (
     RETURN FALSE
 END
 
+FN (IrSimplifyF) IrSimplifyJump (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    IF inst^.Body.Jump.Label == inst^.Next THEN
+        // Eliminate useless jump
+
+        IrRemoveInstruction ( inst )
+
+        inst^.Type = IR_DEAD
+    END
+
+    RETURN FALSE
+END
+
 IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
     [IR_NOT] = &IrSimplifyNot,
+
+    [IR_JUMP] = &IrSimplifyJump,
 
     [IR_BRANCH_NONZERO] = &IrSimplifyBranchNonZero,
     [IR_BRANCH_ZERO] = &IrSimplifyBranchZero,

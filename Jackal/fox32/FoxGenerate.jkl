@@ -678,6 +678,10 @@ FN (LirSelectF) FoxSelectZeroBranch (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
+    IF IrIsUselessBranch ( inst ) THEN
+        RETURN NULLPTR
+    END
+
     // Output CMP with IMM 0 and then IFNZ JMP.
 
     cmpinst := LirCreateInstruction (
