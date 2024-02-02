@@ -542,15 +542,15 @@ void IrEliminateForFunction(uint64_t _mng_funcsym254) {
     __twr_v320 = _mng_listentry318 - __twr_v319;
     __twr_v321 = (uint64_t)(&IrEliminateDeadVariable);
     ((void (*)(uint64_t))__twr_v321)(__twr_v320);
-    __twr_v322 = *(uint64_t*)(_mng_listentry318);
-    __twr_v323 = 8ULL;
-    __twr_v324 = _mng_listentry318 + __twr_v323;
-    __twr_v325 = *(uint64_t*)(__twr_v324);
-    __twr_v326 = *(uint64_t*)(_mng_listentry318);
-    *(uint64_t*)(__twr_v325) = __twr_v326;
-    __twr_v327 = __twr_v326 + __twr_v323;
-    *(uint64_t*)(__twr_v327) = __twr_v325;
-    _mng_listentry318 = __twr_v322;
+    __twr_v322 = 8ULL;
+    __twr_v323 = _mng_listentry318 + __twr_v322;
+    __twr_v324 = *(uint64_t*)(__twr_v323);
+    __twr_v325 = *(uint64_t*)(_mng_listentry318);
+    *(uint64_t*)(__twr_v324) = __twr_v325;
+    __twr_v326 = __twr_v325 + __twr_v322;
+    *(uint64_t*)(__twr_v326) = __twr_v324;
+    __twr_v327 = *(uint64_t*)(_mng_listentry318);
+    _mng_listentry318 = __twr_v327;
     __twr_l45:;
     if (_mng_listentry318 != _mng_head316) { goto __twr_l43; } else { goto __twr_l44; }
     __twr_l44:;

@@ -171,11 +171,9 @@ FN IrEliminateForFunction (
 
         IrEliminateDeadVariable ( var )
 
-        nextentry := listentry^.Next
-
         TlRemoveEntryList ( listentry )
 
-        listentry = nextentry
+        listentry = listentry^.Next
     END
 END
 
