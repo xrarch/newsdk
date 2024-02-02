@@ -450,6 +450,19 @@ FN (CtGenerateF) CtGenerateBranchNonZero (
     CtInsertStringFunc ( "; }\n" )
 END
 
+FN (CtGenerateF) CtGenerateBranchZero (
+    IN inst : ^IrInstruction,
+)
+
+    CtInsertStringFunc ( "    if (!(" )
+    CtOutputVariableName ( inst^.Source1 )
+    CtInsertStringFunc ( ")) { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.TrueLabel )
+    CtInsertStringFunc ( "; } else { goto " )
+    CtOutputLabelName ( inst^.Body.Branch.FalseLabel )
+    CtInsertStringFunc ( "; }\n" )
+END
+
 FN (CtGenerateF) CtGenerateReturn (
     IN inst : ^IrInstruction,
 )
@@ -1086,6 +1099,7 @@ CtGenerateInstructionFunctions : CtGenerateF[IR_MAX] = {
     [IR_STRING_ADDR] = &CtGenerateStringAddr,
     [IR_CONSTANT] = &CtGenerateConstant,
     [IR_BRANCH_NONZERO] = &CtGenerateBranchNonZero,
+    [IR_BRANCH_ZERO] = &CtGenerateBranchZero,
     [IR_RETURN] = &CtGenerateReturn,
     [IR_MOVE] = &CtGenerateMove,
     [IR_NOT] = &CtGenerateNot,

@@ -124,6 +124,7 @@ ENUM FoxAccessType : UBYTE
     FOX_ACCESS_REG_PTR,
     FOX_ACCESS_IMM_PTR,
     FOX_ACCESS_IMM_PTR_NAME,
+    FOX_ACCESS_STRING,
 END
 
 ENUM FoxRegisters : UBYTE
@@ -279,9 +280,9 @@ FN FoxFillSourceForLoad (
     IF NOT inst2 THEN
         // Not a temporary, just trust this named local.
 
-        lirinst^.Source1 = LirGetRegister ( src2 )
+        lirinst^.Source2 = LirGetRegister ( src2 )
         lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-        lirinst^.Body.Machine.Fox.Constant1 = 0
+        lirinst^.Body.Machine.Fox.Constant2 = 0
 
         LEAVE
     END
@@ -299,9 +300,9 @@ FN FoxFillSourceForLoad (
         IF off < 256 THEN
             // Great! We can do this directly.
 
-            lirinst^.Source1 = &FoxSp
+            lirinst^.Source2 = &FoxSp
             lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-            lirinst^.Body.Machine.Fox.Constant1 = off
+            lirinst^.Body.Machine.Fox.Constant2 = off
 
             LEAVE
         END
@@ -311,12 +312,10 @@ FN FoxFillSourceForLoad (
         // TODO investigate intentionally sharing common constants to
         //      reduce code size.
 
-        lirinst^.Source1 = NULLPTR
-
         lirinst^.Body.Machine.Fox.SrcAccessType =
             FOX_ACCESS_IMM_PTR_NAME
 
-        lirinst^.Body.Machine.Fox.Constant1 =
+        lirinst^.Body.Machine.Fox.Constant2 =
             CAST inst2^.Body.Addr.Symbol TO UWORD
 
         LEAVE
@@ -326,12 +325,12 @@ FN FoxFillSourceForLoad (
         // TODO investigate intentionally sharing common constants to
         //      reduce code size.
 
-        lirinst^.Source1 = NULLPTR
+        lirinst^.Source2 = NULLPTR
 
         lirinst^.Body.Machine.Fox.SrcAccessType =
             FOX_ACCESS_IMM_PTR
 
-        lirinst^.Body.Machine.Fox.Constant1 =
+        lirinst^.Body.Machine.Fox.Constant2 =
             inst2^.Body.Constant.Constant
 
         LEAVE
@@ -354,11 +353,11 @@ FN FoxFillSourceForLoad (
 
             // Fill in the LIR instruction.
 
-            lirinst^.Source1 = LirSelectOrGetRegister ( inst2^.Source1 )
+            lirinst^.Source2 = LirSelectOrGetRegister ( inst2^.Source1 )
 
             lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
 
-            lirinst^.Body.Machine.Fox.Constant1 =
+            lirinst^.Body.Machine.Fox.Constant2 =
                 inst3^.Body.Constant.Constant
 
             LEAVE
@@ -367,9 +366,9 @@ FN FoxFillSourceForLoad (
 
     // In any load case not covered above, select.
 
-    lirinst^.Source1 = LirSelect ( inst2 )
+    lirinst^.Source2 = LirSelect ( inst2 )
     lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REG_PTR
-    lirinst^.Body.Machine.Fox.Constant1 = 0
+    lirinst^.Body.Machine.Fox.Constant2 = 0
 END
 
 FN FoxFillSource (
@@ -391,7 +390,7 @@ FN FoxFillSource (
     IF NOT inst THEN
         // It's a named local.
 
-        lirinst^.Source1 = LirGetRegister ( var )
+        lirinst^.Source2 = LirGetRegister ( var )
         lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
 
         LEAVE
@@ -401,6 +400,10 @@ FN FoxFillSource (
 
     IF inst^.Type == IR_LOAD THEN
         // It's one of the load ones.
+
+        // TODO If it's used more than once, share instead of selecting over it,
+        //      or we will generate lots of extra loads.
+
         // We can only select over this if the load width matches.
 
         bitsize := lirinst^.Body.Machine.Fox.BitSize
@@ -420,12 +423,10 @@ FN FoxFillSource (
         // Gotta be a named imm.
         // TODO investigate sharing to reduce code size
 
-        lirinst^.Source1 = NULLPTR
-
         lirinst^.Body.Machine.Fox.SrcAccessType =
             FOX_ACCESS_IMM_NAME
 
-        lirinst^.Body.Machine.Fox.Constant1 =
+        lirinst^.Body.Machine.Fox.Constant2 =
             CAST inst^.Body.Addr.Symbol TO UWORD
 
         LEAVE
@@ -434,12 +435,10 @@ FN FoxFillSource (
         // Gotta be a numeric imm.
         // TODO investigate sharing to reduce code size
 
-        lirinst^.Source1 = NULLPTR
-
         lirinst^.Body.Machine.Fox.SrcAccessType =
             FOX_ACCESS_IMM_PTR
 
-        lirinst^.Body.Machine.Fox.Constant1 =
+        lirinst^.Body.Machine.Fox.Constant2 =
             inst^.Body.Constant.Constant
 
         LEAVE
@@ -475,6 +474,107 @@ FN (LirSelectF) FoxSelectLoad (
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
 
     LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
+END
+
+FN (LirSelectF) FoxSelectAddr (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Generate a fox32 imm-to-reg MOV instruction.
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    lirinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_MOV, // machtype
+    )
+
+    lirinst^.Defines = defreg
+
+    IF inst^.Type == IR_ADDR THEN
+        lirinst^.Body.Machine.Fox.Constant2 =
+            CAST inst^.Body.Addr.Symbol TO UWORD
+    
+            lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_IMM_NAME
+
+    ELSEIF inst^.Type == IR_STRING_ADDR THEN
+        // This will get resolved to a label pointing to a string during
+        // code emission.
+
+        lirinst^.Body.Machine.Fox.Constant2 =
+            CAST inst^.Body.String.String TO UWORD
+
+        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_STRING
+    
+    ELSEIF inst^.Type == IR_CONSTANT THEN
+        lirinst^.Body.Machine.Fox.Constant2 = inst^.Body.Constant.Constant
+
+        lirinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_IMM
+    END
+
+    lirinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    RETURN defreg
+END
+
+FN (LirSelectF) FoxSelectStackAddr (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Generate a MOV instruction from SP to a temporary. Then generate an add
+    // instruction to create the stack address.
+
+    symbol := inst^.Body.Addr.Symbol
+
+    off := IrGetStackOffset (
+        LirCurrentFunction, // func
+        symbol, // symbol
+    )
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    movinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_MOV, // machtype
+    )
+
+    movinst^.Defines = defreg
+    movinst^.Source2 = &FoxSp
+
+    movinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( movinst )
+
+    addinst := LirCreateInstruction (
+        LIR_BINARY, // type
+        FOX_ADD, // machtype
+    )
+
+    // Note that for the sake of regalloc we put the defined register as both
+    // used and defined here (because that's the sitch -- fox32 can only add
+    // onto a register), but in the final assembly it will just be
+    //
+    //  add defreg, IMM
+    //
+    // We put an actual source register in Source2 instead.
+
+    addinst^.Defines = defreg
+    addinst^.Source1 = defreg
+
+    addinst^.Body.Machine.Fox.Constant2 = off
+    addinst^.Body.Machine.Fox.DestAccessType = FOX_ACCESS_REGISTER
+    addinst^.Body.Machine.Fox.SrcAccessType = FOX_ACCESS_IMM
+    addinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    addinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( addinst )
 
     RETURN defreg
 END
@@ -533,6 +633,10 @@ END
 FoxLirInfo : LirTargetInfoRecord = {
     [SelectionTable] = {
         [IR_LOAD] = &FoxSelectLoad,
+        [IR_ADDR] = &FoxSelectAddr,
+        [IR_STRING_ADDR] = &FoxSelectAddr,
+        [IR_STACK_ADDR] = &FoxSelectStackAddr,
+        [IR_CONSTANT] = &FoxSelectAddr,
         [IR_MOVE] = &FoxSelectMove,
     },
 }
@@ -542,6 +646,10 @@ FN (AsmEmitF) FoxEmitFunction (
 )
 
     // Emit the final assembly language for a function.
+
+    // First add a prologue and epilogue.
+
+    // Now loop to emit the text.
 
     TlInternalError ( "TODO FoxEmitFunction", 0, 0, 0 )
 END

@@ -65,7 +65,7 @@ uint64_t TlIsPowerOfTwo(uint64_t _mng_constant102) {
     uint64_t __twr_v112;
     uint64_t __twr_v113;
     __twr_v103 = 0ULL;
-    if (_mng_constant102 == __twr_v103) { goto __twr_l2; } else { goto __twr_l1; }
+    if (_mng_constant102 != __twr_v103) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l2:;
     __twr_v104 = 18446744073709551615ULL;
     return __twr_v104;
@@ -75,10 +75,10 @@ uint64_t TlIsPowerOfTwo(uint64_t _mng_constant102) {
     __twr_l3:;
     __twr_v107 = 1ULL;
     __twr_v108 = _mng_constant102 & __twr_v107;
-    if (__twr_v108) { goto __twr_l6; } else { goto __twr_l5; }
+    if (!(__twr_v108)) { goto __twr_l5; } else { goto __twr_l6; }
     __twr_l6:;
     __twr_v109 = 1ULL;
-    if (_mng_constant102 != __twr_v109) { goto __twr_l8; } else { goto __twr_l7; }
+    if (_mng_constant102 == __twr_v109) { goto __twr_l7; } else { goto __twr_l8; }
     __twr_l8:;
     __twr_v110 = 18446744073709551615ULL;
     return __twr_v110;

@@ -204,6 +204,76 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
         ELSE
             inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
         END
+
+        RETURN FALSE
+    END
+
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_ZERO
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+    END
+
+    RETURN FALSE
+END
+
+FN (IrSimplifyF) IrSimplifyBranchZero (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+
+    IF src1^.Symbol THEN
+        // Named local, no opportunities.
+
+        RETURN FALSE
+    END
+
+    IF IrVariableIsConstant ( src1 ) THEN
+        // Convert to unconditional branch.
+
+        inst^.Type = IR_JUMP
+
+        IF NOT IrVariableConstantValue ( src1 ) THEN
+            inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
+
+        ELSE
+            inst^.Body.Jump.Label = inst^.Body.Branch.FalseLabel
+        END
+
+        RETURN FALSE
+    END
+
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_NONZERO
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
     END
 
     RETURN FALSE
@@ -239,7 +309,29 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_NOT_EQUALS
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -284,7 +376,29 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_EQUALS
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -329,7 +443,29 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_GTEQ
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -340,7 +476,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_BRANCH_GTEQ
+        inst^.Type = IR_BRANCH_GREATER_THAN
     END
 
     RETURN FALSE
@@ -376,7 +512,29 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_LTEQ
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -387,7 +545,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_BRANCH_LTEQ
+        inst^.Type = IR_BRANCH_LESS_THAN
     END
 
     RETURN FALSE
@@ -423,7 +581,29 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_GREATER_THAN
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -470,7 +650,29 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_LESS_THAN
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -481,7 +683,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_BRANCH_LESS_THAN
+        inst^.Type = IR_BRANCH_LTEQ
     END
 
     RETURN FALSE
@@ -603,7 +805,7 @@ FN (IrSimplifyF) IrSimplifyCmpLessThan (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_GTEQ
+        inst^.Type = IR_COMPARE_GREATER_THAN
     END
 
     RETURN FALSE
@@ -645,7 +847,7 @@ FN (IrSimplifyF) IrSimplifyCmpGreaterThan (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_LTEQ
+        inst^.Type = IR_COMPARE_LESS_THAN
     END
 
     RETURN FALSE
@@ -687,7 +889,7 @@ FN (IrSimplifyF) IrSimplifyCmpLtEq (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_GREATER_THAN
+        inst^.Type = IR_COMPARE_GTEQ
     END
 
     RETURN FALSE
@@ -729,7 +931,7 @@ FN (IrSimplifyF) IrSimplifyCmpGtEq (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_LESS_THAN
+        inst^.Type = IR_COMPARE_LTEQ
     END
 
     RETURN FALSE
@@ -765,7 +967,29 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_GTEQ_SIGNED
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -776,7 +1000,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_BRANCH_GTEQ_SIGNED
+        inst^.Type = IR_BRANCH_GREATER_THAN_SIGNED
     END
 
     RETURN FALSE
@@ -812,7 +1036,29 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_LTEQ_SIGNED
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -823,7 +1069,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_BRANCH_LTEQ_SIGNED
+        inst^.Type = IR_BRANCH_LESS_THAN_SIGNED
     END
 
     RETURN FALSE
@@ -859,7 +1105,29 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_GREATER_THAN_SIGNED
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -906,7 +1174,29 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
         RETURN FALSE
     END
 
-    // It's not the case that both are constants, but one might be.
+    nextinst := inst^.Next
+
+    IF nextinst AND
+        nextinst^.Type == IR_LABEL AND
+        inst^.Body.Branch.TrueLabel == nextinst THEN
+
+        // Invert the branch so that the fall-through case is the false case.
+
+        inst^.Type = IR_BRANCH_LESS_THAN_SIGNED
+
+        // Flip the labels.
+
+        truelabel := inst^.Body.Branch.TrueLabel
+        falselabel := inst^.Body.Branch.FalseLabel
+
+        inst^.Body.Branch.TrueLabel = falselabel
+        inst^.Body.Branch.FalseLabel = truelabel
+
+        // Repeat analysis of this instruction in case we can flip the constant
+        // to the right as well.
+
+        RETURN TRUE
+    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Flip so that the constant is on the right.
@@ -917,7 +1207,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_BRANCH_LESS_THAN_SIGNED
+        inst^.Type = IR_BRANCH_LTEQ_SIGNED
     END
 
     RETURN FALSE
@@ -959,7 +1249,7 @@ FN (IrSimplifyF) IrSimplifyCmpLessThanSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_GTEQ_SIGNED
+        inst^.Type = IR_COMPARE_GREATER_THAN_SIGNED
     END
 
     RETURN FALSE
@@ -1001,7 +1291,7 @@ FN (IrSimplifyF) IrSimplifyCmpGreaterThanSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_LTEQ_SIGNED
+        inst^.Type = IR_COMPARE_LESS_THAN_SIGNED
     END
 
     RETURN FALSE
@@ -1043,7 +1333,7 @@ FN (IrSimplifyF) IrSimplifyCmpLtEqSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_GREATER_THAN_SIGNED
+        inst^.Type = IR_COMPARE_GTEQ_SIGNED
     END
 
     RETURN FALSE
@@ -1085,7 +1375,7 @@ FN (IrSimplifyF) IrSimplifyCmpGtEqSigned (
         src1 = src2
         src2 = inst^.Source2
 
-        inst^.Type = IR_COMPARE_LESS_THAN_SIGNED
+        inst^.Type = IR_COMPARE_LTEQ_SIGNED
     END
 
     RETURN FALSE
@@ -1310,7 +1600,8 @@ FN (IrSimplifyF) IrSimplifyAdd (
             //      we can have an "offset offset" that we set here and it only
             //      gets actual stack frame space allocated during isel (so that
             //      we benefit from DVE). also we shouldn't fold adds into
-            //      IR_STACK_ADDR if the C backend is the target.
+            //      IR_STACK_ADDR if the C backend is the target (since it has
+            //      no actual stack frame and refers to everything by name).
 
             inst1src2 := inst1^.Source2
 
@@ -2056,6 +2347,8 @@ IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
     [IR_NOT] = &IrSimplifyNot,
 
     [IR_BRANCH_NONZERO] = &IrSimplifyBranchNonZero,
+    [IR_BRANCH_ZERO] = &IrSimplifyBranchZero,
+
     [IR_BRANCH_EQUALS] = &IrSimplifyBranchEquals,
     [IR_BRANCH_NOT_EQUALS] = &IrSimplifyBranchNotEquals,
     [IR_BRANCH_LESS_THAN] = &IrSimplifyBranchLessThan,
@@ -2160,6 +2453,12 @@ FN IrSimplifyForFunction (
     // selection pass and would automagically die. However, we also want to
     // eliminate dead named locals. For this reason, there is a dead variable
     // elimination pass that occurs after this one.
+    //
+    // We also make sure that if a branch is immediately followed by one of its
+    // labels, that the subsequent label is the false case; inverting the branch
+    // to make this so, if it's not. Branches are also "flipped" to put the
+    // constant on the right side. Both of these transformations tend to make
+    // instruction selection much easier.
 
     inst := irfunc^.Head
 

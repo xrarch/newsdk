@@ -159,7 +159,7 @@ void LexInitializeSection(uint64_t _mng_section146, uint64_t _mng_name147) {
     *(uint64_t*)(__twr_v160) = __twr_v151;
     __twr_v161 = (uint64_t)(&LexSectionListTail);
     __twr_v162 = *(uint64_t*)(__twr_v161);
-    if (__twr_v162) { goto __twr_l2; } else { goto __twr_l3; }
+    if (!(__twr_v162)) { goto __twr_l3; } else { goto __twr_l2; }
     __twr_l2:;
     __twr_v163 = (uint64_t)(&LexSectionListTail);
     __twr_v164 = *(uint64_t*)(__twr_v163);
@@ -212,7 +212,7 @@ uint64_t LexLookupSection(uint64_t _mng_name178) {
     uint64_t __twr_v189;
     __twr_v179 = 0ULL;
     __twr_v180 = *(uint8_t*)(_mng_name178);
-    if (__twr_v180 == __twr_v179) { goto __twr_l5; } else { goto __twr_l4; }
+    if (__twr_v180 != __twr_v179) { goto __twr_l4; } else { goto __twr_l5; }
     __twr_l5:;
     __twr_v181 = (uint64_t)(&LexDefaultSection);
     return __twr_v181;

@@ -305,7 +305,7 @@ void LexInitializeFileStream(uint64_t _mng_stream212, uint64_t _mng_fileblock213
     __twr_v218 = 16384ULL;
     __twr_v219 = (uint64_t)(&_mng_buffer220);
     __twr_v221 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v217)(__twr_v218, __twr_v219);
-    if (__twr_v221) { goto __twr_l4; } else { goto __twr_l3; }
+    if (!(__twr_v221)) { goto __twr_l3; } else { goto __twr_l4; }
     __twr_l4:;
     __twr_v222 = (uint64_t)(&TlInternalError);
     __twr_v223 = (uint64_t)(&"Failed to allocate lex buffer");
@@ -503,7 +503,7 @@ uint64_t LexStreamNextCharacter() {
     uint64_t __twr_v401;
     __twr_v239 = (uint64_t)(&LexCurrentStream);
     __twr_v240 = *(uint64_t*)(__twr_v239);
-    if (__twr_v240) { goto __twr_l5; } else { goto __twr_l6; }
+    if (!(__twr_v240)) { goto __twr_l6; } else { goto __twr_l5; }
     __twr_l5:;
     __twr_v241 = (uint64_t)(&LexCurrentStream);
     __twr_v242 = *(uint64_t*)(__twr_v241);
@@ -511,7 +511,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v244 = 92ULL;
     __twr_v245 = __twr_v242 + __twr_v244;
     __twr_v246 = *(uint8_t*)(__twr_v245);
-    if (__twr_v246) { goto __twr_l9; } else { goto __twr_l10; }
+    if (!(__twr_v246)) { goto __twr_l10; } else { goto __twr_l9; }
     __twr_l9:;
     __twr_v247 = (uint64_t)(&LexCurrentStream);
     __twr_v248 = *(uint64_t*)(__twr_v247);
@@ -527,7 +527,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v254 = 91ULL;
     __twr_v255 = _mng_stream243 + __twr_v254;
     __twr_v256 = *(uint8_t*)(__twr_v255);
-    if (__twr_v256) { goto __twr_l11; } else { goto __twr_l12; }
+    if (!(__twr_v256)) { goto __twr_l12; } else { goto __twr_l11; }
     __twr_l11:;
     __twr_v257 = (uint64_t)(&LexCurrentStream);
     __twr_v258 = *(uint64_t*)(__twr_v257);
@@ -546,7 +546,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v266 = 36ULL;
     __twr_v267 = _mng_stream243 + __twr_v266;
     __twr_v268 = *(uint32_t*)(__twr_v267);
-    if (__twr_v265 < __twr_v268) { goto __twr_l13; } else { goto __twr_l14; }
+    if (__twr_v265 >= __twr_v268) { goto __twr_l14; } else { goto __twr_l13; }
     __twr_l13:;
     __twr_v269 = 24ULL;
     __twr_v270 = _mng_stream243 + __twr_v269;
@@ -565,7 +565,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v279 = 56ULL;
     __twr_v280 = _mng_stream243 + __twr_v279;
     __twr_v281 = *(uint64_t*)(__twr_v280);
-    if (__twr_v281) { goto __twr_l15; } else { goto __twr_l16; }
+    if (!(__twr_v281)) { goto __twr_l16; } else { goto __twr_l15; }
     __twr_l15:;
     __twr_v282 = 64ULL;
     __twr_v283 = _mng_stream243 + __twr_v282;
@@ -597,13 +597,13 @@ uint64_t LexStreamNextCharacter() {
     __twr_v301 = *(uint64_t*)(__twr_v300);
     __twr_v302 = (uint64_t)(&LexRootScope);
     __twr_v303 = *(uint64_t*)(__twr_v302);
-    if (__twr_v301 != __twr_v303) { goto __twr_l22; } else { goto __twr_l23; }
+    if (__twr_v301 == __twr_v303) { goto __twr_l23; } else { goto __twr_l22; }
     __twr_l22:;
     __twr_v304 = (uint64_t)(&LexCurrentScope);
     __twr_v305 = *(uint64_t*)(__twr_v304);
     __twr_v306 = *(uint64_t*)(__twr_v305);
     __twr_v307 = *(uint64_t*)(__twr_v306);
-    if (__twr_v307) { goto __twr_l25; } else { goto __twr_l24; }
+    if (!(__twr_v307)) { goto __twr_l24; } else { goto __twr_l25; }
     __twr_l25:;
     __twr_v308 = (uint64_t)(&LexStreamError);
     __twr_v309 = (uint64_t)(&"Macro terminated during nested scope");
@@ -620,7 +620,7 @@ uint64_t LexStreamNextCharacter() {
     __twr_v316 = *(uint64_t*)(__twr_v315);
     __twr_v317 = (uint64_t)(&LexRootScope);
     __twr_v318 = *(uint64_t*)(__twr_v317);
-    if (__twr_v316 != __twr_v318) { goto __twr_l26; } else { goto __twr_l21; }
+    if (__twr_v316 == __twr_v318) { goto __twr_l21; } else { goto __twr_l26; }
     __twr_l26:;
     __twr_v319 = (uint64_t)(&LexStreamError);
     __twr_v320 = (uint64_t)(&"Macro terminated during nested scope");
@@ -704,7 +704,7 @@ uint64_t LexStreamNextCharacter() {
     _mng_byte252 = __twr_v372;
     __twr_l8:;
     __twr_v373 = 0ULL;
-    if (_mng_byte252 == __twr_v373) { goto __twr_l34; } else { goto __twr_l35; }
+    if (_mng_byte252 != __twr_v373) { goto __twr_l35; } else { goto __twr_l34; }
     __twr_l34:;
     __twr_v374 = (uint64_t)(&LexStreamError);
     __twr_v375 = (uint64_t)(&"An invalid byte was found in the source file.");
@@ -713,7 +713,7 @@ uint64_t LexStreamNextCharacter() {
     goto __twr_l33;
     __twr_l35:;
     __twr_v377 = 13ULL;
-    if (_mng_byte252 == __twr_v377) { goto __twr_l36; } else { goto __twr_l37; }
+    if (_mng_byte252 != __twr_v377) { goto __twr_l37; } else { goto __twr_l36; }
     __twr_l36:;
     __twr_v378 = (uint64_t)(&LexStreamError);
     __twr_v379 = (uint64_t)(&"DOS line endings were detected in the source file.");
@@ -722,7 +722,7 @@ uint64_t LexStreamNextCharacter() {
     goto __twr_l33;
     __twr_l37:;
     __twr_v381 = 10ULL;
-    if (_mng_byte252 == __twr_v381) { goto __twr_l38; } else { goto __twr_l39; }
+    if (_mng_byte252 != __twr_v381) { goto __twr_l39; } else { goto __twr_l38; }
     __twr_l38:;
     __twr_v382 = 1ULL;
     __twr_v383 = 44ULL;

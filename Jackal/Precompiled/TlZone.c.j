@@ -63,7 +63,7 @@ void TlInitializeZone(uint64_t _mng_zone102, uint64_t _mng_blocksize103) {
     uint64_t __twr_v111;
     uint64_t __twr_v112;
     __twr_v104 = 8ULL;
-    if (_mng_blocksize103 < __twr_v104) { goto __twr_l2; } else { goto __twr_l1; }
+    if (_mng_blocksize103 >= __twr_v104) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l2:;
     __twr_v105 = 8ULL;
     _mng_blocksize103 = __twr_v105;
@@ -114,7 +114,7 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone113) {
     __twr_v115 = _mng_zone113 + __twr_v114;
     __twr_v116 = *(uint64_t*)(__twr_v115);
     _mng_block117 = __twr_v116;
-    if (__twr_v116) { goto __twr_l4; } else { goto __twr_l3; }
+    if (!(__twr_v116)) { goto __twr_l3; } else { goto __twr_l4; }
     __twr_l4:;
     __twr_v118 = *(uint64_t*)(_mng_block117);
     __twr_v119 = 8ULL;
@@ -129,7 +129,7 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone113) {
     __twr_v125 = (uint64_t)(&TlBumpAlloc);
     __twr_v126 = (uint64_t)(&_mng_chunk127);
     __twr_v128 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v125)(__twr_v124, __twr_v126);
-    if (__twr_v128) { goto __twr_l6; } else { goto __twr_l5; }
+    if (!(__twr_v128)) { goto __twr_l5; } else { goto __twr_l6; }
     __twr_l6:;
     __twr_v129 = (uint64_t)(&TlInternalError);
     __twr_v130 = (uint64_t)(&"Failed to allocate zone chunk");

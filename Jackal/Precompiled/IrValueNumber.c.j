@@ -168,7 +168,7 @@ void IrValueNumberBarrier(uint64_t _mng_onlyloads170, uint64_t _mng_onlynameds17
     _mng_head173 = __twr_v172;
     __twr_v174 = *(uint64_t*)(__twr_v172);
     _mng_listentry175 = __twr_v174;
-    if (__twr_v174 != __twr_v172) { goto __twr_l1; } else { goto __twr_l2; }
+    if (__twr_v174 == __twr_v172) { goto __twr_l2; } else { goto __twr_l1; }
     __twr_l1:;
     __twr_v176 = *(uint64_t*)(_mng_listentry175);
     _mng_nextentry177 = __twr_v176;
@@ -180,14 +180,14 @@ void IrValueNumberBarrier(uint64_t _mng_onlyloads170, uint64_t _mng_onlynameds17
     __twr_v181 = 76ULL;
     __twr_v182 = _mng_var180 + __twr_v181;
     __twr_v183 = *(uint8_t*)(__twr_v182);
-    if (__twr_v183) { goto __twr_l6; } else { goto __twr_l4; }
+    if (!(__twr_v183)) { goto __twr_l4; } else { goto __twr_l6; }
     __twr_l6:;
     if (_mng_onlynameds171) { goto __twr_l8; } else { goto __twr_l5; }
     __twr_l8:;
     __twr_v184 = 77ULL;
     __twr_v185 = _mng_var180 + __twr_v184;
     __twr_v186 = *(uint8_t*)(__twr_v185);
-    if (__twr_v186) { goto __twr_l5; } else { goto __twr_l4; }
+    if (!(__twr_v186)) { goto __twr_l4; } else { goto __twr_l5; }
     __twr_l5:;
     __twr_v187 = 0ULL;
     __twr_v188 = 24ULL;
@@ -256,7 +256,7 @@ void IrKillValueNumber(uint64_t _mng_value205) {
     _mng_head207 = __twr_v206;
     __twr_v208 = *(uint64_t*)(__twr_v206);
     _mng_listentry209 = __twr_v208;
-    if (__twr_v208 != __twr_v206) { goto __twr_l9; } else { goto __twr_l10; }
+    if (__twr_v208 == __twr_v206) { goto __twr_l10; } else { goto __twr_l9; }
     __twr_l9:;
     __twr_v210 = 24ULL;
     __twr_v211 = _mng_listentry209 - __twr_v210;
@@ -271,7 +271,7 @@ void IrKillValueNumber(uint64_t _mng_value205) {
     __twr_v218 = 68ULL;
     __twr_v219 = _mng_var212 + __twr_v218;
     __twr_v220 = *(uint32_t*)(__twr_v219);
-    if (__twr_v220 == _mng_value205) { goto __twr_l13; } else { goto __twr_l12; }
+    if (__twr_v220 != _mng_value205) { goto __twr_l12; } else { goto __twr_l13; }
     __twr_l13:;
     __twr_v221 = 0ULL;
     __twr_v222 = 24ULL;
@@ -333,7 +333,7 @@ void IrKillVariable(uint64_t _mng_var239) {
     __twr_v244 = 78ULL;
     __twr_v245 = _mng_var239 + __twr_v244;
     __twr_v246 = *(uint8_t*)(__twr_v245);
-    if (__twr_v246) { goto __twr_l16; } else { goto __twr_l15; }
+    if (!(__twr_v246)) { goto __twr_l15; } else { goto __twr_l16; }
     __twr_l16:;
     __twr_v247 = 24ULL;
     __twr_v248 = _mng_var239 + __twr_v247;
@@ -392,7 +392,7 @@ void IrGiveOpaqueValueVariable(uint64_t _mng_var262) {
     __twr_v263 = 78ULL;
     __twr_v264 = _mng_var262 + __twr_v263;
     __twr_v265 = *(uint8_t*)(__twr_v264);
-    if (__twr_v265) { goto __twr_l18; } else { goto __twr_l17; }
+    if (!(__twr_v265)) { goto __twr_l17; } else { goto __twr_l18; }
     __twr_l18:;
     __twr_v266 = 24ULL;
     __twr_v267 = _mng_var262 + __twr_v266;
@@ -581,7 +581,7 @@ void IrValueNumberVariable(uint64_t _mng_var295, uint64_t _mng_valueop296, uint6
     __twr_v330 = 78ULL;
     __twr_v331 = _mng_var295 + __twr_v330;
     __twr_v332 = *(uint8_t*)(__twr_v331);
-    if (__twr_v332) { goto __twr_l26; } else { goto __twr_l27; }
+    if (!(__twr_v332)) { goto __twr_l27; } else { goto __twr_l26; }
     __twr_l26:;
     __twr_v333 = 40ULL;
     __twr_v334 = _mng_var295 + __twr_v333;
@@ -734,7 +734,7 @@ void IrValueNumberConstantVariable(uint64_t _mng_var398, uint64_t _mng_constant3
     __twr_v401 = 78ULL;
     __twr_v402 = _mng_var398 + __twr_v401;
     __twr_v403 = *(uint8_t*)(__twr_v402);
-    if (__twr_v403) { goto __twr_l29; } else { goto __twr_l30; }
+    if (!(__twr_v403)) { goto __twr_l30; } else { goto __twr_l29; }
     __twr_l29:;
     __twr_v404 = 40ULL;
     __twr_v405 = _mng_var398 + __twr_v404;
@@ -912,7 +912,7 @@ uint64_t IrFindValue(uint64_t _mng_op461, uint64_t _mng_src1462, uint64_t _mng_s
     _mng_head495 = __twr_v494;
     __twr_v496 = *(uint64_t*)(__twr_v494);
     _mng_listentry497 = __twr_v496;
-    if (__twr_v496 != __twr_v494) { goto __twr_l35; } else { goto __twr_l36; }
+    if (__twr_v496 == __twr_v494) { goto __twr_l36; } else { goto __twr_l35; }
     __twr_l35:;
     __twr_v498 = 40ULL;
     __twr_v499 = _mng_listentry497 - __twr_v498;
@@ -920,17 +920,17 @@ uint64_t IrFindValue(uint64_t _mng_op461, uint64_t _mng_src1462, uint64_t _mng_s
     __twr_v501 = 78ULL;
     __twr_v502 = __twr_v499 + __twr_v501;
     __twr_v503 = *(uint8_t*)(__twr_v502);
-    if (__twr_v503 == _mng_op461) { goto __twr_l39; } else { goto __twr_l38; }
+    if (__twr_v503 != _mng_op461) { goto __twr_l38; } else { goto __twr_l39; }
     __twr_l39:;
     __twr_v504 = 64ULL;
     __twr_v505 = _mng_var500 + __twr_v504;
     __twr_v506 = *(uint32_t*)(__twr_v505);
-    if (__twr_v506 == _mng_valuesrc1465) { goto __twr_l43; } else { goto __twr_l42; }
+    if (__twr_v506 != _mng_valuesrc1465) { goto __twr_l42; } else { goto __twr_l43; }
     __twr_l43:;
     __twr_v507 = 68ULL;
     __twr_v508 = _mng_var500 + __twr_v507;
     __twr_v509 = *(uint32_t*)(__twr_v508);
-    if (__twr_v509 == _mng_valuesrc2466) { goto __twr_l41; } else { goto __twr_l42; }
+    if (__twr_v509 != _mng_valuesrc2466) { goto __twr_l42; } else { goto __twr_l41; }
     __twr_l41:;
     return _mng_var500;
     goto __twr_l40;
@@ -938,17 +938,17 @@ uint64_t IrFindValue(uint64_t _mng_op461, uint64_t _mng_src1462, uint64_t _mng_s
     __twr_v510 = (uint64_t)(&IrCommutativity);
     __twr_v511 = __twr_v510 + _mng_op461;
     __twr_v512 = *(uint8_t*)(__twr_v511);
-    if (__twr_v512) { goto __twr_l46; } else { goto __twr_l40; }
+    if (!(__twr_v512)) { goto __twr_l40; } else { goto __twr_l46; }
     __twr_l46:;
     __twr_v513 = 64ULL;
     __twr_v514 = _mng_var500 + __twr_v513;
     __twr_v515 = *(uint32_t*)(__twr_v514);
-    if (__twr_v515 == _mng_valuesrc2466) { goto __twr_l45; } else { goto __twr_l40; }
+    if (__twr_v515 != _mng_valuesrc2466) { goto __twr_l40; } else { goto __twr_l45; }
     __twr_l45:;
     __twr_v516 = 68ULL;
     __twr_v517 = _mng_var500 + __twr_v516;
     __twr_v518 = *(uint32_t*)(__twr_v517);
-    if (__twr_v518 == _mng_valuesrc1465) { goto __twr_l44; } else { goto __twr_l40; }
+    if (__twr_v518 != _mng_valuesrc1465) { goto __twr_l40; } else { goto __twr_l44; }
     __twr_l44:;
     return _mng_var500;
     __twr_l40:;
@@ -1019,7 +1019,7 @@ uint64_t IrFindConstant(uint64_t _mng_constant521, uint64_t _mng_op522) {
     _mng_head543 = __twr_v542;
     __twr_v544 = *(uint64_t*)(__twr_v542);
     _mng_listentry545 = __twr_v544;
-    if (__twr_v544 != __twr_v542) { goto __twr_l47; } else { goto __twr_l48; }
+    if (__twr_v544 == __twr_v542) { goto __twr_l48; } else { goto __twr_l47; }
     __twr_l47:;
     __twr_v546 = 40ULL;
     __twr_v547 = _mng_listentry545 - __twr_v546;
@@ -1027,12 +1027,12 @@ uint64_t IrFindConstant(uint64_t _mng_constant521, uint64_t _mng_op522) {
     __twr_v549 = 78ULL;
     __twr_v550 = __twr_v547 + __twr_v549;
     __twr_v551 = *(uint8_t*)(__twr_v550);
-    if (__twr_v551 == _mng_op522) { goto __twr_l52; } else { goto __twr_l50; }
+    if (__twr_v551 != _mng_op522) { goto __twr_l50; } else { goto __twr_l52; }
     __twr_l52:;
     __twr_v552 = 56ULL;
     __twr_v553 = _mng_var548 + __twr_v552;
     __twr_v554 = *(uint64_t*)(__twr_v553);
-    if (__twr_v554 == _mng_constant521) { goto __twr_l51; } else { goto __twr_l50; }
+    if (__twr_v554 != _mng_constant521) { goto __twr_l50; } else { goto __twr_l51; }
     __twr_l51:;
     return _mng_var548;
     __twr_l50:;

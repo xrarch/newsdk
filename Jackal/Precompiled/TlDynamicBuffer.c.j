@@ -86,7 +86,7 @@ void TlUninitializeDynamicBuffer(uint64_t _mng_array111) {
     __twr_v113 = _mng_array111 + __twr_v112;
     __twr_v114 = *(uint64_t*)(__twr_v113);
     __twr_v115 = 64ULL;
-    if (__twr_v114 != __twr_v115) { goto __twr_l2; } else { goto __twr_l1; }
+    if (__twr_v114 == __twr_v115) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l2:;
     __twr_v116 = (uint64_t)(&TlFree);
     __twr_v117 = 16ULL;
@@ -155,7 +155,7 @@ void TlInsertDynamicBuffer(uint64_t _mng_array120, uint64_t _mng_byte121) {
     __twr_v125 = 8ULL;
     __twr_v126 = _mng_array120 + __twr_v125;
     __twr_v127 = *(uint64_t*)(__twr_v126);
-    if (__twr_v124 < __twr_v127) { goto __twr_l4; } else { goto __twr_l3; }
+    if (__twr_v124 >= __twr_v127) { goto __twr_l3; } else { goto __twr_l4; }
     __twr_l4:;
     __twr_v128 = 16ULL;
     __twr_v129 = _mng_array120 + __twr_v128;
@@ -177,7 +177,7 @@ void TlInsertDynamicBuffer(uint64_t _mng_array120, uint64_t _mng_byte121) {
     __twr_v141 = __twr_v139 << __twr_v140;
     __twr_v142 = (uint64_t)(&_mng_newbuffer143);
     __twr_v144 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v136)(__twr_v141, __twr_v142);
-    if (__twr_v144) { goto __twr_l6; } else { goto __twr_l5; }
+    if (!(__twr_v144)) { goto __twr_l5; } else { goto __twr_l6; }
     __twr_l6:;
     __twr_v145 = (uint64_t)(&TlInternalError);
     __twr_v146 = (uint64_t)(&"Failed to grow dynamic buffer");
@@ -195,7 +195,7 @@ void TlInsertDynamicBuffer(uint64_t _mng_array120, uint64_t _mng_byte121) {
     __twr_v155 = _mng_array120 + __twr_v152;
     __twr_v156 = *(uint64_t*)(__twr_v155);
     __twr_v157 = 64ULL;
-    if (__twr_v156 != __twr_v157) { goto __twr_l8; } else { goto __twr_l7; }
+    if (__twr_v156 == __twr_v157) { goto __twr_l7; } else { goto __twr_l8; }
     __twr_l8:;
     __twr_v158 = (uint64_t)(&TlFree);
     __twr_v159 = 16ULL;
@@ -281,7 +281,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array175, uint64_t _mng_srcbuf176, ui
     __twr_v180 = 8ULL;
     __twr_v181 = _mng_array175 + __twr_v180;
     __twr_v182 = *(uint64_t*)(__twr_v181);
-    if (__twr_v179 < __twr_v182) { goto __twr_l10; } else { goto __twr_l9; }
+    if (__twr_v179 >= __twr_v182) { goto __twr_l9; } else { goto __twr_l10; }
     __twr_l10:;
     __twr_v183 = (uint64_t)(&TlCopyMemory);
     __twr_v184 = 16ULL;
@@ -303,7 +303,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array175, uint64_t _mng_srcbuf176, ui
     _mng_newlength196 = __twr_v195;
     __twr_v197 = *(uint64_t*)(_mng_array175);
     __twr_v198 = __twr_v197 + _mng_length177;
-    if (__twr_v198 > __twr_v195) { goto __twr_l11; } else { goto __twr_l12; }
+    if (__twr_v198 <= __twr_v195) { goto __twr_l12; } else { goto __twr_l11; }
     __twr_l11:;
     __twr_v199 = 1ULL;
     __twr_v200 = _mng_newlength196 << __twr_v199;
@@ -316,7 +316,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array175, uint64_t _mng_srcbuf176, ui
     __twr_v203 = (uint64_t)(&TlAlloc);
     __twr_v204 = (uint64_t)(&_mng_newbuffer205);
     __twr_v206 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v203)(_mng_newlength196, __twr_v204);
-    if (__twr_v206) { goto __twr_l15; } else { goto __twr_l14; }
+    if (!(__twr_v206)) { goto __twr_l14; } else { goto __twr_l15; }
     __twr_l15:;
     __twr_v207 = (uint64_t)(&TlInternalError);
     __twr_v208 = (uint64_t)(&"Failed to grow dynamic buffer");
@@ -333,7 +333,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array175, uint64_t _mng_srcbuf176, ui
     __twr_v216 = _mng_array175 + __twr_v215;
     __twr_v217 = *(uint64_t*)(__twr_v216);
     __twr_v218 = 64ULL;
-    if (__twr_v217 != __twr_v218) { goto __twr_l17; } else { goto __twr_l16; }
+    if (__twr_v217 == __twr_v218) { goto __twr_l16; } else { goto __twr_l17; }
     __twr_l17:;
     __twr_v219 = (uint64_t)(&TlFree);
     __twr_v220 = 16ULL;
@@ -387,7 +387,7 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array232, uint64_t _mng_number233
     uint64_t __twr_v263;
     uint64_t __twr_v264;
     __twr_v235 = 10ULL;
-    if (_mng_base234 != __twr_v235) { goto __twr_l19; } else { goto __twr_l18; }
+    if (_mng_base234 == __twr_v235) { goto __twr_l18; } else { goto __twr_l19; }
     __twr_l19:;
     __twr_v236 = (uint64_t)(&TlInternalError);
     __twr_v237 = (uint64_t)(&"Only base 10 supported");
@@ -395,7 +395,7 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array232, uint64_t _mng_number233
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v236)(__twr_v237, __twr_v238, __twr_v238, __twr_v238);
     __twr_l18:;
     __twr_v239 = 0ULL;
-    if (_mng_number233 == __twr_v239) { goto __twr_l21; } else { goto __twr_l20; }
+    if (_mng_number233 != __twr_v239) { goto __twr_l20; } else { goto __twr_l21; }
     __twr_l21:;
     __twr_v240 = (uint64_t)(&TlInsertDynamicBuffer);
     __twr_v241 = 48ULL;
@@ -408,7 +408,7 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array232, uint64_t _mng_number233
     _mng_divisor245 = __twr_v244;
     _mng_n246 = _mng_number233;
     __twr_v247 = 10ULL;
-    if (_mng_number233 >= __twr_v247) { goto __twr_l22; } else { goto __twr_l23; }
+    if (_mng_number233 < __twr_v247) { goto __twr_l23; } else { goto __twr_l22; }
     __twr_l22:;
     __twr_v248 = 10ULL;
     __twr_v249 = _mng_divisor245 * __twr_v248;
@@ -425,7 +425,7 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array232, uint64_t _mng_number233
     __twr_v254 = 1ULL;
     __twr_v255 = _mng_log10243 + __twr_v254;
     _mng_log10243 = __twr_v255;
-    if (__twr_v255) { goto __twr_l25; } else { goto __twr_l26; }
+    if (!(__twr_v255)) { goto __twr_l26; } else { goto __twr_l25; }
     __twr_l25:;
     __twr_v256 = (uint64_t)(&TlInsertDynamicBuffer);
     __twr_v257 = _mng_number233 / _mng_divisor245;
