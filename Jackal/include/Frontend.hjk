@@ -81,7 +81,7 @@ EXTERN FN FeIsMacroArgument (
 
 EXTERN FN FeCreateFileBlock (
     IN includename : ^UBYTE,
-    OUT created : ^UBYTE,
+    OUT created : UBYTE,
 ) : ^FeFileBlock
 
 EXTERN FN FeCopyPathFileBlock (

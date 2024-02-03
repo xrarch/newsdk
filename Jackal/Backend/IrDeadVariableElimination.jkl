@@ -80,8 +80,16 @@ FN IrUndeadifyVariable (
 )
 
     IF NOT var^.ConsideredForDve THEN
-        var^.Opt.Dve.References = 1
         var^.ConsideredForDve = TRUE
+
+        IF var^.Symbol AND var^.Symbol^.OutParameter THEN
+            // Never kill OUT parameters.
+
+            var^.Opt.Dve.References = 2
+
+        ELSE
+            var^.Opt.Dve.References = 1
+        END
 
     ELSE
         IF NOT var^.Opt.Dve.References THEN
@@ -112,18 +120,26 @@ FN IrEliminateForFunction (
 
         IF def THEN
             IF NOT def^.ConsideredForDve THEN
-                // Optimistically place it on the dead variable list.
-
-                TlInsertAtTailList (
-                    &IrDeadVariableListHead, // head
-                    &def^.Opt.Dve.DeadListEntry, // entry
-                )
-
                 def^.ConsideredForDve = TRUE
-                def^.Opt.Dve.References = 0
 
-                IF def^.Symbol THEN
-                    def^.Opt.Dve.DefinedByListHead = NULLPTR
+                IF def^.Symbol AND def^.Symbol^.OutParameter THEN
+                    // Never kill OUT parameters.
+
+                    def^.Opt.Dve.References = 1
+
+                ELSE
+                    // Optimistically place it on the dead variable list.
+
+                    TlInsertAtTailList (
+                        &IrDeadVariableListHead, // head
+                        &def^.Opt.Dve.DeadListEntry, // entry
+                    )
+
+                    def^.Opt.Dve.References = 0
+
+                    IF def^.Symbol THEN
+                        def^.Opt.Dve.DefinedByListHead = NULLPTR
+                    END
                 END
             END
 

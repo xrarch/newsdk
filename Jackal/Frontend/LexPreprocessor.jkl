@@ -939,7 +939,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
 
     fileblock := FeCreateFileBlock (
         str.Buffer, // includename
-        &created, // OUT created
+        created, // OUT created
     )
 
     IF NOT created THEN
@@ -966,7 +966,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
             &str.Buffer[6], // path
             &FeIncludeDirectory[0], // pathset
             &filepath, // resultingpath
-            &handle, // OUT handle
+            handle, // OUT handle
         )
 
     ELSEIF TlCompareStringWithMax ( str.Buffer, "<ll>/", 5 ) == 0 THEN
@@ -976,7 +976,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
             &str.Buffer[5], // path
             &FeLibraryDirectory[0], // pathset
             &filepath, // resultingpath
-            &handle, // OUT handle
+            handle, // OUT handle
         )
 
     ELSE
@@ -1007,7 +1007,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
 
         status := TlOpenSource (
             filepath.Buffer, // filename
-            &handle, // OUT handle
+            handle, // OUT handle
         )
 
         IF NOT status THEN
@@ -1209,8 +1209,8 @@ END
 
 FN LexCollectMacroArgumentList (
     IN ignore : UBYTE,
-    OUT arglisthead : ^^LexMacroArgument,
-    OUT length : ^ULONG,
+    OUT arglisthead : ^LexMacroArgument,
+    OUT length : ULONG,
 )
 
     token : LexToken
@@ -1223,8 +1223,8 @@ FN LexCollectMacroArgumentList (
 
     TlInitializeHashTable ( &hashtable )
 
-    arglisthead^ = NULLPTR
-    length^ = 0
+    arglisthead = NULLPTR
+    length = 0
 
     WHILE TRUE DO
         state := LexCollectMacroArgumentName (
@@ -1239,7 +1239,7 @@ FN LexCollectMacroArgumentList (
                 &hashtable, // hashtable
                 SIZEOF LexMacroArgument, // entrysize
                 &buffer[0], // key
-                &created, // OUT created
+                created, // OUT created
             ) TO ^LexMacroArgument
 
             IF NOT created THEN
@@ -1257,7 +1257,7 @@ FN LexCollectMacroArgumentList (
 
             // Increment the length of the argument list by one.
 
-            length^ += 1
+            length += 1
 
             // Add to the caller's list of arguments.
 
@@ -1266,7 +1266,7 @@ FN LexCollectMacroArgumentList (
             IF arglisttail THEN
                 arglisttail^.Next = arg
             ELSE
-                arglisthead^ = arg
+                arglisthead = arg
             END
 
             arglisttail = arg
@@ -1310,8 +1310,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
 
         LexCollectMacroArgumentList (
             TRUE, // ignore
-            &macro^.ArgListHead, // OUT arglisthead
-            &length, // OUT length
+            macro^.ArgListHead, // OUT arglisthead
+            length, // OUT length
         )
 
         contentsbuffer : TlDynamicBuffer
@@ -1331,8 +1331,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
 
     LexCollectMacroArgumentList (
         FALSE, // ignore
-        &macro^.ArgListHead, // OUT arglisthead
-        &length, // OUT length
+        macro^.ArgListHead, // OUT arglisthead
+        length, // OUT length
     )
 
     IF length == 0 THEN
@@ -1572,7 +1572,7 @@ FN (LexDirectiveParseF) LexParseAsm ()
 
     status := TlBumpAlloc (
         SIZEOF LexAsmBlock, // bytes
-        &asmblock, // OUT ptr
+        asmblock, // OUT ptr
     )
 
     IF status THEN

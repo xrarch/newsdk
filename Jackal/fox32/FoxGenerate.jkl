@@ -871,7 +871,7 @@ FN (LirSelectF) FoxSelectCall (
 
         status := TlBumpAlloc (
             SIZEOF LirArgument, // bytes
-            &lirarg, // OUT ptr
+            lirarg, // OUT ptr
         )
 
         IF status THEN

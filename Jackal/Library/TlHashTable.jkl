@@ -99,7 +99,7 @@ FN TlLookupOrAllocateEntryHashTable (
     IN hashtable : ^TlHashTable,
     IN entrysize : UWORD,
     IN key : ^UBYTE,
-    OUT created : ^UBYTE,
+    OUT created : UBYTE,
 ) : ^TlHashTableEntry
 
     // Look up the key in the hash table. If it's present, return it. Otherwise,
@@ -116,7 +116,7 @@ FN TlLookupOrAllocateEntryHashTable (
         entry = CONTAINEROF listentry TO TlHashTableEntry.HashEntry
 
         IF TlCompareString ( key, entry^.Key ) == 0 THEN
-            created^ = FALSE
+            created = FALSE
 
             RETURN entry
         END
@@ -128,7 +128,7 @@ FN TlLookupOrAllocateEntryHashTable (
 
     status := TlBumpAlloc (
         entrysize, // bytes
-        &entry, // OUT ptr
+        entry, // OUT ptr
     )
 
     IF status THEN
@@ -142,7 +142,7 @@ FN TlLookupOrAllocateEntryHashTable (
         hash, // hash
     )
 
-    created^ = TRUE
+    created = TRUE
 
     RETURN entry
 END

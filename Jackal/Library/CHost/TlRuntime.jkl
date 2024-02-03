@@ -103,14 +103,14 @@ TlHeapHits : UWORD = 0
 
 FN TlAlloc (
     IN bytes : UWORD,
-    OUT ptr : ^^VOID,
+    OUT ptr : ^VOID,
 ) : TlStatus
 
     TlHeapHits += 1
 
-    ptr^ = malloc ( bytes )
+    ptr = malloc ( bytes )
 
-    IF ptr^ == 0 THEN
+    IF ptr == 0 THEN
         RETURN TL_NO_MEMORY
     END
 
@@ -133,7 +133,7 @@ TlBumpHits : UWORD = 0
 
 FN TlBumpAlloc (
     IN bytes : UWORD,
-    OUT ptr : ^^VOID,
+    OUT ptr : ^VOID,
 ) : TlStatus
 
     // Eternal bump allocator for accelerating some stuff.
@@ -143,7 +143,7 @@ FN TlBumpAlloc (
     bytes &= ~7
 
     IF bytes <= TlBumpBytesLeft THEN
-        ptr^ = TlBumpPtr
+        ptr = TlBumpPtr
 
         TlBumpHits += 1
         TlBumpBytesUsed += bytes
@@ -156,9 +156,9 @@ FN TlBumpAlloc (
     TlHeapHits += 1
 
     IF bytes >= TL_BUMP_EXTEND THEN
-        ptr^ = malloc ( bytes )
+        ptr = malloc ( bytes )
 
-        IF ptr^ == 0 THEN
+        IF ptr == 0 THEN
             RETURN TL_NO_MEMORY
         END
 
@@ -171,7 +171,7 @@ FN TlBumpAlloc (
         RETURN TL_NO_MEMORY
     END
 
-    ptr ^= TlBumpPtr
+    ptr = TlBumpPtr
 
     TlBumpBytesUsed += bytes
     TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
@@ -230,12 +230,12 @@ END
 
 FN TlOpenSource (
     IN filename : ^UBYTE,
-    OUT handle : ^^VOID,
+    OUT handle : ^VOID,
 ) : TlStatus
 
-    handle^ = fopen ( filename, "r" )
+    handle = fopen ( filename, "r" )
 
-    IF handle^ == 0 THEN
+    IF handle == 0 THEN
         RETURN TL_COULDNT_OPEN
     END
 
@@ -244,12 +244,12 @@ END
 
 FN TlOpenDestination (
     IN filename : ^UBYTE,
-    OUT handle : ^^VOID,
+    OUT handle : ^VOID,
 ) : TlStatus
 
-    handle^ = fopen ( filename, "w" )
+    handle = fopen ( filename, "w" )
 
-    IF handle^ == 0 THEN
+    IF handle == 0 THEN
         RETURN TL_COULDNT_OPEN
     END
 

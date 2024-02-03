@@ -152,7 +152,7 @@ END
 
 FN FeCreateFileBlock (
     IN includename : ^UBYTE,
-    OUT created : ^UBYTE,
+    OUT created : UBYTE,
 ) : ^FeFileBlock
 
     fileblock := CAST TlLookupOrAllocateEntryHashTable (
@@ -162,7 +162,7 @@ FN FeCreateFileBlock (
         created, // OUT created
     ) TO ^FeFileBlock
 
-    IF created^ THEN
+    IF created THEN
         // Initialize the file block, since it didn't already exist.
 
         TlCopyString (
@@ -247,7 +247,7 @@ FN FeInitialize (
 
     status := TlOpenSource (
         &FeInputFile[0], // filename
-        &FeInputFileHandle, // OUT handle
+        FeInputFileHandle, // OUT handle
     )
 
     IF status THEN
@@ -256,7 +256,7 @@ FN FeInitialize (
 
     status = TlOpenDestination (
         &FeOutputFile[0], // filename
-        &FeOutputFileHandle, // OUT handle
+        FeOutputFileHandle, // OUT handle
     )
 
     IF status THEN

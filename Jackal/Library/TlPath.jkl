@@ -35,7 +35,7 @@ FN TlMatchPath (
     IN path : ^UBYTE,
     IN pathset : ^UBYTE,
     IN resultingpath : ^TlDynamicBuffer,
-    OUT handle : ^^VOID,
+    OUT handle : ^VOID,
 ) : UWORD
 
     // Match the given path with a file in one of the directories specified by

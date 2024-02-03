@@ -119,12 +119,12 @@ EXTERN FN TlErrorExit ()
 
 EXTERN FN TlBumpAlloc (
     IN bytes : UWORD,
-    OUT ptr : ^^VOID,
+    OUT ptr : ^VOID,
 ) : TlStatus
 
 EXTERN FN TlAlloc (
     IN bytes : UWORD,
-    OUT ptr : ^^VOID,
+    OUT ptr : ^VOID,
 ) : TlStatus
 
 EXTERN FN TlFree (
@@ -150,12 +150,12 @@ EXTERN FN TlCopyString (
 
 EXTERN FN TlOpenSource (
     IN filename : ^UBYTE,
-    OUT handle : ^^VOID,
+    OUT handle : ^VOID,
 ) : TlStatus
 
 EXTERN FN TlOpenDestination (
     IN filename : ^UBYTE,
-    OUT handle : ^^VOID,
+    OUT handle : ^VOID,
 ) : TlStatus
 
 EXTERN FN TlClose (
@@ -226,7 +226,7 @@ EXTERN FN TlLookupOrAllocateEntryHashTable (
     IN hashtable : ^TlHashTable,
     IN entrysize : UWORD,
     IN key : ^UBYTE,
-    OUT created : ^UBYTE,
+    OUT created : UBYTE,
 ) : ^TlHashTableEntry
 
 EXTERN FN TlLookupHashTable (
@@ -344,7 +344,7 @@ EXTERN FN TlMatchPath (
     IN path : ^UBYTE,
     IN pathset : ^UBYTE,
     IN resultingpath : ^TlDynamicBuffer,
-    OUT handle : ^^VOID,
+    OUT handle : ^VOID,
 ) : UWORD
 
 EXTERN FN TlCopyParentPath (

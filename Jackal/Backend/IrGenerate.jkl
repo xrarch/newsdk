@@ -83,7 +83,7 @@ FN IrCreateInstruction (
 
     status := TlBumpAlloc (
         SIZEOF IrInstruction, // bytes
-        &inst, // OUT ptr
+        inst, // OUT ptr
     )
 
     IF status THEN
@@ -126,7 +126,7 @@ FN IrCreateVariable (
 
     status := TlBumpAlloc (
         SIZEOF IrVariable, // bytes
-        &var, // OUT ptr
+        var, // OUT ptr
     )
 
     IF status THEN
@@ -1397,50 +1397,14 @@ FN (IrExpressionGenerationF) IrGenerateAddrOf (
         NULLPTR, // falselabel
     )
 
-    IF var^.Annotation == IR_VAR_ADDRESS_CALC THEN
-        // This variable already contained an address. Clear the annotation so
-        // that it doesn't get loaded erroneously.
-
-        var^.Annotation = IR_VAR_UNINITIALIZED
-
-    ELSE
-        // This was a local. Wrap it in an IR_STACK_ADDR; the code generator
-        // will worry about giving it a stack location and spilling it there.
-
-        IF var^.Annotation != IR_VAR_LOCAL THEN
-            TlInternalError ( "Weird variable at AddrOf", 0, 0, 0 )
-        END
-
-        var^.Escaped = TRUE
-
-        retvar := IrFindConstant (
-            CAST var^.Symbol TO UWORD, // constant
-            IR_STACK_ADDR, // op
-        )
-
-        IF NOT retvar THEN
-            inst := IrCreateInstruction (
-                IR_STACK_ADDR, // type
-            )
-
-            retvar = IrCreateVariable (
-                inst, // definedby
-            )
-
-            inst^.Defines = retvar
-            inst^.Body.Addr.Symbol = var^.Symbol
-
-            IrInsertInstructionTail ( inst )
-
-            IrValueNumberConstantVariable (
-                retvar, // var
-                CAST var^.Symbol TO UWORD, // constant
-                IR_STACK_ADDR, // op
-            )
-        END
-
-        var = retvar
+    IF var^.Annotation != IR_VAR_ADDRESS_CALC THEN
+        TlInternalError ( "Weird variable at AddrOf", 0, 0, 0 )
     END
+
+    // This variable already contained an address. Clear the annotation so
+    // that it doesn't get loaded erroneously.
+
+    var^.Annotation = IR_VAR_UNINITIALIZED
 
     RETURN var
 END
@@ -1660,9 +1624,11 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
     inst^.Source1 = funcvar
     inst^.Body.Call.ArgListHead = NULLPTR
+    inst^.Body.Call.OutListHead = NULLPTR
     inst^.Body.Call.CallNode = node
 
     arglisttail : ^IrArgument = NULLPTR
+    outlisttail : ^IrArgument = NULLPTR
 
     refarg := type^.Body.Function.ArgListHead
 
@@ -1679,25 +1645,42 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
         status := TlBumpAlloc (
             SIZEOF IrArgument, // bytes
-            &irarg, // OUT ptr
+            irarg, // OUT ptr
         )
 
         IF status THEN
             TlInternalError ( "Failed to allocate IR argument", 0, 0, 0 )
         END
 
-        irarg^.Variable = IrGenerateRvalue ( argnode )
-
         irarg^.Next = NULLPTR
 
-        IF arglisttail THEN
-            arglisttail^.Next = irarg
+        IF refarg^.InOut == ARG_IN THEN
+            irarg^.Variable = IrGenerateRvalue ( argnode )
+
+            IF arglisttail THEN
+                arglisttail^.Next = irarg
+
+            ELSE
+                inst^.Body.Call.ArgListHead = irarg
+            END
+
+            arglisttail = irarg
 
         ELSE
-            inst^.Body.Call.ArgListHead = irarg
-        END
+            // We don't want to generate the expression here yet so stash it in
+            // the variable field so we can get to it later.
 
-        arglisttail = irarg
+            irarg^.Variable = CAST argnode TO ^IrVariable
+
+            IF outlisttail THEN
+                outlisttail^.Next = irarg
+
+            ELSE
+                inst^.Body.Call.OutListHead = irarg
+            END
+
+            outlisttail = irarg
+        END
 
         argnode = argnode^.Next
 
@@ -1755,13 +1738,48 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
     IrInsertInstructionTail ( inst )
 
-    // Kill all named variables.
-    // TODO only have to kill ones that were directly passed to OUT
+    outarg := inst^.Body.Call.OutListHead
 
-    IrValueNumberBarrier (
-        FALSE, // onlyloads
-        TRUE, // onlynameds
-    )
+    WHILE outarg DO
+        argnode = CAST outarg^.Variable TO ^PrsAstNode
+
+        outvar := IrGenerateExpression (
+            argnode, // node
+            NULLPTR, // truelabel
+            NULLPTR, // falselabel
+        )
+
+        IF outvar^.Annotation == IR_VAR_LOCAL THEN
+            // Just put it directly as the destination.
+
+            outarg^.Variable = outvar
+
+            // Also, kill.
+
+            IrKillVariable ( outvar )
+        
+        ELSEIF outvar^.Annotation == IR_VAR_ADDRESS_CALC THEN
+            // Make the destination a temporary.
+
+            outarg^.Variable = IrCreateVariable (
+                NULLPTR, // definedby
+            )
+
+            // Now generate a store of that temporary.
+
+            IrGenerateStore (
+                outvar, // destvar
+                outarg^.Variable, // srcvar
+                PrsEvaluateType ( argnode ), // type
+            )
+
+        ELSE
+            TlInternalError ( "Unexpected IR variable",
+                outvar^.Annotation, 0, 0 )
+        END
+
+        outarg = outarg^.Next
+    END
 
     IF truelabel THEN
         IrGenerateBranch (
@@ -2538,7 +2556,7 @@ FN IrGenerateForFunction (
 
     status := TlBumpAlloc (
         SIZEOF IrFunction, // sizeof
-        &IrCurrentFunction, // OUT ptr
+        IrCurrentFunction, // OUT ptr
     )
 
     IF status THEN
@@ -2565,6 +2583,8 @@ FN IrGenerate ()
     funcsym := PrsFunctionListHead
 
     WHILE funcsym DO
+        // Now generate the IR for the function.
+
         IrValueNumberBarrier (
             FALSE, // onlyloads
             FALSE, // onlynameds

@@ -221,9 +221,7 @@ FN CtOutputSymbolName (
             TlInternalError ( "Didn't expect this type here", type^.Subtype, 0, 0 )
         END
 
-        CtInsertString ( "    " )
-        CtInsertString ( CtTypeNames[primtype] )
-        CtInsertString ( " _mng_" )
+        CtInsertString ( "    uint64_t _mng_" )
         CtInsertString ( sym^.Name )
         CtInsertNumber ( CAST sym^.TrgContext TO UWORD )
 
@@ -467,14 +465,15 @@ FN (CtGenerateF) CtGenerateReturn (
     IN inst : ^IrInstruction,
 )
 
-    CtInsertStringFunc ( "    return" )
-
     IF inst^.Source1 THEN
-        CtInsertStringFunc ( " " )
+        CtInsertStringFunc ( "    _jkl_retv = " )
+
         CtOutputVariableName ( inst^.Source1 )
+
+        CtInsertStringFunc ( ";\n" )
     END
 
-    CtInsertStringFunc ( ";\n" )
+    CtInsertStringFunc ( "    goto _jkl_epilogue;\n" )
 END
 
 FN (CtGenerateF) CtGenerateMove (
@@ -964,9 +963,7 @@ FN (CtGenerateF) CtGenerateCall (
     callnode := inst^.Body.Call.CallNode
     type := PrsEvaluateType ( callnode^.Body.Operator.Left )
 
-    arg := inst^.Body.Call.ArgListHead
-    count := type^.Body.Function.ArgCount
-    cargcount := count
+    cargcount := type^.Body.Function.ArgCount
     varargcount := callnode^.Body.Operator.VarArgCount
 
     IF type^.Body.Function.IsVarArg THEN
@@ -1009,16 +1006,29 @@ FN (CtGenerateF) CtGenerateCall (
 
     CtInsertStringFunc ( ")(" )
 
-    WHILE count DO
+    arg := inst^.Body.Call.ArgListHead
+    outarg := inst^.Body.Call.OutListHead
+
+    WHILE arg DO
         CtOutputVariableName ( arg^.Variable )
 
         arg = arg^.Next
 
-        IF arg OR type^.Body.Function.IsVarArg THEN
+        IF arg OR outarg OR type^.Body.Function.IsVarArg THEN
             CtInsertStringFunc ( ", " )
         END
+    END
 
-        count -= 1
+    WHILE outarg DO
+        CtInsertStringFunc ( "(uint64_t)(&" )
+        CtOutputVariableName ( outarg^.Variable )
+        CtInsertStringFunc ( ")" )
+
+        outarg = outarg^.Next
+
+        IF outarg OR type^.Body.Function.IsVarArg THEN
+            CtInsertStringFunc ( ", " )
+        END
     END
 
     IF type^.Body.Function.IsVarArg THEN
@@ -1141,11 +1151,52 @@ FN CtGenerateFromIr (
     )
 END
 
+FN CtGenerateArgList (
+    IN type : ^LexSemanticType,
+    IN inout : LexFunctionArgumentTypes,
+    IN count : UWORD,
+) : UWORD
+
+    // Generate an argument list.
+
+    arg := type^.Body.Function.ArgListHead
+
+    WHILE arg DO
+        IF arg^.InOut == inout THEN
+            IF inout == ARG_OUT THEN
+                CtInsertString ( "uint64_t _mng_o_" )
+                CtInsertString ( arg^.Symbol^.Name )
+            
+            ELSE
+                arg^.Symbol^.TrgContext = CAST CtIrVariableNumber TO ^VOID
+                CtIrVariableNumber += 1
+
+                CtInsertString ( "uint64_t _mng_" )
+                CtInsertString ( arg^.Symbol^.Name )
+                CtInsertNumber ( CAST arg^.Symbol^.TrgContext TO UWORD )
+            END
+
+            arg = arg^.Next
+
+            count -= 1
+
+            IF count OR type^.Body.Function.IsVarArg THEN
+                CtInsertString ( ", " )
+            END
+
+        ELSE
+            arg = arg^.Next
+        END
+    END
+
+    RETURN count
+END
+
 FN CtGenerateFunction (
     IN sym : ^LexSymbol,
 )
 
-    // Generate C for a function.
+    // Generate C for a function declaration.
 
     type := sym^.SemanticType
 
@@ -1162,22 +1213,23 @@ FN CtGenerateFunction (
 
     CtInsertString ( "(" )
 
-    arg := type^.Body.Function.ArgListHead
+    count := type^.Body.Function.ArgCount
 
-    WHILE arg DO
-        arg^.Symbol^.TrgContext = CAST CtIrVariableNumber TO ^VOID
-        CtIrVariableNumber += 1
+    // Generate the argument list one IN/OUT type at a time, because the
+    // argument list has them jumbled up, but the IR list has two lists, so OUT
+    // parameters always end up sorted to the end.
 
-        CtInsertString ( "uint64_t _mng_" )
-        CtInsertString ( arg^.Symbol^.Name )
-        CtInsertNumber ( CAST arg^.Symbol^.TrgContext TO UWORD )
+    count = CtGenerateArgList (
+        type, // type
+        ARG_IN, // inout
+        count, // count
+    )
 
-        arg = arg^.Next
-
-        IF arg OR type^.Body.Function.IsVarArg THEN
-            CtInsertString ( ", " )
-        END
-    END
+    CtGenerateArgList (
+        type, // type
+        ARG_OUT, // inout
+        count, // count
+    )
 
     IF type^.Body.Function.IsVarArg THEN
         vtsym := type^.Body.Function.VarArgTable
@@ -1210,9 +1262,39 @@ FN CtGenerateFunction (
 
     CtInsertString ( " {\n" )
 
+    IF type^.Body.Function.ReturnType THEN
+        CtInsertString ( "    uint64_t _jkl_retv;\n" )
+    END
+
     CtGenerateFromIr (
         CAST sym^.InitialValue TO ^IrFunction, // irfunc
     )
+
+    CtInsertString ( "    _jkl_epilogue:;\n" )
+
+    arg := type^.Body.Function.ArgListHead
+
+    WHILE arg DO
+        IF arg^.InOut == ARG_OUT AND
+            arg^.Symbol^.TrgContext THEN
+
+            // Generate a store of this argument back to the caller.
+
+            CtInsertString ( "    *(uint64_t*)(_mng_o_" )
+            CtInsertString ( arg^.Symbol^.Name )
+            CtInsertString ( ") = " )
+            CtInsertString ( "_mng_" )
+            CtInsertString ( arg^.Symbol^.Name )
+            CtInsertNumber ( CAST arg^.Symbol^.TrgContext TO UWORD )
+            CtInsertString ( ";\n" )
+        END
+
+        arg = arg^.Next
+    END
+
+    IF type^.Body.Function.ReturnType THEN
+        CtInsertString ( "    return _jkl_retv;\n" )
+    END
 
     CtInsertString ( "}\n" )
 END

@@ -136,7 +136,7 @@ FN LexInitialize ()
 
     fileblock := FeCreateFileBlock (
         &FeInputFile[0], // includename
-        &dumpster, // OUT created
+        dumpster, // OUT created
     )
 
     FeCopyPathFileBlock (
@@ -387,7 +387,7 @@ FN LexGetStringTokenInternal (
     IN terminator : UBYTE,
     IN dynamicbuffer : ^TlDynamicBuffer,
     IN buffer : ^UBYTE,
-    OUT length : ^ULONG,
+    OUT length : ULONG,
 )
 
     len := 0
@@ -447,7 +447,7 @@ FN LexGetStringTokenInternal (
         TlInsertDynamicBuffer ( dynamicbuffer, 0 )
     ELSE
         buffer[len] = 0
-        length^ = len
+        length = len
     END
 END
 
@@ -617,8 +617,8 @@ END
 FN LexGetTokenContents (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
-    OUT length : ^ULONG,
-    OUT internedstring : ^^LexInternedString,
+    OUT length : ULONG,
+    OUT internedstring : ^LexInternedString,
 ) : UBYTE
 
     // Reads the string of the next token into the provided buffer. Identifies
@@ -655,7 +655,7 @@ FN LexGetTokenContents (
 
     @LoopOnMacro
 
-    length^ = 0
+    length = 0
 
     // Skip leading whitespace.
 
@@ -693,41 +693,43 @@ FN LexGetTokenContents (
     IF byte == '\"' THEN
         // This is a string token. Allocate a LexInternedString.
 
-        internedstring^ = CAST TlAllocateFromZone (
+        internedstring = CAST TlAllocateFromZone (
             &LexInternedStringZone, // zone
         ) TO ^LexInternedString
 
-        dynamicbuffer := &internedstring^^.DynamicBuffer
+        dynamicbuffer := &internedstring^.DynamicBuffer
 
         TlInitializeDynamicBuffer ( dynamicbuffer )
+
+        dumpster : ULONG
 
         LexGetStringTokenInternal (
             token, // token
             '\"', // terminator
             dynamicbuffer, // dynamicbuffer
             NULLPTR, // buffer
-            NULLPTR, // OUT length
+            dumpster, // OUT length
         )
 
         // Lookup or insert the string in the interned string hash table.
 
         str := CAST TlLookupOrInsertHashTable (
             &LexCurrentSection^.InternedStringHashTable, // hashtable
-            CAST internedstring^ TO ^TlHashTableEntry, // entry
+            CAST internedstring TO ^TlHashTableEntry, // entry
             dynamicbuffer^.Buffer, // key
         ) TO ^LexInternedString
 
-        IF str != internedstring^ THEN
+        IF str != internedstring THEN
             // Release our dynamic buffer and return the one we found.
 
             TlUninitializeDynamicBuffer ( dynamicbuffer )
 
             TlFreeToZone (
                 &LexInternedStringZone, // zone
-                internedstring^, // block
+                internedstring, // block
             )
 
-            internedstring^ = str
+            internedstring = str
         END
 
         RETURN TOKEN_FLAG_STRING
@@ -751,7 +753,7 @@ FN LexGetTokenContents (
         // This is a split token. It consists of exactly this character and no
         // more.
 
-        length^ = 1
+        length = 1
         buffer[0] = byte
         buffer[1] = 0
 
@@ -777,7 +779,7 @@ FN LexGetTokenContents (
         END
 
         buffer[len] = 0
-        length^ = len
+        length = len
 
         IF LexCharTreatment[byte] != CHAR_WHITESPACE THEN
             // Set the putback character to the last one we saw, since that is part
@@ -814,7 +816,7 @@ FN LexGetTokenContents (
     END
 
     buffer[len] = 0
-    length^ = len
+    length = len
 
     IF LexCharTreatment[byte] == CHAR_SPLIT OR
         LexCharTreatment[byte] == CHAR_COALESCE THEN
@@ -887,8 +889,8 @@ FN LexNextToken (
     tokenflag := LexGetTokenContents (
         token, // token
         &buffer[0], // buffer
-        &length, // OUT length
-        &internedstring, // OUT internedstring
+        length, // OUT length
+        internedstring, // OUT internedstring
     )
 
     IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
@@ -995,7 +997,7 @@ FN LexNextToken (
 
         status := TlBumpAlloc (
             SIZEOF LexSymbol + length + 1, // bytes
-            &symbol, // OUT ptr
+            symbol, // OUT ptr
         )
 
         IF status THEN
@@ -1007,6 +1009,7 @@ FN LexNextToken (
         symbol^.IrContext = NULLPTR
         symbol^.TrgContext = NULLPTR
         symbol^.StackAllocated = FALSE
+        symbol^.OutParameter = FALSE
 
         TlCopyMemory (
             symbol^.Name, // dest
