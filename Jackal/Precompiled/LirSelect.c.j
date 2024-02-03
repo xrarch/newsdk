@@ -151,7 +151,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type162, uint64_t _mng_machtype163) 
     uint64_t __twr_v181;
     uint64_t __twr_v182;
     __twr_v164 = (uint64_t)(&TlBumpAlloc);
-    __twr_v165 = 77ULL;
+    __twr_v165 = 90ULL;
     __twr_v166 = (uint64_t)(&_mng_lirinst167);
     __twr_v168 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v164)(__twr_v165, __twr_v166);
     if (!(__twr_v168)) { goto __twr_l1; } else { goto __twr_l2; }
@@ -161,7 +161,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type162, uint64_t _mng_machtype163) 
     __twr_v171 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v169)(__twr_v170, __twr_v171, __twr_v171, __twr_v171);
     __twr_l1:;
-    __twr_v172 = 76ULL;
+    __twr_v172 = 89ULL;
     __twr_v173 = _mng_lirinst167 + __twr_v172;
     *(uint8_t*)(__twr_v173) = _mng_type162;
     __twr_v174 = 0ULL;
@@ -174,7 +174,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type162, uint64_t _mng_machtype163) 
     __twr_v179 = 40ULL;
     __twr_v180 = _mng_lirinst167 + __twr_v179;
     *(uint64_t*)(__twr_v180) = __twr_v174;
-    __twr_v181 = 75ULL;
+    __twr_v181 = 88ULL;
     __twr_v182 = _mng_lirinst167 + __twr_v181;
     *(uint8_t*)(__twr_v182) = _mng_machtype163;
     return _mng_lirinst167;
@@ -247,14 +247,14 @@ void LirInsertInstructionTail(uint64_t _mng_lirinst194) {
     uint64_t __twr_v230;
     uint64_t __twr_v231;
     __twr_v195 = (uint64_t)(&TlPrintNumber);
-    __twr_v196 = 76ULL;
+    __twr_v196 = 89ULL;
     __twr_v197 = _mng_lirinst194 + __twr_v196;
     __twr_v198 = *(uint8_t*)(__twr_v197);
     ((void (*)(uint64_t))__twr_v195)(__twr_v198);
     __twr_v199 = (uint64_t)(&TlPrintString);
     __twr_v200 = (uint64_t)(&"\n");
     ((void (*)(uint64_t))__twr_v199)(__twr_v200);
-    __twr_v201 = 75ULL;
+    __twr_v201 = 88ULL;
     __twr_v202 = _mng_lirinst194 + __twr_v201;
     __twr_v203 = *(uint8_t*)(__twr_v202);
     ((void (*)(uint64_t))__twr_v195)(__twr_v203);

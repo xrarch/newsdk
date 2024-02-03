@@ -514,11 +514,11 @@ void IrEliminateForFunction(uint64_t _mng_funcsym254) {
     _mng_arg306 = __twr_v305;
     if (!(__twr_v305)) { goto __twr_l41; } else { goto __twr_l40; }
     __twr_l40:;
-    __twr_v307 = 8ULL;
-    __twr_v308 = _mng_arg306 + __twr_v307;
-    __twr_v309 = *(uint64_t*)(__twr_v308);
-    __twr_v310 = (uint64_t)(&IrUndeadifyVariable);
-    ((void (*)(uint64_t))__twr_v310)(__twr_v309);
+    __twr_v307 = (uint64_t)(&IrUndeadifyVariable);
+    __twr_v308 = 8ULL;
+    __twr_v309 = _mng_arg306 + __twr_v308;
+    __twr_v310 = *(uint64_t*)(__twr_v309);
+    ((void (*)(uint64_t))__twr_v307)(__twr_v310);
     __twr_v311 = *(uint64_t*)(_mng_arg306);
     _mng_arg306 = __twr_v311;
     __twr_l42:;

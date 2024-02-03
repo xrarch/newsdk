@@ -150,9 +150,7 @@ FN IrEliminateForFunction (
             arg := inst^.Body.Call.ArgListHead
 
             WHILE arg DO
-                var := arg^.Variable
-
-                IrUndeadifyVariable ( var )
+                IrUndeadifyVariable ( arg^.Variable )
 
                 arg = arg^.Next
             END

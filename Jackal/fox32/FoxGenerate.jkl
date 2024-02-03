@@ -271,6 +271,21 @@ FoxPrimTypeToBits : UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_POINTER] = FOX_BITS_32,
 }
 
+FoxBranchToCondition : UBYTE[IR_BRANCH_HIGH_NUMBER] = {
+    [IR_BRANCH_EQUALS] = FOX_COND_IFZ,
+    [IR_BRANCH_NOT_EQUALS] = FOX_COND_IFNZ,
+
+    [IR_BRANCH_LESS_THAN] = FOX_COND_IFLT,
+    [IR_BRANCH_GREATER_THAN] = FOX_COND_IFGT,
+    [IR_BRANCH_LTEQ] = FOX_COND_IFLTEQ,
+    [IR_BRANCH_GTEQ] = FOX_COND_IFGTEQ,
+
+    [IR_BRANCH_LESS_THAN_SIGNED] = FOX_COND_IFLT,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = FOX_COND_IFGT,
+    [IR_BRANCH_LTEQ_SIGNED] = FOX_COND_IFLTEQ,
+    [IR_BRANCH_GTEQ_SIGNED] = FOX_COND_IFGTEQ,
+}
+
 FN FoxFillOperandForAccess (
     IN lirinst : ^LirInstruction,
     IN operand : ^LirFoxOperand,
@@ -732,6 +747,61 @@ FN (LirSelectF) FoxSelectZeroBranch (
     RETURN NULLPTR
 END
 
+FN (LirSelectF) FoxSelectBranch (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    IF IrIsUselessBranch ( inst ) THEN
+        RETURN NULLPTR
+    END
+
+    // Output CMP and then JMP.
+
+    cmpinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_CMP, // machtype
+    )
+
+    cmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    cmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_UNKNOWN
+
+    cmpinst^.Source1 = FoxFillOperand (
+        cmpinst, // lirinst
+        &cmpinst^.Body.Machine.Fox.Op1, // operand
+        inst^.Source1, // var
+    )
+
+    cmpinst^.Source2 = FoxFillOperand (
+        cmpinst, // lirinst
+        &cmpinst^.Body.Machine.Fox.Op2, // operand
+        inst^.Source2, // var
+    )
+
+    FoxSetIfUnknown ( cmpinst )
+
+    LirInsertInstructionTail ( cmpinst )
+
+    jmpinst := LirCreateInstruction (
+        LIR_UNARY, // type
+        FOX_RJMP, // machtype
+    )
+
+    jmpinst^.Body.Machine.Fox.Op1.Constant =
+        CAST LirGetLabel ( inst^.Body.Branch.TrueLabel ) TO UWORD
+
+    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.Body.Machine.Fox.Condition = FoxBranchToCondition[inst^.Type]
+    jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( jmpinst )
+
+    // Generate an unconditional branch to the false label if required.
+
+    FoxGenerateFalseBranch ( inst )
+
+    RETURN NULLPTR
+END
+
 FN (LirSelectF) FoxSelectJump (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
@@ -759,6 +829,82 @@ FN (LirSelectF) FoxSelectJump (
     RETURN NULLPTR
 END
 
+FN (LirSelectF) FoxSelectCall (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // We generate the call instruction and all of its arguments but we don't
+    // worry at all about the ABI; we need the register allocator to run first.
+
+    defreg : ^LirRegister = NULLPTR
+
+    IF inst^.Defines THEN
+        defreg = LirGetRegister ( inst^.Defines )
+
+        defreg^.Hint = FOX_A3
+    END
+
+    callinst := LirCreateInstruction (
+        LIR_CALL, // type
+        FOX_CALL, // machtype
+    )
+
+    callinst^.Defines = defreg
+    callinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    callinst^.Body.Machine.Fox.BitSize = FOX_BITS_UNKNOWN
+
+    callinst^.Source1 = FoxFillOperand (
+        callinst, // lirinst
+        &callinst^.Body.Machine.Fox.Op1, // operand
+        inst^.Source1, // var
+    )
+
+    arglisttail : ^LirArgument = NULLPTR
+    callinst^.ArgListHead = NULLPTR
+
+    arg := inst^.Body.Call.ArgListHead
+
+    count := 0
+
+    WHILE arg DO
+        lirarg : ^LirArgument
+
+        status := TlBumpAlloc (
+            SIZEOF LirArgument, // bytes
+            &lirarg, // OUT ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate LIR argument", 0, 0, 0 )
+        END
+
+        lirarg^.Register = LirSelectOrGetRegister ( arg^.Variable )
+
+        IF count < 3 THEN
+            lirarg^.Register^.Hint = FOX_A0 + count
+        END
+
+        lirarg^.Next = NULLPTR
+
+        IF arglisttail THEN
+            arglisttail^.Next = lirarg
+
+        ELSE
+            callinst^.ArgListHead = lirarg
+        END
+
+        arglisttail = lirarg
+
+        count += 1
+
+        arg = arg^.Next
+    END
+
+    LirInsertInstructionTail ( callinst )
+
+    RETURN defreg
+END
+
 FoxLirInfo : LirTargetInfoRecord = {
     [SelectionTable] = {
         [IR_LOAD] = &FoxSelectLoad,
@@ -773,7 +919,20 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_BRANCH_NONZERO] = &FoxSelectZeroBranch,
         [IR_BRANCH_ZERO] = &FoxSelectZeroBranch,
 
+        [IR_BRANCH_EQUALS] = &FoxSelectBranch,
+        [IR_BRANCH_NOT_EQUALS] = &FoxSelectBranch,
+        [IR_BRANCH_LESS_THAN] = &FoxSelectBranch,
+        [IR_BRANCH_GREATER_THAN] = &FoxSelectBranch,
+        [IR_BRANCH_LTEQ] = &FoxSelectBranch,
+        [IR_BRANCH_GTEQ] = &FoxSelectBranch,
+        [IR_BRANCH_LESS_THAN_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_GREATER_THAN_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_LTEQ_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_GTEQ_SIGNED] = &FoxSelectBranch,
+
         [IR_JUMP] = &FoxSelectJump,
+
+        [IR_CALL] = &FoxSelectCall,
     },
 }
 

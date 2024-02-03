@@ -47,6 +47,7 @@ STRUCT PrsAstOperator
     Left : ^PrsAstNode,
     Right : ^PrsAstNode,
     OperatorSpecific : ^VOID,
+    VarArgCount : ULONG,
 END
 
 STRUCT PrsAstConstant

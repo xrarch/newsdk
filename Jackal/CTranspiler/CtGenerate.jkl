@@ -950,8 +950,6 @@ FN (CtGenerateF) CtGenerateInverse (
     )
 END
 
-CtVarArrayNumber := 0
-
 FN (CtGenerateF) CtGenerateCall (
     IN inst : ^IrInstruction,
 )
@@ -963,53 +961,16 @@ FN (CtGenerateF) CtGenerateCall (
     // contain the variadic part, and passing a pointer to that, along with a
     // count, as the last two arguments of the function call.
 
-    type := inst^.Body.Call.FunctionType
+    callnode := inst^.Body.Call.CallNode
+    type := PrsEvaluateType ( callnode^.Body.Operator.Left )
+
     arg := inst^.Body.Call.ArgListHead
     count := type^.Body.Function.ArgCount
     cargcount := count
-    varargcount := 0
+    varargcount := callnode^.Body.Operator.VarArgCount
 
     IF type^.Body.Function.IsVarArg THEN
-        firstvararg : ^IrArgument = NULLPTR
-
         cargcount += 2
-        
-        i := 0
-
-        vararg := arg
-
-        WHILE vararg DO
-            IF i >= count THEN
-                IF NOT firstvararg THEN
-                    firstvararg = vararg
-                END
-
-                varargcount += 1
-            END
-
-            i += 1
-            vararg = vararg^.Next
-        END
-
-        IF firstvararg THEN
-            CtVarArrayNumber += 1
-
-            CtInsertStringFunc ( "    uint64_t __twr_vrg" )
-            CtInsertNumberFunc ( CtVarArrayNumber )
-            CtInsertByteFunc ( '[' )
-            CtInsertNumberFunc ( varargcount )
-            CtInsertStringFunc ( "] = {\n" )
-
-            WHILE firstvararg DO
-                CtInsertStringFunc ( "        " )
-                CtOutputVariableName ( firstvararg^.Variable )
-                CtInsertStringFunc ( ",\n" )
-
-                firstvararg = firstvararg^.Next
-            END
-
-            CtInsertStringFunc ( "    };\n" )
-        END
     END
 
     CtInsertStringFunc ( "    " )
@@ -1053,18 +1014,23 @@ FN (CtGenerateF) CtGenerateCall (
 
         arg = arg^.Next
 
-        IF arg OR varargcount THEN
+        IF arg OR type^.Body.Function.IsVarArg THEN
             CtInsertStringFunc ( ", " )
         END
 
         count -= 1
     END
 
-    IF varargcount THEN
-        CtInsertStringFunc ( "(uint64_t)(&__twr_vrg" )
-        CtInsertNumberFunc ( CtVarArrayNumber )
-        CtInsertStringFunc ( "), " )
-        CtInsertNumberFunc ( varargcount )
+    IF type^.Body.Function.IsVarArg THEN
+        IF varargcount THEN
+            CtInsertStringFunc ( "(uint64_t)(&" )
+            CtOutputSymbolName ( type^.Body.Function.VarTable )
+            CtInsertStringFunc ( "), " )
+            CtInsertNumberFunc ( varargcount )
+
+        ELSE
+            CtInsertStringFunc ( "0, 0" )
+        END
     END
 
     CtInsertStringFunc ( ");\n" )

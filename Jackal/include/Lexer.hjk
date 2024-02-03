@@ -311,6 +311,7 @@ STRUCT LexSemanticTypeFunctionBody
     FnPtrType : ^LexSemanticType,
     VarArgTable : ^LexSymbol,
     VarArgCount : ^LexSymbol,
+    VarTable : ^LexSymbol,
     BodyBlock : ^VOID, // actually a PrsBlock
     ArgCount : ULONG,
     IsVarArg : UBYTE,

@@ -1599,6 +1599,34 @@ FN (IrExpressionGenerationF) IrGeneratePtrDereference (
     RETURN var
 END
 
+FN IrGenerateVarTableStore (
+    IN vartablevar : ^IrVariable,
+    IN argvar : ^IrVariable,
+    IN offset : UWORD,
+)
+
+    // Generate a store into the var table. Helper function for function calls.
+
+    offsetvar := IrCreateConstantVariable ( offset )
+
+    addrvar := IrGenerateOperatorInst (
+        IR_ADD, // type
+        vartablevar, // src1
+        offsetvar, // src2
+    )
+
+    inst := IrCreateInstruction (
+        IR_STORE, // type
+    )
+
+    inst^.Body.LoadStore.Type = PRIM_TYPE_POINTER
+
+    inst^.Source1 = addrvar
+    inst^.Source2 = argvar
+
+    IrInsertInstructionTail ( inst )
+END
+
 FN (IrExpressionGenerationF) IrGenerateFunctionCall (
     IN node : ^PrsAstNode,
     IN truelabel : ^IrInstruction,
@@ -1626,16 +1654,27 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
         NULLPTR, // falselabel
     )
 
-    inst^.Defines = var
+    IF type^.Body.Function.ReturnType THEN
+        inst^.Defines = var
+    END
+
     inst^.Source1 = funcvar
     inst^.Body.Call.ArgListHead = NULLPTR
-    inst^.Body.Call.FunctionType = type
+    inst^.Body.Call.CallNode = node
 
     arglisttail : ^IrArgument = NULLPTR
+
+    refarg := type^.Body.Function.ArgListHead
 
     argnode := CAST node^.Body.Operator.OperatorSpecific TO ^PrsAstNode
 
     WHILE argnode DO
+        IF NOT refarg THEN
+            // The following are varargs.
+
+            BREAK
+        END
+
         irarg : ^IrArgument
 
         status := TlBumpAlloc (
@@ -1661,11 +1700,63 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
         arglisttail = irarg
 
         argnode = argnode^.Next
+
+        refarg = refarg^.Next
+    END
+
+    IF argnode THEN
+        // There are still varargs.
+
+        offset := 0
+
+        vartable := type^.Body.Function.VarTable
+
+        vartablevar := IrFindConstant (
+            CAST vartable TO UWORD, // constant
+            IR_STACK_ADDR, // op
+        )
+
+        IF NOT vartablevar THEN
+            varinst := IrCreateInstruction (
+                IR_STACK_ADDR, // type
+            )
+
+            vartablevar = IrCreateVariable (
+                varinst, // definedby
+            )
+
+            varinst^.Defines = vartablevar
+            varinst^.Body.Addr.Symbol = vartable
+
+            IrInsertInstructionTail ( varinst )
+
+            IrValueNumberConstantVariable (
+                vartablevar, // var
+                CAST vartable TO UWORD, // constant
+                IR_STACK_ADDR, // op
+            )
+        END
+
+        WHILE argnode DO
+            // Generate store instructions into the vararg table.
+
+            argvar := IrGenerateRvalue ( argnode )
+
+            IrGenerateVarTableStore (
+                vartablevar, // vartablevar
+                argvar, // argvar
+                offset, // offset
+            )
+
+            offset += JklTargetInfo^.PointerSize
+            argnode = argnode^.Next
+        END
     END
 
     IrInsertInstructionTail ( inst )
 
     // Kill all named variables.
+    // TODO only have to kill ones that were directly passed to OUT
 
     IrValueNumberBarrier (
         FALSE, // onlyloads

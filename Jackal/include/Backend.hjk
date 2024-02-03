@@ -165,7 +165,7 @@ END
 
 STRUCT IrCallBody
     ArgListHead : ^IrArgument,
-    FunctionType : ^LexSemanticType,
+    CallNode : ^PrsAstNode,
 END
 
 UNION IrInstructionBody

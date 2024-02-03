@@ -2540,6 +2540,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         node^.Body.Operator.Left = newnode
     END
 
+    varargcount := 0
     argcount := 0
     argtail : ^PrsAstNode = NULLPTR
     node^.Body.Operator.OperatorSpecific = NULLPTR
@@ -2560,8 +2561,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
         argcount += 1
 
-        IF NOT lefttype^.Body.Function.IsVarArg AND
-            argcount > lefttype^.Body.Function.ArgCount THEN
+        IF argcount > lefttype^.Body.Function.ArgCount AND
+            NOT lefttype^.Body.Function.IsVarArg THEN
 
             LexTokenError ( &node^.Token, "Too many arguments", 0, 0, 0 )
         END
@@ -2601,6 +2602,11 @@ FN (PrsOperatorF) PrsParseFunctionCall (
             END
 
             refarg = refarg^.Next
+        
+        ELSE
+            // This is a vararg.
+
+            varargcount += 1
         END
 
         argnode^.Next = NULLPTR
@@ -2634,6 +2640,55 @@ FN (PrsOperatorF) PrsParseFunctionCall (
                 "Expected a comma or right parenthesis", 0, 0, 0 )
         END
     END
+
+    IF varargcount THEN
+        vartable := lefttype^.Body.Function.VarTable
+        vartabletype : ^LexSemanticType
+
+        IF NOT vartable THEN
+            // Create the var table symbol.
+
+            status := TlBumpAlloc (
+                SIZEOF LexSymbol, // bytes
+                &vartable, // OUT ptr
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to allocate var table", 0, 0, 0 )
+            END
+
+            vartable^.Name = "VARTABLE"
+
+            lefttype^.Body.Function.VarTable = vartable
+
+            // Create the type.
+
+            status = TlBumpAlloc (
+                SIZEOF LexSemanticType, // bytes
+                &vartabletype, // OUT ptr
+            )
+
+            vartabletype^.Subtype = TYPE_ARRAY
+            vartabletype^.Body.Array.Base = PrsNullPtrType
+            vartabletype^.Body.Array.HasBound = FALSE
+            vartabletype^.Size = 0
+
+            vartable^.SemanticType = vartabletype
+
+        ELSE
+            vartabletype = vartable^.SemanticType
+        END
+
+        vartablesize := varargcount * JklTargetInfo^.PointerSize
+
+        IF vartablesize > vartabletype^.Size THEN
+            // Extend the vartable.
+
+            vartabletype^.Size = vartablesize
+        END
+    END
+
+    node^.Body.Operator.VarArgCount = varargcount
 
     IF argcount < lefttype^.Body.Function.ArgCount THEN
         LexTokenError ( &node^.Token, "Too few arguments", 0, 0, 0 )

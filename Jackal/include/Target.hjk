@@ -49,6 +49,11 @@ UNION LirInstructionBody
     Label : LirLabelBody,
 END
 
+STRUCT LirArgument
+    Next : ^LirArgument,
+    Register : ^LirRegister,
+END
+
 STRUCT LirInstruction
     Next : ^LirInstruction,
     Prev : ^LirInstruction,
@@ -59,6 +64,7 @@ STRUCT LirInstruction
     Source2 : ^LirRegister,
 
     Body : LirInstructionBody,
+    ArgListHead : ^LirArgument,
 
     MachineInstruction : UBYTE,
     Type : LirInstructionType,
