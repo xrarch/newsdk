@@ -5,7 +5,8 @@
    shouldn't rely on wrapping, as they will probably be placed in machine
    registers and there will be no effort taken to keep them within e.g. UBYTE
    bounds of 0-255 and so on. This also applies to arguments passed to function
-   calls, return values, and OUT parameters.
+   calls, return values, and OUT parameters. The variable will only be
+   "at least" as large as that type.
 
 3. One way to achieve either of the above is to declare it as an array and take
    the address of an element.
