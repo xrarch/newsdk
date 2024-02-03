@@ -128,7 +128,6 @@ STRUCT IrVariable
     Annotation : IrVariableAnnotation,
     Known : UBYTE,
     KnownConstant : UBYTE,
-    Escaped : UBYTE,
     ConsideredForDve : UBYTE,
 END
 

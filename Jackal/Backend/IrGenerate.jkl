@@ -144,9 +144,7 @@ FN IrCreateVariable (
     var^.Opt.Vn.KeyOp = 0
 
     var^.Known = FALSE
-    var^.Escaped = FALSE
     var^.ConsideredForDve = FALSE
-
 
     RETURN var
 END

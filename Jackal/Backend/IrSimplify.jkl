@@ -2381,9 +2381,7 @@ IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
     [IR_CALL] = &IrSimplifyCall,
 }
 
-FN IrKnownVariableBarrier (
-    IN onlyescaped : UBYTE,
-)
+FN IrKnownVariableBarrier ()
 
     // Kill all the known variables.
 
@@ -2395,11 +2393,9 @@ FN IrKnownVariableBarrier (
 
         var := CONTAINEROF listentry TO IrVariable.Opt.Sim.KnownListEntry
 
-        IF NOT onlyescaped OR var^.Escaped THEN
-            var^.Known = FALSE
+        var^.Known = FALSE
 
-            TlRemoveEntryList ( listentry )
-        END
+        TlRemoveEntryList ( listentry )
 
         listentry = nextentry
     END
@@ -2412,14 +2408,44 @@ FN IrKnownVariableBarrier (
 
         var := CONTAINEROF listentry TO IrVariable.Opt.Sim.ConstantListEntry
 
-        IF NOT onlyescaped OR var^.Escaped THEN
-            var^.KnownConstant = FALSE
+        var^.KnownConstant = FALSE
 
-            TlRemoveEntryList ( &var^.Opt.Sim.ConstantListEntry )
-            TlRemoveEntryList ( &var^.Opt.Sim.ConstantHashEntry )
-        END
+        TlRemoveEntryList ( &var^.Opt.Sim.ConstantListEntry )
+        TlRemoveEntryList ( &var^.Opt.Sim.ConstantHashEntry )
 
         listentry = nextentry
+    END
+END
+
+FN IrKnownVariableCallBarrier (
+    IN inst : ^IrInstruction,
+)
+
+    // Kill any variables used as OUT parameters for this call.
+
+    arg := inst^.Body.Call.OutListHead
+
+    WHILE arg DO
+        def := arg^.Variable
+
+        IF def^.Known THEN
+            // Kill
+
+            TlRemoveEntryList ( &def^.Opt.Sim.KnownListEntry )
+
+            def^.Known = FALSE
+        END
+
+        IF def^.KnownConstant THEN
+            // Kill
+
+            TlRemoveEntryList ( &def^.Opt.Sim.ConstantHashEntry )
+            TlRemoveEntryList ( &def^.Opt.Sim.ConstantListEntry )
+
+            def^.KnownConstant = FALSE
+        END
+
+        arg = arg^.Next
     END
 END
 
@@ -2529,13 +2555,12 @@ FN IrSimplifyForFunction (
             // We don't do any of these things across basic block boundaries
             // because we are lame.
 
-            IrKnownVariableBarrier ( FALSE )
+            IrKnownVariableBarrier ()
         
         ELSEIF inst^.Type == IR_CALL THEN
-            // This was a call so we have to make sure to kill any escaped
-            // locals, since we just left our function context.
+            // Make sure to kill all the OUT parameters.
 
-            IrKnownVariableBarrier ( TRUE )
+            IrKnownVariableCallBarrier ( inst )
         END
 
         inst = inst^.Next
@@ -2579,7 +2604,7 @@ FN IrSimplify ()
     funcsym := PrsFunctionListHead
 
     WHILE funcsym DO
-        IrKnownVariableBarrier ( FALSE )
+        IrKnownVariableBarrier ()
 
         IrSimplifyForFunction ( funcsym )
 
