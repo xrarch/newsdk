@@ -1,0 +1,11 @@
+1. Local variables cannot have their addresses taken, unless it's an array or
+   compound type.
+
+2. Local "datum" variable (i.e. non-compound, non-array) types are hints and you
+   shouldn't rely on wrapping, as they will probably be placed in machine
+   registers and there will be no effort taken to keep them within e.g. UBYTE
+   bounds of 0-255 and so on. This also applies to arguments passed to function
+   calls, return values, and OUT parameters.
+
+3. One way to achieve either of the above is to declare it as an array and take
+   the address of an element.
