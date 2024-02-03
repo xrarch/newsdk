@@ -10,3 +10,7 @@
 
 3. One way to achieve either of the above is to declare it as an array and take
    the address of an element.
+
+4. The UWORD type is the size of a machine word, whatever that means for a given
+   target. That also means it is the largest declarable "datum" type. UWORD and
+   pointer types will always be the same size and are interchangeable.
