@@ -151,7 +151,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type155, uint64_t _mng_machtype156) 
     uint64_t __twr_v173;
     uint64_t __twr_v174;
     __twr_v157 = (uint64_t)(&TlBumpAlloc);
-    __twr_v158 = 90ULL;
+    __twr_v158 = 98ULL;
     __twr_v159 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v157)(__twr_v158, (uint64_t)(&_mng_lirinst160));
     if (!(__twr_v159)) { goto __twr_l1; } else { goto __twr_l2; }
     __twr_l2:;
@@ -160,7 +160,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type155, uint64_t _mng_machtype156) 
     __twr_v163 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v161)(__twr_v162, __twr_v163, __twr_v163, __twr_v163);
     __twr_l1:;
-    __twr_v164 = 89ULL;
+    __twr_v164 = 97ULL;
     __twr_v165 = _mng_lirinst160 + __twr_v164;
     *(uint8_t*)(__twr_v165) = _mng_type155;
     __twr_v166 = 0ULL;
@@ -173,7 +173,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type155, uint64_t _mng_machtype156) 
     __twr_v171 = 40ULL;
     __twr_v172 = _mng_lirinst160 + __twr_v171;
     *(uint64_t*)(__twr_v172) = __twr_v166;
-    __twr_v173 = 88ULL;
+    __twr_v173 = 96ULL;
     __twr_v174 = _mng_lirinst160 + __twr_v173;
     *(uint8_t*)(__twr_v174) = _mng_machtype156;
     _jkl_retv = _mng_lirinst160;
@@ -251,14 +251,14 @@ void LirInsertInstructionTail(uint64_t _mng_lirinst185) {
     uint64_t __twr_v221;
     uint64_t __twr_v222;
     __twr_v186 = (uint64_t)(&TlPrintNumber);
-    __twr_v187 = 89ULL;
+    __twr_v187 = 97ULL;
     __twr_v188 = _mng_lirinst185 + __twr_v187;
     __twr_v189 = *(uint8_t*)(__twr_v188);
     ((void (*)(uint64_t))__twr_v186)(__twr_v189);
     __twr_v190 = (uint64_t)(&TlPrintString);
     __twr_v191 = (uint64_t)(&"\n");
     ((void (*)(uint64_t))__twr_v190)(__twr_v191);
-    __twr_v192 = 88ULL;
+    __twr_v192 = 96ULL;
     __twr_v193 = _mng_lirinst185 + __twr_v192;
     __twr_v194 = *(uint8_t*)(__twr_v193);
     ((void (*)(uint64_t))__twr_v186)(__twr_v194);
@@ -485,7 +485,7 @@ uint64_t LirSelect(uint64_t _mng_inst273) {
     __twr_l18:;
     __twr_v278 = (uint64_t)(&JklTargetInfo);
     __twr_v279 = *(uint64_t*)(__twr_v278);
-    __twr_v280 = 16ULL;
+    __twr_v280 = 24ULL;
     __twr_v281 = __twr_v279 + __twr_v280;
     __twr_v282 = *(uint64_t*)(__twr_v281);
     __twr_v283 = 88ULL;

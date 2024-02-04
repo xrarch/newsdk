@@ -64,7 +64,9 @@ STRUCT LirInstruction
     Source2 : ^LirRegister,
 
     Body : LirInstructionBody,
+
     ArgListHead : ^LirArgument,
+    OutListHead : ^LirArgument,
 
     MachineInstruction : UBYTE,
     Type : LirInstructionType,

@@ -14,6 +14,11 @@
 EXTERN FN (JklTargetF) FoxCompile ()
 
 // FORWARD
+EXTERN FN (JklValueNumberF) FoxValueNumber (
+    IN constant : UWORD,
+) : UBYTE
+
+// FORWARD
 EXTERN FoxLirInfo : LirTargetInfoRecord
 
 FoxSp : LirRegister
@@ -22,6 +27,7 @@ FoxFp : LirRegister
 FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
+    [ValueNumberConstantFunc] = &FoxValueNumber,
     [LirInfo] = &FoxLirInfo,
     [StackAlignment] = 4,
     [PointerAlignment] = 4,
@@ -526,6 +532,8 @@ FN (LirSelectF) FoxSelectAddr (
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
+    LirInsertInstructionTail ( lirinst )
+
     RETURN defreg
 END
 
@@ -844,6 +852,9 @@ FN (LirSelectF) FoxSelectCall (
     IF inst^.Defines THEN
         defreg = LirGetRegister ( inst^.Defines )
 
+        // Hint the return value to machine reg a3 since that is what it is
+        // passed back in.
+
         defreg^.Hint = FOX_A3
     END
 
@@ -855,12 +866,6 @@ FN (LirSelectF) FoxSelectCall (
     callinst^.Defines = defreg
     callinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     callinst^.Body.Machine.Fox.BitSize = FOX_BITS_UNKNOWN
-
-    callinst^.Source1 = FoxFillOperand (
-        callinst, // lirinst
-        &callinst^.Body.Machine.Fox.Op1, // operand
-        inst^.Source1, // var
-    )
 
     arglisttail : ^LirArgument = NULLPTR
     callinst^.ArgListHead = NULLPTR
@@ -883,7 +888,10 @@ FN (LirSelectF) FoxSelectCall (
 
         lirarg^.Register = LirSelectOrGetRegister ( arg^.Variable )
 
-        IF count < 3 THEN
+        IF count < 4 THEN
+            // First four arguments are hinted to a0-a3 since they're passed to
+            // the callee in those registers.
+
             lirarg^.Register^.Hint = FOX_A0 + count
         END
 
@@ -903,7 +911,56 @@ FN (LirSelectF) FoxSelectCall (
         arg = arg^.Next
     END
 
+    callinst^.Source1 = FoxFillOperand (
+        callinst, // lirinst
+        &callinst^.Body.Machine.Fox.Op1, // operand
+        inst^.Source1, // var
+    )
+
     LirInsertInstructionTail ( callinst )
+
+    outlisttail : ^LirArgument = NULLPTR
+    callinst^.OutListHead = NULLPTR
+
+    arg = inst^.Body.Call.OutListHead
+    count = 0
+
+    WHILE arg DO
+        lirarg : ^LirArgument
+
+        status := TlBumpAlloc (
+            SIZEOF LirArgument, // bytes
+            OUT lirarg, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate LIR argument", 0, 0, 0 )
+        END
+
+        lirarg^.Register = LirGetRegister ( arg^.Variable )
+
+        IF count < 3 THEN
+            // First three OUT values are hinted to a0-a2 since they're passed
+            // to the caller in those registers. a3 is the primary return value.
+
+            lirarg^.Register^.Hint = FOX_A0 + count
+        END
+
+        lirarg^.Next = NULLPTR
+
+        IF outlisttail THEN
+            outlisttail^.Next = lirarg
+
+        ELSE
+            callinst^.OutListHead = lirarg
+        END
+
+        outlisttail = lirarg
+
+        count += 1
+
+        arg = arg^.Next
+    END
 
     RETURN defreg
 END
@@ -955,6 +1012,17 @@ END
 FoxAsmEmitter : AsmEmitterRecord = {
     [EmitFunc] = &FoxEmitFunction
 }
+
+FN (JklValueNumberF) FoxValueNumber (
+    IN constant : UWORD,
+) : UBYTE
+
+    // Return whether to value number this constant.
+
+    // Never on fox32 since we can always fit them into the instruction.
+
+    RETURN FALSE
+END
 
 FN (JklTargetF) FoxCompile ()
     

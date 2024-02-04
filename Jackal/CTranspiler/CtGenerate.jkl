@@ -13,9 +13,15 @@
 // FORWARD
 EXTERN FN (JklTargetF) CtTranspile ()
 
+// FORWARD
+EXTERN FN (JklValueNumberF) CtValueNumber (
+    IN constant : UWORD,
+) : UBYTE
+
 CtTargetInfo : JklTargetInfoRecord = {
     [Name] = "CHost",
     [EntryFunc] = &CtTranspile,
+    [ValueNumberConstantFunc] = &CtValueNumber,
     [StackAlignment] = 8,
     [PointerAlignment] = 8,
     [PointerSize] = 8,
@@ -1014,7 +1020,7 @@ FN (CtGenerateF) CtGenerateCall (
 
         arg = arg^.Next
 
-        IF arg OR outarg OR type^.Body.Function.IsVarArg THEN
+        IF arg OR outarg THEN
             CtInsertStringFunc ( ", " )
         END
     END
@@ -1026,20 +1032,8 @@ FN (CtGenerateF) CtGenerateCall (
 
         outarg = outarg^.Next
 
-        IF outarg OR type^.Body.Function.IsVarArg THEN
+        IF outarg THEN
             CtInsertStringFunc ( ", " )
-        END
-    END
-
-    IF type^.Body.Function.IsVarArg THEN
-        IF varargcount THEN
-            CtInsertStringFunc ( "(uint64_t)(&" )
-            CtOutputSymbolName ( type^.Body.Function.VarTable )
-            CtInsertStringFunc ( "), " )
-            CtInsertNumberFunc ( varargcount )
-
-        ELSE
-            CtInsertStringFunc ( "0, 0" )
         END
     END
 
@@ -1180,7 +1174,7 @@ FN CtGenerateArgList (
 
             count -= 1
 
-            IF count OR type^.Body.Function.IsVarArg THEN
+            IF count THEN
                 CtInsertString ( ", " )
             END
 
@@ -1215,6 +1209,10 @@ FN CtGenerateFunction (
 
     count := type^.Body.Function.ArgCount
 
+    IF type^.Body.Function.IsVarArg THEN
+        count += 1
+    END
+
     // Generate the argument list one IN/OUT type at a time, because the
     // argument list has them jumbled up, but the IR list has two lists, so OUT
     // parameters always end up sorted to the end.
@@ -1225,13 +1223,9 @@ FN CtGenerateFunction (
         count, // count
     )
 
-    CtGenerateArgList (
-        type, // type
-        ARG_OUT, // inout
-        count, // count
-    )
-
     IF type^.Body.Function.IsVarArg THEN
+        count -= 1
+
         vtsym := type^.Body.Function.VarArgTable
         vcsym := type^.Body.Function.VarArgCount
 
@@ -1248,7 +1242,17 @@ FN CtGenerateFunction (
         CtInsertString ( ", uint64_t _mng_" )
         CtInsertString ( vcsym^.Name )
         CtInsertNumber ( CAST vcsym^.TrgContext TO UWORD )
+
+        IF count THEN
+            CtInsertString ( ", " )
+        END
     END
+
+    CtGenerateArgList (
+        type, // type
+        ARG_OUT, // inout
+        count, // count
+    )
 
     CtInsertString ( ")" )
 
@@ -1511,6 +1515,17 @@ FN CtGenerateGlobal (
     END
 
     CtInsertString ( ";\n" )
+END
+
+FN (JklValueNumberF) CtValueNumber (
+    IN constant : UWORD,
+) : UBYTE
+
+    // Return whether to value number this constant.
+
+    // Always on C transpilation host, to reduce output size.
+
+    RETURN TRUE
 END
 
 FN (JklTargetF) CtTranspile ()

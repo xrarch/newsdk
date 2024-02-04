@@ -354,13 +354,19 @@ FN IrCreateConstantVariable (
 
     // Create a variable with a constant value.
 
-    var := IrFindConstant (
-        value, // constant
-        IR_CONSTANT, // op
-    )
+    var : ^IrVariable
 
-    IF var THEN
-        RETURN var
+    dovaluenumber := JklTargetInfo^.ValueNumberConstantFunc ( value )
+
+    IF dovaluenumber THEN
+        var = IrFindConstant (
+            value, // constant
+            IR_CONSTANT, // op
+        )
+
+        IF var THEN
+            RETURN var
+        END
     END
 
     inst := IrCreateInstruction (
@@ -374,11 +380,13 @@ FN IrCreateConstantVariable (
     inst^.Defines = var
     inst^.Body.Constant.Constant = value
 
-    IrValueNumberConstantVariable (
-        var, // var
-        value, // value
-        IR_CONSTANT, // op
-    )
+    IF dovaluenumber THEN
+        IrValueNumberConstantVariable (
+            var, // var
+            value, // value
+            IR_CONSTANT, // op
+        )
+    END
 
     IrInsertInstructionTail ( inst )
 
@@ -403,12 +411,6 @@ FN IrCreateConstantBefore (
 
     inst^.Defines = var
     inst^.Body.Constant.Constant = value
-
-    IrValueNumberConstantVariable (
-        var, // var
-        value, // value
-        IR_CONSTANT, // op
-    )
 
     prev := beforeinst^.Prev
 
@@ -1727,6 +1729,56 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
             offset += JklTargetInfo^.PointerSize
             argnode = argnode^.Next
         END
+
+        // Add the vartable as the penultimate argument.
+
+        irarg : ^IrArgument
+
+        status := TlBumpAlloc (
+            SIZEOF IrArgument, // bytes
+            OUT irarg, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate IR argument", 0, 0, 0 )
+        END
+
+        irarg^.Variable = vartablevar
+
+        IF arglisttail THEN
+            arglisttail^.Next = irarg
+
+        ELSE
+            inst^.Body.Call.ArgListHead = irarg
+        END
+
+        arglisttail = irarg
+
+        // Add the constant number of varargs as the final argument.
+
+        argcvar := IrCreateConstantVariable (
+            node^.Body.Operator.VarArgCount, // constant
+        )
+
+        status = TlBumpAlloc (
+            SIZEOF IrArgument, // bytes
+            OUT irarg, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate IR argument", 0, 0, 0 )
+        END
+
+        irarg^.Variable = argcvar
+
+        IF arglisttail THEN
+            arglisttail^.Next = irarg
+
+        ELSE
+            inst^.Body.Call.ArgListHead = irarg
+        END
+
+        arglisttail = irarg
     END
 
     IrInsertInstructionTail ( inst )
