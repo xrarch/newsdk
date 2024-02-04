@@ -1201,8 +1201,8 @@ FN IrGenerateUnaryArithmetic (
     RETURN retvar
 END
 
-#MACRO IrGenerateBinOp ( fnname, optype ) [
-    FN (IrExpressionGenerationF) fnname (
+#MACRO IrGenerateBinOp ( FN_NAME, OP_TYPE ) [
+    FN (IrExpressionGenerationF) FN_NAME (
         IN node : ^PrsAstNode,
         IN truelabel : ^IrInstruction,
         IN falselabel : ^IrInstruction,
@@ -1212,7 +1212,7 @@ END
 
         RETURN IrGenerateArithmetic (
             node, // node
-            optype, // type
+            OP_TYPE, // type
             truelabel, // truelabel
             falselabel, // falselabel
         )
