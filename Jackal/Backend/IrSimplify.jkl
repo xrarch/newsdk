@@ -2496,21 +2496,23 @@ FN IrSimplifyForFunction (
             )
         END
 
-        IF def AND inst^.Type != IR_MOVE AND def^.Known THEN
-            // Kill
+        IF def THEN
+            IF inst^.Type != IR_MOVE AND def^.Known THEN
+                // Kill
 
-            TlRemoveEntryList ( &def^.Opt.Sim.KnownListEntry )
+                TlRemoveEntryList ( &def^.Opt.Sim.KnownListEntry )
 
-            def^.Known = FALSE
-        END
+                def^.Known = FALSE
+            END
 
-        IF def AND inst^.Type != IR_CONSTANT AND def^.KnownConstant THEN
-            // Kill
+            IF inst^.Type != IR_CONSTANT AND def^.KnownConstant THEN
+                // Kill
 
-            TlRemoveEntryList ( &def^.Opt.Sim.ConstantHashEntry )
-            TlRemoveEntryList ( &def^.Opt.Sim.ConstantListEntry )
+                TlRemoveEntryList ( &def^.Opt.Sim.ConstantHashEntry )
+                TlRemoveEntryList ( &def^.Opt.Sim.ConstantListEntry )
 
-            def^.KnownConstant = FALSE
+                def^.KnownConstant = FALSE
+            END
         END
 
         // Perform arithmetic simplifications as may be appropriate for this

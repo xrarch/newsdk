@@ -1201,69 +1201,35 @@ FN IrGenerateUnaryArithmetic (
     RETURN retvar
 END
 
-FN (IrExpressionGenerationF) IrGenerateBitAnd (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
+#MACRO IrGenerateBinOp ( fnname, optype ) [
+    FN (IrExpressionGenerationF) fnname (
+        IN node : ^PrsAstNode,
+        IN truelabel : ^IrInstruction,
+        IN falselabel : ^IrInstruction,
+    ) : ^IrVariable
 
-    // Generate IR for bitwise AND.
+        // Generate IR for binary op.
 
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_BIT_AND, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
+        RETURN IrGenerateArithmetic (
+            node, // node
+            optype, // type
+            truelabel, // truelabel
+            falselabel, // falselabel
+        )
+    END
+]
 
-FN (IrExpressionGenerationF) IrGenerateBitOr (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
+// NOTE: Macro function generation
 
-    // Generate IR for bitwise OR.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_BIT_OR, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
-FN (IrExpressionGenerationF) IrGeneratePlus (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for addition.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_ADD, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
-FN (IrExpressionGenerationF) IrGenerateMinus (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for subtraction.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_SUBTRACT, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
+IrGenerateBinOp ( IrGenerateBitAnd, IR_BIT_AND )
+IrGenerateBinOp ( IrGenerateBitOr, IR_BIT_OR )
+IrGenerateBinOp ( IrGeneratePlus, IR_ADD )
+IrGenerateBinOp ( IrGenerateMinus, IR_SUBTRACT )
+IrGenerateBinOp ( IrGenerateModulo, IR_MODULO )
+IrGenerateBinOp ( IrGenerateBitXor, IR_BIT_XOR )
+IrGenerateBinOp ( IrGenerateLeftShift, IR_LEFT_SHIFT )
+IrGenerateBinOp ( IrGenerateRightShift, IR_RIGHT_SHIFT )
+IrGenerateBinOp ( IrGenerateMul, IR_MULTIPLY )
 
 FN (IrExpressionGenerationF) IrGenerateDivide (
     IN node : ^PrsAstNode,
@@ -1273,99 +1239,15 @@ FN (IrExpressionGenerationF) IrGenerateDivide (
 
     // Generate IR for division.
 
+    type := IR_DIVIDE
+
     IF IrIsSignedType ( node^.Body.Operator.Left ) THEN
-        RETURN IrGenerateArithmetic (
-            node, // node
-            IR_DIVIDE_SIGNED, // type
-            truelabel, // truelabel
-            falselabel, // falselabel
-        )
-
-    ELSE
-        RETURN IrGenerateArithmetic (
-            node, // node
-            IR_DIVIDE, // type
-            truelabel, // truelabel
-            falselabel, // falselabel
-        )
+        type = IR_DIVIDE_SIGNED
     END
-END
-
-FN (IrExpressionGenerationF) IrGenerateModulo (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for modulo.
 
     RETURN IrGenerateArithmetic (
         node, // node
-        IR_MODULO, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
-FN (IrExpressionGenerationF) IrGenerateBitXor (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for bit-wise XOR.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_BIT_XOR, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
-FN (IrExpressionGenerationF) IrGenerateLeftShift (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for left-shift.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_LEFT_SHIFT, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
-FN (IrExpressionGenerationF) IrGenerateRightShift (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for right-shift.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_RIGHT_SHIFT, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
-FN (IrExpressionGenerationF) IrGenerateMul (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for multiply.
-
-    RETURN IrGenerateArithmetic (
-        node, // node
-        IR_MULTIPLY, // type
+        type, // type
         truelabel, // truelabel
         falselabel, // falselabel
     )

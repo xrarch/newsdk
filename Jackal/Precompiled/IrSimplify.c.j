@@ -8537,19 +8537,19 @@ void IrSimplifyForFunction(uint64_t _mng_funcsym3353) {
     __twr_v3415 = *(uint64_t*)(_mng_inst3358);
     ((void (*)(uint64_t, uint64_t))__twr_v3414)(_mng_def3386, __twr_v3415);
     __twr_l599:;
-    if (_mng_def3386) { goto __twr_l608; } else { goto __twr_l605; }
-    __twr_l608:;
+    if (_mng_def3386) { goto __twr_l606; } else { goto __twr_l605; }
+    __twr_l606:;
     __twr_v3416 = 88ULL;
     __twr_v3417 = _mng_inst3358 + __twr_v3416;
     __twr_v3418 = *(uint8_t*)(__twr_v3417);
     __twr_v3419 = 6ULL;
-    if (__twr_v3418 == __twr_v3419) { goto __twr_l605; } else { goto __twr_l607; }
-    __twr_l607:;
+    if (__twr_v3418 == __twr_v3419) { goto __twr_l607; } else { goto __twr_l609; }
+    __twr_l609:;
     __twr_v3420 = 93ULL;
     __twr_v3421 = _mng_def3386 + __twr_v3420;
     __twr_v3422 = *(uint8_t*)(__twr_v3421);
-    if (!(__twr_v3422)) { goto __twr_l605; } else { goto __twr_l606; }
-    __twr_l606:;
+    if (!(__twr_v3422)) { goto __twr_l607; } else { goto __twr_l608; }
+    __twr_l608:;
     __twr_v3423 = 0ULL;
     __twr_v3424 = 8ULL;
     __twr_v3425 = 32ULL;
@@ -8564,20 +8564,18 @@ void IrSimplifyForFunction(uint64_t _mng_funcsym3353) {
     __twr_v3432 = 93ULL;
     __twr_v3433 = _mng_def3386 + __twr_v3432;
     *(uint8_t*)(__twr_v3433) = __twr_v3423;
-    __twr_l605:;
-    if (_mng_def3386) { goto __twr_l612; } else { goto __twr_l609; }
-    __twr_l612:;
+    __twr_l607:;
     __twr_v3434 = 88ULL;
     __twr_v3435 = _mng_inst3358 + __twr_v3434;
     __twr_v3436 = *(uint8_t*)(__twr_v3435);
     __twr_v3437 = 5ULL;
-    if (__twr_v3436 == __twr_v3437) { goto __twr_l609; } else { goto __twr_l611; }
-    __twr_l611:;
+    if (__twr_v3436 == __twr_v3437) { goto __twr_l610; } else { goto __twr_l612; }
+    __twr_l612:;
     __twr_v3438 = 94ULL;
     __twr_v3439 = _mng_def3386 + __twr_v3438;
     __twr_v3440 = *(uint8_t*)(__twr_v3439);
-    if (!(__twr_v3440)) { goto __twr_l609; } else { goto __twr_l610; }
-    __twr_l610:;
+    if (!(__twr_v3440)) { goto __twr_l610; } else { goto __twr_l611; }
+    __twr_l611:;
     __twr_v3441 = 0ULL;
     __twr_v3442 = 64ULL;
     __twr_v3443 = _mng_def3386 + __twr_v3442;
@@ -8601,7 +8599,8 @@ void IrSimplifyForFunction(uint64_t _mng_funcsym3353) {
     __twr_v3457 = 94ULL;
     __twr_v3458 = _mng_def3386 + __twr_v3457;
     *(uint8_t*)(__twr_v3458) = __twr_v3441;
-    __twr_l609:;
+    __twr_l610:;
+    __twr_l605:;
     __twr_v3459 = (uint64_t)(&IrSimplificationFunctions);
     __twr_v3460 = 88ULL;
     __twr_v3461 = _mng_inst3358 + __twr_v3460;
