@@ -4252,9 +4252,7 @@ FN PrsParseFnSignature (
 
         arg^.Symbol = argsymbol
 
-        IF arg^.InOut == ARG_OUT THEN
-            argsymbol^.OutParameter = TRUE
-        END
+        argsymbol^.ParameterType = arg^.InOut
 
         IF NOT LexMatchToken (
             &checktoken, // token

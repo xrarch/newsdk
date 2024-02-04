@@ -1009,7 +1009,7 @@ FN LexNextToken (
         symbol^.IrContext = NULLPTR
         symbol^.TrgContext = NULLPTR
         symbol^.StackAllocated = FALSE
-        symbol^.OutParameter = FALSE
+        symbol^.ParameterType = ARG_NULL
 
         TlCopyMemory (
             symbol^.Name, // dest

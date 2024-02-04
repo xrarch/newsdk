@@ -82,7 +82,7 @@ FN IrUndeadifyVariable (
     IF NOT var^.ConsideredForDve THEN
         var^.ConsideredForDve = TRUE
 
-        IF var^.Symbol AND var^.Symbol^.OutParameter THEN
+        IF var^.Symbol AND var^.Symbol^.ParameterType == ARG_OUT THEN
             // Never kill OUT parameters.
 
             var^.Opt.Dve.References = 2
@@ -122,7 +122,7 @@ FN IrEliminateForFunction (
             IF NOT def^.ConsideredForDve THEN
                 def^.ConsideredForDve = TRUE
 
-                IF def^.Symbol AND def^.Symbol^.OutParameter THEN
+                IF def^.Symbol AND def^.Symbol^.ParameterType == ARG_OUT THEN
                     // Never kill OUT parameters.
 
                     def^.Opt.Dve.References = 1

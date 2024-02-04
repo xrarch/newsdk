@@ -246,7 +246,7 @@ STRUCT LexSymbol
     Flags : ULONG,
     Type : LexSymbolType,
     StackAllocated : UBYTE,
-    OutParameter : UBYTE,
+    ParameterType : UBYTE,
 END
 
 ENUM LexSemanticSubtype : UBYTE
@@ -289,6 +289,7 @@ STRUCT LexSemanticTypeNamedBody
 END
 
 ENUM LexFunctionArgumentTypes : UBYTE
+    ARG_NULL,
     ARG_IN,
     ARG_OUT,
 END

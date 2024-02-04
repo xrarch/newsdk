@@ -876,6 +876,13 @@ FN (LirSelectF) FoxSelectCall (
     // We generate the call instruction and all of its arguments but we don't
     // worry at all about the ABI; we need the register allocator to run first.
 
+    callinst := LirCreateInstruction (
+        LIR_CALL, // type
+        FOX_CALL, // machtype
+    )
+
+    callinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_NONE
+
     defreg : ^LirRegister = NULLPTR
 
     IF inst^.Defines THEN
@@ -885,12 +892,9 @@ FN (LirSelectF) FoxSelectCall (
         // passed back in.
 
         defreg^.Hint = FOX_A3
+        
+        callinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     END
-
-    callinst := LirCreateInstruction (
-        LIR_CALL, // type
-        FOX_CALL, // machtype
-    )
 
     callinst^.Defines = defreg
     callinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
@@ -940,9 +944,9 @@ FN (LirSelectF) FoxSelectCall (
         arg = arg^.Next
     END
 
-    callinst^.Source1 = FoxFillOperand (
+    callinst^.Source2 = FoxFillOperand (
         callinst, // lirinst
-        &callinst^.Body.Machine.Fox.Op1, // operand
+        &callinst^.Body.Machine.Fox.Op2, // operand
         inst^.Source1, // var
     )
 
@@ -1313,7 +1317,7 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_ADD] = &FoxSelectArithmetic,
         [IR_SUBTRACT] = &FoxSelectArithmetic,
         [IR_DIVIDE] = &FoxSelectArithmetic,
-        // [IR_DIVIDE_SIGNED] = &FoxSelect,
+        // [IR_DIVIDE_SIGNED] = &FoxSelectArithmetic,
         [IR_MODULO] = &FoxSelectArithmetic,
         [IR_BIT_XOR] = &FoxSelectArithmetic,
         [IR_LEFT_SHIFT] = &FoxSelectArithmetic,
@@ -1322,6 +1326,39 @@ FoxLirInfo : LirTargetInfoRecord = {
 
         [IR_BIT_NOT] = &FoxSelectBitNot,
     },
+    [RegisterAbiUsage] = {
+        [FOX_T0] = LIR_REG_CALLER_SAVED,
+        [FOX_T1] = LIR_REG_CALLER_SAVED,
+        [FOX_T2] = LIR_REG_CALLER_SAVED,
+        [FOX_T3] = LIR_REG_CALLER_SAVED,
+        [FOX_T4] = LIR_REG_CALLER_SAVED,
+        [FOX_T5] = LIR_REG_CALLER_SAVED,
+        [FOX_T6] = LIR_REG_CALLER_SAVED,
+        [FOX_A0] = LIR_REG_CALLER_SAVED,
+        [FOX_A1] = LIR_REG_CALLER_SAVED,
+        [FOX_A2] = LIR_REG_CALLER_SAVED,
+        [FOX_A3] = LIR_REG_CALLER_SAVED,
+        [FOX_S0] = LIR_REG_CALLEE_SAVED,
+        [FOX_S1] = LIR_REG_CALLEE_SAVED,
+        [FOX_S2] = LIR_REG_CALLEE_SAVED,
+        [FOX_S3] = LIR_REG_CALLEE_SAVED,
+        [FOX_S4] = LIR_REG_CALLEE_SAVED,
+        [FOX_S5] = LIR_REG_CALLEE_SAVED,
+        [FOX_S6] = LIR_REG_CALLEE_SAVED,
+        [FOX_S7] = LIR_REG_CALLEE_SAVED,
+        [FOX_S8] = LIR_REG_CALLEE_SAVED,
+        [FOX_S9] = LIR_REG_CALLEE_SAVED,
+        [FOX_S10] = LIR_REG_CALLEE_SAVED,
+        [FOX_S11] = LIR_REG_CALLEE_SAVED,
+        [FOX_S12] = LIR_REG_CALLEE_SAVED,
+        [FOX_S13] = LIR_REG_CALLEE_SAVED,
+        [FOX_S14] = LIR_REG_CALLEE_SAVED,
+        [FOX_S15] = LIR_REG_CALLEE_SAVED,
+        [FOX_S16] = LIR_REG_CALLEE_SAVED,
+        [FOX_S17] = LIR_REG_CALLEE_SAVED,
+        [FOX_R31] = LIR_REG_CALLER_SAVED,
+    },
+    [MaximumRegister] = FOX_REG_MAX,
 }
 
 FN FoxDebugPrintRegister (
@@ -1519,7 +1556,7 @@ FN (AsmEmitF) FoxEmitFunction (
 END
 
 FoxAsmEmitter : AsmEmitterRecord = {
-    [EmitFunc] = &FoxEmitFunction
+    [EmitFunc] = &FoxEmitFunction,
 }
 
 FN (JklValueNumberF) FoxValueNumber (

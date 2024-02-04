@@ -114,8 +114,16 @@ EXTERN FN LirAllocateRegistersForFunction (
     IN funcsym : ^LexSymbol,
 )
 
+ENUM LirAbiUsage : UBYTE
+    LIR_REG_UNUSABLE, // MUST be first in the enum
+    LIR_REG_CALLEE_SAVED,
+    LIR_REG_CALLER_SAVED,
+END
+
 STRUCT LirTargetInfoRecord
     SelectionTable : LirSelectF[IR_MAX],
+    RegisterAbiUsage : LirAbiUsage[64],
+    MaximumRegister : UBYTE,
 END
 
 FNPTR AsmEmitF (
