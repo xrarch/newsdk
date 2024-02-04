@@ -136,7 +136,7 @@ FN LexInitialize ()
 
     fileblock := FeCreateFileBlock (
         &FeInputFile[0], // includename
-        dumpster, // OUT created
+        OUT dumpster, // created
     )
 
     FeCopyPathFileBlock (
@@ -708,7 +708,7 @@ FN LexGetTokenContents (
             '\"', // terminator
             dynamicbuffer, // dynamicbuffer
             NULLPTR, // buffer
-            dumpster, // OUT length
+            OUT dumpster, // length
         )
 
         // Lookup or insert the string in the interned string hash table.
@@ -743,7 +743,7 @@ FN LexGetTokenContents (
             0x27, // terminator
             NULLPTR, // dynamicbuffer
             buffer, // buffer
-            length, // OUT length
+            OUT length, // length
         )
 
         RETURN TOKEN_FLAG_CHARLIT
@@ -889,8 +889,8 @@ FN LexNextToken (
     tokenflag := LexGetTokenContents (
         token, // token
         &buffer[0], // buffer
-        length, // OUT length
-        internedstring, // OUT internedstring
+        OUT length, // length
+        OUT internedstring, // internedstring
     )
 
     IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
@@ -997,7 +997,7 @@ FN LexNextToken (
 
         status := TlBumpAlloc (
             SIZEOF LexSymbol + length + 1, // bytes
-            symbol, // OUT ptr
+            OUT symbol, // ptr
         )
 
         IF status THEN

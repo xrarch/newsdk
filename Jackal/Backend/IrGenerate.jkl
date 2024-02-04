@@ -83,7 +83,7 @@ FN IrCreateInstruction (
 
     status := TlBumpAlloc (
         SIZEOF IrInstruction, // bytes
-        inst, // OUT ptr
+        OUT inst, // ptr
     )
 
     IF status THEN
@@ -126,7 +126,7 @@ FN IrCreateVariable (
 
     status := TlBumpAlloc (
         SIZEOF IrVariable, // bytes
-        var, // OUT ptr
+        OUT var, // ptr
     )
 
     IF status THEN
@@ -140,7 +140,6 @@ FN IrCreateVariable (
     var^.Number = 0
 
     var^.Opt.Vn.AcquiredByLoad = FALSE
-    var^.Opt.Vn.AcquiredByNamed = FALSE
     var^.Opt.Vn.KeyOp = 0
 
     var^.Known = FALSE
@@ -172,7 +171,6 @@ FN IrInsertInstructionTail (
 
         IrValueNumberBarrier (
             FALSE, // onlyloads
-            FALSE, // onlynameds
         )
 
     ELSEIF inst^.Type > IR_LOAD_BARRIER_LOW_NUMBER AND
@@ -180,7 +178,6 @@ FN IrInsertInstructionTail (
 
         IrValueNumberBarrier (
             TRUE, // onlyloads
-            FALSE, // onlynameds
         )
     END
 END
@@ -574,8 +571,6 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
             var^.Symbol = symbol
 
             var^.Annotation = IR_VAR_LOCAL
-
-            var^.Opt.Vn.AcquiredByNamed = TRUE
 
             IrGiveOpaqueValueVariable ( var )
 
@@ -1643,7 +1638,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
         status := TlBumpAlloc (
             SIZEOF IrArgument, // bytes
-            irarg, // OUT ptr
+            OUT irarg, // ptr
         )
 
         IF status THEN
@@ -2554,7 +2549,7 @@ FN IrGenerateForFunction (
 
     status := TlBumpAlloc (
         SIZEOF IrFunction, // sizeof
-        IrCurrentFunction, // OUT ptr
+        OUT IrCurrentFunction, // ptr
     )
 
     IF status THEN
@@ -2585,7 +2580,6 @@ FN IrGenerate ()
 
         IrValueNumberBarrier (
             FALSE, // onlyloads
-            FALSE, // onlynameds
         )
 
         IrGenerateForFunction ( funcsym )

@@ -17,7 +17,6 @@ IrNextValueNumber : ULONG = 1
 
 FN IrValueNumberBarrier (
     IN onlyloads : UWORD,
-    IN onlynameds : UWORD,
 )
 
     // Cause a value number barrier; clear the hash table.
@@ -30,9 +29,7 @@ FN IrValueNumberBarrier (
 
         var := CONTAINEROF listentry TO IrVariable.Opt.Vn.ListEntry
 
-        IF (NOT onlyloads OR var^.Opt.Vn.AcquiredByLoad) AND
-            (NOT onlynameds OR var^.Opt.Vn.AcquiredByNamed) THEN
-
+        IF NOT onlyloads OR var^.Opt.Vn.AcquiredByLoad THEN
             var^.Opt.Vn.ValueNumber = 0
 
             TlRemoveEntryList ( &var^.Opt.Vn.ListEntry )
@@ -112,7 +109,6 @@ FN IrValueNumberVariable (
     // Give the variable a (new) value number.
 
     byload := var^.Opt.Vn.AcquiredByLoad | src1^.Opt.Vn.AcquiredByLoad
-    bynamed := var^.Opt.Vn.AcquiredByNamed | src1^.Opt.Vn.AcquiredByNamed
     valuesrc1 := src1^.Opt.Vn.ValueNumber
 
     IF NOT valuesrc1 THEN
@@ -124,7 +120,6 @@ FN IrValueNumberVariable (
     IF src2 THEN
         valuesrc2 = src2^.Opt.Vn.ValueNumber
         byload |= src2^.Opt.Vn.AcquiredByLoad
-        bynamed |= src2^.Opt.Vn.AcquiredByNamed
 
         IF NOT valuesrc2 THEN
             LEAVE
@@ -155,7 +150,6 @@ FN IrValueNumberVariable (
     var^.Opt.Vn.ValueNumber = vn
 
     var^.Opt.Vn.AcquiredByLoad = byload
-    var^.Opt.Vn.AcquiredByNamed = bynamed
 
     var^.Opt.Vn.KeySrc1 = valuesrc1
     var^.Opt.Vn.KeySrc2 = valuesrc2

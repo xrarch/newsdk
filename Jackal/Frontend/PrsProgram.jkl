@@ -89,7 +89,7 @@ FN PrsCreateType () : ^LexSemanticType
 
     status := TlBumpAlloc (
         SIZEOF LexSemanticType, // bytes
-        type, // OUT ptr
+        OUT type, // ptr
     )
 
     IF status THEN
@@ -135,7 +135,7 @@ FN PrsCreateAstNode (
 
     status := TlBumpAlloc (
         SIZEOF PrsAstNode, // bytes
-        node, // OUT ptr
+        OUT node, // ptr
     )
 
     IF status THEN
@@ -851,7 +851,7 @@ FN PrsAtom () : ^PrsAstNode
         offset : UWORD
 
         PrsFieldSequence (
-            offset, // OUT offset
+            OUT offset, // offset
         )
 
         atomnode = PrsCreateAstNode (
@@ -1257,7 +1257,7 @@ FN PrsParseInitializer (
     IF NOT bytearray THEN
         status := TlBumpAlloc (
             (type^.Size + 7) & ~7, // bytes
-            bytearray, // OUT ptr
+            OUT bytearray, // ptr
         )
 
         IF status THEN
@@ -1267,7 +1267,7 @@ FN PrsParseInitializer (
 
         status = TlBumpAlloc (
             ((type^.Size + 7) & ~7) * SIZEOF ^PrsAstNode, // bytes
-            bparray, // OUT ptr
+            OUT bparray, // ptr
         )
 
         IF status THEN
@@ -1835,7 +1835,7 @@ FN PrsFoundSymbol (
 
             status := TlBumpAlloc (
                 SIZEOF LexSymbol,
-                dummyextern, // OUT ptr
+                OUT dummyextern, // ptr
             )
 
             TlCopyMemory (
@@ -2185,7 +2185,7 @@ FN PrsParseBlock (
 
     status := TlBumpAlloc (
         SIZEOF PrsBlock, // bytes
-        block, // OUT ptr
+        OUT block, // ptr
     )
 
     IF status THEN
@@ -2569,6 +2569,17 @@ FN (PrsOperatorF) PrsParseFunctionCall (
             LexTokenError ( &node^.Token, "Too many arguments", 0, 0, 0 )
         END
 
+        IF refarg AND refarg^.InOut == ARG_OUT THEN
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_ARGSPEC, // type
+                TOKEN_OUT, // subtype
+            ) THEN
+                LexTokenError ( &token,
+                    "Expected OUT specifier on OUT argument", 0, 0, 0 )
+            END
+        END
+
         argnode := PrsExpression ( 0 )
 
         argtype := PrsEvaluateType ( argnode )
@@ -2659,7 +2670,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
             status := TlBumpAlloc (
                 SIZEOF LexSymbol, // bytes
-                vartable, // OUT ptr
+                OUT vartable, // ptr
             )
 
             IF status THEN
@@ -2682,7 +2693,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
             status = TlBumpAlloc (
                 SIZEOF LexSemanticType, // bytes
-                vartabletype, // OUT ptr
+                OUT vartabletype, // ptr
             )
 
             vartabletype^.Subtype = TYPE_ARRAY
@@ -3754,7 +3765,7 @@ FN (PrsOperatorF) PrsParseContainerOf (
     offset : UWORD
 
     type := PrsFieldSequence (
-        offset, // OUT offset
+        OUT offset, // offset
     )
 
     constnode := PrsCreateAstNode (
@@ -4095,7 +4106,7 @@ FN PrsParseFnSignature (
 
         status := TlBumpAlloc (
             SIZEOF LexFunctionArgument, // bytes
-            arg, // OUT ptr
+            OUT arg, // ptr
         )
 
         IF status THEN
@@ -4368,7 +4379,7 @@ FN PrsParseFnDeclaration (
     type := PrsParseFnSignature (
         flags, // flags
         FALSE, // fnptr
-        symbol, // OUT symbol
+        OUT symbol, // symbol
     )
 
     IF flags & VAR_FLAG_EXTERN THEN
@@ -4393,7 +4404,7 @@ FN PrsParseFnDeclaration (
     terminator : LexTokenSubtype
 
     type^.Body.Function.BodyBlock = PrsParseBlock (
-        terminator, // OUT terminator
+        OUT terminator, // terminator
     )
 
     PrsCurrentFunction = NULLPTR
@@ -4434,7 +4445,7 @@ FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
     type := PrsParseFnSignature (
         0, // flags
         TRUE, // fnptr
-        symbol, // OUT symbol
+        OUT symbol, // symbol
     )
 
     // Wrap a pointer type around the given type.
@@ -4956,7 +4967,7 @@ FN (PrsStatementF) PrsParseIf (
 
         status := TlBumpAlloc (
             SIZEOF PrsIfCase, // bytes
-            thiscase, // OUT ptr
+            OUT thiscase, // ptr
         )
 
         IF status THEN
@@ -4993,7 +5004,7 @@ FN (PrsStatementF) PrsParseIf (
         terminator : LexTokenSubtype
 
         thiscase^.BodyBlock = PrsParseBlock (
-            terminator, // OUT terminator
+            OUT terminator, // terminator
         )
 
         TlPopDynamicBuffer ( &PrsBlockStack )
@@ -5068,7 +5079,7 @@ FN (PrsStatementF) PrsParseIf (
         terminator : LexTokenSubtype
 
         elseblock := PrsParseBlock (
-            terminator, // OUT terminator
+            OUT terminator, // terminator
         )
 
         TlPopDynamicBuffer ( &PrsBlockStack )
@@ -5222,7 +5233,7 @@ FN (PrsStatementF) PrsParseWhile (
     PrsWhileDepth += 1
 
     node^.Body.While.BodyBlock = PrsParseBlock (
-        terminator, // OUT terminator
+        OUT terminator, // terminator
     )
 
     PrsWhileDepth -= 1

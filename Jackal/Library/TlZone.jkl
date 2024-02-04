@@ -47,7 +47,7 @@ FN TlAllocateFromZone (
 
     status := TlBumpAlloc (
         chunksize, // bytes
-        chunk, // ptr
+        OUT chunk, // ptr
     )
 
     IF status THEN

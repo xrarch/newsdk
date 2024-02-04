@@ -86,7 +86,6 @@ STRUCT IrVariableValueNumberInfo
     ValueNumber : ULONG,
 
     AcquiredByLoad : UBYTE,
-    AcquiredByNamed : UBYTE,
 
     KeyOp : IrInstructionType,
 END

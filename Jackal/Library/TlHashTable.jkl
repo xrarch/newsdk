@@ -128,7 +128,7 @@ FN TlLookupOrAllocateEntryHashTable (
 
     status := TlBumpAlloc (
         entrysize, // bytes
-        entry, // OUT ptr
+        OUT entry, // ptr
     )
 
     IF status THEN

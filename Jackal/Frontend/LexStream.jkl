@@ -118,7 +118,7 @@ FN LexInitializeFileStream (
 
     status := TlAlloc (
         LEX_BUFFER_SIZE, // bytes
-        buffer, // OUT ptr
+        OUT buffer, // ptr
     )
 
     IF status THEN

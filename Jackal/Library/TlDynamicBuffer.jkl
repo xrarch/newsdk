@@ -46,7 +46,7 @@ FN TlInsertDynamicBuffer (
 
     status := TlAlloc (
         array^.BufferSize * 2, // bytes
-        newbuffer, // OUT ptr
+        OUT newbuffer, // ptr
     )
 
     IF status THEN
@@ -110,7 +110,7 @@ FN TlCopyIntoDynamicBuffer (
 
     status := TlAlloc (
         newlength, // bytes
-        newbuffer, // OUT ptr
+        OUT newbuffer, // ptr
     )
 
     IF status THEN

@@ -1,5 +1,6 @@
 1. Local variables cannot have their addresses taken, unless it's an array or
-   compound type.
+   compound type, because they usually reside in machine registers and their
+   "escape" from the function's context is absolutely forbidden.
 
 2. Local "datum" variable (i.e. non-compound, non-array) types are hints and you
    shouldn't rely on wrapping, as they will probably be placed in machine
@@ -14,3 +15,24 @@
 4. The UWORD type is the size of a machine word, whatever that means for a given
    target. That also means it is the largest declarable "datum" type. UWORD and
    pointer types will always be the same size and are interchangeable.
+
+5. The UBYTE, UINT, ULONG, and UQUAD types are *always* 8, 16, 32, and 64 bits
+   wide, respectively. UQUAD is not directly declarable on 32-bit targets as it
+   is larger than a UWORD.
+
+6. BYTE, INT, LONG, QUAD, and WORD are the signed variants of these types. Sign
+   extension is guaranteed when loading a signed type from memory into a local
+   datum variable.
+
+   EXCEPTION: Due to architectural limitations, fox32 target has no signed type
+              semantics. All code intended for this target should use unsigned
+              types only.
+
+7. The operators AND and OR short circuit; i.e., if the left side of an AND
+   evaluates to false, the right side will not be evaluated. If the left side of
+   an OR evaluates to true, the right side will not be evaluated.
+
+8. 0 is falsey, non-zero is truthy. The numeric result of == operations and
+   other conditionals is not guaranteed to be 1 in the true case, just
+   non-zero.
+

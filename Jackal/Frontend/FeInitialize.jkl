@@ -159,7 +159,7 @@ FN FeCreateFileBlock (
         &FeFileBlockHashTable, // hashtable
         SIZEOF FeFileBlock, // entrysize
         includename, // key
-        created, // OUT created
+        OUT created, // created
     ) TO ^FeFileBlock
 
     IF created THEN
@@ -247,7 +247,7 @@ FN FeInitialize (
 
     status := TlOpenSource (
         &FeInputFile[0], // filename
-        FeInputFileHandle, // OUT handle
+        OUT FeInputFileHandle, // handle
     )
 
     IF status THEN
@@ -256,7 +256,7 @@ FN FeInitialize (
 
     status = TlOpenDestination (
         &FeOutputFile[0], // filename
-        FeOutputFileHandle, // OUT handle
+        OUT FeOutputFileHandle, // handle
     )
 
     IF status THEN

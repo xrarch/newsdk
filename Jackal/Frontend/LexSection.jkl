@@ -98,7 +98,7 @@ FN LexLookupSection (
         &LexSectionHashTable, // hashtable
         SIZEOF LexSection, // entrysize
         name, // key
-        created, // OUT created
+        OUT created, // created
     ) TO ^LexSection
 
     IF NOT created THEN

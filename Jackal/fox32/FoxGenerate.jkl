@@ -34,9 +34,9 @@ FoxTargetInfo : JklTargetInfoRecord = {
         [PRIM_TYPE_UINT] = TRUE,
         [PRIM_TYPE_ULONG] = TRUE,
         [PRIM_TYPE_UQUAD] = FALSE,
-        [PRIM_TYPE_BYTE] = TRUE,
-        [PRIM_TYPE_INT] = TRUE,
-        [PRIM_TYPE_LONG] = TRUE,
+        [PRIM_TYPE_BYTE] = FALSE,
+        [PRIM_TYPE_INT] = FALSE,
+        [PRIM_TYPE_LONG] = FALSE,
         [PRIM_TYPE_QUAD] = FALSE,
     },
     [PrimitiveAlignment] = {
@@ -290,6 +290,7 @@ FN FoxFillOperandForAccess (
     IN lirinst : ^LirInstruction,
     IN operand : ^LirFoxOperand,
     IN inst : ^IrInstruction,
+    IN load : UBYTE,
 ) : ^LirRegister
 
     // Caller should have made sure the instruction is the right width,
@@ -425,6 +426,7 @@ FN FoxFillOperand (
                 lirinst, // lirinst
                 operand, // operand
                 inst, // inst
+                TRUE, // load
             )
         END
 
@@ -473,6 +475,7 @@ FN (LirSelectF) FoxSelectLoad (
         lirinst, // lirinst
         &lirinst^.Body.Machine.Fox.Op2, // operand
         inst, // inst
+        TRUE, // load
     )
 
     lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
@@ -871,7 +874,7 @@ FN (LirSelectF) FoxSelectCall (
 
         status := TlBumpAlloc (
             SIZEOF LirArgument, // bytes
-            lirarg, // OUT ptr
+            OUT lirarg, // ptr
         )
 
         IF status THEN

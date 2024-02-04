@@ -15,7 +15,6 @@ EXTERN FN IrFindValue (
 
 EXTERN FN IrValueNumberBarrier (
     IN onlyloads : UWORD,
-    IN onlynameds : UWORD,
 )
 
 EXTERN FN IrKillVariable (

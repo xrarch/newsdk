@@ -15,7 +15,7 @@ FN LirCreateInstruction (
 
     status := TlBumpAlloc (
         SIZEOF LirInstruction, // bytes
-        lirinst, // OUT ptr
+        OUT lirinst, // ptr
     )
 
     IF status THEN
@@ -37,7 +37,7 @@ FN LirCreateRegister () : ^LirRegister
 
     status := TlBumpAlloc (
         SIZEOF LirRegister, // bytes
-        reg, // OUT ptr
+        OUT reg, // ptr
     )
 
     IF status THEN

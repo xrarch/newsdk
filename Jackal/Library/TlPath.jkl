@@ -80,7 +80,7 @@ FN TlMatchPath (
 
             status := TlOpenSource (
                 resultingpath^.Buffer, // filename
-                handle, // OUT handle
+                OUT handle, // handle
             )
 
             IF NOT status THEN

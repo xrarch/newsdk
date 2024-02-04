@@ -939,7 +939,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
 
     fileblock := FeCreateFileBlock (
         str.Buffer, // includename
-        created, // OUT created
+        OUT created, // created
     )
 
     IF NOT created THEN
@@ -966,7 +966,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
             &str.Buffer[6], // path
             &FeIncludeDirectory[0], // pathset
             &filepath, // resultingpath
-            handle, // OUT handle
+            OUT handle, // handle
         )
 
     ELSEIF TlCompareStringWithMax ( str.Buffer, "<ll>/", 5 ) == 0 THEN
@@ -976,7 +976,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
             &str.Buffer[5], // path
             &FeLibraryDirectory[0], // pathset
             &filepath, // resultingpath
-            handle, // OUT handle
+            OUT handle, // handle
         )
 
     ELSE
@@ -1007,7 +1007,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
 
         status := TlOpenSource (
             filepath.Buffer, // filename
-            handle, // OUT handle
+            OUT handle, // handle
         )
 
         IF NOT status THEN
@@ -1239,7 +1239,7 @@ FN LexCollectMacroArgumentList (
                 &hashtable, // hashtable
                 SIZEOF LexMacroArgument, // entrysize
                 &buffer[0], // key
-                created, // OUT created
+                OUT created, // created
             ) TO ^LexMacroArgument
 
             IF NOT created THEN
@@ -1310,8 +1310,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
 
         LexCollectMacroArgumentList (
             TRUE, // ignore
-            macro^.ArgListHead, // OUT arglisthead
-            length, // OUT length
+            OUT macro^.ArgListHead, // arglisthead
+            OUT length, // length
         )
 
         contentsbuffer : TlDynamicBuffer
@@ -1331,8 +1331,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
 
     LexCollectMacroArgumentList (
         FALSE, // ignore
-        macro^.ArgListHead, // OUT arglisthead
-        length, // OUT length
+        OUT macro^.ArgListHead, // arglisthead
+        OUT length, // length
     )
 
     IF length == 0 THEN
@@ -1572,7 +1572,7 @@ FN (LexDirectiveParseF) LexParseAsm ()
 
     status := TlBumpAlloc (
         SIZEOF LexAsmBlock, // bytes
-        asmblock, // OUT ptr
+        OUT asmblock, // ptr
     )
 
     IF status THEN
