@@ -598,7 +598,7 @@ FN (LirSelectF) FoxSelectStackAddr (
             LIR_MACH_INST, // type
             FOX_ADD, // machtype
         )
-    
+
         // Note that for the sake of regalloc we put the defined register as
         // both used and defined here (because that's the sitch -- fox32 can
         // only add onto a register), but in the final assembly it will just be
@@ -1391,6 +1391,45 @@ FN FoxDebugPrintOperand (
     END
 END
 
+FN FoxDebugPrintCallInst (
+    IN lirinst : ^LirInstruction,
+)
+
+    TlPrintString ( "        IN: (" )
+
+    arg := lirinst^.ArgListHead
+
+    WHILE arg DO
+        FoxDebugPrintRegister ( arg^.Register )
+
+        arg = arg^.Next
+
+        IF arg THEN
+            TlPrintString ( ", " )
+        END
+    END
+
+    TlPrintString ( ")\n" )
+
+    arg = lirinst^.OutListHead
+
+    IF arg THEN
+        TlPrintString ( "        OUT: (" )
+
+        WHILE arg DO
+            FoxDebugPrintRegister ( arg^.Register )
+
+            arg = arg^.Next
+
+            IF arg THEN
+                TlPrintString ( ", " )
+            END
+        END
+
+        TlPrintString ( ")\n" )
+    END
+END
+
 FN FoxDebugPrintLirInst (
     IN lirinst : ^LirInstruction,
 )
@@ -1431,6 +1470,10 @@ FN FoxDebugPrintLirInst (
         END
 
         TlPrintString ( "\n" )
+
+        IF lirinst^.Type == LIR_CALL THEN
+            FoxDebugPrintCallInst ( lirinst )
+        END
 
     ELSEIF lirinst^.Type == LIR_LABEL THEN
         TlPrintString ( "\nL" )
