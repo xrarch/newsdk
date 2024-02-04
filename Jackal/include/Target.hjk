@@ -22,8 +22,7 @@ ENUM LirInstructionType : UBYTE
 
     LIR_LABEL,
     LIR_CALL,
-    LIR_UNARY,
-    LIR_BINARY,
+    LIR_MACH_INST,
     LIR_RETURN,
 
     LIR_MAX, // MUST be at the end

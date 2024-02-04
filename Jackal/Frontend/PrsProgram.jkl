@@ -3635,10 +3635,20 @@ FN (PrsOperatorF) PrsParseInverse (
         LEAVE
     END
 
-    // Parse an inverse operation. This just sets the operation type to
-    // TOKEN_INVERSE, to distinguish it from a subtraction.
+    // Parse an inverse operation. Turn it into 0 - x.
 
-    node^.Token.Subtype = TOKEN_INVERSE
+    zeronode := PrsCreateAstNode (
+        AST_CONSTANT, // type
+        &node^.Token, // token
+    )
+
+    zeronode^.Type = AST_CONSTANT
+    zeronode^.Body.Constant.Value = 0
+
+    node^.Token.Subtype = TOKEN_MINUS
+
+    node^.Body.Operator.Right = node^.Body.Operator.Left
+    node^.Body.Operator.Left = zeronode
 END
 
 FN (PrsOperatorF) PrsParseNot (
@@ -5616,9 +5626,6 @@ PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
 
     [TOKEN_ADDROF] = {
         [EvalFunc] = &PrsEvalAddrOf,
-    },
-    [TOKEN_INVERSE] = {
-        [EvalFunc] = &PrsEvalUnaryArithmetic,
     },
     [TOKEN_NOT] = {
         [EvalFunc] = &PrsEvalUnaryConditional,

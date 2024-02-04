@@ -1,0 +1,6604 @@
+FN PrsCreateType
+    mov vr2909624, 48
+    call TlBumpAlloc
+    cmp vr2909496, 0
+    ifz rjmp L2909968
+
+L2910072:
+    mov vr2910296, 'Failed to create type'
+    mov vr2910424, 0
+    mov vr2910552, 0
+    mov vr2910680, 0
+    call TlInternalError
+
+L2909968:
+    movz.8 [vr2909752 + 46], 0
+    movz.8 [vr2909752 + 47], 0
+    movz [vr2909752 + 40], -1
+
+FN PrsEnterMacro
+    mov vr2911328, PrsBlockStack
+    mov vr2911456, 3
+    call TlInsertDynamicBuffer
+
+FN PrsLeaveMacro
+    mov vr2911696, PrsBlockStack
+    call TlPopDynamicBuffer
+    movz.8 vr2911808, 0
+    cmp vr2911568, 3
+    ifz movz.8 vr2911808, 1
+
+FN PrsCreateAstNode
+    mov vr2912360, 48
+    call TlBumpAlloc
+    cmp vr2912232, 0
+    ifz rjmp L2912704
+
+L2912808:
+    mov vr2913032, 'Failed to create AST node'
+    mov vr2913160, 0
+    mov vr2913288, 0
+    mov vr2913416, 0
+    call TlInternalError
+
+L2912704:
+    movz.8 [vr2912488 + 24], vr2913632
+    movz [vr2912488 + 44], 0
+    call LexCopyToken
+
+FN PrsInsertNodeIntoBlock
+    movz [vr2914096 + 20], 0
+    cmp [vr2914208 + 4], 0
+    ifnz rjmp L2914320
+
+L2914424:
+    movz [vr2914208 + 0], vr2914096
+    rjmp L2914736
+
+L2914320:
+    movz vr2914944, [vr2914208 + 4]
+    movz [vr2914944 + 20], vr2914096
+
+L2914736:
+    movz [vr2914208 + 4], vr2914096
+
+FN PrsPrintType
+    mov vr2915280, 'Subtype: '
+    call TlPrintString
+    movz.8 vr2915512, [vr2915624 + 44]
+    call TlPrintNumber
+    mov vr2915752, '
+'
+    call TlPrintString
+    movz.8 vr2915968, [vr2915624 + 44]
+    cmp vr2915968, 0
+    ifnz rjmp L2916184
+
+L2916352:
+    mov vr2916576, 'Primitive type: '
+    call TlPrintString
+    movz.8 vr2916808, [vr2915624 + 0]
+    call TlPrintNumber
+    mov vr2917040, '
+'
+    call TlPrintString
+    rjmp L2917256
+
+L2916184:
+    movz.8 vr2917464, [vr2915624 + 44]
+    cmp vr2917464, 3
+    ifnz rjmp L2917680
+
+L2917784:
+    mov vr2918008, 'Type name: '
+    call TlPrintString
+    movz vr2918352, [vr2915624 + 0]
+    movz vr2918240, [vr2918352 + 24]
+    call TlPrintString
+    mov vr2918584, '
+'
+    call TlPrintString
+    rjmp L2917256
+
+L2917680:
+    movz.8 vr2918904, [vr2915624 + 44]
+    cmp vr2918904, 2
+    ifnz rjmp L2919120
+
+L2919224:
+    mov vr2919448, 'Pointer to:
+'
+    call TlPrintString
+    movz vr2919680, [vr2915624 + 0]
+    call PrsPrintType
+    rjmp L2917256
+
+L2919120:
+    movz.8 vr2920000, [vr2915624 + 44]
+    cmp vr2920000, 1
+    ifnz rjmp L2917256
+
+L2920216:
+    mov vr2920440, 'Array with bound: '
+    call TlPrintString
+    cmp.8 [vr2915624 + 12], 0
+    ifz rjmp L2920760
+
+L2920864:
+    movz vr2921088, [vr2915624 + 4]
+    call TlPrintNumber
+    mov vr2921320, ', of:
+'
+    call TlPrintString
+    rjmp L2921536
+
+L2920760:
+    mov vr2921760, 'Boundless, of:
+'
+    call TlPrintString
+
+L2921536:
+    movz vr2921992, [vr2915624 + 0]
+    call PrsPrintType
+
+L2917256:
+
+FN PrsIsLvalue
+    movz.8 vr2922208, [vr2922320 + 24]
+    cmp vr2922208, 0
+    ifnz rjmp L2922432
+
+L2922536:
+    movz vr2922968, [vr2922320 + 0]
+    movz vr2922856, [vr2922968 + 52]
+    movz.8 vr2922744, [vr2922856 + 44]
+    cmp vr2922744, 1
+    ifnz rjmp L2923184
+
+L2923288:
+    mov vr2923392, 0
+
+L2923184:
+    mov vr2923608, 1
+
+L2922432:
+    movz.8 vr2923928, [vr2922320 + 24]
+    cmp vr2923928, 2
+    ifnz rjmp L2924144
+
+L2924248:
+    movz.8 vr2924456, [vr2922320 + 17]
+    cmp vr2924456, 68
+    ifnz rjmp L2924672
+
+L2924776:
+    mov vr2924880, 1
+
+L2924672:
+    movz.8 vr2925200, [vr2922320 + 17]
+    cmp vr2925200, 69
+    ifnz rjmp L2925416
+
+L2925520:
+    mov vr2925624, 1
+
+L2925416:
+    movz.8 vr2925944, [vr2922320 + 17]
+    cmp vr2925944, 60
+    ifnz rjmp L2926160
+
+L2926264:
+    mov vr2926368, 1
+
+L2926160:
+
+L2924144:
+    mov vr2926584, 0
+
+FN PrsIsCompileTime
+    movz.8 vr2926904, [vr2927016 + 24]
+    cmp vr2926904, 2
+    ifnz rjmp L2927128
+
+L2927232:
+    movz.8 vr2927440, [vr2927016 + 17]
+    cmp vr2927440, 4
+    ifnz rjmp L2927128
+
+L2927656:
+    movz vr2927016, [vr2927016 + 28]
+
+L2927864:
+    movz.8 vr2928072, [vr2927016 + 24]
+    cmp vr2928072, 2
+    ifnz rjmp L2927128
+
+L2928288:
+    movz.8 vr2928496, [vr2927016 + 17]
+    cmp vr2928496, 4
+    ifz rjmp L2927656
+
+L2927128:
+    movz.8 vr2928816, [vr2927016 + 24]
+    cmp vr2928816, 3
+    ifnz rjmp L2929032
+
+L2929136:
+    mov vr2929240, 1
+
+L2929032:
+    movz.8 vr2929560, [vr2927016 + 24]
+    cmp vr2929560, 4
+    ifnz rjmp L2929776
+
+L2929880:
+    mov vr2929984, 1
+
+L2929776:
+    movz.8 vr2930304, [vr2927016 + 24]
+    cmp vr2930304, 5
+    ifnz rjmp L2930520
+
+L2930624:
+    mov vr2930728, 1
+
+L2930520:
+    movz.8 vr2931048, [vr2927016 + 24]
+    cmp vr2931048, 2
+    ifnz rjmp L2931264
+
+L2931368:
+    movz.8 vr2931576, [vr2927016 + 17]
+    cmp vr2931576, 82
+    ifnz rjmp L2931264
+
+L2931792:
+    movz vr2932112, [vr2927016 + 28]
+    movz.8 vr2932000, [vr2932112 + 24]
+    cmp vr2932000, 0
+    ifnz rjmp L2932328
+
+L2932432:
+    mov vr2932536, 1
+
+L2932328:
+
+L2931264:
+    mov vr2932752, 0
+
+FN PrsFieldSequence
+    mov vr2933096, sp
+    mov vr2933224, 18
+    mov vr2933352, 0
+    call LexMatchToken
+    cmp vr2932968, 0
+    ifnz rjmp L2933672
+
+L2933776:
+    mov vr2934000, sp
+    mov vr2934128, 'Expected an identifier'
+    mov vr2934256, 0
+    mov vr2934384, 0
+    mov vr2934512, 0
+    call LexTokenError
+
+L2933672:
+    movz.8 vr2934728, [sp + 17]
+    cmp vr2934728, 84
+    ifz rjmp L2934944
+
+L2935048:
+    mov vr2935272, sp
+    mov vr2935400, 'Expected a struct name'
+    mov vr2935528, 0
+    mov vr2935656, 0
+    mov vr2935784, 0
+    call LexTokenError
+
+L2934944:
+    movz vr2935896, [sp + 0]
+    mov vr2936008, vr2935896
+    movz.8 vr2936224, [vr2935896 + 72]
+    cmp vr2936224, 3
+    ifz rjmp L2936440
+
+L2936544:
+    mov vr2936768, sp
+    mov vr2936896, 'Expected a struct name'
+    mov vr2937024, 0
+    mov vr2937152, 0
+    mov vr2937280, 0
+    call LexTokenError
+
+L2936440:
+    movz vr2937392, [vr2936008 + 52]
+    mov vr2937504, vr2937392
+    mov vr2937616, vr2937392
+    mov vr2937856, sp
+    mov vr2937984, 3
+    mov vr2938112, 60
+    call LexMatchToken
+    cmp vr2937728, 0
+    ifnz rjmp L2938432
+
+L2938536:
+    mov vr2938760, sp
+    mov vr2938888, 'Expected a dot'
+    mov vr2939016, 0
+    mov vr2939144, 0
+    mov vr2939272, 0
+    call LexTokenError
+
+L2938432:
+    mov vr2939384, 0
+
+L2939496:
+    movz.8 vr2939704, [vr2937504 + 44]
+    cmp vr2939704, 3
+    ifnz rjmp L2939920
+
+L2940024:
+    movz vr2940344, [vr2937504 + 0]
+    movz.8 vr2940232, [vr2940344 + 72]
+    cmp vr2940232, 6
+    ifnz rjmp L2940560
+
+L2940664:
+    mov vr2940888, sp
+    mov vr2941016, 'Illegal use of undeclared destination type'
+    mov vr2941144, 0
+    mov vr2941272, 0
+    mov vr2941400, 0
+    call LexTokenError
+
+L2940560:
+    movz vr2941616, [vr2937504 + 0]
+    movz vr2937504, [vr2941616 + 52]
+
+L2941728:
+    movz.8 vr2941936, [vr2937504 + 44]
+    cmp vr2941936, 3
+    ifz rjmp L2940024
+
+L2939920:
+    movz.8 vr2942256, [vr2937504 + 44]
+    cmp vr2942256, 5
+    ifz rjmp L2942472
+
+L2942576:
+    mov vr2942800, sp
+    mov vr2942928, 'Expected a struct name'
+    mov vr2943056, 0
+    mov vr2943184, 0
+    mov vr2943312, 0
+    call LexTokenError
+
+L2942472:
+    movz vr2943544, [vr2937504 + 0]
+    call LexEnterOverlayScope
+    mov vr2943784, sp
+    mov vr2943912, 18
+    mov vr2944040, 0
+    call LexMatchToken
+    cmp vr2943656, 0
+    ifnz rjmp L2944360
+
+L2944464:
+    mov vr2944688, sp
+    mov vr2944816, 'Expected an identifier'
+    mov vr2944944, 0
+    mov vr2945072, 0
+    mov vr2945200, 0
+    call LexTokenError
+
+L2944360:
+    call LexExitOverlayScope
+    movz.8 vr2945520, [sp + 17]
+    cmp vr2945520, 84
+    ifz rjmp L2945736
+
+L2945840:
+    mov vr2946064, sp
+    mov vr2946192, 'Non-existent field name'
+    mov vr2946320, 0
+    mov vr2946448, 0
+    mov vr2946576, 0
+    call LexTokenError
+
+L2945736:
+    movz vr2946688, [sp + 0]
+    mov vr2936008, vr2946688
+    add vr2939384, [vr2946688 + 44]
+    movz vr2937504, [vr2946688 + 52]
+    mov vr2947240, sp
+    mov vr2947368, 3
+    mov vr2947496, 60
+    call LexMatchToken
+    cmp vr2947112, 0
+    ifnz rjmp L2947816
+
+L2947920:
+    rjmp L2948128
+
+L2947816:
+    rjmp L2939496
+
+L2948128:
+    mov vr2948336, vr2939384
+
+FN PrsCheckType
+    cmp vr2948656, vr2948664
+    ifz rjmp L2948776
+    rjmp L2948984
+
+L2948776:
+    mov vr2949088, 0
+
+L2948984:
+    movz.8 vr2949408, [vr2948656 + 44]
+    cmp vr2949408, 3
+    ifnz rjmp L2949624
+
+L2949728:
+    movz vr2950048, [vr2948656 + 0]
+    movz.8 vr2949936, [vr2950048 + 72]
+    cmp vr2949936, 6
+    ifnz rjmp L2950264
+
+L2950368:
+    call TlPrintString
+    mov vr2950744, 'Illegal use of undeclared destination type'
+    mov vr2950872, 0
+    mov vr2951000, 0
+    mov vr2951128, 0
+    call LexTokenError
+
+L2950264:
+    movz vr2951344, [vr2948656 + 0]
+    movz vr2948656, [vr2951344 + 52]
+
+L2951456:
+    movz.8 vr2951664, [vr2948656 + 44]
+    cmp vr2951664, 3
+    ifz rjmp L2949728
+
+L2949624:
+    movz.8 vr2951984, [vr2948664 + 44]
+    cmp vr2951984, 3
+    ifnz rjmp L2952200
+
+L2952304:
+    movz vr2952624, [vr2948664 + 0]
+    movz.8 vr2952512, [vr2952624 + 72]
+    cmp vr2952512, 6
+    ifnz rjmp L2952840
+
+L2952944:
+    call TlPrintString
+    mov vr2953304, 'Illegal use of undeclared source type'
+    mov vr2953432, 0
+    mov vr2953560, 0
+    mov vr2953688, 0
+    call LexTokenError
+
+L2952840:
+    movz vr2953904, [vr2948664 + 0]
+    movz vr2948664, [vr2953904 + 52]
+
+L2954016:
+    movz.8 vr2954224, [vr2948664 + 44]
+    cmp vr2954224, 3
+    ifz rjmp L2952304
+
+L2952200:
+    cmp vr2948656, vr2948664
+    ifz rjmp L2954648
+    rjmp L2954856
+
+L2954648:
+    mov vr2954960, 0
+
+L2954856:
+    movz.8 vr2955280, [vr2948656 + 44]
+    movz.8 vr2955392, [vr2948664 + 44]
+    cmp vr2955280, vr2955392
+    ifz rjmp L2955608
+
+L2955712:
+    call TlPrintString
+    mov vr2956072, 'Incompatible types'
+    mov vr2956200, 0
+    mov vr2956328, 0
+    mov vr2956456, 0
+    call LexTokenError
+
+L2955608:
+    movz.8 vr2956672, [vr2948656 + 44]
+    cmp vr2956672, 0
+    ifnz rjmp L2956888
+
+L2956992:
+    movz.8 vr2957096, [vr2948656 + 0]
+    mov vr2957208, vr2957096
+    movz.8 vr2957320, [vr2948664 + 0]
+    mov vr2957432, vr2957320
+    cmp vr2957096, vr2957320
+    ifnz rjmp L2957752
+
+L2957856:
+    mov vr2957960, 0
+
+L2957752:
+    cmp vr2958280, 0
+    ifnz rjmp L2958392
+    rjmp L2958600
+
+L2958392:
+    cmp vr2957208, vr2957432
+    ifnz rjmp L2958912
+    rjmp L2959120
+
+L2958912:
+    call TlPrintString
+    mov vr2959480, 'Primitive types not equivalent'
+    mov vr2959608, 0
+    mov vr2959736, 0
+    mov vr2959864, 0
+    call LexTokenError
+
+L2959120:
+
+L2958600:
+    cmp.8 [vr2948664 + 1], 0
+    ifz rjmp L2960184
+
+L2960288:
+    mov vr2960392, 1
+
+L2960184:
+    cmp vr2957208, 1
+    iflteq rjmp L2960816
+
+L2960920:
+    cmp vr2957208, 6
+    ifgteq rjmp L2960816
+
+L2961232:
+    cmp vr2957432, 7
+    iflteq rjmp L2961544
+
+L2961648:
+    cmp vr2957432, 12
+    ifgteq rjmp L2961544
+
+L2961960:
+    call TlPrintString
+    mov vr2962320, 'Implicit cast from unsigned to signed type'
+    mov vr2962448, 0
+    mov vr2962576, 0
+    mov vr2962704, 0
+    call LexTokenError
+
+L2961544:
+    rjmp L2962920
+
+L2960816:
+    cmp vr2957432, 1
+    iflteq rjmp L2962920
+
+L2963232:
+    cmp vr2957432, 6
+    ifgteq rjmp L2962920
+
+L2963544:
+    call TlPrintString
+    mov vr2963904, 'Implicit cast from signed to unsigned type'
+    mov vr2964032, 0
+    mov vr2964160, 0
+    mov vr2964288, 0
+    call LexTokenError
+
+L2962920:
+    mov vr2964400, 1
+
+L2956888:
+    movz.8 vr2964720, [vr2948656 + 44]
+    cmp vr2964720, 2
+    ifnz rjmp L2964936
+
+L2965040:
+    movz vr2965144, [vr2948656 + 0]
+    cmp vr2958280, 0
+    ifnz rjmp L2965464
+
+L2965568:
+    movz.8 vr2965776, [vr2965144 + 44]
+    cmp vr2965776, 0
+    ifnz rjmp L2965464
+
+L2965992:
+    movz.8 vr2966200, [vr2965144 + 0]
+    cmp vr2966200, 0
+    ifnz rjmp L2965464
+
+L2966416:
+    mov vr2966520, 0
+
+L2965464:
+    movz vr2966736, [vr2948664 + 0]
+    cmp vr2958280, 0
+    ifnz rjmp L2967056
+
+L2967160:
+    movz.8 vr2967368, [vr2966736 + 44]
+    cmp vr2967368, 0
+    ifnz rjmp L2967056
+
+L2967584:
+    movz.8 vr2967792, [vr2966736 + 0]
+    cmp vr2967792, 0
+    ifnz rjmp L2967056
+
+L2968008:
+    mov vr2968112, 0
+
+L2967056:
+    movz.8 vr2968432, [vr2965144 + 44]
+    cmp vr2968432, 4
+    ifnz rjmp L2968648
+
+L2968752:
+    movz.8 vr2968960, [vr2966736 + 44]
+    cmp vr2968960, 4
+    ifnz rjmp L2968648
+
+L2969176:
+    cmp.8 [vr2965144 + 37], 0
+    ifz rjmp L2969488
+
+L2969592:
+    cmp [vr2966736 + 12], vr2965144
+    ifz rjmp L2969904
+
+L2970008:
+    call TlPrintString
+    mov vr2970368, 'Not the same function pointer type'
+    mov vr2970496, 0
+    mov vr2970624, 0
+    mov vr2970752, 0
+    call LexTokenError
+
+L2969904:
+    rjmp L2970968
+
+L2969488:
+    cmp.8 [vr2966736 + 37], 0
+    ifz rjmp L2971280
+
+L2971384:
+    cmp [vr2965144 + 12], vr2966736
+    ifz rjmp L2971696
+
+L2971800:
+    call TlPrintString
+    mov vr2972160, 'Not the same function pointer type'
+    mov vr2972288, 0
+    mov vr2972416, 0
+    mov vr2972544, 0
+    call LexTokenError
+
+L2971696:
+    rjmp L2970968
+
+L2971280:
+    cmp [vr2965144 + 12], [vr2966736 + 12]
+    ifz rjmp L2970968
+
+L2972968:
+    call TlPrintString
+    mov vr2973328, 'Not the same function pointer type'
+    mov vr2973456, 0
+    mov vr2973584, 0
+    mov vr2973712, 0
+    call LexTokenError
+
+L2970968:
+    mov vr2973824, 0
+
+L2968648:
+    call PrsCheckType
+    mov vr2974232, 0
+
+L2964936:
+    movz.8 vr2974552, [vr2948656 + 44]
+    cmp vr2974552, 5
+    ifnz rjmp L2974768
+
+L2974872:
+    cmp vr2948656, vr2948664
+    ifnz rjmp L2975184
+    rjmp L2975392
+
+L2975184:
+    call TlPrintString
+    mov vr2975752, 'Incompatible compound types'
+    mov vr2975880, 0
+    mov vr2976008, 0
+    mov vr2976136, 0
+    call LexTokenError
+
+L2975392:
+    mov vr2976248, 0
+
+L2974768:
+    movz.8 vr2976568, [vr2948656 + 44]
+    cmp vr2976568, 1
+    ifnz rjmp L2976784
+
+L2976888:
+    movz.8 vr2977096, [vr2948656 + 12]
+    movz.8 vr2977208, [vr2948664 + 12]
+    cmp vr2977096, vr2977208
+    ifz rjmp L2977424
+
+L2977528:
+    call TlPrintString
+    mov vr2977888, 'Array type bound differs'
+    mov vr2978016, 0
+    mov vr2978144, 0
+    mov vr2978272, 0
+    call LexTokenError
+
+L2977424:
+    cmp.8 [vr2948656 + 12], 0
+    ifz rjmp L2978592
+
+L2978696:
+    cmp [vr2948656 + 4], [vr2948664 + 4]
+    ifz rjmp L2979008
+
+L2979112:
+    call TlPrintString
+    mov vr2979472, 'Array type bound differs'
+    mov vr2979600, 0
+    mov vr2979728, 0
+    mov vr2979856, 0
+    call LexTokenError
+
+L2979008:
+
+L2978592:
+    movz vr2980112, [vr2948656 + 0]
+    movz vr2980240, [vr2948664 + 0]
+    call PrsCheckType
+    mov vr2980384, 0
+
+L2976784:
+    movz.8 vr2980704, [vr2948656 + 44]
+    cmp vr2980704, 4
+    ifnz rjmp L2980920
+
+L2981024:
+    cmp [vr2948656 + 12], [vr2948664 + 12]
+    ifz rjmp L2981336
+
+L2981440:
+    call TlPrintString
+    mov vr2981800, 'Not the same FNPTR type'
+    mov vr2982008, 0
+    mov vr2982136, 0
+    mov vr2982264, 0
+    call LexTokenError
+
+L2981336:
+    cmp [vr2948656 + 4], 0
+    ifz rjmp L2982584
+
+L2982688:
+    cmp [vr2948664 + 4], 0
+    ifnz rjmp L2983000
+
+L2983104:
+    call TlPrintString
+    mov vr2983464, 'Incompatible return value types'
+    mov vr2983592, 0
+    mov vr2983720, 0
+    mov vr2983848, 0
+    call LexTokenError
+
+L2983000:
+    movz vr2984104, [vr2948656 + 4]
+    movz vr2984232, [vr2948664 + 4]
+    mov vr2984376, 1
+    call PrsCheckType
+    rjmp L2984592
+
+L2982584:
+    cmp [vr2948664 + 4], 0
+    ifz rjmp L2984592
+
+L2984904:
+    call TlPrintString
+    mov vr2985264, 'Incompatible return value types'
+    mov vr2985392, 0
+    mov vr2985520, 0
+    mov vr2985648, 0
+    call LexTokenError
+
+L2984592:
+    movz.8 vr2985864, [vr2948656 + 36]
+    movz.8 vr2985976, [vr2948664 + 36]
+    cmp vr2985864, vr2985976
+    ifz rjmp L2986192
+
+L2986296:
+    call TlPrintString
+    mov vr2986656, 'Not the same varargness'
+    mov vr2986784, 0
+    mov vr2986912, 0
+    mov vr2987040, 0
+    call LexTokenError
+
+L2986192:
+    cmp [vr2948656 + 32], [vr2948664 + 32]
+    ifz rjmp L2987360
+
+L2987464:
+    call TlPrintString
+    mov vr2987824, 'Wrong argument count'
+    mov vr2987952, 0
+    mov vr2988080, 0
+    mov vr2988208, 0
+    call LexTokenError
+
+L2987360:
+    movz vr2988320, [vr2948656 + 0]
+    mov vr2988432, vr2988320
+    movz vr2988544, [vr2948664 + 0]
+    cmp [vr2948656 + 0], 0
+    ifz rjmp L2988864
+
+L2988968:
+    movz vr2989312, [vr2988432 + 24]
+    movz vr2989200, [vr2989312 + 24]
+    movz vr2989552, [vr2988544 + 24]
+    movz vr2989440, [vr2989552 + 24]
+    call TlCompareString
+    cmp vr2989072, 0
+    ifz rjmp L2989872
+
+L2989976:
+    call TlPrintString
+    mov vr2990320, vr2988544
+    add vr2990320, 4
+    mov vr2990552, 'Argument name mismatch'
+    mov vr2990680, 0
+    mov vr2990808, 0
+    mov vr2990936, 0
+    call LexTokenError
+
+L2989872:
+    mov vr2991176, vr2988544
+    add vr2991176, 4
+    movz vr2991520, [vr2988432 + 24]
+    movz vr2991408, [vr2991520 + 52]
+    movz vr2991760, [vr2988544 + 24]
+    movz vr2991648, [vr2991760 + 52]
+    mov vr2991904, 1
+    call PrsCheckType
+    movz vr2988432, [vr2988432 + 0]
+    movz vr2988544, [vr2988544 + 0]
+
+L2992224:
+    cmp vr2988432, 0
+    ifnz rjmp L2988968
+
+L2988864:
+    mov vr2992536, 0
+
+L2980920:
+    mov vr2992872, 'PrsCheckType Unreachable'
+    mov vr2993000, 0
+    mov vr2993128, 0
+    mov vr2993256, 0
+    call TlInternalError
+    mov vr2993368, 0
+
+FN PrsAtom
+    mov vr2993704, sp
+    call LexGetToken
+    movz.8 vr2993920, [sp + 16]
+    cmp vr2993920, 20
+    ifnz rjmp L2994136
+
+L2994240:
+    mov vr2994472, 3
+    mov vr2994600, sp
+    call PrsCreateAstNode
+    mov vr2994712, vr2994344
+    movz [vr2994344 + 28], [sp + 0]
+    rjmp L2995032
+
+L2994136:
+    movz.8 vr2995240, [sp + 16]
+    cmp vr2995240, 18
+    ifnz rjmp L2995456
+
+L2995560:
+    movz.8 vr2995768, [sp + 17]
+    cmp vr2995768, 83
+    ifnz rjmp L2995984
+
+L2996088:
+    mov vr2996312, sp
+    mov vr2996440, 'Use of undeclared symbol.'
+    mov vr2996568, 0
+    mov vr2996696, 0
+    mov vr2996824, 0
+    call LexTokenError
+
+L2995984:
+    movz vr2996936, [sp + 0]
+    mov vr2997048, vr2996936
+    movz.8 vr2997264, [vr2996936 + 72]
+    cmp vr2997264, 4
+    ifnz rjmp L2997480
+
+L2997584:
+    mov vr2997816, 3
+    mov vr2997944, sp
+    call PrsCreateAstNode
+    mov vr2994712, vr2997688
+    movz [vr2997688 + 28], [vr2997048 + 44]
+    rjmp L2998368
+
+L2997480:
+    movz.8 vr2998576, [vr2997048 + 72]
+    cmp vr2998576, 1
+    ifnz rjmp L2998792
+
+L2998896:
+    mov vr2999128, 0
+    mov vr2999256, sp
+    call PrsCreateAstNode
+    rjmp L2998368
+
+L2998792:
+    mov vr2999592, sp
+    mov vr2999720, 'Expected a variable.'
+    mov vr2999848, 0
+    mov vr2999976, 0
+    mov vr3000104, 0
+    call LexTokenError
+
+L2998368:
+    rjmp L2995032
+
+L2995456:
+    movz.8 vr3000424, [sp + 16]
+    cmp vr3000424, 19
+    ifnz rjmp L3000640
+
+L3000744:
+    mov vr3000976, 4
+    mov vr3001104, sp
+    call PrsCreateAstNode
+    rjmp L2995032
+
+L3000640:
+    movz.8 vr3001424, [sp + 16]
+    cmp vr3001424, 3
+    ifnz rjmp L3001640
+
+L3001744:
+    movz.8 vr3001952, [sp + 17]
+    cmp vr3001952, 70
+    ifnz rjmp L3001640
+
+L3002168:
+    mov vr3002400, 0
+    call PrsExpression
+    mov vr3002640, sp
+    mov vr3002768, 10
+    mov vr3002896, 0
+    call LexMatchToken
+    cmp vr3002512, 0
+    ifnz rjmp L3003216
+
+L3003320:
+    mov vr3003544, sp
+    mov vr3003672, 'Expected a right parenthesis.'
+    mov vr3003800, 0
+    mov vr3003928, 0
+    mov vr3004056, 0
+    call LexTokenError
+
+L3003216:
+    rjmp L2995032
+
+L3001640:
+    movz.8 vr3004376, [sp + 16]
+    cmp vr3004376, 3
+    ifnz rjmp L3004592
+
+L3004696:
+    mov vr3004800, PrsLeftOperators
+    movz.8 vr3005016, [sp + 17]
+    sla vr3005016, 4
+    add vr3004800, vr3005016
+    mov vr3005232, vr3004800
+    cmp [vr3004800 + 8], 0
+    ifnz rjmp L3005552
+
+L3005656:
+    mov vr3005880, sp
+    mov vr3006008, 'Expected a left operator.'
+    mov vr3006136, 0
+    mov vr3006264, 0
+    mov vr3006392, 0
+    call LexTokenError
+
+L3005552:
+    mov vr3006632, 2
+    mov vr3006760, sp
+    call PrsCreateAstNode
+    cmp.8 [vr3005232 + 12], 0
+    ifnz rjmp L3007080
+
+L3007184:
+    movz vr3007416, [vr3005232 + 8]
+    call PrsExpression
+    movz [vr2994712 + 28], vr3007288
+
+L3007080:
+    cmp [vr3005232 + 0], 0
+    ifz rjmp L3007840
+
+L3007944:
+    call [vr3005232 + 0]
+
+L3007840:
+    rjmp L2995032
+
+L3004592:
+    movz.8 vr3008392, [sp + 16]
+    cmp vr3008392, 4
+    ifnz rjmp L3008608
+
+L3008712:
+    movz.8 vr3008920, [sp + 17]
+    cmp vr3008920, 33
+    ifnz rjmp L3009136
+
+L3009240:
+    mov vr3009472, 3
+    mov vr3009600, sp
+    call PrsCreateAstNode
+    mov vr2994712, vr3009344
+    movz [vr3009344 + 28], 1
+    rjmp L3010024
+
+L3009136:
+    movz.8 vr3010232, [sp + 17]
+    cmp vr3010232, 13
+    ifz rjmp L3010448
+
+L3010552:
+    movz.8 vr3010760, [sp + 17]
+    cmp vr3010760, 23
+    ifnz rjmp L3010024
+
+L3010448:
+    mov vr3011104, 3
+    mov vr3011232, sp
+    call PrsCreateAstNode
+    mov vr2994712, vr3010976
+    movz [vr3010976 + 28], 0
+
+L3010024:
+    rjmp L2995032
+
+L3008608:
+    movz.8 vr3011760, [sp + 16]
+    cmp vr3011760, 16
+    ifnz rjmp L3011976
+
+L3012080:
+    call PrsCreateType
+    mov vr3012296, vr3012184
+    mov vr3012544, 0
+    call PrsType
+    movz.8 vr3012760, [vr3012184 + 44]
+    cmp vr3012760, 3
+    ifnz rjmp L3012976
+
+L3013080:
+    movz vr3013400, [vr3012296 + 0]
+    movz.8 vr3013288, [vr3013400 + 72]
+    cmp vr3013288, 6
+    ifnz rjmp L3013616
+
+L3013720:
+    mov vr3013944, sp
+    mov vr3014072, 'Illegal use of undeclared type'
+    mov vr3014200, 0
+    mov vr3014328, 0
+    mov vr3014456, 0
+    call LexTokenError
+
+L3013616:
+    movz vr3014672, [vr3012296 + 0]
+    movz vr3012296, [vr3014672 + 52]
+
+L3014784:
+    movz.8 vr3014992, [vr3012296 + 44]
+    cmp vr3014992, 3
+    ifz rjmp L3013080
+
+L3012976:
+    cmp [vr3012296 + 40], -1
+    ifnz rjmp L3015416
+
+L3015520:
+    mov vr3015744, sp
+    mov vr3015872, 'Can't take the size of this type'
+    mov vr3016000, 0
+    mov vr3016128, 0
+    mov vr3016256, 0
+    call LexTokenError
+
+L3015416:
+    mov vr3016496, 3
+    mov vr3016624, sp
+    call PrsCreateAstNode
+    mov vr2994712, vr3016368
+    movz [vr3016368 + 28], [vr3012296 + 40]
+    rjmp L2995032
+
+L3011976:
+    movz.8 vr3017152, [sp + 16]
+    cmp vr3017152, 17
+    ifnz rjmp L3017368
+
+L3017472:
+    call PrsFieldSequence
+    mov vr3017840, 3
+    mov vr3017968, sp
+    call PrsCreateAstNode
+    mov vr2994712, vr3017712
+    movz [vr3017712 + 28], vr3017704
+    rjmp L2995032
+
+L3017368:
+    mov vr3018512, sp
+    mov vr3018640, 'Expected an atom.'
+    mov vr3018768, 0
+    mov vr3018896, 0
+    mov vr3019024, 0
+    call LexTokenError
+
+L2995032:
+
+FN PrsExpression
+    call PrsAtom
+    mov vr3019480, sp
+    mov vr3019608, 3
+    mov vr3019736, 0
+    call LexMatchToken
+    cmp vr3019352, 0
+    ifz rjmp L3020056
+
+L3020160:
+    mov vr3020264, PrsOperators
+    movz.8 vr3020480, [sp + 17]
+    sla vr3020480, 4
+    add vr3020264, vr3020480
+    mov vr3020696, vr3020264
+    cmp [vr3020264 + 8], 0
+    ifnz rjmp L3021016
+
+L3021120:
+    mov vr3021344, sp
+    mov vr3021472, 'Unexpected left operator'
+    mov vr3021600, 0
+    mov vr3021728, 0
+    mov vr3021856, 0
+    call LexTokenError
+
+L3021016:
+    cmp [vr3020696 + 8], vr3022072
+    ifgteq rjmp L3022184
+
+L3022288:
+    mov vr3022512, sp
+    call LexPutbackToken
+    rjmp L3020056
+
+L3022184:
+    mov vr3022856, 2
+    mov vr3022984, sp
+    call PrsCreateAstNode
+    mov vr3023096, vr3022728
+    movz [vr3022728 + 28], vr3023312
+    cmp.8 [vr3020696 + 12], 0
+    ifnz rjmp L3023528
+
+L3023632:
+    movz vr3023864, [vr3020696 + 8]
+    add vr3023864, 1
+    call PrsExpression
+    movz [vr3023096 + 32], vr3023736
+
+L3023528:
+    cmp [vr3020696 + 0], 0
+    ifz rjmp L3024392
+
+L3024496:
+    call [vr3020696 + 0]
+
+L3024392:
+    mov vr3023312, vr3023096
+
+L3024840:
+    mov vr3025072, sp
+    mov vr3025200, 3
+    mov vr3025328, 0
+    call LexMatchToken
+    cmp vr3024944, 0
+    ifnz rjmp L3020160
+
+L3020056:
+
+FN PrsCheckConstant
+    movz.8 vr3025856, [vr3025968 + 44]
+    cmp vr3025856, 0
+    ifz rjmp L3026080
+
+L3026184:
+
+L3026080:
+    mov vr3026496, vr3026504
+    mov vr3026720, JklPrimitiveTypeMasks
+    movz.8 vr3026936, [vr3025968 + 0]
+    sla vr3026936, 2
+    add vr3026720, vr3026936
+    and vr3026496, [vr3026720 + 0]
+    cmp vr3026496, vr3026504
+    ifz rjmp L3027256
+
+L3027360:
+    mov vr3027608, 'Constant doesn't fit in type'
+    mov vr3027736, 0
+    mov vr3027864, 0
+    mov vr3027992, 0
+    call LexTokenError
+
+L3027256:
+
+FN PrsParseArrayInitializer
+    movz vr3028104, [vr3028216 + 0]
+    mov vr3028224, vr3028104
+    movz.8 vr3028440, [vr3028104 + 44]
+    cmp vr3028440, 3
+    ifnz rjmp L3028656
+
+L3028760:
+    movz vr3028968, [vr3028224 + 0]
+    movz vr3028224, [vr3028968 + 52]
+
+L3029080:
+    movz.8 vr3029288, [vr3028224 + 44]
+    cmp vr3029288, 3
+    ifz rjmp L3028760
+
+L3028656:
+    movz vr3029504, [vr3028216 + 8]
+    movz vr3029616, [vr3028216 + 4]
+    mov vr3029728, 0
+    mov vr3029840, 0
+
+L3029952:
+    mov vr3030184, sp
+    mov vr3030312, 14
+    mov vr3030440, 0
+    call LexMatchToken
+    cmp vr3030056, 0
+    ifz rjmp L3030760
+
+L3030864:
+    rjmp L3031072
+
+L3030760:
+    mov vr3031304, 0
+    mov vr3031432, 3
+    mov vr3031560, 68
+    call LexMatchToken
+    cmp vr3031176, 0
+    ifz rjmp L3031880
+
+L3031984:
+    mov vr3032216, 0
+    call PrsExpression
+    mov vr3032456, sp
+    mov vr3032584, 11
+    mov vr3032712, 0
+    call LexMatchToken
+    cmp vr3032328, 0
+    ifnz rjmp L3033032
+
+L3033136:
+    mov vr3033360, sp
+    mov vr3033488, 'Expected a right bracket'
+    mov vr3033616, 0
+    mov vr3033744, 0
+    mov vr3033872, 0
+    call LexTokenError
+
+L3033032:
+    mov vr3034112, sp
+    mov vr3034240, 8
+    mov vr3034368, 71
+    call LexMatchToken
+    cmp vr3033984, 0
+    ifnz rjmp L3034688
+
+L3034792:
+    mov vr3035016, sp
+    mov vr3035144, 'Expected an equals sign'
+    mov vr3035272, 0
+    mov vr3035400, 0
+    mov vr3035528, 0
+    call LexTokenError
+
+L3034688:
+    movz.8 vr3035744, [vr3035856 + 24]
+    cmp vr3035744, 3
+    ifz rjmp L3035968
+
+L3036072:
+    mov vr3036312, 'Expected a constant value'
+    mov vr3036440, 0
+    mov vr3036568, 0
+    mov vr3036696, 0
+    call LexTokenError
+
+L3035968:
+    movz vr3036808, [vr3035856 + 28]
+    mov vr3029728, vr3036808
+    cmp [vr3035856 + 28], vr3029616
+    iflt rjmp L3037232
+
+L3037336:
+    mov vr3037576, 'Index exceeds array bound'
+    mov vr3037704, 0
+    mov vr3037832, 0
+    mov vr3037960, 0
+    call LexTokenError
+
+L3037232:
+    mov vr3029840, vr3029728
+    imul vr3029840, vr3029504
+
+L3031880:
+    cmp vr3029728, vr3029616
+    ifgteq rjmp L3038488
+    rjmp L3038696
+
+L3038488:
+    mov vr3038920, sp
+    mov vr3039048, 'Index exceeds array bound'
+    mov vr3039176, 0
+    mov vr3039304, 0
+    mov vr3039432, 0
+    call LexTokenError
+
+L3038696:
+    mov vr3039672, sp
+    mov vr3039816, vr3039824
+    add vr3039816, vr3029840
+    mov vr3040056, vr3040064
+    mov vr3040280, vr3029840
+    sla vr3040280, 2
+    add vr3040056, vr3040280
+    call PrsParseInitializer
+    add vr3029728, 1
+    add vr3029840, vr3029504
+    mov vr3040832, 0
+    mov vr3040960, 14
+    mov vr3041088, 0
+    call LexMatchToken
+    cmp vr3040704, 0
+    ifz rjmp L3041408
+
+L3041512:
+    rjmp L3031072
+
+L3041408:
+    mov vr3041848, sp
+    mov vr3041976, 15
+    mov vr3042104, 0
+    call LexMatchToken
+    cmp vr3041720, 0
+    ifnz rjmp L3042424
+
+L3042528:
+    mov vr3042752, sp
+    mov vr3042880, 'Expected a right brace or comma'
+    mov vr3043008, 0
+    mov vr3043136, 0
+    mov vr3043264, 0
+    call LexTokenError
+
+L3042424:
+    rjmp L3029952
+
+L3031072:
+
+FN PrsParseStructInitializer
+    movz vr3043480, [vr3043592 + 0]
+
+L3043600:
+    mov vr3043832, 0
+    mov vr3043960, 14
+    mov vr3044088, 0
+    call LexMatchToken
+    cmp vr3043704, 0
+    ifz rjmp L3044408
+
+L3044512:
+    rjmp L3044720
+
+L3044408:
+    mov vr3044952, sp
+    mov vr3045080, 3
+    mov vr3045208, 68
+    call LexMatchToken
+    cmp vr3044824, 0
+    ifnz rjmp L3045528
+
+L3045632:
+    mov vr3045856, sp
+    mov vr3045984, 'Expected a left bracket'
+    mov vr3046112, 0
+    mov vr3046240, 0
+    mov vr3046368, 0
+    call LexTokenError
+
+L3045528:
+    call LexEnterOverlayScope
+    mov vr3046728, sp
+    mov vr3046856, 18
+    mov vr3046984, 0
+    call LexMatchToken
+    cmp vr3046600, 0
+    ifnz rjmp L3047304
+
+L3047424:
+    mov vr3047648, sp
+    mov vr3047776, 'Expected an identifier'
+    mov vr3047904, 0
+    mov vr3048032, 0
+    mov vr3048160, 0
+    call LexTokenError
+
+L3047304:
+    movz.8 vr3048376, [sp + 17]
+    cmp vr3048376, 84
+    ifz rjmp L3048592
+
+L3048696:
+    mov vr3048920, sp
+    mov vr3049048, 'Non-existent field name'
+    mov vr3049176, 0
+    mov vr3049304, 0
+    mov vr3049432, 0
+    call LexTokenError
+
+L3048592:
+    movz vr3049544, [sp + 0]
+    call LexExitOverlayScope
+    mov vr3049888, sp
+    mov vr3050016, 11
+    mov vr3050144, 0
+    call LexMatchToken
+    cmp vr3049760, 0
+    ifnz rjmp L3050464
+
+L3050568:
+    mov vr3050792, sp
+    mov vr3050920, 'Expected a right bracket'
+    mov vr3051048, 0
+    mov vr3051176, 0
+    mov vr3051304, 0
+    call LexTokenError
+
+L3050464:
+    mov vr3051544, sp
+    mov vr3051672, 8
+    mov vr3051800, 71
+    call LexMatchToken
+    cmp vr3051416, 0
+    ifnz rjmp L3052120
+
+L3052224:
+    mov vr3052448, sp
+    mov vr3052576, 'Expected an equals sign'
+    mov vr3052704, 0
+    mov vr3052832, 0
+    mov vr3052960, 0
+    call LexTokenError
+
+L3052120:
+    movz vr3053072, [vr3049544 + 44]
+    movz vr3053184, [vr3049544 + 52]
+    mov vr3053296, vr3053184
+    movz.8 vr3053512, [vr3053184 + 44]
+    cmp vr3053512, 3
+    ifnz rjmp L3053728
+
+L3053832:
+    movz vr3054040, [vr3053296 + 0]
+    movz vr3053296, [vr3054040 + 52]
+
+L3054152:
+    movz.8 vr3054360, [vr3053296 + 44]
+    cmp vr3054360, 3
+    ifz rjmp L3053832
+
+L3053728:
+    mov vr3054704, sp
+    mov vr3054848, vr3054856
+    add vr3054848, vr3053072
+    mov vr3055088, vr3055096
+    mov vr3055312, vr3053072
+    sla vr3055312, 2
+    add vr3055088, vr3055312
+    call PrsParseInitializer
+    mov vr3055656, 0
+    mov vr3055784, 14
+    mov vr3055912, 0
+    call LexMatchToken
+    cmp vr3055528, 0
+    ifz rjmp L3056232
+
+L3056336:
+    rjmp L3044720
+
+L3056232:
+    mov vr3056672, sp
+    mov vr3056800, 15
+    mov vr3056928, 0
+    call LexMatchToken
+    cmp vr3056544, 0
+    ifnz rjmp L3057248
+
+L3057352:
+    mov vr3057576, sp
+    mov vr3057704, 'Expected a right brace or comma'
+    mov vr3057832, 0
+    mov vr3057960, 0
+    mov vr3058088, 0
+    call LexTokenError
+
+L3057248:
+    rjmp L3043600
+
+L3044720:
+
+FN PrsParseInitializer
+    movz.8 vr3058408, [vr3058520 + 44]
+    cmp vr3058408, 1
+    ifz rjmp L3058632
+
+L3058736:
+    movz.8 vr3058944, [vr3058520 + 44]
+    cmp vr3058944, 5
+    ifz rjmp L3058632
+
+L3059160:
+    mov vr3059392, sp
+    mov vr3059520, 13
+    mov vr3059648, 0
+    call LexMatchToken
+    cmp vr3059264, 0
+    ifz rjmp L3059968
+
+L3060072:
+    mov vr3060296, sp
+    mov vr3060424, 'Illegal initializer, expected expression'
+    mov vr3060552, 0
+    mov vr3060680, 0
+    mov vr3060808, 0
+    call LexTokenError
+
+L3059968:
+    mov vr3061048, 0
+    call PrsExpression
+    mov vr3061160, vr3060920
+    movz.8 vr3061376, [vr3060920 + 24]
+    cmp vr3061376, 3
+    ifnz rjmp L3061592
+
+L3061696:
+    movz vr3061952, [vr3061160 + 28]
+    call PrsCheckConstant
+
+L3061592:
+    cmp vr3062168, 0
+    ifnz rjmp L3062280
+
+L3062384:
+
+L3062280:
+    call PrsIsCompileTime
+    cmp vr3062592, 0
+    ifnz rjmp L3062928
+
+L3063032:
+    mov vr3063272, 'Expected a compile time value'
+    mov vr3063400, 0
+    mov vr3063528, 0
+    mov vr3063656, 0
+    call LexTokenError
+
+L3062928:
+    movz.8 vr3063872, [vr3061160 + 24]
+    cmp vr3063872, 3
+    ifnz rjmp L3064088
+
+L3064192:
+    movz vr3064432, [vr3061160 + 28]
+    movz vr3064560, [vr3058520 + 40]
+    call TlPunchValue
+    rjmp L3064776
+
+L3064088:
+    movz vr3065096, [JklTargetInfo]
+    movz.8 vr3064984, [vr3065096 + 19]
+    cmp [vr3058520 + 40], vr3064984
+    ifgteq rjmp L3065312
+
+L3065416:
+    mov vr3065656, 'This field is smaller than a pointer'
+    mov vr3065784, 0
+    mov vr3065912, 0
+    mov vr3066040, 0
+    call LexTokenError
+
+L3065312:
+    movz [vr3066256 + 0], vr3061160
+
+L3064776:
+    mov vr3066264, 0
+
+L3058632:
+    mov vr3066608, sp
+    mov vr3066736, 13
+    mov vr3066864, 0
+    call LexMatchToken
+    cmp vr3066480, 0
+    ifnz rjmp L3067184
+
+L3067288:
+    mov vr3067512, sp
+    mov vr3067640, 'Expected initializer'
+    mov vr3067768, 0
+    mov vr3067896, 0
+    mov vr3068024, 0
+    call LexTokenError
+
+L3067184:
+    movz.8 vr3068240, [vr3058520 + 44]
+    cmp vr3068240, 1
+    ifnz rjmp L3068456
+
+L3068560:
+    cmp.8 [vr3058520 + 12], 0
+    ifnz rjmp L3068456
+
+L3068872:
+    mov vr3069096, sp
+    mov vr3069224, 'Can't initialize a boundless array'
+    mov vr3069352, 0
+    mov vr3069480, 0
+    mov vr3069608, 0
+    call LexTokenError
+
+L3068456:
+    mov vr3069720, 0
+    cmp vr3062168, 0
+    ifnz rjmp L3070040
+
+L3070144:
+    movz vr3070376, [vr3058520 + 40]
+    add vr3070376, 7
+    and vr3070376, -8
+    call TlBumpAlloc
+    cmp vr3070248, 0
+    ifz rjmp L3070920
+
+L3071024:
+    mov vr3071272, 'Failed to allocate initializer byte array'
+    movz vr3071400, [vr3058520 + 40]
+    mov vr3071528, 0
+    mov vr3071656, 0
+    call LexTokenError
+
+L3070920:
+    movz vr3071896, [vr3058520 + 40]
+    add vr3071896, 7
+    and vr3071896, -8
+    sla vr3071896, 2
+    call TlBumpAlloc
+    cmp vr3071768, 0
+    ifz rjmp L3072544
+
+L3072648:
+    mov vr3072888, 'Failed to allocate initializer bp array'
+    movz vr3073016, [vr3058520 + 40]
+    mov vr3073144, 0
+    mov vr3073272, 0
+    call LexTokenError
+
+L3072544:
+    mov vr3073512, 5
+    call PrsCreateAstNode
+    mov vr3069720, vr3073384
+    movz [vr3073384 + 28], vr3062168
+    movz [vr3073384 + 32], vr3066256
+    movz vr3074088, [vr3058520 + 40]
+    add vr3074088, 7
+    and vr3074088, -8
+    mov vr3074424, 0
+    call TlFillMemoryWithByte
+    movz vr3074672, [vr3058520 + 40]
+    add vr3074672, 7
+    and vr3074672, -8
+    sla vr3074672, 2
+    mov vr3075112, 0
+    call TlFillMemoryWithByte
+
+L3070040:
+    movz.8 vr3075328, [vr3058520 + 44]
+    cmp vr3075328, 1
+    ifnz rjmp L3075544
+
+L3075648:
+    call PrsParseArrayInitializer
+    rjmp L3076024
+
+L3075544:
+    call PrsParseStructInitializer
+
+L3076024:
+
+FN PrsEvaluateType
+    cmp [vr3076504 + 44], 0
+    ifz rjmp L3076616
+
+L3076720:
+    movz vr3076824, [vr3076504 + 44]
+
+L3076616:
+    movz.8 vr3077144, [vr3076504 + 24]
+    cmp vr3077144, 0
+    ifnz rjmp L3077360
+
+L3077464:
+    movz vr3077680, [vr3076504 + 0]
+    movz vr3077568, [vr3077680 + 52]
+    rjmp L3077896
+
+L3077360:
+    movz.8 vr3078104, [vr3076504 + 24]
+    cmp vr3078104, 4
+    ifnz rjmp L3078320
+
+L3078424:
+    movz vr3077568, [PrsStringType]
+    rjmp L3077896
+
+L3078320:
+    movz.8 vr3078840, [vr3076504 + 24]
+    cmp vr3078840, 3
+    ifnz rjmp L3079056
+
+L3079160:
+    movz.8 vr3079368, [vr3076504 + 16]
+    cmp vr3079368, 4
+    ifnz rjmp L3079584
+
+L3079688:
+    movz.8 vr3079896, [vr3076504 + 17]
+    cmp vr3079896, 23
+    ifnz rjmp L3079584
+
+L3080112:
+    movz vr3077568, [PrsNullPtrType]
+    rjmp L3080424
+
+L3079584:
+    movz vr3077568, [PrsConstantType]
+
+L3080424:
+    rjmp L3077896
+
+L3079056:
+    movz.8 vr3080840, [vr3076504 + 24]
+    cmp vr3080840, 2
+    ifnz rjmp L3081056
+
+L3081160:
+    mov vr3081392, PrsOperators
+    movz.8 vr3081608, [vr3076504 + 17]
+    sla vr3081608, 4
+    add vr3081392, vr3081608
+    call [vr3081264 + 4]
+    rjmp L3077896
+
+L3081056:
+    mov vr3082048, 'PrsEvaluateType Inappropriate AST type'
+    movz.8 vr3082176, [vr3076504 + 24]
+    mov vr3082304, 0
+    mov vr3082432, 0
+    call TlInternalError
+
+L3077896:
+    movz.8 vr3082648, [vr3077568 + 44]
+    cmp vr3082648, 3
+    ifnz rjmp L3082864
+
+L3082968:
+    movz vr3083288, [vr3077568 + 0]
+    movz.8 vr3083176, [vr3083288 + 72]
+    cmp vr3083176, 6
+    ifnz rjmp L3083504
+
+L3083608:
+    mov vr3083848, 'Illegal use of undeclared type'
+    mov vr3083976, 0
+    mov vr3084104, 0
+    mov vr3084232, 0
+    call LexTokenError
+
+L3083504:
+    movz vr3084448, [vr3077568 + 0]
+    movz vr3077568, [vr3084448 + 52]
+
+L3084560:
+    movz.8 vr3084768, [vr3077568 + 44]
+    cmp vr3084768, 3
+    ifz rjmp L3082968
+
+L3082864:
+    movz [vr3076504 + 44], vr3077568
+
+FN PrsTypeIsDeclarable
+    cmp.8 [vr3085296 + 46], 0
+    ifz rjmp L3085408
+
+L3085512:
+    mov vr3085616, 1
+
+L3085408:
+    mov vr3085832, vr3085296
+    movz.8 vr3086048, [vr3085296 + 44]
+    cmp vr3086048, 3
+    ifnz rjmp L3086264
+
+L3086368:
+    movz vr3086688, [vr3085296 + 0]
+    movz.8 vr3086576, [vr3086688 + 72]
+    cmp vr3086576, 6
+    ifnz rjmp L3086904
+
+L3087008:
+    mov vr3087256, 'Illegal use of undeclared type'
+    mov vr3087384, 0
+    mov vr3087512, 0
+    mov vr3087640, 0
+    call LexTokenError
+
+L3086904:
+    movz vr3087856, [vr3085296 + 0]
+    movz vr3085296, [vr3087856 + 52]
+
+L3087968:
+    movz.8 vr3088176, [vr3085296 + 44]
+    cmp vr3088176, 3
+    ifz rjmp L3086368
+
+L3086264:
+    movz.8 vr3088496, [vr3085296 + 44]
+    cmp vr3088496, 4
+    ifnz rjmp L3088712
+
+L3088816:
+    mov vr3088920, 0
+
+L3088712:
+    movz.8 vr3089240, [vr3085296 + 44]
+    cmp vr3089240, 0
+    ifnz rjmp L3089456
+
+L3089560:
+    movz.8 vr3089768, [vr3085296 + 0]
+    cmp vr3089768, 0
+    ifnz rjmp L3089456
+
+L3089984:
+    mov vr3090088, 0
+
+L3089456:
+    movz.8 [vr3085832 + 46], 1
+    mov vr3090408, 1
+
+FN PrsTypeIsValue
+    cmp.8 [vr3090728 + 47], 0
+    ifz rjmp L3090840
+
+L3090944:
+    mov vr3091048, 1
+
+L3090840:
+    mov vr3091264, vr3090728
+    movz.8 vr3091480, [vr3090728 + 44]
+    cmp vr3091480, 3
+    ifnz rjmp L3091696
+
+L3091800:
+    movz vr3092120, [vr3090728 + 0]
+    movz.8 vr3092008, [vr3092120 + 72]
+    cmp vr3092008, 6
+    ifnz rjmp L3092336
+
+L3092440:
+    mov vr3092688, 'Illegal use of undeclared type'
+    mov vr3092816, 0
+    mov vr3092944, 0
+    mov vr3093072, 0
+    call LexTokenError
+
+L3092336:
+    movz vr3093288, [vr3090728 + 0]
+    movz vr3090728, [vr3093288 + 52]
+
+L3093400:
+    movz.8 vr3093608, [vr3090728 + 44]
+    cmp vr3093608, 3
+    ifz rjmp L3091800
+
+L3091696:
+    movz.8 vr3093928, [vr3090728 + 44]
+    cmp vr3093928, 4
+    ifnz rjmp L3094144
+
+L3094248:
+    mov vr3094352, 0
+
+L3094144:
+    movz.8 vr3094672, [vr3090728 + 44]
+    cmp vr3094672, 5
+    ifnz rjmp L3094888
+
+L3094992:
+    mov vr3095096, 0
+
+L3094888:
+    movz.8 vr3095416, [vr3090728 + 44]
+    cmp vr3095416, 1
+    ifnz rjmp L3095632
+
+L3095736:
+    mov vr3095840, 0
+
+L3095632:
+    movz.8 vr3096160, [vr3090728 + 44]
+    cmp vr3096160, 0
+    ifnz rjmp L3096376
+
+L3096480:
+    movz.8 vr3096688, [vr3090728 + 0]
+    cmp vr3096688, 0
+    ifnz rjmp L3096376
+
+L3096904:
+    mov vr3097008, 0
+
+L3096376:
+    movz.8 [vr3091264 + 47], 1
+    mov vr3097328, 1
+
+FN PrsCheckNodeIsValue
+    call PrsEvaluateType
+    call PrsTypeIsValue
+    cmp vr3097680, 0
+    ifnz rjmp L3098032
+
+L3098136:
+    mov vr3098376, 'This type is not directly usable as a value'
+    mov vr3098504, 0
+    mov vr3098632, 0
+    mov vr3098760, 0
+    call LexTokenError
+
+L3098032:
+
+FN PrsHasSideEffect
+    movz.8 vr3098976, [vr3099088 + 24]
+    cmp vr3098976, 2
+    ifnz rjmp L3099200
+
+L3099304:
+    movz.8 vr3099512, [vr3099088 + 17]
+    cmp vr3099512, 70
+    ifnz rjmp L3099200
+
+L3099728:
+    mov vr3099832, 1
+
+L3099200:
+    mov vr3100048, 0
+
+FN PrsType
+    mov vr3100384, sp
+    call LexGetToken
+    movz.8 vr3100600, [sp + 16]
+    cmp vr3100600, 2
+    ifnz rjmp L3100816
+
+L3100920:
+    movz vr3101128, [JklTargetInfo]
+    add vr3101128, 48
+    movz.8 vr3101448, [sp + 18]
+    add vr3101128, vr3101448
+    cmp.8 [vr3101128 + 0], 0
+    ifnz rjmp L3101664
+
+L3101768:
+    mov vr3101992, sp
+    mov vr3102120, 'This primitive type is not supported on this target'
+    mov vr3102248, 0
+    mov vr3102376, 0
+    mov vr3102504, 0
+    call LexTokenError
+
+L3101664:
+    movz.8 [vr3102720 + 44], 0
+    movz.8 [vr3102720 + 0], [sp + 18]
+    movz.8 [vr3102720 + 1], 0
+    movz vr3103040, [JklTargetInfo]
+    add vr3103040, 20
+    movz.8 vr3103360, [sp + 18]
+    add vr3103040, vr3103360
+    movz.8 [vr3102720 + 45], [vr3103040 + 0]
+    movz vr3103688, [JklTargetInfo]
+    add vr3103688, 34
+    movz.8 vr3104008, [sp + 18]
+    add vr3103688, vr3104008
+    movz.8 vr3103576, [vr3103688 + 0]
+    movz [vr3102720 + 40], vr3103576
+    rjmp L3104224
+
+L3100816:
+    movz.8 vr3104432, [sp + 16]
+    cmp vr3104432, 3
+    ifnz rjmp L3104648
+
+L3104752:
+    movz.8 vr3104960, [sp + 17]
+    cmp vr3104960, 69
+    ifnz rjmp L3104648
+
+L3105176:
+    call PrsCreateType
+    mov vr3105528, vr3105536
+    add vr3105528, 1
+    call PrsType
+    movz.8 [vr3102720 + 44], 2
+    movz [vr3102720 + 0], vr3105280
+    movz vr3106064, [JklTargetInfo]
+    movz.8 [vr3102720 + 45], [vr3106064 + 18]
+    movz vr3106392, [JklTargetInfo]
+    movz.8 vr3106280, [vr3106392 + 19]
+    movz [vr3102720 + 40], vr3106280
+    rjmp L3104224
+
+L3104648:
+    movz.8 vr3106712, [sp + 16]
+    cmp vr3106712, 18
+    ifnz rjmp L3106928
+
+L3107032:
+    movz vr3107136, [sp + 0]
+    movz.8 vr3107352, [sp + 17]
+    cmp vr3107352, 84
+    ifnz rjmp L3107568
+
+L3107672:
+    movz.8 vr3107880, [vr3107136 + 72]
+    cmp vr3107880, 3
+    ifz rjmp L3108096
+
+L3108200:
+    movz.8 vr3108408, [vr3107136 + 72]
+    cmp vr3108408, 6
+    ifz rjmp L3108096
+
+L3108624:
+    mov vr3108848, sp
+    mov vr3108976, 'Symbol isn't a type'
+    mov vr3109104, 0
+    mov vr3109232, 0
+    mov vr3109360, 0
+    call LexTokenError
+
+L3108096:
+    rjmp L3109576
+
+L3107568:
+    movz.8 [vr3107136 + 72], 6
+
+L3109576:
+    movz.8 [vr3102720 + 44], 3
+    movz [vr3102720 + 0], vr3107136
+    rjmp L3104224
+
+L3106928:
+    mov vr3110216, sp
+    mov vr3110344, 'Type must be primitive, pointer, or named.'
+    mov vr3110472, 0
+    mov vr3110600, 0
+    mov vr3110728, 0
+    call LexTokenError
+
+L3104224:
+    cmp vr3105536, 0
+    ifnz rjmp L3111048
+    rjmp L3111256
+
+L3111048:
+
+L3111256:
+    mov vr3111592, 0
+    mov vr3111720, 3
+    mov vr3111848, 68
+    call LexMatchToken
+    cmp vr3111464, 0
+    ifnz rjmp L3112168
+
+L3112272:
+
+L3112168:
+    mov vr3112480, 1
+    mov vr3112592, 0
+    call PrsCreateType
+    mov vr3112816, vr3112704
+    mov vr3113112, 48
+    call TlCopyMemory
+    mov vr3113224, vr3112704
+    movz.8 vr3113440, [vr3112704 + 44]
+    cmp vr3113440, 3
+    ifnz rjmp L3113656
+
+L3113760:
+    movz vr3114080, [vr3113224 + 0]
+    movz.8 vr3113968, [vr3114080 + 72]
+    cmp vr3113968, 6
+    ifnz rjmp L3114296
+
+L3114400:
+    mov vr3114624, sp
+    mov vr3114752, 'Illegal use of undeclared type'
+    mov vr3114880, 0
+    mov vr3115008, 0
+    mov vr3115136, 0
+    call LexTokenError
+
+L3114296:
+    movz vr3115352, [vr3113224 + 0]
+    movz vr3113224, [vr3115352 + 52]
+
+L3115464:
+    movz.8 vr3115672, [vr3113224 + 44]
+    cmp vr3115672, 3
+    ifz rjmp L3113760
+
+L3113656:
+    mov vr3116016, sp
+    call PrsTypeIsDeclarable
+    cmp vr3115888, 0
+    ifnz rjmp L3116352
+
+L3116456:
+    mov vr3116680, sp
+    mov vr3116808, 'This type is not directly declarable'
+    mov vr3116936, 0
+    mov vr3117064, 0
+    mov vr3117192, 0
+    call LexTokenError
+
+L3116352:
+    cmp [vr3113224 + 40], -1
+    ifnz rjmp L3117512
+
+L3117616:
+    mov vr3117840, sp
+    mov vr3117968, 'This type is not suitable as a base for an array'
+    mov vr3118096, 0
+    mov vr3118224, 0
+    mov vr3118352, 0
+    call LexTokenError
+
+L3117512:
+    movz.8 vr3118464, [vr3113224 + 45]
+    mov vr3118576, vr3118464
+    movz vr3118688, [vr3113224 + 40]
+    mov vr3118800, vr3118688
+    mov vr3118912, vr3118688
+    mov vr3119128, vr3118464
+    sub vr3119128, 1
+    add vr3118912, vr3119128
+    mov vr3118800, vr3118912
+    mov vr3118800, vr3118912
+    mov vr3119656, vr3118464
+    sub vr3119656, 1
+    not vr3119656
+    and vr3118800, vr3119656
+    mov vr3119976, vr3102720
+    movz [vr3102720 + 40], -1
+    mov vr3120192, 0
+
+L3120304:
+    movz.8 [vr3119976 + 44], 1
+    movz.8 [vr3119976 + 45], vr3118576
+    cmp vr3120192, 0
+    ifnz rjmp L3120824
+    rjmp L3121032
+
+L3120824:
+    movz [vr3120192 + 0], vr3119976
+
+L3121032:
+    movz [vr3119976 + 16], vr3120192
+    mov vr3120192, vr3119976
+    mov vr3121576, 0
+    mov vr3121704, 11
+    mov vr3121832, 0
+    call LexMatchToken
+    cmp vr3121448, 0
+    ifz rjmp L3122152
+
+L3122256:
+    cmp vr3112480, 1
+    iflteq rjmp L3122568
+
+L3122672:
+    mov vr3122896, sp
+    mov vr3123024, 'Boundless arrays can't be multidimensional.'
+    mov vr3123152, 0
+    mov vr3123280, 0
+    mov vr3123408, 0
+    call LexTokenError
+
+L3122568:
+    mov vr3112592, 1
+    movz.8 [vr3119976 + 12], 0
+    rjmp L3123832
+
+L3122152:
+    mov vr3124064, 0
+    call PrsExpression
+    mov vr3124176, vr3123936
+    movz.8 vr3124392, [vr3123936 + 24]
+    cmp vr3124392, 3
+    ifz rjmp L3124608
+
+L3124712:
+    mov vr3124936, sp
+    mov vr3125064, 'Expected a constant array bound'
+    mov vr3125192, 0
+    mov vr3125320, 0
+    mov vr3125448, 0
+    call LexTokenError
+
+L3124608:
+    cmp [vr3124176 + 28], 0
+    ifnz rjmp L3125768
+
+L3125872:
+    mov vr3126096, sp
+    mov vr3126224, 'Array bound must not be zero'
+    mov vr3126352, 0
+    mov vr3126480, 0
+    mov vr3126608, 0
+    call LexTokenError
+
+L3125768:
+    movz [vr3119976 + 4], [vr3124176 + 28]
+    movz.8 [vr3119976 + 12], 1
+    mov vr3127056, sp
+    add vr3127056, 20
+    mov vr3127288, 11
+    mov vr3127416, 0
+    call LexMatchToken
+    cmp vr3126928, 0
+    ifnz rjmp L3127736
+
+L3127840:
+    mov vr3128064, sp
+    add vr3128064, 20
+    mov vr3128296, 'Array type must be terminated by right bracket.'
+    mov vr3128424, 0
+    mov vr3128552, 0
+    mov vr3128680, 0
+    call LexTokenError
+
+L3127736:
+
+L3123832:
+    mov vr3128920, 0
+    mov vr3129048, 3
+    mov vr3129176, 68
+    call LexMatchToken
+    cmp vr3128792, 0
+    ifnz rjmp L3129496
+
+L3129600:
+    rjmp L3129808
+
+L3129496:
+    cmp vr3112592, 0
+    ifnz rjmp L3130120
+    rjmp L3130328
+
+L3130120:
+    mov vr3130552, sp
+    mov vr3130680, 'Boundless arrays can't be multidimensional.'
+    mov vr3130808, 0
+    mov vr3130936, 0
+    mov vr3131064, 0
+    call LexTokenError
+
+L3130328:
+    add vr3112480, 1
+    call PrsCreateType
+    rjmp L3120304
+
+L3129808:
+    movz [vr3120192 + 0], vr3112816
+    cmp vr3112592, 0
+    ifnz rjmp L3131808
+
+L3131912:
+    mov vr3132016, vr3120192
+    cmp vr3120192, 0
+    ifnz rjmp L3132336
+    rjmp L3132544
+
+L3132336:
+    movz [vr3132016 + 8], vr3118800
+    mov vr3132752, vr3118800
+    imul vr3132752, [vr3132016 + 4]
+    mov vr3118800, vr3132752
+    movz [vr3132016 + 40], vr3132752
+    movz vr3132016, [vr3132016 + 16]
+
+L3133280:
+    cmp vr3132016, 0
+    ifnz rjmp L3132336
+
+L3132544:
+
+L3131808:
+
+FN PrsFoundSymbol
+    movz.8 vr3133696, [vr3133808 + 17]
+    cmp vr3133696, 84
+    ifnz rjmp L3133920
+
+L3134024:
+    movz.8 vr3134232, [vr3134344 + 72]
+    cmp vr3134232, 1
+    ifz rjmp L3134456
+
+L3134560:
+    mov vr3134800, 'Symbol name already in use.'
+    mov vr3134928, 0
+    mov vr3135056, 0
+    mov vr3135184, 0
+    call LexTokenError
+
+L3134456:
+    mov vr3135400, vr3135408
+    and vr3135400, 1
+    cmp vr3135400, 0
+    ifz rjmp L3135728
+
+L3135832:
+    mov vr3136072, 'Symbol already declared.'
+    mov vr3136200, 0
+    mov vr3136328, 0
+    mov vr3136456, 0
+    call LexTokenError
+
+L3135728:
+    movz vr3136672, [vr3134344 + 68]
+    and vr3136672, 1
+    cmp vr3136672, 0
+    ifnz rjmp L3136992
+
+L3137096:
+    mov vr3137336, 'Symbol already declared.'
+    mov vr3137464, 0
+    mov vr3137592, 0
+    mov vr3137720, 0
+    call LexTokenError
+
+L3136992:
+    cmp vr3137936, 0
+    ifnz rjmp L3138048
+
+L3138152:
+    mov vr3138392, 'Can't override extern from local scope.'
+    mov vr3138520, 0
+    mov vr3138648, 0
+    mov vr3138776, 0
+    call LexTokenError
+
+L3138048:
+    movz vr3139032, [vr3134344 + 52]
+    mov vr3139184, 'Can't override: '
+    mov vr3139312, 1
+    call PrsCheckType
+    cmp vr3137936, 0
+    ifnz rjmp L3139632
+    rjmp L3139840
+
+L3139632:
+    mov vr3140072, 75
+    call TlBumpAlloc
+    mov vr3140360, 75
+    call TlCopyMemory
+    movz [vr3140200 + 36], [vr3134344 + 36]
+    movz [vr3140200 + 32], [vr3134344 + 32]
+    cmp [PrsGlobalListTail], vr3134344
+    ifnz rjmp L3140888
+
+L3140992:
+    movz [PrsGlobalListTail], vr3140200
+    rjmp L3141304
+
+L3140888:
+    movz vr3141512, [vr3134344 + 32]
+    movz [vr3141512 + 36], vr3140200
+
+L3141304:
+    movz vr3141624, [vr3134344 + 36]
+    mov vr3141736, vr3141624
+    cmp [vr3134344 + 36], 0
+    ifz rjmp L3142056
+
+L3142160:
+    movz [vr3141736 + 32], vr3140200
+    rjmp L3142472
+
+L3142056:
+    movz [PrsGlobalListHead], vr3140200
+
+L3142472:
+    movz vr3142680, [PrsGlobalListTail]
+    mov vr3142792, vr3142680
+    movz [vr3134344 + 32], 0
+    movz [vr3134344 + 36], vr3142680
+    cmp vr3142680, 0
+    ifz rjmp L3143320
+
+L3143424:
+    movz [vr3142792 + 32], vr3134344
+    rjmp L3143736
+
+L3143320:
+    movz [PrsGlobalListHead], vr3134344
+
+L3143736:
+    movz [PrsGlobalListTail], vr3134344
+
+L3139840:
+    rjmp L3144152
+
+L3133920:
+    movz.8 [vr3134344 + 72], 1
+    cmp vr3137936, 0
+    ifnz rjmp L3144568
+    rjmp L3144776
+
+L3144568:
+    movz vr3144880, [PrsGlobalListTail]
+    mov vr3144992, vr3144880
+    movz [vr3134344 + 32], 0
+    movz [vr3134344 + 36], vr3144880
+    cmp vr3144880, 0
+    ifz rjmp L3145520
+
+L3145624:
+    movz [vr3144992 + 32], vr3134344
+    rjmp L3145936
+
+L3145520:
+    movz [PrsGlobalListHead], vr3134344
+
+L3145936:
+    movz [PrsGlobalListTail], vr3134344
+
+L3144776:
+
+L3144152:
+    movz [vr3134344 + 68], vr3135408
+    movz [vr3134344 + 52], vr3139160
+    cmp [LexNextSymbolSection], 0
+    ifz rjmp L3146664
+
+L3146768:
+    movz [vr3134344 + 28], [LexNextSymbolSection]
+    movz [LexNextSymbolSection], 0
+    rjmp L3147184
+
+L3146664:
+    movz [vr3134344 + 28], [LexCurrentSection]
+
+L3147184:
+
+FN PrsVariableDeclaration
+    movz vr3147392, [vr3147504 + 0]
+    mov vr3147512, 0
+    mov vr3147624, 1
+    mov vr3147864, 0
+    mov vr3147992, 8
+    mov vr3148120, 71
+    call LexMatchToken
+    cmp vr3147736, 0
+    ifnz rjmp L3148440
+
+L3148544:
+    call PrsCreateType
+    mov vr3147512, vr3148648
+    mov vr3149000, 0
+    call PrsType
+    call PrsTypeIsDeclarable
+    cmp vr3149112, 0
+    ifnz rjmp L3149464
+
+L3149568:
+    mov vr3149808, 'This type is not directly declarable'
+    mov vr3149936, 0
+    mov vr3150064, 0
+    mov vr3150192, 0
+    call LexTokenError
+
+L3149464:
+    mov vr3150432, sp
+    mov vr3150560, 8
+    mov vr3150688, 71
+    call LexMatchToken
+    cmp vr3150304, 0
+    ifnz rjmp L3151008
+
+L3151112:
+    mov vr3147624, 0
+
+L3151008:
+
+L3148440:
+    mov vr3151320, 0
+    cmp vr3147624, 0
+    ifnz rjmp L3151640
+    rjmp L3151848
+
+L3151640:
+    mov vr3152056, vr3152064
+    and vr3152056, 1
+    cmp vr3152056, 0
+    ifz rjmp L3152384
+
+L3152488:
+    mov vr3152728, 'EXTERN declarations must not have an initializer.'
+    mov vr3152856, 0
+    mov vr3152984, 0
+    mov vr3153112, 0
+    call LexTokenError
+
+L3152384:
+    cmp vr3147512, 0
+    ifnz rjmp L3153432
+
+L3153536:
+    mov vr3153768, 0
+    call PrsExpression
+    mov vr3151320, vr3153640
+    call PrsEvaluateType
+    mov vr3147512, vr3153984
+    call PrsTypeIsValue
+    cmp vr3154216, 0
+    ifnz rjmp L3154568
+
+L3154672:
+    mov vr3154912, 'This type is not directly usable as a value'
+    mov vr3155040, 0
+    mov vr3155168, 0
+    mov vr3155296, 0
+    call LexTokenError
+
+L3154568:
+    rjmp L3155512
+
+L3153432:
+    mov vr3155616, vr3147512
+    movz.8 vr3155832, [vr3147512 + 44]
+    cmp vr3155832, 3
+    ifnz rjmp L3156048
+
+L3156152:
+    movz vr3156472, [vr3155616 + 0]
+    movz.8 vr3156360, [vr3156472 + 72]
+    cmp vr3156360, 6
+    ifnz rjmp L3156688
+
+L3156792:
+    mov vr3157032, 'Illegal use of undeclared type'
+    mov vr3157160, 0
+    mov vr3157288, 0
+    mov vr3157416, 0
+    call LexTokenError
+
+L3156688:
+    movz vr3157632, [vr3155616 + 0]
+    movz vr3155616, [vr3157632 + 52]
+
+L3157744:
+    movz.8 vr3157952, [vr3155616 + 44]
+    cmp vr3157952, 3
+    ifz rjmp L3156152
+
+L3156048:
+    mov vr3158328, 0
+    mov vr3158456, 0
+    call PrsParseInitializer
+    mov vr3151320, vr3158168
+    movz.8 vr3158776, [vr3158168 + 24]
+    cmp vr3158776, 5
+    ifz rjmp L3158992
+
+L3159096:
+    call PrsEvaluateType
+    mov vr3159504, 'Initial value doesn't match explicit type: '
+    mov vr3159632, 0
+    call PrsCheckType
+
+L3158992:
+
+L3155512:
+
+L3151848:
+    movz.8 vr3159848, [vr3147512 + 44]
+    cmp vr3159848, 1
+    ifnz rjmp L3160064
+
+L3160168:
+    cmp.8 [vr3147512 + 12], 0
+    ifnz rjmp L3160064
+
+L3160480:
+    mov vr3160720, 'Can't declare a boundless array'
+    mov vr3160848, 0
+    mov vr3160976, 0
+    mov vr3161104, 0
+    call LexTokenError
+
+L3160064:
+    call PrsFoundSymbol
+    cmp vr3161384, 0
+    ifnz rjmp L3161616
+
+L3161720:
+    cmp vr3147624, 0
+    ifnz rjmp L3162032
+    rjmp L3162240
+
+L3162032:
+    mov vr3162472, 0
+    call PrsCreateAstNode
+    mov vr3162728, 1
+    call PrsCreateAstNode
+    movz.8 [vr3162600 + 17], 71
+    movz [vr3162600 + 28], vr3162344
+    movz [vr3162600 + 32], vr3151320
+    movz vr3163288, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+L3162240:
+    rjmp L3163520
+
+L3161616:
+    cmp vr3151320, 0
+    ifnz rjmp L3163832
+    rjmp L3164040
+
+L3163832:
+    call PrsIsCompileTime
+    cmp vr3164144, 0
+    ifnz rjmp L3164480
+
+L3164584:
+    mov vr3164824, 'Globals require a compile-time initial value.'
+    mov vr3164952, 0
+    mov vr3165080, 0
+    mov vr3165208, 0
+    call LexTokenError
+
+L3164480:
+    movz [vr3147392 + 48], vr3151320
+    rjmp L3163520
+
+L3164040:
+    movz [vr3147392 + 48], 0
+
+L3163520:
+
+FN PrsGlobalDeclaration
+    mov vr3165856, sp
+    call LexGetToken
+    movz.8 vr3166072, [sp + 16]
+    cmp vr3166072, 22
+    ifnz rjmp L3166288
+
+L3166392:
+    mov vr3166496, 0
+
+L3166288:
+    movz.8 vr3166816, [sp + 16]
+    cmp vr3166816, 18
+    ifz rjmp L3167032
+
+L3167136:
+    movz.8 vr3167344, [sp + 16]
+    cmp vr3167344, 6
+    ifz rjmp L3167032
+
+L3167560:
+    mov vr3167784, sp
+    mov vr3167912, 'Expected identifier or declarative keyword'
+    mov vr3168040, 0
+    mov vr3168168, 0
+    mov vr3168296, 0
+    call LexTokenError
+
+L3167032:
+    movz.8 vr3168512, [sp + 16]
+    cmp vr3168512, 18
+    ifnz rjmp L3168728
+
+L3168832:
+    mov vr3169064, sp
+    add vr3169064, 20
+    mov vr3169296, 12
+    mov vr3169424, 0
+    call LexMatchToken
+    cmp vr3168936, 0
+    ifnz rjmp L3169744
+
+L3169848:
+    mov vr3170072, sp
+    add vr3170072, 20
+    mov vr3170304, 'Expected a colon (indicating a declaration).'
+    mov vr3170432, 0
+    mov vr3170560, 0
+    mov vr3170688, 0
+    call LexTokenError
+
+L3169744:
+    mov vr3170928, sp
+    mov vr3171056, 0
+    mov vr3171184, 1
+    call PrsVariableDeclaration
+    mov vr3171296, 1
+
+L3168728:
+    mov vr3171624, PrsDeclarators
+    movz.8 vr3171840, [sp + 17]
+    sla vr3171840, 2
+    add vr3171624, vr3171840
+    call [vr3171512 + 0]
+    mov vr3172056, 1
+
+FN PrsParseBlock
+    mov vr3172400, 16
+    call TlBumpAlloc
+    cmp vr3172272, 0
+    ifz rjmp L3172744
+
+L3172848:
+    mov vr3173072, 'Failed to allocate a block'
+    mov vr3173200, 0
+    mov vr3173328, 0
+    mov vr3173456, 0
+    call TlInternalError
+
+L3172744:
+    movz [vr3172528 + 0], 0
+    movz [vr3172528 + 4], 0
+    movz [vr3172528 + 8], 0
+    movz [vr3172528 + 12], 0
+    movz vr3173984, [PrsCurrentBlock]
+    movz [PrsCurrentBlock], vr3172528
+
+L3174200:
+    mov vr3174432, sp
+    mov vr3174560, 9
+    mov vr3174688, 0
+    call LexMatchToken
+    cmp vr3174304, 0
+    ifz rjmp L3175008
+
+L3175112:
+    movz.8 vr3175216, [sp + 17]
+    cmp [PrsBlockStack], 0
+    ifnz rjmp L3175536
+
+L3175640:
+    mov vr3175864, 'Block stack was empty'
+    mov vr3175992, 0
+    mov vr3176120, 0
+    mov vr3176248, 0
+    call TlInternalError
+
+L3175536:
+    mov vr3176584, PrsBlockStack
+    movz vr3176472, [vr3176584 + 8]
+    movz vr3176800, [PrsBlockStack]
+    sub vr3176800, 1
+    add vr3176472, vr3176800
+    movz.8 vr3176360, [vr3176472 + 0]
+    mov vr3177016, vr3176360
+    cmp vr3176360, 3
+    ifnz rjmp L3177336
+
+L3177440:
+    mov vr3177664, sp
+    mov vr3177792, 'Attempt to leave block from within macro'
+    mov vr3177920, 0
+    mov vr3178048, 0
+    mov vr3178176, 0
+    call LexTokenError
+
+L3177336:
+    cmp vr3177016, 1
+    ifnz rjmp L134250496
+
+L134250600:
+    movz.8 vr134250808, [sp + 17]
+    cmp vr134250808, 10
+    ifz rjmp L134251024
+
+L134251128:
+    mov vr134251352, sp
+    mov vr134251480, 'Only END is allowed to terminate this block'
+    mov vr134251608, 0
+    mov vr134251736, 0
+    mov vr134251864, 0
+    call LexTokenError
+
+L134251024:
+    rjmp L134252080
+
+L134250496:
+    cmp vr3177016, 2
+    ifnz rjmp L134252392
+
+L134252496:
+    rjmp L134252080
+
+L134252392:
+    mov vr134252824, 'PrsParseBlock Unreachable'
+    mov vr134252968, 0
+    mov vr134253096, 0
+    call TlInternalError
+
+L3175008:
+    mov vr134253336, sp
+    mov vr134253464, 1
+    mov vr134253592, 0
+    call LexMatchToken
+    cmp vr134253208, 0
+    ifz rjmp L134253912
+
+L134254016:
+    mov vr134254240, sp
+    mov vr134254352, PrsStatements
+    movz.8 vr134254568, [sp + 17]
+    sla vr134254568, 2
+    add vr134254352, vr134254568
+    call [vr134254352 + 0]
+    rjmp L3174200
+
+L134253912:
+    mov vr134254888, 0
+    mov vr134255120, sp
+    call LexGetToken
+    movz.8 vr134255336, [sp + 16]
+    cmp vr134255336, 18
+    ifnz rjmp L134255552
+
+L134255656:
+    mov vr134255888, sp
+    add vr134255888, 20
+    mov vr134256120, 12
+    mov vr134256248, 0
+    call LexMatchToken
+    cmp vr134255760, 0
+    ifz rjmp L134256568
+
+L134256672:
+    mov vr134254888, 1
+
+L134256568:
+
+L134255552:
+    cmp vr134254888, 0
+    ifnz rjmp L134257088
+    rjmp L134257296
+
+L134257088:
+    mov vr134257528, sp
+    mov vr134257656, 0
+    mov vr134257784, 0
+    call PrsVariableDeclaration
+    rjmp L134258000
+
+L134257296:
+    mov vr134258224, sp
+    call LexPutbackToken
+    mov vr134258464, 0
+    call PrsExpression
+    mov vr134258704, sp
+    add vr134258704, 40
+    mov vr134258936, 8
+    mov vr134259064, 0
+    call LexMatchToken
+    cmp vr134258576, 0
+    ifz rjmp L134259384
+
+L134259488:
+    mov vr134259720, 1
+    mov vr134259848, sp
+    add vr134259848, 40
+    call PrsCreateAstNode
+    call PrsIsLvalue
+    cmp vr134260064, 0
+    ifnz rjmp L134260408
+
+L134260512:
+    mov vr134260752, 'Not a valid L-value'
+    mov vr134260880, 0
+    mov vr134261008, 0
+    mov vr134261136, 0
+    call LexTokenError
+
+L134260408:
+    call PrsEvaluateType
+    mov vr134261376, vr134261248
+    call PrsTypeIsValue
+    cmp vr134261488, 0
+    ifnz rjmp L134261840
+
+L134261944:
+    mov vr134262184, 'This type is not directly assignable'
+    mov vr134262312, 0
+    mov vr134262440, 0
+    mov vr134262568, 0
+    call LexTokenError
+
+L134261840:
+    movz [vr134262784 + 28], vr134260192
+    mov vr134262920, 0
+    call PrsExpression
+    mov vr134263032, vr134262792
+    call PrsEvaluateType
+    mov vr134263272, vr134263144
+    call PrsTypeIsValue
+    cmp vr134263384, 0
+    ifnz rjmp L134263736
+
+L134263840:
+    mov vr134264080, 'This type is not directly usable'
+    mov vr134264208, 0
+    mov vr134264336, 0
+    mov vr134264464, 0
+    call LexTokenError
+
+L134263736:
+    movz [vr134262784 + 32], vr134263032
+    movz.8 vr134264784, [sp + 57]
+    cmp vr134264784, 71
+    ifnz rjmp L134265000
+
+L134265104:
+    mov vr134265336, sp
+    mov vr134265496, 'Assign: '
+    mov vr134265624, 0
+    call PrsCheckType
+    movz.8 vr134265840, [vr134263032 + 24]
+    cmp vr134265840, 3
+    ifnz rjmp L134266056
+
+L134266160:
+    movz vr134266416, [vr134263032 + 28]
+    call PrsCheckConstant
+
+L134266056:
+
+L134265000:
+    call PrsInsertNodeIntoBlock
+    rjmp L134266768
+
+L134259384:
+    call PrsHasSideEffect
+    cmp vr134266872, 0
+    ifz rjmp L134267208
+
+L134267312:
+    call PrsInsertNodeIntoBlock
+
+L134267208:
+
+L134266768:
+
+L134258000:
+    rjmp L3174200
+
+L134252080:
+    movz [PrsCurrentBlock], vr3173984
+
+FN PrsParseCompoundTypeIndex
+    movz vr134267992, [vr134268104 + 28]
+    call PrsEvaluateType
+    mov vr134268112, vr134267864
+    movz.8 vr134268328, [vr134267864 + 44]
+    cmp vr134268328, 5
+    ifz rjmp L134268544
+
+L134268648:
+    mov vr134268888, 'Not a compound type'
+    mov vr134269016, 0
+    mov vr134269144, 0
+    mov vr134269272, 0
+    call LexTokenError
+
+L134268544:
+    movz vr134269504, [vr134268112 + 0]
+    call LexEnterOverlayScope
+    mov vr134269744, sp
+    mov vr134269872, 18
+    mov vr134270000, 0
+    call LexMatchToken
+    cmp vr134269616, 0
+    ifnz rjmp L134270320
+
+L134270424:
+    mov vr134270648, sp
+    mov vr134270776, 'Expected an identifier'
+    mov vr134270904, 0
+    mov vr134271032, 0
+    mov vr134271160, 0
+    call LexTokenError
+
+L134270320:
+    movz.8 vr134271376, [sp + 17]
+    cmp vr134271376, 84
+    ifz rjmp L134271592
+
+L134271696:
+    mov vr134271920, sp
+    mov vr134272048, 'Non-existent field name'
+    mov vr134272176, 0
+    mov vr134272304, 0
+    mov vr134272432, 0
+    call LexTokenError
+
+L134271592:
+    movz [vr134268104 + 36], [sp + 0]
+    call LexExitOverlayScope
+
+FN PrsParseArrayIndex
+    movz vr134272880, [vr134272992 + 28]
+    call PrsEvaluateType
+    mov vr134273000, vr134272752
+    movz.8 vr134273216, [vr134272752 + 44]
+    cmp vr134273216, 1
+    ifz rjmp L134273432
+
+L134273536:
+    movz.8 vr134273744, [vr134273000 + 44]
+    cmp vr134273744, 2
+    ifz rjmp L134273432
+
+L134273960:
+    mov vr134274200, 'Can only index an array type or a pointer type'
+    mov vr134274328, 0
+    mov vr134274456, 0
+    mov vr134274584, 0
+    call LexTokenError
+
+L134273432:
+    mov vr134274824, 0
+    call PrsExpression
+    mov vr134274936, vr134274696
+    call PrsCheckNodeIsValue
+    movz [vr134272992 + 32], vr134274696
+    mov vr134275400, sp
+    mov vr134275528, 11
+    mov vr134275656, 0
+    call LexMatchToken
+    cmp vr134275272, 0
+    ifnz rjmp L134275976
+
+L134276080:
+    mov vr134276304, sp
+    mov vr134276432, 'Expected a right bracket'
+    mov vr134276560, 0
+    mov vr134276688, 0
+    mov vr134276816, 0
+    call LexTokenError
+
+L134275976:
+    movz.8 vr134277032, [vr134273000 + 44]
+    cmp vr134277032, 1
+    ifnz rjmp L134277248
+
+L134277352:
+    cmp.8 [vr134273000 + 12], 0
+    ifz rjmp L134277248
+
+L134277664:
+    movz.8 vr134277872, [vr134274936 + 24]
+    cmp vr134277872, 3
+    ifnz rjmp L134277248
+
+L134278088:
+    cmp [vr134274936 + 28], [vr134273000 + 4]
+    iflt rjmp L134278400
+
+L134278504:
+    mov vr134278744, 'Constant exceeds array bound'
+    mov vr134278872, 0
+    mov vr134279000, 0
+    mov vr134279128, 0
+    call LexTokenError
+
+L134278400:
+
+L134277248:
+
+FN PrsParseFunctionCall
+    movz vr134279240, [vr134279352 + 28]
+    mov vr134279360, vr134279240
+    call PrsEvaluateType
+    mov vr134279600, vr134279472
+    movz.8 vr134279816, [vr134279472 + 44]
+    cmp vr134279816, 4
+    ifz rjmp L134280032
+
+L134280136:
+    movz.8 vr134280344, [vr134279600 + 44]
+    cmp vr134280344, 2
+    ifz rjmp L134280032
+
+L134280560:
+    mov vr134280800, 'Expected function or function pointer'
+    mov vr134280928, 0
+    mov vr134281056, 0
+    mov vr134281184, 0
+    call LexTokenError
+
+L134280032:
+    movz.8 vr134281400, [vr134279600 + 44]
+    cmp vr134281400, 2
+    ifnz rjmp L134281616
+
+L134281720:
+    movz vr134281824, [vr134279600 + 0]
+    mov vr134279600, vr134281824
+    movz.8 vr134282144, [vr134281824 + 44]
+    cmp vr134282144, 4
+    ifz rjmp L134282360
+
+L134282464:
+    mov vr134282704, 'Unexpected non-function pointer'
+    mov vr134282832, 0
+    mov vr134282960, 0
+    mov vr134283088, 0
+    call LexTokenError
+
+L134282360:
+    mov vr134283328, 2
+    call PrsCreateAstNode
+    movz.8 [vr134283200 + 17], 69
+    movz [vr134283200 + 28], vr134279360
+    movz [vr134279352 + 28], vr134283200
+
+L134281616:
+    mov vr134283768, 0
+    mov vr134283880, 0
+    mov vr134283992, 0
+    movz [vr134279352 + 36], 0
+    movz vr134284208, [vr134279600 + 0]
+
+L134284320:
+    mov vr134284552, sp
+    mov vr134284680, 10
+    mov vr134284808, 0
+    call LexMatchToken
+    cmp vr134284424, 0
+    ifz rjmp L134285128
+
+L134285232:
+    rjmp L134285440
+
+L134285128:
+    mov vr134285544, vr134283880
+    add vr134285544, 1
+    mov vr134283880, vr134285544
+    cmp vr134285544, [vr134279600 + 32]
+    iflteq rjmp L134286072
+
+L134286176:
+    cmp.8 [vr134279600 + 36], 0
+    ifnz rjmp L134286072
+
+L134286488:
+    mov vr134286728, 'Too many arguments'
+    mov vr134286856, 0
+    mov vr134286984, 0
+    mov vr134287112, 0
+    call LexTokenError
+
+L134286072:
+    cmp vr134284208, 0
+    ifnz rjmp L134287432
+    rjmp L134287640
+
+L134287432:
+    movz.8 vr134287848, [vr134284208 + 28]
+    cmp vr134287848, 1
+    ifnz rjmp L134287640
+
+L134288064:
+    mov vr134288296, sp
+    mov vr134288424, 5
+    mov vr134288552, 25
+    call LexMatchToken
+    cmp vr134288168, 0
+    ifnz rjmp L134288872
+
+L134288976:
+    mov vr134289200, sp
+    mov vr134289328, 'Expected OUT specifier on OUT argument'
+    mov vr134289456, 0
+    mov vr134289584, 0
+    mov vr134289712, 0
+    call LexTokenError
+
+L134288872:
+
+L134287640:
+    mov vr134289952, 0
+    call PrsExpression
+    mov vr134290064, vr134289824
+    call PrsEvaluateType
+    mov vr134290304, vr134290176
+    call PrsTypeIsValue
+    cmp vr134290416, 0
+    ifnz rjmp L134290768
+
+L134290872:
+    mov vr134291112, 'This type is not directly usable as a valuee'
+    mov vr134291240, 0
+    mov vr134291368, 0
+    mov vr134291496, 0
+    call LexTokenError
+
+L134290768:
+    cmp vr134284208, 0
+    ifnz rjmp L134291816
+    rjmp L134292024
+
+L134291816:
+    movz.8 vr134292232, [vr134284208 + 28]
+    cmp vr134292232, 1
+    ifnz rjmp L134292448
+
+L134292552:
+    call PrsIsLvalue
+    cmp vr134292656, 0
+    ifnz rjmp L134292448
+
+L134292992:
+    mov vr134293232, 'OUT arguments must be L-values'
+    mov vr134293360, 0
+    mov vr134293488, 0
+    mov vr134293616, 0
+    call LexTokenError
+
+L134292448:
+    movz vr134293984, [vr134284208 + 24]
+    movz vr134293872, [vr134293984 + 52]
+    mov vr134294128, 'Function argument: '
+    mov vr134294256, 0
+    call PrsCheckType
+    movz.8 vr134294472, [vr134290064 + 24]
+    cmp vr134294472, 3
+    ifnz rjmp L134294688
+
+L134294792:
+    movz vr134295144, [vr134284208 + 24]
+    movz vr134295032, [vr134295144 + 52]
+    movz vr134295272, [vr134290064 + 28]
+    call PrsCheckConstant
+
+L134294688:
+    movz vr134284208, [vr134284208 + 0]
+    rjmp L134295592
+
+L134292024:
+    add vr134283768, 1
+
+L134295592:
+    movz [vr134290064 + 20], 0
+    cmp vr134283992, 0
+    ifnz rjmp L134296112
+
+L134296216:
+    movz [vr134279352 + 36], vr134290064
+    rjmp L134296528
+
+L134296112:
+    movz [vr134283992 + 20], vr134290064
+
+L134296528:
+    mov vr134283992, vr134290064
+    mov vr134296968, sp
+    mov vr134297096, 10
+    mov vr134297224, 0
+    call LexMatchToken
+    cmp vr134296840, 0
+    ifz rjmp L134297544
+
+L134297648:
+    rjmp L134285440
+
+L134297544:
+    mov vr134297984, sp
+    mov vr134298112, 15
+    mov vr134298240, 0
+    call LexMatchToken
+    cmp vr134297856, 0
+    ifnz rjmp L134298560
+
+L134298664:
+    mov vr134298888, sp
+    mov vr134299016, 'Expected a comma or right parenthesis'
+    mov vr134299144, 0
+    mov vr134299272, 0
+    mov vr134299400, 0
+    call LexTokenError
+
+L134298560:
+    rjmp L134284320
+
+L134285440:
+    cmp vr134283768, 0
+    ifnz rjmp L134299824
+    rjmp L134300032
+
+L134299824:
+    movz vr134300136, [vr134279600 + 24]
+    mov vr134300248, vr134300136
+    cmp [vr134279600 + 24], 0
+    ifnz rjmp L134300568
+
+L134300672:
+    mov vr134300904, 75
+    call TlBumpAlloc
+    cmp vr134300776, 0
+    ifz rjmp L134301240
+
+L134301344:
+    mov vr134301568, 'Failed to allocate var table'
+    mov vr134301696, 0
+    mov vr134301824, 0
+    mov vr134301952, 0
+    call TlInternalError
+
+L134301240:
+    mov vr134302200, 75
+    mov vr134302328, 0
+    call TlFillMemoryWithByte
+    mov vr134302544, 'VARTABLE'
+    movz [vr134300248 + 24], vr134302544
+    movz [vr134279600 + 24], vr134300248
+    mov vr134302888, 48
+    call TlBumpAlloc
+    movz.8 [vr134303016 + 44], 1
+    movz [vr134303016 + 0], [PrsNullPtrType]
+    movz.8 [vr134303016 + 12], 0
+    movz [vr134303016 + 40], 0
+    movz [vr134300248 + 52], vr134303016
+    rjmp L134303648
+
+L134300568:
+    movz vr134303016, [vr134300248 + 52]
+
+L134303648:
+    mov vr134303856, vr134283768
+    movz vr134304184, [JklTargetInfo]
+    movz.8 vr134304072, [vr134304184 + 19]
+    imul vr134303856, vr134304072
+    mov vr134304296, vr134303856
+    cmp vr134303856, [vr134303016 + 40]
+    iflteq rjmp L134304616
+
+L134304720:
+    movz [vr134303016 + 40], vr134304296
+
+L134304616:
+
+L134300032:
+    movz [vr134279352 + 40], vr134283768
+    cmp vr134283880, [vr134279600 + 32]
+    ifgteq rjmp L134305240
+
+L134305344:
+    mov vr134305584, 'Too few arguments'
+    mov vr134305712, 0
+    mov vr134305840, 0
+    mov vr134305968, 0
+    call LexTokenError
+
+L134305240:
+
+FN PrsParsePtrDereference
+    movz vr134306208, [vr134306320 + 28]
+    call PrsEvaluateType
+    mov vr134306328, vr134306080
+    movz.8 vr134306544, [vr134306080 + 44]
+    cmp vr134306544, 2
+    ifz rjmp L134306760
+
+L134306864:
+    mov vr134307104, 'Expected a pointer type'
+    movz.8 vr134307232, [vr134306328 + 44]
+    mov vr134307360, 0
+    mov vr134307488, 0
+    call LexTokenError
+
+L134306760:
+
+FN PrsParseMul
+    movz vr134307600, [vr134307712 + 28]
+    mov vr134307720, vr134307600
+    movz vr134307832, [vr134307712 + 32]
+    mov vr134307944, vr134307832
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134308400, [vr134307600 + 24]
+    cmp vr134308400, 3
+    ifz rjmp L134308616
+
+L134308720:
+    movz.8 vr134308928, [vr134307944 + 24]
+    cmp vr134308928, 3
+    ifz rjmp L134308616
+
+L134309144:
+
+L134308616:
+    movz.8 vr134309456, [vr134307720 + 24]
+    cmp vr134309456, 3
+    ifnz rjmp L134309672
+
+L134309776:
+    movz.8 vr134309984, [vr134307944 + 24]
+    cmp vr134309984, 3
+    ifnz rjmp L134309672
+
+L134310200:
+    movz.8 [vr134307712 + 24], 3
+    movz vr134310512, [vr134307720 + 28]
+    imul vr134310512, [vr134307944 + 28]
+    movz [vr134307712 + 28], vr134310512
+
+L134309672:
+    movz.8 vr134310936, [vr134307720 + 24]
+    cmp vr134310936, 3
+    ifnz rjmp L134311152
+
+L134311256:
+    movz [vr134307712 + 32], vr134307720
+    movz [vr134307712 + 28], vr134307944
+    mov vr134307720, vr134307944
+    movz vr134307944, [vr134307712 + 32]
+
+L134311152:
+    movz.8 vr134311880, [vr134307944 + 24]
+    cmp vr134311880, 3
+    ifnz rjmp L134312096
+
+L134312200:
+    cmp [vr134307944 + 28], 0
+    ifnz rjmp L134312512
+
+L134312616:
+    movz.8 [vr134307712 + 24], 3
+    movz [vr134307712 + 28], 0
+    rjmp L134313136
+
+L134312512:
+    cmp [vr134307944 + 28], 1
+    ifnz rjmp L134313136
+
+L134313448:
+    mov vr134313704, 48
+    call TlCopyMemory
+
+L134313136:
+    movz vr134314048, [vr134307944 + 28]
+    call TlIsPowerOfTwo
+    mov vr134314160, vr134313920
+    cmp vr134313920, -1
+    ifz rjmp L134314480
+
+L134314584:
+    movz.8 [vr134307712 + 17], 63
+    movz [vr134307944 + 28], vr134314160
+
+L134314480:
+
+L134312096:
+
+FN PrsParseDivide
+    movz vr134315000, [vr134315112 + 28]
+    mov vr134315120, vr134315000
+    movz vr134315232, [vr134315112 + 32]
+    mov vr134315344, vr134315232
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134315800, [vr134315000 + 24]
+    cmp vr134315800, 3
+    ifz rjmp L537690112
+
+L537690216:
+    movz.8 vr537690424, [vr134315344 + 24]
+    cmp vr537690424, 3
+    ifz rjmp L537690112
+
+L537690640:
+
+L537690112:
+    movz.8 vr537690952, [vr134315120 + 24]
+    cmp vr537690952, 3
+    ifnz rjmp L537691168
+
+L537691272:
+    movz.8 vr537691480, [vr134315344 + 24]
+    cmp vr537691480, 3
+    ifnz rjmp L537691168
+
+L537691696:
+    cmp [vr134315344 + 28], 0
+    ifnz rjmp L537692008
+
+L537692112:
+    mov vr537692352, 'Division by zero not allowed'
+    mov vr537692480, 0
+    mov vr537692608, 0
+    mov vr537692736, 0
+    call LexTokenError
+
+L537692008:
+    movz.8 [vr134315112 + 24], 3
+    movz vr537693056, [vr134315120 + 28]
+    idiv vr537693056, [vr134315344 + 28]
+    movz [vr134315112 + 28], vr537693056
+
+L537691168:
+    movz.8 vr537693480, [vr134315344 + 24]
+    cmp vr537693480, 3
+    ifnz rjmp L537693696
+
+L537693800:
+    cmp [vr134315344 + 28], 1
+    ifnz rjmp L537694112
+
+L537694216:
+    mov vr537694472, 48
+    call TlCopyMemory
+
+L537694112:
+    movz vr537694816, [vr134315344 + 28]
+    call TlIsPowerOfTwo
+    mov vr537694928, vr537694688
+    cmp vr537694688, -1
+    ifz rjmp L537695248
+
+L537695352:
+    movz.8 [vr134315112 + 17], 64
+    movz [vr134315344 + 28], vr537694928
+
+L537695248:
+
+L537693696:
+
+FN PrsParseModulo
+    movz vr537695768, [vr537695880 + 28]
+    mov vr537695888, vr537695768
+    movz vr537696000, [vr537695880 + 32]
+    mov vr537696112, vr537696000
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537696568, [vr537695768 + 24]
+    cmp vr537696568, 3
+    ifz rjmp L537696784
+
+L537696888:
+    movz.8 vr537697096, [vr537696112 + 24]
+    cmp vr537697096, 3
+    ifz rjmp L537696784
+
+L537697312:
+
+L537696784:
+    movz.8 vr537697624, [vr537695888 + 24]
+    cmp vr537697624, 3
+    ifnz rjmp L537697840
+
+L537697944:
+    movz.8 vr537698152, [vr537696112 + 24]
+    cmp vr537698152, 3
+    ifnz rjmp L537697840
+
+L537698368:
+    cmp [vr537696112 + 28], 0
+    ifnz rjmp L537698680
+
+L537698784:
+    mov vr537699024, 'Modulo by zero not allowed'
+    mov vr537699152, 0
+    mov vr537699280, 0
+    mov vr537699408, 0
+    call LexTokenError
+
+L537698680:
+    movz.8 [vr537695880 + 24], 3
+    movz vr537699728, [vr537695888 + 28]
+    rem vr537699728, [vr537696112 + 28]
+    movz [vr537695880 + 28], vr537699728
+
+L537697840:
+    movz.8 vr537700152, [vr537696112 + 24]
+    cmp vr537700152, 3
+    ifnz rjmp L537700368
+
+L537700472:
+    cmp [vr537696112 + 28], 1
+    ifnz rjmp L537700784
+
+L537700888:
+    movz.8 [vr537695880 + 24], 3
+    movz [vr537695880 + 28], 0
+
+L537700784:
+    movz vr537701432, [vr537696112 + 28]
+    call TlIsPowerOfTwo
+    cmp vr537701304, -1
+    ifz rjmp L537701752
+
+L537701856:
+    movz.8 [vr537695880 + 17], 50
+    movz vr537702168, [vr537696112 + 28]
+    sub vr537702168, 1
+    movz [vr537696112 + 28], vr537702168
+
+L537701752:
+
+L537700368:
+
+FN PrsParsePlus
+    movz vr537702488, [vr537702600 + 28]
+    mov vr537702608, vr537702488
+    movz vr537702720, [vr537702600 + 32]
+    mov vr537702832, vr537702720
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537703288, [vr537702488 + 24]
+    cmp vr537703288, 3
+    ifz rjmp L537703504
+
+L537703608:
+    movz.8 vr537703816, [vr537702832 + 24]
+    cmp vr537703816, 3
+    ifz rjmp L537703504
+
+L537704032:
+
+L537703504:
+    movz.8 vr537704344, [vr537702608 + 24]
+    cmp vr537704344, 3
+    ifnz rjmp L537704560
+
+L537704664:
+    movz.8 vr537704872, [vr537702832 + 24]
+    cmp vr537704872, 3
+    ifnz rjmp L537704560
+
+L537705088:
+    movz.8 [vr537702600 + 24], 3
+    movz vr537705400, [vr537702608 + 28]
+    add vr537705400, [vr537702832 + 28]
+    movz [vr537702600 + 28], vr537705400
+
+L537704560:
+    movz.8 vr537705824, [vr537702832 + 24]
+    cmp vr537705824, 3
+    ifnz rjmp L537706040
+
+L537706144:
+    cmp [vr537702832 + 28], 0
+    ifnz rjmp L537706040
+
+L537706456:
+    mov vr537706712, 48
+    call TlCopyMemory
+
+L537706040:
+    movz.8 vr537707032, [vr537702608 + 24]
+    cmp vr537707032, 3
+    ifnz rjmp L537707248
+
+L537707352:
+    movz [vr537702600 + 32], vr537702608
+    movz [vr537702600 + 28], vr537702832
+    mov vr537702608, vr537702832
+    movz vr537702832, [vr537702600 + 32]
+
+L537707248:
+    movz.8 vr537707976, [vr537702608 + 24]
+    cmp vr537707976, 2
+    ifnz rjmp L537708192
+
+L537708296:
+    movz vr537708400, [vr537702832 + 28]
+    movz.8 vr537708616, [vr537702608 + 17]
+    cmp vr537708616, 56
+    ifnz rjmp L537708832
+
+L537708936:
+    movz vr537709256, [vr537702608 + 32]
+    movz.8 vr537709144, [vr537709256 + 24]
+    cmp vr537709144, 3
+    ifnz rjmp L537708832
+
+L537709472:
+    movz vr537709792, [vr537702608 + 32]
+    movz vr537709680, [vr537709792 + 28]
+    add vr537709680, vr537708400
+    movz [vr537702832 + 28], vr537709680
+    movz [vr537702600 + 28], [vr537702608 + 28]
+    rjmp L537710320
+
+L537708832:
+    movz.8 vr537710528, [vr537702608 + 17]
+    cmp vr537710528, 57
+    ifnz rjmp L537710744
+
+L537710848:
+    movz vr537711168, [vr537702608 + 32]
+    movz.8 vr537711056, [vr537711168 + 24]
+    cmp vr537711056, 3
+    ifnz rjmp L537710744
+
+L537711384:
+    movz vr537711704, [vr537702608 + 32]
+    movz vr537711592, [vr537711704 + 28]
+    sub vr537711592, vr537708400
+    movz [vr537702832 + 28], vr537711592
+    movz [vr537702600 + 28], [vr537702608 + 28]
+    movz.8 [vr537702600 + 17], 57
+    rjmp L537710320
+
+L537710744:
+    movz.8 vr537712440, [vr537702608 + 17]
+    cmp vr537712440, 57
+    ifnz rjmp L537710320
+
+L537712656:
+    movz vr537712976, [vr537702608 + 28]
+    movz.8 vr537712864, [vr537712976 + 24]
+    cmp vr537712864, 3
+    ifnz rjmp L537710320
+
+L537713192:
+    movz [vr537702600 + 28], vr537702832
+    movz vr537713616, [vr537702608 + 28]
+    movz vr537713504, [vr537713616 + 28]
+    add vr537713504, vr537708400
+    movz [vr537702832 + 28], vr537713504
+    movz [vr537702600 + 32], [vr537702608 + 32]
+    movz.8 [vr537702600 + 17], 57
+
+L537710320:
+
+L537708192:
+
+FN PrsParseMinus
+    movz vr537714144, [vr537714256 + 28]
+    mov vr537714264, vr537714144
+    movz vr537714376, [vr537714256 + 32]
+    mov vr537714488, vr537714376
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537714944, [vr537714144 + 24]
+    cmp vr537714944, 3
+    ifz rjmp L537715160
+
+L537715264:
+    movz.8 vr537715472, [vr537714488 + 24]
+    cmp vr537715472, 3
+    ifz rjmp L537715160
+
+L537715688:
+
+L537715160:
+    movz.8 vr537716000, [vr537714264 + 24]
+    cmp vr537716000, 3
+    ifnz rjmp L537716216
+
+L537716320:
+    movz.8 vr537716528, [vr537714488 + 24]
+    cmp vr537716528, 3
+    ifnz rjmp L537716216
+
+L537716744:
+    movz.8 [vr537714256 + 24], 3
+    movz vr537717056, [vr537714264 + 28]
+    sub vr537717056, [vr537714488 + 28]
+    movz [vr537714256 + 28], vr537717056
+
+L537716216:
+    movz.8 vr537717480, [vr537714488 + 24]
+    cmp vr537717480, 3
+    ifnz rjmp L537717696
+
+L537717800:
+    cmp [vr537714488 + 28], 0
+    ifnz rjmp L537717696
+
+L537718112:
+    mov vr537718368, 48
+    call TlCopyMemory
+
+L537717696:
+    movz.8 vr537718688, [vr537714264 + 24]
+    cmp vr537718688, 2
+    ifnz rjmp L537718904
+
+L537719008:
+    movz vr537719112, [vr537714488 + 28]
+    movz.8 vr537719328, [vr537714264 + 17]
+    cmp vr537719328, 57
+    ifnz rjmp L537719544
+
+L537719648:
+    movz vr537719968, [vr537714264 + 32]
+    movz.8 vr537719856, [vr537719968 + 24]
+    cmp vr537719856, 3
+    ifnz rjmp L537720184
+
+L537720288:
+    movz vr537720608, [vr537714264 + 32]
+    movz vr537720496, [vr537720608 + 28]
+    add vr537720496, vr537719112
+    movz [vr537714488 + 28], vr537720496
+    movz [vr537714256 + 28], [vr537714264 + 28]
+    rjmp L537721136
+
+L537720184:
+    movz vr537721456, [vr537714264 + 28]
+    movz.8 vr537721344, [vr537721456 + 24]
+    cmp vr537721344, 3
+    ifnz rjmp L537721136
+
+L537721672:
+    movz vr537721992, [vr537714264 + 28]
+    movz vr537721880, [vr537721992 + 28]
+    sub vr537721880, vr537719112
+    movz [vr537714488 + 28], vr537721880
+    movz [vr537714256 + 28], vr537714488
+    movz [vr537714256 + 32], [vr537714264 + 32]
+
+L537721136:
+    rjmp L537722624
+
+L537719544:
+    movz.8 vr537722832, [vr537714264 + 17]
+    cmp vr537722832, 56
+    ifnz rjmp L537722624
+
+L537723048:
+    movz vr537723368, [vr537714264 + 32]
+    movz.8 vr537723256, [vr537723368 + 24]
+    cmp vr537723256, 3
+    ifnz rjmp L537722624
+
+L537723584:
+    movz vr537723904, [vr537714264 + 32]
+    movz vr537723792, [vr537723904 + 28]
+    sub vr537723792, vr537719112
+    movz [vr537714488 + 28], vr537723792
+    movz.8 [vr537714256 + 17], 56
+    movz [vr537714256 + 28], [vr537714264 + 28]
+
+L537722624:
+
+L537718904:
+    movz.8 vr537724536, [vr537714488 + 24]
+    cmp vr537724536, 2
+    ifnz rjmp L537724752
+
+L537724856:
+    movz vr537724960, [vr537714264 + 28]
+    movz.8 vr537725176, [vr537714488 + 17]
+    cmp vr537725176, 57
+    ifnz rjmp L537725392
+
+L537725496:
+    movz vr537725816, [vr537714488 + 32]
+    movz.8 vr537725704, [vr537725816 + 24]
+    cmp vr537725704, 3
+    ifnz rjmp L537726032
+
+L537726136:
+    movz vr537726456, [vr537714488 + 32]
+    movz vr537726344, [vr537726456 + 28]
+    add vr537726344, vr537724960
+    movz [vr537714264 + 28], vr537726344
+    movz [vr537714256 + 32], [vr537714488 + 28]
+    rjmp L537726984
+
+L537726032:
+    movz vr537727304, [vr537714488 + 28]
+    movz.8 vr537727192, [vr537727304 + 24]
+    cmp vr537727192, 3
+    ifnz rjmp L537726984
+
+L537727520:
+    mov vr537727728, vr537724960
+    movz vr537727944, [vr537714488 + 28]
+    sub vr537727728, [vr537727944 + 28]
+    movz [vr537714264 + 28], vr537727728
+    movz.8 [vr537714256 + 17], 56
+    movz [vr537714256 + 28], [vr537714488 + 32]
+
+L537726984:
+    rjmp L537728472
+
+L537725392:
+    movz.8 vr537728680, [vr537714488 + 17]
+    cmp vr537728680, 56
+    ifnz rjmp L537728472
+
+L537728896:
+    movz vr537729216, [vr537714488 + 32]
+    movz.8 vr537729104, [vr537729216 + 24]
+    cmp vr537729104, 3
+    ifnz rjmp L537728472
+
+L537729432:
+    mov vr537729640, vr537724960
+    movz vr537729856, [vr537714488 + 32]
+    sub vr537729640, [vr537729856 + 28]
+    movz [vr537714264 + 28], vr537729640
+    movz [vr537714256 + 32], [vr537714488 + 28]
+
+L537728472:
+
+L537724752:
+
+FN PrsParseLeftShift
+    movz vr537730176, [vr537730288 + 28]
+    mov vr537730296, vr537730176
+    movz vr537730408, [vr537730288 + 32]
+    mov vr537730520, vr537730408
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537730976, [vr537730176 + 24]
+    cmp vr537730976, 3
+    ifnz rjmp L537731192
+
+L537731296:
+    movz.8 vr537731504, [vr537730520 + 24]
+    cmp vr537731504, 3
+    ifnz rjmp L537731192
+
+L537731720:
+    movz.8 [vr537730288 + 24], 3
+    movz vr537732032, [vr537730296 + 28]
+    sla vr537732032, [vr537730520 + 28]
+    movz [vr537730288 + 28], vr537732032
+
+L537731192:
+    movz.8 vr537732456, [vr537730520 + 24]
+    cmp vr537732456, 3
+    ifnz rjmp L537732672
+
+L537732776:
+    cmp [vr537730520 + 28], 0
+    ifnz rjmp L537732672
+
+L537733088:
+    mov vr537733344, 48
+    call TlCopyMemory
+
+L537732672:
+
+FN PrsParseRightShift
+    movz vr537733456, [vr537733568 + 28]
+    mov vr537733576, vr537733456
+    movz vr537733688, [vr537733568 + 32]
+    mov vr537733800, vr537733688
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537734256, [vr537733456 + 24]
+    cmp vr537734256, 3
+    ifnz rjmp L537734472
+
+L537734576:
+    movz.8 vr537734784, [vr537733800 + 24]
+    cmp vr537734784, 3
+    ifnz rjmp L537734472
+
+L537735000:
+    movz.8 [vr537733568 + 24], 3
+    movz vr537735312, [vr537733576 + 28]
+    srl vr537735312, [vr537733800 + 28]
+    movz [vr537733568 + 28], vr537735312
+
+L537734472:
+    movz.8 vr537735736, [vr537733800 + 24]
+    cmp vr537735736, 3
+    ifnz rjmp L537735952
+
+L537736056:
+    cmp [vr537733800 + 28], 0
+    ifnz rjmp L537735952
+
+L537736368:
+    mov vr537736624, 48
+    call TlCopyMemory
+
+L537735952:
+
+FN PrsParseBitAnd
+    movz vr537736736, [vr537736848 + 28]
+    mov vr537736856, vr537736736
+    movz vr537736968, [vr537736848 + 32]
+    mov vr537737080, vr537736968
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537737536, [vr537736736 + 24]
+    cmp vr537737536, 3
+    ifnz rjmp L537737752
+
+L537737856:
+    movz.8 vr537738064, [vr537737080 + 24]
+    cmp vr537738064, 3
+    ifnz rjmp L537737752
+
+L537738280:
+    movz.8 [vr537736848 + 24], 3
+    movz vr537738592, [vr537736856 + 28]
+    and vr537738592, [vr537737080 + 28]
+    movz [vr537736848 + 28], vr537738592
+
+L537737752:
+    movz.8 vr537739016, [vr537736856 + 24]
+    cmp vr537739016, 3
+    ifnz rjmp L537739232
+
+L537739336:
+    movz [vr537736848 + 32], vr537736856
+    movz [vr537736848 + 28], vr537737080
+    mov vr537736856, vr537737080
+    movz vr537737080, [vr537736848 + 32]
+
+L537739232:
+    movz.8 vr537739960, [vr537737080 + 24]
+    cmp vr537739960, 3
+    ifnz rjmp L537740176
+
+L537740280:
+    cmp [vr537737080 + 28], 0
+    ifnz rjmp L537740176
+
+L537740592:
+    movz.8 [vr537736848 + 24], 3
+    movz [vr537736848 + 28], 0
+
+L537740176:
+    movz.8 vr537741112, [vr537737080 + 24]
+    cmp vr537741112, 3
+    ifnz rjmp L537741328
+
+L537741432:
+    cmp [vr537737080 + 28], -1
+    ifnz rjmp L537741328
+
+L537741744:
+    mov vr537742000, 48
+    call TlCopyMemory
+
+L537741328:
+
+FN PrsParseBitXor
+    movz vr537742112, [vr537742224 + 28]
+    mov vr537742232, vr537742112
+    movz vr537742344, [vr537742224 + 32]
+    mov vr537742456, vr537742344
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537742912, [vr537742112 + 24]
+    cmp vr537742912, 3
+    ifnz rjmp L537743128
+
+L537743232:
+    movz.8 vr537743440, [vr537742456 + 24]
+    cmp vr537743440, 3
+    ifnz rjmp L537743128
+
+L537743656:
+    movz.8 [vr537742224 + 24], 3
+    movz vr537743968, [vr537742232 + 28]
+    xor vr537743968, [vr537742456 + 28]
+    movz [vr537742224 + 28], vr537743968
+
+L537743128:
+    movz.8 vr537744392, [vr537742232 + 24]
+    cmp vr537744392, 3
+    ifnz rjmp L537744608
+
+L537744712:
+    movz [vr537742224 + 32], vr537742232
+    movz [vr537742224 + 28], vr537742456
+    mov vr537742232, vr537742456
+    movz vr537742456, [vr537742224 + 32]
+
+L537744608:
+    movz.8 vr537745336, [vr537742456 + 24]
+    cmp vr537745336, 3
+    ifnz rjmp L537745552
+
+L537745656:
+    cmp [vr537742456 + 28], 0
+    ifnz rjmp L537745552
+
+L537745968:
+    mov vr537746224, 48
+    call TlCopyMemory
+
+L537745552:
+    movz.8 vr537746544, [vr537742456 + 24]
+    cmp vr537746544, 3
+    ifnz rjmp L537746760
+
+L537746864:
+    cmp [vr537742456 + 28], -1
+    ifnz rjmp L537746760
+
+L537747176:
+    movz.8 [vr537742224 + 24], 2
+    movz.8 [vr537742224 + 17], 65
+
+L537746760:
+
+FN PrsParseBitOr
+    movz vr537747488, [vr537747600 + 28]
+    mov vr537747608, vr537747488
+    movz vr537747720, [vr537747600 + 32]
+    mov vr537747832, vr537747720
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537748288, [vr537747488 + 24]
+    cmp vr537748288, 3
+    ifnz rjmp L537748504
+
+L537748608:
+    movz.8 vr537748816, [vr537747832 + 24]
+    cmp vr537748816, 3
+    ifnz rjmp L537748504
+
+L537749032:
+    movz.8 [vr537747600 + 24], 3
+    movz vr537749344, [vr537747608 + 28]
+    or vr537749344, [vr537747832 + 28]
+    movz [vr537747600 + 28], vr537749344
+
+L537748504:
+    movz.8 vr537749768, [vr537747608 + 24]
+    cmp vr537749768, 3
+    ifnz rjmp L537749984
+
+L537750088:
+    movz [vr537747600 + 32], vr537747608
+    movz [vr537747600 + 28], vr537747832
+    mov vr537747608, vr537747832
+    movz vr537747832, [vr537747600 + 32]
+
+L537749984:
+    movz.8 vr537750712, [vr537747832 + 24]
+    cmp vr537750712, 3
+    ifnz rjmp L537750928
+
+L537751032:
+    cmp [vr537747832 + 28], 0
+    ifnz rjmp L537750928
+
+L537751344:
+    mov vr537751600, 48
+    call TlCopyMemory
+
+L537750928:
+
+FN PrsParseLessThan
+    movz vr537751712, [vr537751824 + 28]
+    mov vr537751832, vr537751712
+    movz vr537751944, [vr537751824 + 32]
+    mov vr537752056, vr537751944
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537752512, [vr537751712 + 24]
+    cmp vr537752512, 3
+    ifnz rjmp L537752728
+
+L537752832:
+    movz.8 vr537753040, [vr537752056 + 24]
+    cmp vr537753040, 3
+    ifnz rjmp L537752728
+
+L537753256:
+    movz.8 [vr537751824 + 24], 3
+    movz.8 vr537753568, 0
+    cmp [vr537751832 + 28], [vr537752056 + 28]
+    iflt movz.8 vr537753568, 1
+    movz [vr537751824 + 28], vr537753568
+
+L537752728:
+
+FN PrsParseGreaterThan
+    movz vr537753888, [vr537754000 + 28]
+    mov vr537754008, vr537753888
+    movz vr537754120, [vr537754000 + 32]
+    mov vr537754232, vr537754120
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr537754688, [vr537753888 + 24]
+    cmp vr537754688, 3
+    ifnz rjmp L537754904
+
+L537755008:
+    movz.8 vr537755216, [vr537754232 + 24]
+    cmp vr537755216, 3
+    ifnz rjmp L537754904
+
+L537755432:
+    movz.8 [vr537754000 + 24], 3
+    movz.8 vr134316136, 0
+    cmp [vr537754008 + 28], [vr537754232 + 28]
+    ifgt movz.8 vr134316136, 1
+    movz [vr537754000 + 28], vr134316136
+
+L537754904:
+
+FN PrsParseLtEq
+    movz vr134316456, [vr134316568 + 28]
+    mov vr134316576, vr134316456
+    movz vr134316688, [vr134316568 + 32]
+    mov vr134316800, vr134316688
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134317256, [vr134316456 + 24]
+    cmp vr134317256, 3
+    ifnz rjmp L134317472
+
+L134317576:
+    movz.8 vr134317784, [vr134316800 + 24]
+    cmp vr134317784, 3
+    ifnz rjmp L134317472
+
+L134318000:
+    movz.8 [vr134316568 + 24], 3
+    movz.8 vr134318312, 0
+    cmp [vr134316576 + 28], [vr134316800 + 28]
+    iflteq movz.8 vr134318312, 1
+    movz [vr134316568 + 28], vr134318312
+
+L134317472:
+
+FN PrsParseGtEq
+    movz vr134318632, [vr134318744 + 28]
+    mov vr134318752, vr134318632
+    movz vr134318864, [vr134318744 + 32]
+    mov vr134318976, vr134318864
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134319432, [vr134318632 + 24]
+    cmp vr134319432, 3
+    ifnz rjmp L134319648
+
+L134319752:
+    movz.8 vr134319960, [vr134318976 + 24]
+    cmp vr134319960, 3
+    ifnz rjmp L134319648
+
+L134320176:
+    movz.8 [vr134318744 + 24], 3
+    movz.8 vr134320488, 0
+    cmp [vr134318752 + 28], [vr134318976 + 28]
+    ifgteq movz.8 vr134320488, 1
+    movz [vr134318744 + 28], vr134320488
+
+L134319648:
+
+FN PrsParseEquiv
+    movz vr134320808, [vr134320920 + 28]
+    mov vr134320928, vr134320808
+    movz vr134321040, [vr134320920 + 32]
+    mov vr134321152, vr134321040
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134321608, [vr134320808 + 24]
+    cmp vr134321608, 3
+    ifnz rjmp L134321824
+
+L134321928:
+    movz.8 vr134322136, [vr134321152 + 24]
+    cmp vr134322136, 3
+    ifnz rjmp L134321824
+
+L134322352:
+    movz.8 [vr134320920 + 24], 3
+    movz.8 vr134322664, 0
+    cmp [vr134320928 + 28], [vr134321152 + 28]
+    ifz movz.8 vr134322664, 1
+    movz [vr134320920 + 28], vr134322664
+
+L134321824:
+    movz.8 vr134323192, [vr134320928 + 24]
+    cmp vr134323192, 3
+    ifnz rjmp L134323408
+
+L134323512:
+    movz [vr134320920 + 32], vr134320928
+    movz [vr134320920 + 28], vr134321152
+    mov vr134320928, vr134321152
+    movz vr134321152, [vr134320920 + 32]
+
+L134323408:
+
+FN PrsParseNotEquiv
+    movz vr134324032, [vr134324144 + 28]
+    mov vr134324152, vr134324032
+    movz vr134324264, [vr134324144 + 32]
+    mov vr134324376, vr134324264
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134324832, [vr134324032 + 24]
+    cmp vr134324832, 3
+    ifnz rjmp L134325048
+
+L134325152:
+    movz.8 vr134325360, [vr134324376 + 24]
+    cmp vr134325360, 3
+    ifnz rjmp L134325048
+
+L134325576:
+    movz.8 [vr134324144 + 24], 3
+    movz.8 vr134325888, 0
+    cmp [vr134324152 + 28], [vr134324376 + 28]
+    ifnz movz.8 vr134325888, 1
+    movz [vr134324144 + 28], vr134325888
+
+L134325048:
+    movz.8 vr134326416, [vr134324152 + 24]
+    cmp vr134326416, 3
+    ifnz rjmp L134326632
+
+L134326736:
+    movz [vr134324144 + 32], vr134324152
+    movz [vr134324144 + 28], vr134324376
+    mov vr134324152, vr134324376
+    movz vr134324376, [vr134324144 + 32]
+
+L134326632:
+
+FN PrsParseAnd
+    movz vr134327256, [vr134327368 + 28]
+    mov vr134327376, vr134327256
+    movz vr134327488, [vr134327368 + 32]
+    mov vr134327600, vr134327488
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134328056, [vr134327256 + 24]
+    cmp vr134328056, 3
+    ifnz rjmp L134328272
+
+L134328376:
+    movz.8 vr134328584, [vr134327600 + 24]
+    cmp vr134328584, 3
+    ifnz rjmp L134328272
+
+L134328800:
+    movz.8 [vr134327368 + 24], 3
+    cmp [vr134327376 + 28], 0
+    ifz rjmp L134329216
+
+L134329320:
+    cmp [vr134327600 + 28], 0
+    ifz rjmp L134329216
+
+L134329632:
+    rjmp L134329840
+
+L134329216:
+
+L134329840:
+    movz [vr134327368 + 28], vr134330048
+
+L134328272:
+
+FN PrsParseOr
+    movz vr134330160, [vr134330272 + 28]
+    mov vr134330280, vr134330160
+    movz vr134330392, [vr134330272 + 32]
+    mov vr134330504, vr134330392
+    call PrsCheckNodeIsValue
+    call PrsCheckNodeIsValue
+    movz.8 vr134330960, [vr134330160 + 24]
+    cmp vr134330960, 3
+    ifnz rjmp L134331176
+
+L134331280:
+    movz.8 vr134331488, [vr134330504 + 24]
+    cmp vr134331488, 3
+    ifnz rjmp L134331176
+
+L134331704:
+    movz.8 [vr134330272 + 24], 3
+    cmp [vr134330280 + 28], 0
+    ifnz rjmp L134332120
+
+L134332224:
+    cmp [vr134330504 + 28], 0
+    ifz rjmp L134332536
+
+L134332120:
+    rjmp L134332744
+
+L134332536:
+
+L134332744:
+    movz [vr134330272 + 28], vr134332952
+
+L134331176:
+
+FN PrsParseAddrOf
+    movz.8 [vr134333064 + 17], 82
+    movz vr134333072, [vr134333064 + 28]
+    mov vr134333184, vr134333072
+    call PrsIsLvalue
+    cmp vr134333296, 0
+    ifnz rjmp L134333632
+
+L134333736:
+    mov vr134333976, 'Not a valid L-value'
+    mov vr134334104, 0
+    mov vr134334232, 0
+    mov vr134334360, 0
+    call LexTokenError
+
+L134333632:
+    movz.8 vr134334576, [vr134333184 + 24]
+    cmp vr134334576, 0
+    ifnz rjmp L134334792
+
+L134334896:
+    movz vr134335104, [vr134333184 + 0]
+    movz vr134335216, [LexRootScope]
+    add vr134335216, 4
+    cmp [vr134335104 + 16], vr134335216
+    ifz rjmp L134335536
+
+L134335640:
+    call PrsEvaluateType
+    movz.8 vr134335976, [vr134335744 + 44]
+    cmp vr134335976, 5
+    ifz rjmp L134336192
+
+L134336296:
+    mov vr134336536, 'Can't take address of a non-compound local'
+    mov vr134336664, 0
+    mov vr134336792, 0
+    mov vr134336920, 0
+    call LexTokenError
+
+L134336192:
+
+L134335536:
+
+L134334792:
+
+FN PrsParseInverse
+    movz vr134337032, [vr134337144 + 28]
+    mov vr134337152, vr134337032
+    call PrsCheckNodeIsValue
+    movz.8 vr134337488, [vr134337032 + 24]
+    cmp vr134337488, 3
+    ifnz rjmp L134337704
+
+L134337808:
+    movz.8 [vr134337144 + 24], 3
+    mov vr134338120, 0
+    sub vr134338120, [vr134337152 + 28]
+    movz [vr134337144 + 28], vr134338120
+
+L134337704:
+    mov vr134338568, 3
+    call PrsCreateAstNode
+    movz.8 [vr134338440 + 24], 3
+    movz [vr134338440 + 28], 0
+    movz.8 [vr134337144 + 17], 57
+    movz [vr134337144 + 32], [vr134337144 + 28]
+    movz [vr134337144 + 28], vr134338440
+
+FN PrsParseNot
+    movz vr134339216, [vr134339328 + 28]
+    mov vr134339336, vr134339216
+    call PrsCheckNodeIsValue
+    movz.8 vr134339672, [vr134339216 + 24]
+    cmp vr134339672, 2
+    ifnz rjmp L134339888
+
+L134339992:
+    movz.8 vr134340200, [vr134339336 + 17]
+    cmp vr134340200, 22
+    ifnz rjmp L134339888
+
+L134340416:
+    movz vr134340656, [vr134339336 + 28]
+    mov vr134340784, 48
+    call TlCopyMemory
+
+L134339888:
+    movz.8 vr134341104, [vr134339336 + 24]
+    cmp vr134341104, 3
+    ifnz rjmp L134341320
+
+L134341424:
+    movz.8 [vr134339328 + 24], 3
+    movz.8 vr134341736, 0
+    cmp [vr134339336 + 28], 0
+    ifz movz.8 vr134341736, 1
+    movz [vr134339328 + 28], vr134341736
+
+L134341320:
+
+FN PrsParseBitNot
+    movz vr134342056, [vr134342168 + 28]
+    mov vr134342176, vr134342056
+    call PrsCheckNodeIsValue
+    movz.8 vr134342512, [vr134342056 + 24]
+    cmp vr134342512, 2
+    ifnz rjmp L134342728
+
+L134342832:
+    movz.8 vr134343040, [vr134342176 + 17]
+    cmp vr134343040, 65
+    ifnz rjmp L134342728
+
+L134343256:
+    movz vr134343496, [vr134342176 + 28]
+    mov vr134343624, 48
+    call TlCopyMemory
+
+L134342728:
+    movz.8 vr134343944, [vr134342176 + 24]
+    cmp vr134343944, 3
+    ifnz rjmp L134344160
+
+L134344264:
+    movz.8 [vr134342168 + 24], 3
+    movz vr134344576, [vr134342176 + 28]
+    not vr134344576
+    movz [vr134342168 + 28], vr134344576
+
+L134344160:
+
+FN PrsParseCast
+    mov vr134344920, 0
+    call PrsExpression
+    movz [vr134345136 + 28], vr134344792
+    movz vr134345264, [vr134345136 + 28]
+    call PrsCheckNodeIsValue
+    mov vr134345504, sp
+    mov vr134345632, 7
+    mov vr134345760, 32
+    call LexMatchToken
+    cmp vr134345376, 0
+    ifnz rjmp L134346080
+
+L134346184:
+    mov vr134346408, sp
+    mov vr134346536, 'Expected TO.'
+    mov vr134346664, 0
+    mov vr134346792, 0
+    mov vr134346920, 0
+    call LexTokenError
+
+L134346080:
+    call PrsCreateType
+    mov vr134347280, 0
+    call PrsType
+    movz [vr134345136 + 36], vr134347032
+
+FN PrsParseContainerOf
+    mov vr134347624, 2
+    call PrsCreateAstNode
+    mov vr134347760, vr134347496
+    movz.8 [vr134347496 + 17], 57
+    mov vr134348104, 0
+    call PrsExpression
+    movz [vr134347496 + 28], vr134347976
+    movz vr134348440, [vr134347496 + 28]
+    call PrsCheckNodeIsValue
+    mov vr134348680, sp
+    mov vr134348808, 7
+    mov vr134348936, 32
+    call LexMatchToken
+    cmp vr134348552, 0
+    ifnz rjmp L134349256
+
+L134349360:
+    mov vr134349584, sp
+    mov vr134349712, 'Expected TO.'
+    mov vr134349840, 0
+    mov vr134349968, 0
+    mov vr134350096, 0
+    call LexTokenError
+
+L134349256:
+    call PrsFieldSequence
+    mov vr134350472, 3
+    mov vr134350600, sp
+    call PrsCreateAstNode
+    movz [vr134350344 + 28], vr134350336
+    movz [vr134347760 + 32], vr134350344
+    movz.8 [vr134347752 + 17], 4
+    movz [vr134347752 + 28], vr134347760
+    call PrsCreateType
+    movz.8 [vr134351128 + 44], 2
+    movz [vr134351128 + 0], vr134350208
+    movz vr134351664, [JklTargetInfo]
+    movz.8 vr134351552, [vr134351664 + 19]
+    movz [vr134351128 + 40], vr134351552
+    movz vr134351880, [JklTargetInfo]
+    movz.8 [vr134351128 + 45], [vr134351880 + 18]
+    movz [vr134347752 + 36], vr134351128
+
+FN PrsParseSizeOfValue
+    movz vr134352224, [vr134352336 + 28]
+    call PrsEvaluateType
+    mov vr134352344, vr134352096
+    cmp [vr134352096 + 40], -1
+    ifnz rjmp L134352664
+
+L134352768:
+    mov vr134353008, 'Can't take the size of this type'
+    mov vr134353136, 0
+    mov vr134353264, 0
+    mov vr134353392, 0
+    call LexTokenError
+
+L134352664:
+    movz.8 [vr134352336 + 24], 3
+    movz [vr134352336 + 28], [vr134352344 + 40]
+
+FN PrsCreateNamedType
+    movz vr134353712, [vr134353824 + 0]
+    movz.8 vr134353936, [vr134353824 + 17]
+    cmp vr134353936, 84
+    ifnz rjmp L134354152
+
+L134354256:
+    movz.8 vr134354464, [vr134353712 + 72]
+    cmp vr134354464, 6
+    ifz rjmp L134354680
+
+L134354784:
+    mov vr134355024, 'Identifier already in use'
+    mov vr134355152, 0
+    mov vr134355280, 0
+    mov vr134355408, 0
+    call LexTokenError
+
+L134354680:
+
+L134354152:
+    movz.8 [vr134353712 + 72], 3
+
+FN PrsParseEnum
+    mov vr134355856, sp
+    mov vr134355984, 18
+    mov vr134356112, 0
+    call LexMatchToken
+    cmp vr134355728, 0
+    ifnz rjmp L134356432
+
+L134356536:
+    mov vr134356760, sp
+    mov vr134356888, 'Expected an identifier'
+    mov vr134357016, 0
+    mov vr134357144, 0
+    mov vr134357272, 0
+    call LexTokenError
+
+L134356432:
+    mov vr134357512, sp
+    call PrsCreateNamedType
+    mov vr134357752, sp
+    add vr134357752, 20
+    mov vr134357984, 12
+    mov vr134358112, 0
+    call LexMatchToken
+    cmp vr134357624, 0
+    ifnz rjmp L134358432
+
+L134358536:
+    mov vr134358760, sp
+    add vr134358760, 20
+    mov vr134358992, 'Expected a type'
+    mov vr134359120, 0
+    mov vr134359248, 0
+    mov vr134359376, 0
+    call LexTokenError
+
+L134358432:
+    call PrsCreateType
+    mov vr134359736, 0
+    call PrsType
+    movz [vr134359952 + 52], vr134359488
+    mov vr134359960, 0
+
+L134360072:
+    mov vr134360304, sp
+    add vr134360304, 40
+    mov vr134360536, 9
+    mov vr134360664, 10
+    call LexMatchToken
+    cmp vr134360176, 0
+    ifz rjmp L134360984
+
+L134361088:
+    rjmp L134361296
+
+L134360984:
+    mov vr134361528, sp
+    add vr134361528, 40
+    mov vr134361760, 18
+    mov vr134361888, 0
+    call LexMatchToken
+    cmp vr134361400, 0
+    ifnz rjmp L134362208
+
+L134362312:
+    mov vr134362536, sp
+    add vr134362536, 40
+    mov vr134362768, 'Expected an identifier'
+    mov vr134362896, 0
+    mov vr134363024, 0
+    mov vr134363152, 0
+    call LexTokenError
+
+L134362208:
+    movz.8 vr134363368, [sp + 57]
+    cmp vr134363368, 84
+    ifnz rjmp L134363584
+
+L134363688:
+    mov vr134363912, sp
+    add vr134363912, 40
+    mov vr134364144, 'Identifier already in use'
+    mov vr134364272, 0
+    mov vr134364400, 0
+    mov vr134364528, 0
+    call LexTokenError
+
+L134363584:
+    movz vr134364640, [sp + 40]
+    mov vr134364752, vr134364640
+    movz.8 [vr134364640 + 72], 4
+    movz [vr134364640 + 44], vr134359960
+    mov vr134365200, sp
+    add vr134365200, 40
+    mov vr134365432, 8
+    mov vr134365560, 71
+    call LexMatchToken
+    cmp vr134365072, 0
+    ifz rjmp L134365880
+
+L134365984:
+    mov vr134366216, 0
+    call PrsExpression
+    mov vr134366328, vr134366088
+    movz.8 vr134366544, [vr134366088 + 24]
+    cmp vr134366544, 3
+    ifz rjmp L134366760
+
+L134366864:
+    mov vr134367104, 'Expected a constant value'
+    mov vr134367232, 0
+    mov vr134367360, 0
+    mov vr134367488, 0
+    call LexTokenError
+
+L134366760:
+    movz vr134367600, [vr134366328 + 28]
+    mov vr134359960, vr134367600
+    movz [vr134364752 + 44], [vr134366328 + 28]
+
+L134365880:
+    add vr134359960, 1
+    mov vr134368152, sp
+    add vr134368152, 40
+    mov vr134368384, 9
+    mov vr134368512, 10
+    call LexMatchToken
+    cmp vr134368024, 0
+    ifz rjmp L134368832
+
+L134368936:
+    rjmp L134361296
+
+L134368832:
+    mov vr134369272, sp
+    add vr134369272, 40
+    mov vr134369504, 15
+    mov vr134369632, 0
+    call LexMatchToken
+    cmp vr134369144, 0
+    ifnz rjmp L134369952
+
+L134370056:
+    mov vr134370280, sp
+    add vr134370280, 40
+    mov vr134370512, 'Expected a comma or END'
+    mov vr134370640, 0
+    mov vr134370768, 0
+    mov vr134370896, 0
+    call LexTokenError
+
+L134369952:
+    rjmp L134360072
+
+L134361296:
+
+FN PrsParseFnSignature
+    mov vr134371216, 0
+    mov vr134371456, 0
+    mov vr134371584, 3
+    mov vr134371712, 70
+    call LexMatchToken
+    cmp vr134371328, 0
+    ifz rjmp L134372032
+
+L134372136:
+    mov vr134372368, sp
+    mov vr134372496, 18
+    mov vr134372624, 0
+    call LexMatchToken
+    cmp vr134372240, 0
+    ifnz rjmp L134372944
+
+L134373048:
+    mov vr134373272, sp
+    mov vr134373400, 'Expected an identifier'
+    mov vr134373528, 0
+    mov vr134373656, 0
+    mov vr134373784, 0
+    call LexTokenError
+
+L134372944:
+    movz.8 vr134374000, [sp + 17]
+    cmp vr134374000, 83
+    ifnz rjmp L134374216
+
+L134374320:
+    mov vr134374544, sp
+    mov vr134374672, 'Undeclared identifier'
+    mov vr134374800, 0
+    mov vr134374928, 0
+    mov vr134375056, 0
+    call LexTokenError
+
+L134374216:
+    cmp vr134375272, 0
+    ifnz rjmp L134375384
+    rjmp L134375592
+
+L134375384:
+    mov vr134375816, sp
+    mov vr134375944, 'FNPTR not allowed on an FNPTR'
+    mov vr134376072, 0
+    mov vr134376200, 0
+    mov vr134376328, 0
+    call LexTokenError
+
+L134375592:
+    movz vr134376440, [sp + 0]
+    mov vr134376552, vr134376440
+    movz.8 vr134376768, [vr134376440 + 72]
+    cmp vr134376768, 3
+    ifz rjmp L134376984
+
+L134377088:
+    mov vr134377312, sp
+    mov vr134377440, 'Symbol isn't a type'
+    mov vr134377568, 0
+    mov vr134377696, 0
+    mov vr134377824, 0
+    call LexTokenError
+
+L134376984:
+    movz vr134377936, [vr134376552 + 52]
+    mov vr134371216, vr134377936
+    movz.8 vr134378256, [vr134377936 + 44]
+    cmp vr134378256, 2
+    ifz rjmp L134378472
+
+L134378576:
+    mov vr134378800, sp
+    mov vr134378928, 'Type isn't a function pointer'
+    mov vr134379056, 0
+    mov vr134379184, 0
+    mov vr134379312, 0
+    call LexTokenError
+
+L134378472:
+    movz vr134379424, [vr134371216 + 0]
+    mov vr134371216, vr134379424
+    movz.8 vr134379744, [vr134379424 + 44]
+    cmp vr134379744, 4
+    ifz rjmp L134379960
+
+L134380064:
+    mov vr134380288, sp
+    mov vr134380416, 'Type isn't a function pointer'
+    mov vr134380544, 0
+    mov vr134380672, 0
+    mov vr134380800, 0
+    call LexTokenError
+
+L134379960:
+    mov vr134381040, sp
+    mov vr134381168, 10
+    mov vr134381296, 0
+    call LexMatchToken
+    cmp vr134380912, 0
+    ifnz rjmp L3178600
+
+L3178704:
+    mov vr3178928, sp
+    mov vr3179056, 'Expected a right parenthesis.'
+    mov vr3179184, 0
+    mov vr3179312, 0
+    mov vr3179440, 0
+    call LexTokenError
+
+L3178600:
+
+L134372032:
+    mov vr3179680, sp
+    add vr3179680, 20
+    mov vr3179912, 18
+    mov vr3180040, 0
+    call LexMatchToken
+    cmp vr3179552, 0
+    ifnz rjmp L3180360
+
+L3180464:
+    mov vr3180688, sp
+    add vr3180688, 20
+    mov vr3180920, 'Expected an identifier'
+    mov vr3181048, 0
+    mov vr3181176, 0
+    mov vr3181304, 0
+    call LexTokenError
+
+L3180360:
+    movz vr3181416, [sp + 20]
+    cmp vr134375272, 0
+    ifnz rjmp L3181736
+    rjmp L3181944
+
+L3181736:
+    mov vr3182176, sp
+    add vr3182176, 20
+    call PrsCreateNamedType
+
+L3181944:
+    mov vr3182520, sp
+    add vr3182520, 40
+    mov vr3182752, 3
+    mov vr3182880, 70
+    call LexMatchToken
+    cmp vr3182392, 0
+    ifnz rjmp L3183200
+
+L3183304:
+    mov vr3183528, sp
+    add vr3183528, 40
+    mov vr3183760, 'Expected a left parenthesis'
+    mov vr3183888, 0
+    mov vr3184016, 0
+    mov vr3184144, 0
+    call LexTokenError
+
+L3183200:
+    call PrsCreateType
+    mov vr3184368, vr3184256
+    movz.8 [vr3184256 + 44], 4
+    mov vr3184712, 0
+    call LexEnterScope
+    movz [vr3184256 + 8], [LexCurrentScope]
+    movz [vr3184256 + 0], 0
+    movz [vr3184256 + 4], 0
+    movz [vr3184256 + 12], 0
+    movz [vr3184256 + 32], 0
+    movz.8 [vr3184256 + 36], 0
+    movz.8 [vr3184256 + 37], vr134375272
+    movz [vr3184256 + 20], 0
+    movz [vr3184256 + 16], 0
+    movz [vr3184256 + 28], 0
+    mov vr3185864, 0
+
+L3185976:
+    mov vr3186208, sp
+    add vr3186208, 60
+    mov vr3186440, 10
+    mov vr3186568, 0
+    call LexMatchToken
+    cmp vr3186080, 0
+    ifz rjmp L3186888
+
+L3186992:
+    rjmp L3187200
+
+L3186888:
+    mov vr3187432, 29
+    call TlBumpAlloc
+    cmp vr3187304, 0
+    ifz rjmp L3187776
+
+L3187880:
+    mov vr3188104, 'Failed to allocate arg'
+    mov vr3188232, 0
+    mov vr3188360, 0
+    mov vr3188488, 0
+    call TlInternalError
+
+L3187776:
+    mov vr3188720, sp
+    add vr3188720, 60
+    call LexGetToken
+    movz.8 vr3189040, [sp + 76]
+    cmp vr3189040, 5
+    ifz rjmp L3189256
+
+L3189360:
+    mov vr3189584, sp
+    add vr3189584, 60
+    mov vr3189816, 'Expected an argument specifier IN/OUT'
+    mov vr3189944, 0
+    mov vr3190072, 0
+    mov vr3190200, 0
+    call LexTokenError
+
+L3189256:
+    movz.8 vr3190416, [sp + 77]
+    cmp vr3190416, 18
+    ifnz rjmp L3190632
+
+L3190736:
+    movz.8 [vr3187560 + 28], 0
+    rjmp L3191048
+
+L3190632:
+    movz.8 vr3191256, [sp + 77]
+    cmp vr3191256, 25
+    ifnz rjmp L3191472
+
+L3191576:
+    movz.8 [vr3187560 + 28], 1
+    rjmp L3191048
+
+L3191472:
+    movz.8 vr3191992, [sp + 77]
+    cmp vr3191992, 67
+    ifnz rjmp L3191048
+
+L3192208:
+    movz.8 [vr3184368 + 36], 1
+    cmp vr134375272, 0
+    ifnz rjmp L3192624
+
+L3192728:
+    mov vr3192960, sp
+    add vr3192960, 80
+    mov vr3193192, 18
+    mov vr3193320, 0
+    call LexMatchToken
+    cmp vr3192832, 0
+    ifnz rjmp L3193640
+
+L3193744:
+    mov vr3193968, sp
+    add vr3193968, 80
+    mov vr3194200, 'Expected identifier'
+    mov vr3194328, 0
+    mov vr3194456, 0
+    mov vr3194584, 0
+    call LexTokenError
+
+L3193640:
+    movz.8 vr3194800, [sp + 97]
+    cmp vr3194800, 84
+    ifnz rjmp L3195016
+
+L3195120:
+    mov vr3195344, sp
+    add vr3195344, 80
+    mov vr3195576, 'Identifier already in use'
+    mov vr3195704, 0
+    mov vr3195832, 0
+    mov vr3195960, 0
+    call LexTokenError
+
+L3195016:
+    movz vr3196176, [sp + 80]
+    movz.8 [vr3196176 + 72], 1
+    movz [vr3196176 + 68], 0
+    movz [vr3184368 + 16], vr3196176
+    movz [vr3196176 + 52], [PrsVarArgType]
+    mov vr3196728, sp
+    add vr3196728, 80
+    mov vr3196960, 18
+    mov vr3197088, 0
+    call LexMatchToken
+    cmp vr3196600, 0
+    ifnz rjmp L3197408
+
+L3197512:
+    mov vr3197736, sp
+    add vr3197736, 80
+    mov vr3197968, 'Expected identifier'
+    mov vr3198096, 0
+    mov vr3198224, 0
+    mov vr3198352, 0
+    call LexTokenError
+
+L3197408:
+    movz.8 vr3198568, [sp + 97]
+    cmp vr3198568, 84
+    ifnz rjmp L3198784
+
+L3198888:
+    mov vr3199112, sp
+    add vr3199112, 80
+    mov vr3199344, 'Identifier already in use'
+    mov vr3199472, 0
+    mov vr3199600, 0
+    mov vr3199728, 0
+    call LexTokenError
+
+L3198784:
+    movz vr3199944, [sp + 80]
+    movz.8 [vr3199944 + 72], 1
+    movz [vr3199944 + 68], 0
+    movz [vr3184368 + 20], vr3199944
+    movz [vr3199944 + 52], [PrsConstantType]
+
+L3192624:
+    mov vr3200496, sp
+    add vr3200496, 60
+    mov vr3200728, 10
+    mov vr3200856, 0
+    call LexMatchToken
+    cmp vr3200368, 0
+    ifnz rjmp L3201176
+
+L3201280:
+    mov vr3201504, sp
+    add vr3201504, 60
+    mov vr3201736, 'Expected right parenthesis'
+    mov vr3201864, 0
+    mov vr3201992, 0
+    mov vr3202120, 0
+    call LexTokenError
+
+L3201176:
+    rjmp L3187200
+
+L3191048:
+    movz vr3202440, [vr3184368 + 32]
+    add vr3202440, 1
+    movz [vr3184368 + 32], vr3202440
+    movz [vr3187560 + 0], 0
+    cmp vr3185864, 0
+    ifnz rjmp L3202968
+
+L3203072:
+    movz [vr3184368 + 0], vr3187560
+    rjmp L3203384
+
+L3202968:
+    movz [vr3185864 + 0], vr3187560
+
+L3203384:
+    mov vr3185864, vr3187560
+    mov vr3203816, sp
+    add vr3203816, 100
+    call LexGetToken
+    movz.8 vr3204136, [sp + 116]
+    cmp vr3204136, 18
+    ifz rjmp L3204352
+
+L3204456:
+    mov vr3204680, sp
+    add vr3204680, 100
+    mov vr3204912, 'Expected an identifier'
+    mov vr3205040, 0
+    mov vr3205168, 0
+    mov vr3205296, 0
+    call LexTokenError
+
+L3204352:
+    movz.8 vr3205512, [sp + 117]
+    cmp vr3205512, 84
+    ifnz rjmp L3205728
+
+L3205832:
+    mov vr3206056, sp
+    add vr3206056, 100
+    mov vr3206288, 'Identifier already in use'
+    mov vr3206416, 0
+    mov vr3206544, 0
+    mov vr3206672, 0
+    call LexTokenError
+
+L3205728:
+    mov vr3206904, vr3187560
+    add vr3206904, 4
+    mov vr3207136, sp
+    add vr3207136, 100
+    call LexCopyToken
+    movz vr3207352, [sp + 100]
+    mov vr3207464, vr3207352
+    movz.8 [vr3207352 + 72], 1
+    movz [vr3207352 + 68], 0
+    movz [vr3187560 + 24], vr3207352
+    movz.8 vr3207992, [vr3187560 + 28]
+    cmp vr3207992, 1
+    ifnz rjmp L3208208
+
+L3208312:
+    movz.8 [vr3207464 + 74], 1
+
+L3208208:
+    mov vr3208648, sp
+    add vr3208648, 60
+    mov vr3208880, 12
+    mov vr3209008, 0
+    call LexMatchToken
+    cmp vr3208520, 0
+    ifnz rjmp L3209328
+
+L3209432:
+    mov vr3209656, sp
+    add vr3209656, 60
+    mov vr3209888, 'Expected a type'
+    mov vr3210016, 0
+    mov vr3210144, 0
+    mov vr3210272, 0
+    call LexTokenError
+
+L3209328:
+    call PrsCreateType
+    movz [vr3207464 + 52], vr3210384
+    movz vr3210720, [vr3207464 + 52]
+    mov vr3210848, 0
+    call PrsType
+    mov vr3211088, sp
+    add vr3211088, 100
+    movz vr3211320, [vr3207464 + 52]
+    call PrsTypeIsValue
+    cmp vr3210960, 0
+    ifnz rjmp L3211640
+
+L3211744:
+    mov vr3211968, sp
+    add vr3211968, 100
+    mov vr3212200, 'Argument type is not directly usable as a value'
+    mov vr3212328, 0
+    mov vr3212456, 0
+    mov vr3212584, 0
+    call LexTokenError
+
+L3211640:
+    mov vr3212824, sp
+    add vr3212824, 60
+    mov vr3213056, 10
+    mov vr3213184, 0
+    call LexMatchToken
+    cmp vr3212696, 0
+    ifz rjmp L3213504
+
+L3213608:
+    rjmp L3187200
+
+L3213504:
+    mov vr3213944, sp
+    add vr3213944, 60
+    mov vr3214176, 15
+    mov vr3214304, 0
+    call LexMatchToken
+    cmp vr3213816, 0
+    ifnz rjmp L3214624
+
+L3214728:
+    mov vr3214952, sp
+    add vr3214952, 60
+    mov vr3215184, 'Expected a comma or right parenthesis'
+    mov vr3215312, 0
+    mov vr3215440, 0
+    mov vr3215568, 0
+    call LexTokenError
+
+L3214624:
+    rjmp L3185976
+
+L3187200:
+    cmp vr134375272, 0
+    ifnz rjmp L3215992
+
+L3216096:
+    mov vr3216304, vr3216312
+    and vr3216304, 1
+    cmp vr3216304, 0
+    ifz rjmp L3216632
+
+L3215992:
+    call LexResetScope
+
+L3216632:
+    call LexEnterMacroFreeZone
+    mov vr3217104, 0
+    mov vr3217232, 12
+    mov vr3217360, 0
+    call LexMatchToken
+    cmp vr3216976, 0
+    ifz rjmp L3217680
+
+L3217784:
+    call PrsCreateType
+    mov vr3218000, vr3217888
+    mov vr3218248, 0
+    call PrsType
+    call LexLeaveMacroFreeZone
+    mov vr3218592, sp
+    add vr3218592, 20
+    call PrsTypeIsValue
+    cmp vr3218464, 0
+    ifnz rjmp L3219032
+
+L3219136:
+    mov vr3219360, sp
+    add vr3219360, 20
+    mov vr3219592, 'Return type is not directly usable as a value'
+    mov vr3219720, 0
+    mov vr3219848, 0
+    mov vr3219976, 0
+    call LexTokenError
+
+L3219032:
+    movz [vr3184368 + 4], vr3218000
+    rjmp L3220296
+
+L3217680:
+    call LexLeaveMacroFreeZone
+
+L3220296:
+    cmp vr134375272, 0
+    ifnz rjmp L3220712
+
+L3220816:
+    mov vr3221024, vr3216312
+    and vr3221024, 1
+    cmp vr3221024, 0
+    ifnz rjmp L3220712
+
+L3221344:
+    call LexResetScope
+
+L3220712:
+    cmp vr134371216, 0
+    ifnz rjmp L3221784
+    rjmp L3221992
+
+L3221784:
+    mov vr3222224, sp
+    add vr3222224, 20
+    mov vr3222488, 'FNPTR: '
+    mov vr3222616, 1
+    call PrsCheckType
+    movz [vr3184368 + 12], vr134371216
+
+L3221992:
+    cmp vr134375272, 0
+    ifnz rjmp L3223040
+
+L3223144:
+    mov vr3223368, sp
+    add vr3223368, 20
+    mov vr3223632, 1
+    call PrsFoundSymbol
+
+L3223040:
+    mov vr3223760, vr3181416
+
+FN PrsParseFnDeclaration
+    mov vr3224128, 0
+    call PrsParseFnSignature
+    mov vr3224368, vr3224104
+    and vr3224368, 1
+    cmp vr3224368, 0
+    ifz rjmp L3224688
+
+L3224792:
+
+L3224688:
+    movz vr3225128, [vr3225240 + 8]
+    call LexEnterScope
+    mov vr3225368, PrsBlockStack
+    mov vr3225496, 1
+    call TlInsertDynamicBuffer
+    movz [PrsCurrentFunction], vr3225240
+    call PrsParseBlock
+    movz [vr3225240 + 28], vr3225712
+    movz [PrsCurrentFunction], 0
+    call TlPopDynamicBuffer
+    call LexResetScope
+    movz [vr3224256 + 40], 0
+    cmp [PrsFunctionListTail], 0
+    ifz rjmp L3226624
+
+L3226728:
+    movz vr3226936, [PrsFunctionListTail]
+    movz [vr3226936 + 40], vr3224256
+    rjmp L3227152
+
+L3226624:
+    movz [PrsFunctionListHead], vr3224256
+
+L3227152:
+    movz [PrsFunctionListTail], vr3224256
+
+FN PrsParseFn
+    mov vr3227696, 2
+    call PrsParseFnDeclaration
+
+FN PrsParseFnPtr
+    mov vr3228040, 0
+    mov vr3228168, 1
+    call PrsParseFnSignature
+    call PrsCreateType
+    movz.8 [vr3228304 + 44], 2
+    movz [vr3228304 + 0], vr3227912
+    movz vr3228840, [JklTargetInfo]
+    movz.8 vr3228728, [vr3228840 + 19]
+    movz [vr3228304 + 40], vr3228728
+    movz vr3229056, [JklTargetInfo]
+    movz.8 [vr3228304 + 45], [vr3229056 + 18]
+    movz [vr3228296 + 52], vr3228304
+
+FN PrsParseCompoundType
+    mov vr3229504, 0
+    mov vr3229632, 0
+    call TlCreateSymbolTable
+    mov vr3229872, sp
+    mov vr3230000, 18
+    mov vr3230128, 0
+    call LexMatchToken
+    cmp vr3229744, 0
+    ifnz rjmp L3230448
+
+L3230552:
+    mov vr3230776, sp
+    mov vr3230904, 'Expected an identifier'
+    mov vr3231032, 0
+    mov vr3231160, 0
+    mov vr3231288, 0
+    call LexTokenError
+
+L3230448:
+    mov vr3231528, sp
+    call PrsCreateNamedType
+    mov vr3231640, vr3231400
+    call PrsCreateType
+    mov vr3231864, vr3231752
+    movz.8 [vr3231752 + 44], 5
+    movz [vr3231752 + 0], vr3232184
+    movz.8 [vr3231752 + 4], vr3232296
+    movz [vr3231400 + 52], vr3231752
+    mov vr3232408, 0
+    mov vr3232520, 0
+
+L3232632:
+    call LexEnterOverlayScope
+    mov vr3232984, 0
+    mov vr3233112, 9
+    mov vr3233240, 10
+    call LexMatchToken
+    cmp vr3232856, 0
+    ifz rjmp L3233560
+
+L3233664:
+    call LexExitOverlayScope
+    rjmp L3233976
+
+L3233560:
+    mov vr3234208, sp
+    add vr3234208, 20
+    mov vr3234440, 18
+    mov vr3234568, 0
+    call LexMatchToken
+    cmp vr3234080, 0
+    ifnz rjmp L3234888
+
+L3234992:
+    mov vr3235216, sp
+    add vr3235216, 20
+    mov vr3235448, 'Expected an identifier'
+    mov vr3235576, 0
+    mov vr3235704, 0
+    mov vr3235832, 0
+    call LexTokenError
+
+L3234888:
+    movz.8 vr3236048, [sp + 37]
+    cmp vr3236048, 83
+    ifz rjmp L3236264
+
+L3236368:
+    mov vr3236592, sp
+    add vr3236592, 20
+    mov vr3236824, 'Field name already in use'
+    mov vr3236952, 0
+    mov vr3237080, 0
+    mov vr3237208, 0
+    call LexTokenError
+
+L3236264:
+    movz vr3237320, [sp + 20]
+    call LexExitOverlayScope
+    mov vr3237664, sp
+    add vr3237664, 40
+    mov vr3237896, 12
+    mov vr3238024, 0
+    call LexMatchToken
+    cmp vr3237536, 0
+    ifnz rjmp L3238344
+
+L3238448:
+    mov vr3238672, sp
+    add vr3238672, 40
+    mov vr3238904, 'Expected a type'
+    mov vr3239032, 0
+    mov vr3239160, 0
+    mov vr3239288, 0
+    call LexTokenError
+
+L3238344:
+    call PrsCreateType
+    mov vr3239512, vr3239400
+    movz [vr3237320 + 52], vr3239400
+    mov vr3239864, 0
+    call PrsType
+    movz.8 vr3240080, [vr3239400 + 44]
+    cmp vr3240080, 3
+    ifnz rjmp L3240296
+
+L3240400:
+    movz vr3240720, [vr3239512 + 0]
+    movz.8 vr3240608, [vr3240720 + 72]
+    cmp vr3240608, 6
+    ifnz rjmp L3240936
+
+L3241040:
+    mov vr3241264, sp
+    add vr3241264, 20
+    mov vr3241496, 'Illegal use of undeclared type'
+    mov vr3241624, 0
+    mov vr3241752, 0
+    mov vr3241880, 0
+    call LexTokenError
+
+L3240936:
+    movz vr3242096, [vr3239512 + 0]
+    movz vr3239512, [vr3242096 + 52]
+
+L3242208:
+    movz.8 vr3242416, [vr3239512 + 44]
+    cmp vr3242416, 3
+    ifz rjmp L3240400
+
+L3240296:
+    mov vr3242760, sp
+    add vr3242760, 20
+    call PrsTypeIsDeclarable
+    cmp vr3242632, 0
+    ifnz rjmp L3243200
+
+L3243304:
+    mov vr3243528, sp
+    add vr3243528, 20
+    mov vr3243760, 'This type is not directly declarable'
+    mov vr3243888, 0
+    mov vr3244016, 0
+    mov vr268533880, 0
+    call LexTokenError
+
+L3243200:
+    cmp [vr3239512 + 40], -1
+    ifnz rjmp L268534200
+
+L268534304:
+    mov vr268534528, sp
+    add vr268534528, 20
+    mov vr268534760, 'This type is not suitable as a field in a compound type'
+    mov vr268534888, 0
+    mov vr268535016, 0
+    mov vr268535144, 0
+    call LexTokenError
+
+L268534200:
+    movz.8 vr268535360, [vr3239512 + 45]
+    cmp vr268535360, vr3232408
+    iflteq rjmp L268535576
+
+L268535680:
+    movz.8 vr3232408, [vr3239512 + 45]
+
+L268535576:
+    cmp vr268535992, 30
+    ifnz rjmp L268536104
+
+L268536208:
+    cmp vr3232296, 0
+    ifnz rjmp L268536520
+
+L268536624:
+    mov vr268536728, vr3232520
+    movz.8 vr268536944, [vr3239512 + 45]
+    sub vr268536944, 1
+    add vr268536728, vr268536944
+    mov vr3232520, vr268536728
+    mov vr3232520, vr268536728
+    movz.8 vr268537472, [vr3239512 + 45]
+    sub vr268537472, 1
+    not vr268537472
+    and vr3232520, vr268537472
+
+L268536520:
+    movz [vr3237320 + 44], vr3232520
+    add vr3232520, [vr3239512 + 40]
+    rjmp L268538104
+
+L268536104:
+    movz [vr3237320 + 44], 0
+    cmp [vr3239512 + 40], vr3232520
+    iflteq rjmp L268538520
+
+L268538624:
+    movz vr3232520, [vr3239512 + 40]
+
+L268538520:
+
+L268538104:
+    mov vr268538960, sp
+    add vr268538960, 40
+    mov vr268539192, 9
+    mov vr268539320, 10
+    call LexMatchToken
+    cmp vr268538832, 0
+    ifz rjmp L268539640
+
+L268539744:
+    rjmp L3233976
+
+L268539640:
+    mov vr268540080, sp
+    add vr268540080, 40
+    mov vr268540312, 15
+    mov vr268540440, 0
+    call LexMatchToken
+    cmp vr268539952, 0
+    ifnz rjmp L268540760
+
+L268540864:
+    mov vr268541088, sp
+    add vr268541088, 40
+    mov vr268541320, 'Expected a comma or END'
+    mov vr268541448, 0
+    mov vr268541576, 0
+    mov vr268541704, 0
+    call LexTokenError
+
+L268540760:
+    rjmp L3232632
+
+L3233976:
+    movz.8 [vr3231864 + 45], vr3232408
+    movz [vr3231864 + 40], vr3232520
+
+FN PrsParseStruct
+    mov vr268542360, sp
+    mov vr268542488, 7
+    mov vr268542616, 26
+    call LexMatchToken
+    mov vr268542856, 30
+    call PrsParseCompoundType
+
+FN PrsParseUnion
+    mov vr268543216, 38
+    mov vr268543344, 0
+    call PrsParseCompoundType
+
+FN PrsParseType
+    mov vr268543688, sp
+    mov vr268543816, 18
+    mov vr268543944, 0
+    call LexMatchToken
+    cmp vr268543560, 0
+    ifnz rjmp L268544264
+
+L268544368:
+    mov vr268544592, sp
+    mov vr268544720, 'Expected an identifier'
+    mov vr268544848, 0
+    mov vr268544976, 0
+    mov vr268545104, 0
+    call LexTokenError
+
+L268544264:
+    mov vr268545344, sp
+    call PrsCreateNamedType
+    mov vr268545584, sp
+    add vr268545584, 20
+    mov vr268545816, 12
+    mov vr268545944, 0
+    call LexMatchToken
+    cmp vr268545456, 0
+    ifnz rjmp L268546264
+
+L268546368:
+    mov vr268546592, sp
+    add vr268546592, 20
+    mov vr268546824, 'Expected a type'
+    mov vr268546952, 0
+    mov vr268547080, 0
+    mov vr268547208, 0
+    call LexTokenError
+
+L268546264:
+    call PrsCreateType
+    mov vr268547432, vr268547320
+    mov vr268547680, 0
+    call PrsType
+    movz [vr268547896 + 52], vr268547320
+    mov vr268547904, vr268547320
+    movz.8 vr268548120, [vr268547320 + 44]
+    cmp vr268548120, 3
+    ifnz rjmp L268548336
+
+L268548440:
+    movz vr268548760, [vr268547904 + 0]
+    movz.8 vr268548648, [vr268548760 + 72]
+    cmp vr268548648, 6
+    ifnz rjmp L268548976
+
+L268549080:
+    rjmp L268548336
+
+L268548976:
+    movz vr268549400, [vr268547904 + 0]
+    movz vr268549288, [vr268549400 + 52]
+    mov vr268547904, vr268549288
+    cmp vr268547432, [vr268549400 + 52]
+    ifnz rjmp L268549824
+
+L268549928:
+    mov vr268550152, sp
+    mov vr268550280, 'TYPE declaration causes a cycle'
+    mov vr268550408, 0
+    mov vr268550536, 0
+    mov vr268550664, 0
+    call LexTokenError
+
+L268549824:
+
+L268550776:
+    movz.8 vr268550984, [vr268547904 + 44]
+    cmp vr268550984, 3
+    ifz rjmp L268548440
+
+L268548336:
+
+FN PrsParseStorageClassSpecifier
+    mov vr268551432, 0
+    mov vr268551560, 6
+    mov vr268551688, 14
+    call LexMatchToken
+    cmp vr268551304, 0
+    ifz rjmp L268552008
+
+L268552112:
+    call PrsParseFnDeclaration
+    rjmp L268552456
+
+L268552008:
+    mov vr268552688, sp
+    mov vr268552816, 18
+    mov vr268552944, 0
+    call LexMatchToken
+    cmp vr268552560, 0
+    ifnz rjmp L268553264
+
+L268553368:
+    mov vr268553592, sp
+    mov vr268553720, 'Expected an identifier'
+    mov vr268553848, 0
+    mov vr268553976, 0
+    mov vr268554104, 0
+    call LexTokenError
+
+L268553264:
+    mov vr268554344, sp
+    add vr268554344, 20
+    mov vr268554576, 12
+    mov vr268554704, 0
+    call LexMatchToken
+    cmp vr268554216, 0
+    ifnz rjmp L268555024
+
+L268555128:
+    mov vr268555352, sp
+    add vr268555352, 20
+    mov vr268555584, 'Expected a colon (indicating a declaration).'
+    mov vr268555712, 0
+    mov vr268555840, 0
+    mov vr268555968, 0
+    call LexTokenError
+
+L268555024:
+    mov vr268556208, sp
+    mov vr268556352, 1
+    call PrsVariableDeclaration
+
+L268552456:
+
+FN PrsParseExtern
+    mov vr268556704, 1
+    call PrsParseStorageClassSpecifier
+
+FN PrsParsePublic
+    mov vr268557048, 2
+    call PrsParseStorageClassSpecifier
+
+FN PrsParseExport
+    mov vr268557392, 4
+    call PrsParseStorageClassSpecifier
+
+FN PrsParsePrivate
+    mov vr268557736, 0
+    call PrsParseStorageClassSpecifier
+
+FN PrsParseBreak
+    cmp [PrsWhileDepth], 0
+    ifnz rjmp L268558160
+
+L268558264:
+    mov vr268558512, 'Can't BREAK outside of a WHILE loop'
+    mov vr268558640, 0
+    mov vr268558768, 0
+    mov vr268558896, 0
+    call LexTokenError
+
+L268558160:
+    mov vr268559136, 6
+    call PrsCreateAstNode
+    movz vr268559384, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseContinue
+    cmp [PrsWhileDepth], 0
+    ifnz rjmp L268559720
+
+L268559824:
+    mov vr268560072, 'Can't CONTINUE outside of a WHILE loop'
+    mov vr268560200, 0
+    mov vr268560328, 0
+    mov vr268560456, 0
+    call LexTokenError
+
+L268559720:
+    mov vr268560696, 11
+    call PrsCreateAstNode
+    movz vr268560944, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseGoTo
+    movz vr268561304, [PrsCurrentFunction]
+    movz vr268561192, [vr268561304 + 8]
+    call LexEnterOverlayScope
+    mov vr268561544, sp
+    mov vr268561672, 18
+    mov vr268561800, 0
+    call LexMatchToken
+    cmp vr268561416, 0
+    ifnz rjmp L268562120
+
+L268562224:
+    mov vr268562448, sp
+    mov vr268562576, 'Expected identifier'
+    mov vr268562704, 0
+    mov vr268562832, 0
+    mov vr268562960, 0
+    call LexTokenError
+
+L268562120:
+    call LexExitOverlayScope
+    movz vr268563176, [sp + 0]
+    movz.8 vr268563392, [sp + 17]
+    cmp vr268563392, 84
+    ifnz rjmp L268563608
+
+L268563712:
+    movz.8 vr268563920, [vr268563176 + 72]
+    cmp vr268563920, 5
+    ifz rjmp L268564136
+
+L268564240:
+    movz.8 vr268564448, [vr268563176 + 72]
+    cmp vr268564448, 2
+    ifz rjmp L268564136
+
+L268564664:
+    mov vr268564888, sp
+    mov vr268565016, 'Expected a label name'
+    mov vr268565144, 0
+    mov vr268565272, 0
+    mov vr268565400, 0
+    call LexTokenError
+
+L268564136:
+    rjmp L268565616
+
+L268563608:
+    movz.8 [vr268563176 + 72], 5
+    movz [vr268563176 + 44], 0
+
+L268565616:
+    movz vr268566032, [vr268563176 + 44]
+    add vr268566032, 1
+    movz [vr268563176 + 44], vr268566032
+    mov vr268566376, 10
+    mov vr268566504, sp
+    call PrsCreateAstNode
+    movz [vr268566248 + 28], vr268563176
+    movz vr268566840, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseIf
+    mov vr268567096, 12
+    call PrsCreateAstNode
+    mov vr268567232, vr268566968
+    movz [vr268566968 + 28], 0
+    movz [vr268566968 + 32], 0
+    movz [vr268566968 + 36], 0
+    mov vr268567656, 0
+    mov vr268567768, 0
+
+L268567880:
+    mov vr268568112, 12
+    call TlBumpAlloc
+    cmp vr268567984, 0
+    ifz rjmp L268568456
+
+L268568560:
+    mov vr268568784, 'Failed to allocate IF case'
+    mov vr268568912, 0
+    mov vr268569040, 0
+    mov vr268569168, 0
+    call TlInternalError
+
+L268568456:
+    mov vr268569408, 0
+    call PrsExpression
+    mov vr268569520, vr268569280
+    call PrsCheckNodeIsValue
+    movz [vr268568240 + 4], vr268569280
+    mov vr268569984, sp
+    mov vr268570112, 7
+    mov vr268570240, 31
+    call LexMatchToken
+    cmp vr268569856, 0
+    ifnz rjmp L268570560
+
+L268570664:
+    mov vr268570888, sp
+    mov vr268571016, 'Expected THEN'
+    mov vr268571144, 0
+    mov vr268571272, 0
+    mov vr268571400, 0
+    call LexTokenError
+
+L268570560:
+    mov vr268571640, 0
+    call LexEnterScope
+    mov vr268571872, PrsBlockStack
+    mov vr268572000, 2
+    call TlInsertDynamicBuffer
+    call PrsParseBlock
+    movz [vr268568240 + 8], vr268572112
+    call TlPopDynamicBuffer
+    call LexLeaveScope
+    cmp vr268567656, 0
+    ifnz rjmp L268572792
+
+L268572896:
+    movz.8 vr268573104, [vr268569520 + 24]
+    cmp vr268573104, 3
+    ifnz rjmp L268573320
+
+L268573424:
+    cmp [vr268569520 + 28], 0
+    ifnz rjmp L268573320
+
+L268572792:
+    movz vr268573840, [vr268568240 + 8]
+    cmp [vr268573840 + 12], 0
+    ifz rjmp L268574056
+
+L268574160:
+    mov vr268574384, sp
+    mov vr268574512, 'One or more labels inside inaccessible block'
+    mov vr268574640, 0
+    mov vr268574768, 0
+    mov vr268574896, 0
+    call LexTokenError
+
+L268574056:
+    rjmp L268575112
+
+L268573320:
+    movz [vr268568240 + 0], 0
+    cmp [vr268567232 + 32], 0
+    ifnz rjmp L268575528
+
+L268575632:
+    movz [vr268567232 + 28], vr268568240
+    rjmp L268575944
+
+L268575528:
+    movz vr268576152, [vr268567232 + 32]
+    movz [vr268576152 + 0], vr268568240
+
+L268575944:
+    movz [vr268567232 + 32], vr268568240
+    movz.8 vr268576472, [vr268569520 + 24]
+    cmp vr268576472, 3
+    ifnz rjmp L268576688
+
+L268576792:
+    cmp [vr268569520 + 28], 0
+    ifz rjmp L268576688
+
+L268577104:
+    mov vr268567656, 1
+
+L268576688:
+
+L268575112:
+    cmp vr268572240, 10
+    ifnz rjmp L268577520
+
+L268577624:
+    rjmp L268577832
+
+L268577520:
+    cmp vr268572240, 8
+    ifnz rjmp L268578144
+
+L268578248:
+    mov vr268567768, 1
+    rjmp L268577832
+
+L268578144:
+    cmp vr268572240, 9
+    ifnz rjmp L268578768
+
+L268578872:
+    rjmp L268567880
+
+L268578768:
+    mov vr268579200, 'PrsParseIf Unreachable'
+    mov vr268579328, 0
+    mov vr268579456, 0
+    mov vr268579584, 0
+    call TlInternalError
+    rjmp L268567880
+
+L268577832:
+    cmp vr268567768, 0
+    ifnz rjmp L268580008
+    rjmp L268580216
+
+L268580008:
+    mov vr268580448, 0
+    call LexEnterScope
+    mov vr268580680, PrsBlockStack
+    mov vr268580808, 1
+    call TlInsertDynamicBuffer
+    call PrsParseBlock
+    call TlPopDynamicBuffer
+    call LexLeaveScope
+    cmp vr268567656, 0
+    ifnz rjmp L268581496
+    rjmp L268581704
+
+L268581496:
+    cmp [vr268581912 + 12], 0
+    ifz rjmp L268582024
+
+L268582128:
+    mov vr268582368, 'One or more labels inside inaccessible ELSE block'
+    mov vr268582496, 0
+    mov vr268582624, 0
+    mov vr268582752, 0
+    call LexTokenError
+
+L268582024:
+    rjmp L268582968
+
+L268581704:
+    movz [vr268567232 + 36], vr268581912
+
+L268582968:
+
+L268580216:
+    movz vr268583296, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseLeave
+    movz vr268583528, [PrsCurrentFunction]
+    cmp [vr268583528 + 4], 0
+    ifz rjmp L268583744
+
+L268583848:
+    mov vr268584096, 'Can't LEAVE from a function with a return value, use RETURN'
+    mov vr268584224, 0
+    mov vr268584352, 0
+    mov vr268584480, 0
+    call LexTokenError
+
+L268583744:
+    mov vr268584720, 7
+    call PrsCreateAstNode
+    movz [vr268584592 + 28], 0
+    movz vr268585072, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseReturn
+    movz vr268585312, [PrsCurrentFunction]
+    movz vr268585200, [vr268585312 + 4]
+    mov vr268585424, vr268585200
+    cmp [vr268585312 + 4], 0
+    ifnz rjmp L268585744
+
+L268585848:
+    mov vr268586096, 'Can't RETURN from a function with no return value, use LEAVE'
+    mov vr268586224, 0
+    mov vr268586352, 0
+    mov vr268586480, 0
+    call LexTokenError
+
+L268585744:
+    mov vr268586720, 7
+    call PrsCreateAstNode
+    mov vr268586848, vr268586592
+    movz vr268587080, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+    mov vr268587336, 0
+    call PrsExpression
+    mov vr268587448, vr268587208
+    call PrsEvaluateType
+    mov vr268587688, vr268587560
+    call PrsTypeIsValue
+    cmp vr268587800, 0
+    ifnz rjmp L268588152
+
+L268588256:
+    mov vr268588496, 'This type is not directly usable as a value'
+    mov vr268588624, 0
+    mov vr268588752, 0
+    mov vr268588880, 0
+    call LexTokenError
+
+L268588152:
+    mov vr268589168, 'Return value: '
+    mov vr268589296, 0
+    call PrsCheckType
+    movz.8 vr268589512, [vr268587448 + 24]
+    cmp vr268589512, 3
+    ifnz rjmp L268589728
+
+L268589832:
+    movz vr268590088, [vr268587448 + 28]
+    call PrsCheckConstant
+
+L268589728:
+    movz [vr268586848 + 28], vr268587448
+
+FN PrsParseWhile
+    mov vr268590432, 8
+    call PrsCreateAstNode
+    mov vr268590568, vr268590304
+    mov vr268590808, 0
+    call PrsExpression
+    mov vr268590920, vr268590680
+    call PrsCheckNodeIsValue
+    movz [vr268590304 + 28], vr268590680
+    mov vr268591384, sp
+    mov vr268591512, 7
+    mov vr268591640, 7
+    call LexMatchToken
+    cmp vr268591256, 0
+    ifnz rjmp L268591960
+
+L268592064:
+    mov vr268592288, sp
+    mov vr268592416, 'Expected DO'
+    mov vr268592544, 0
+    mov vr268592672, 0
+    mov vr268592800, 0
+    call LexTokenError
+
+L268591960:
+    mov vr268593040, 0
+    call LexEnterScope
+    mov vr268593272, PrsBlockStack
+    mov vr268593400, 1
+    call TlInsertDynamicBuffer
+    movz vr268593616, [PrsWhileDepth]
+    add vr268593616, 1
+    movz [PrsWhileDepth], vr268593616
+    call PrsParseBlock
+    movz [vr268590568 + 32], vr268593832
+    movz vr268594176, [PrsWhileDepth]
+    sub vr268594176, 1
+    movz [PrsWhileDepth], vr268594176
+    call TlPopDynamicBuffer
+    call LexLeaveScope
+    movz.8 vr268594728, [vr268590920 + 24]
+    cmp vr268594728, 3
+    ifnz rjmp L268594944
+
+L268595048:
+    cmp [vr268590920 + 28], 0
+    ifnz rjmp L268594944
+
+L268595360:
+    movz vr268595568, [vr268590568 + 32]
+    cmp [vr268595568 + 12], 0
+    ifz rjmp L268595784
+
+L268595888:
+    mov vr268596112, sp
+    mov vr268596240, 'One or more labels inside inaccessible block'
+    mov vr268596368, 0
+    mov vr268596496, 0
+    mov vr268596624, 0
+    call LexTokenError
+
+L268595784:
+
+L268594944:
+    movz vr268596960, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseBarrier
+    mov vr268597216, 13
+    call PrsCreateAstNode
+    movz vr268597472, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+
+FN PrsParseLabel
+    movz vr268597832, [PrsCurrentFunction]
+    movz vr268597720, [vr268597832 + 8]
+    call LexEnterOverlayScope
+    mov vr268598072, sp
+    mov vr268598200, 18
+    mov vr268598328, 0
+    call LexMatchToken
+    cmp vr268597944, 0
+    ifnz rjmp L268598648
+
+L268598752:
+    mov vr268598976, sp
+    mov vr268599104, 'Expected identifier'
+    mov vr268599232, 0
+    mov vr134381688, 0
+    mov vr134381816, 0
+    call LexTokenError
+
+L268598648:
+    call LexExitOverlayScope
+    movz vr134382032, [sp + 0]
+    movz.8 vr134382248, [sp + 17]
+    cmp vr134382248, 84
+    ifnz rjmp L134382464
+
+L134382568:
+    movz.8 vr134382776, [vr134382032 + 72]
+    cmp vr134382776, 5
+    ifz rjmp L134382992
+
+L134383096:
+    mov vr134383320, sp
+    mov vr134383448, 'Identifier already in use'
+    mov vr134383576, 0
+    mov vr134383704, 0
+    mov vr134383832, 0
+    call LexTokenError
+
+L134382992:
+    rjmp L134384048
+
+L134382464:
+    movz [vr134382032 + 44], 0
+
+L134384048:
+    movz.8 [vr134382032 + 72], 2
+    mov vr134384488, 9
+    mov vr134384616, sp
+    call PrsCreateAstNode
+    movz [vr134384360 + 28], vr134382032
+    movz vr134384952, [PrsCurrentBlock]
+    call PrsInsertNodeIntoBlock
+    movz vr134385184, [PrsCurrentBlock]
+    movz vr134385296, [vr134385184 + 12]
+    add vr134385296, 1
+    movz [vr134385184 + 12], vr134385296
+
+FN PrsEvalCompoundTypeIndex
+    movz vr134385624, [vr134385736 + 36]
+    movz vr134385512, [vr134385624 + 52]
+
+FN PrsEvalArrayIndex
+    movz vr134385976, [vr134386088 + 28]
+    call PrsEvaluateType
+    mov vr134386096, vr134385848
+    movz.8 vr134386312, [vr134385848 + 44]
+    cmp vr134386312, 1
+    ifnz rjmp L134386528
+
+L134386632:
+    movz vr134386736, [vr134386096 + 0]
+
+L134386528:
+    movz vr134386952, [vr134386096 + 0]
+
+FN PrsEvalFunctionCall
+    movz vr134387296, [vr134387408 + 28]
+    call PrsEvaluateType
+    mov vr134387416, vr134387168
+    cmp [vr134387168 + 4], 0
+    ifnz rjmp L134387736
+
+L134387840:
+    mov vr134388080, 'Attempt to take return type of return-less function'
+    mov vr134388208, 0
+    mov vr134388336, 0
+    mov vr134388464, 0
+    call LexTokenError
+
+L134387736:
+    movz vr134388576, [vr134387416 + 4]
+
+FN PrsEvalPtrDereference
+    movz vr134388920, [vr134389032 + 28]
+    call PrsEvaluateType
+    movz vr134389040, [vr134388792 + 0]
+
+FN PrsEvalArithmetic
+    movz vr134389256, [vr134389368 + 28]
+    mov vr134389376, vr134389256
+    movz vr134389488, [vr134389368 + 32]
+    call PrsEvaluateType
+    mov vr134389728, vr134389600
+    movz.8 vr134389944, [vr134389600 + 44]
+    cmp vr134389944, 2
+    ifnz rjmp L134390160
+
+L134390264:
+
+L134390160:
+    call PrsEvaluateType
+    mov vr134390600, vr134390472
+    movz.8 vr134390816, [vr134390472 + 44]
+    cmp vr134390816, 2
+    ifnz rjmp L134391032
+
+L134391136:
+
+L134391032:
+    movz.8 vr134391448, [vr134389376 + 24]
+    cmp vr134391448, 3
+    ifnz rjmp L134391664
+
+L134391768:
+
+L134391664:
+    movz.8 vr134392080, [vr134389488 + 24]
+    cmp vr134392080, 3
+    ifnz rjmp L134392296
+
+L134392400:
+
+L134392296:
+
+FN PrsEvalConditional
+    movz vr134392712, [PrsConstantType]
+
+FN PrsEvalAddrOf
+    movz vr134393056, [vr134393168 + 28]
+    call PrsEvaluateType
+    call PrsCreateType
+    movz.8 [vr134393176 + 44], 2
+    movz [vr134393176 + 0], vr134392928
+
+FN PrsEvalUnaryArithmetic
+    movz vr134393728, [vr134393840 + 28]
+    call PrsEvaluateType
+
+FN PrsEvalUnaryConditional
+    movz vr134393952, [PrsConstantType]
+
+FN PrsEvalCast
+    movz vr134394168, [vr134394280 + 36]
+
+FN PrsEvalSizeOfValue
+    movz vr134394392, [PrsConstantType]
+
+FN PrsInitialize
+    mov vr134394728, PrsBlockStack
+    call TlInitializeDynamicBuffer
+    call PrsCreateType
+    movz [PrsStringType], vr134394840
+    call PrsCreateType
+    movz.8 [vr134395056 + 44], 0
+    movz.8 [vr134395056 + 0], 8
+    movz.8 [vr134395056 + 1], 0
+    movz vr134395696, [JklTargetInfo]
+    movz.8 vr134395584, [vr134395696 + 42]
+    movz [vr134395056 + 40], vr134395584
+    movz vr134395912, [JklTargetInfo]
+    movz.8 [vr134395056 + 45], [vr134395912 + 28]
+    movz vr134396128, [PrsStringType]
+    movz.8 [vr134396128 + 44], 2
+    movz vr134396344, [PrsStringType]
+    movz [vr134396344 + 0], vr134395056
+    movz vr134396560, [PrsStringType]
+    movz vr134396784, [JklTargetInfo]
+    movz.8 vr134396672, [vr134396784 + 19]
+    movz [vr134396560 + 40], vr134396672
+    movz vr134397000, [PrsStringType]
+    movz vr134397112, [JklTargetInfo]
+    movz.8 [vr134397000 + 45], [vr134397112 + 18]
+    call PrsCreateType
+    movz [PrsNullPtrType], vr134397224
+    call PrsCreateType
+    movz.8 [vr134397440 + 44], 0
+    movz.8 [vr134397440 + 0], 0
+    movz.8 [vr134397440 + 1], 0
+    movz vr134397968, [PrsNullPtrType]
+    movz.8 [vr134397968 + 44], 2
+    movz vr134398184, [PrsNullPtrType]
+    movz [vr134398184 + 0], vr134397440
+    movz vr134398400, [PrsNullPtrType]
+    movz vr134398624, [JklTargetInfo]
+    movz.8 vr134398512, [vr134398624 + 19]
+    movz [vr134398400 + 40], vr134398512
+    movz vr134398840, [PrsNullPtrType]
+    movz vr134398952, [JklTargetInfo]
+    movz.8 [vr134398840 + 45], [vr134398952 + 18]
+    call PrsCreateType
+    movz [PrsConstantType], vr134399064
+    movz vr134399384, [PrsConstantType]
+    movz.8 [vr134399384 + 44], 0
+    movz vr134399600, [PrsConstantType]
+    movz vr134399712, [JklTargetInfo]
+    movz.8 [vr134399600 + 0], [vr134399712 + 62]
+    movz vr134399928, [PrsConstantType]
+    movz.8 [vr134399928 + 1], 1
+    movz vr134400144, [PrsConstantType]
+    movz vr134400376, [JklTargetInfo]
+    mov vr134400368, vr134400376
+    add vr134400368, 34
+    movz.8 vr134400800, [vr134400376 + 62]
+    add vr134400368, vr134400800
+    movz.8 vr134400256, [vr134400368 + 0]
+    movz [vr134400144 + 40], vr134400256
+    movz vr134401016, [PrsConstantType]
+    movz vr134401136, [JklTargetInfo]
+    mov vr134401128, vr134401136
+    add vr134401128, 20
+    movz.8 vr134401560, [vr134401136 + 62]
+    add vr134401128, vr134401560
+    movz.8 [vr134401016 + 45], [vr134401128 + 0]
+    call PrsCreateType
+    movz [PrsVarArgType], vr134401672
+    movz vr134401992, [PrsVarArgType]
+    movz.8 [vr134401992 + 44], 2
+    movz vr134402208, [PrsVarArgType]
+    movz [vr134402208 + 0], [PrsNullPtrType]
+    movz vr134402424, [PrsVarArgType]
+    movz vr134402648, [JklTargetInfo]
+    movz.8 vr134402536, [vr134402648 + 19]
+    movz [vr134402424 + 40], vr134402536
+    movz vr134402864, [PrsVarArgType]
+    movz vr134402976, [JklTargetInfo]
+    movz.8 [vr134402864 + 45], [vr134402976 + 18]
+
+FN PrsProgram
+    call PrsGlobalDeclaration
+    cmp vr134403088, 0
+    ifz rjmp L134403408
+
+L134403512:
+
+L134403616:
+    call PrsGlobalDeclaration
+    cmp vr134403720, 0
+    ifnz rjmp L134403512
+
+L134403408:
+
+Internal compiler error: LirAllocateRegistersForFunction: TODO (0 0 0)

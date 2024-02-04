@@ -22,6 +22,7 @@ CtTargetInfo : JklTargetInfoRecord = {
     [Name] = "CHost",
     [EntryFunc] = &CtTranspile,
     [ValueNumberConstantFunc] = &CtValueNumber,
+    [FoldStackAddr] = FALSE,
     [StackAlignment] = 8,
     [PointerAlignment] = 8,
     [PointerSize] = 8,
@@ -945,16 +946,6 @@ FN (CtGenerateF) CtGenerateMul (
     )
 END
 
-FN (CtGenerateF) CtGenerateInverse (
-    IN inst : ^IrInstruction,
-)
-
-    CtGenerateUnaryArithmetic (
-        inst, // inst
-        "-", // string
-    )
-END
-
 FN (CtGenerateF) CtGenerateCall (
     IN inst : ^IrInstruction,
 )
@@ -1105,7 +1096,6 @@ CtGenerateInstructionFunctions : CtGenerateF[IR_MAX] = {
     [IR_RIGHT_SHIFT] = &CtGenerateRightShift,
     [IR_BIT_NOT] = &CtGenerateBitNot,
     [IR_MULTIPLY] = &CtGenerateMul,
-    [IR_INVERSE] = &CtGenerateInverse,
     [IR_CALL] = &CtGenerateCall,
     [IR_STORE] = &CtGenerateStore,
     [IR_BARRIER] = &CtGenerateNothing,
@@ -1522,8 +1512,12 @@ FN (JklValueNumberF) CtValueNumber (
 ) : UBYTE
 
     // Return whether to value number this constant.
+    // Doing this too much could create too many callee-saved registers if the
+    // constant is live over a function call. Doing it too little will
+    // recompute large constants too much.
 
-    // Always on C transpilation host, to reduce output size.
+    // Always value number constants on the C transpilation target, to reduce
+    // output size.
 
     RETURN TRUE
 END

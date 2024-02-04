@@ -69,7 +69,7 @@ FN IrGetStackOffset (
 
     symbol^.StackOffset = IrAllocateStack (
         func, // func
-        type^.Size, // symbol
+        type^.Size, // bytes
     )
 
     RETURN symbol^.StackOffset
@@ -171,6 +171,7 @@ FN IrInsertInstructionTail (
 
         IrValueNumberBarrier (
             FALSE, // onlyloads
+            NULLPTR, // symbol
         )
 
     ELSEIF inst^.Type > IR_LOAD_BARRIER_LOW_NUMBER AND
@@ -178,6 +179,7 @@ FN IrInsertInstructionTail (
 
         IrValueNumberBarrier (
             TRUE, // onlyloads
+            NULLPTR, // symbol
         )
     END
 END
@@ -251,6 +253,17 @@ FN IrGenerateLoad (
     inst^.Source1 = var
 
     retvar^.Opt.Vn.AcquiredByLoad = TRUE
+    retvar^.Opt.Vn.AcquiredByLoadOf = NULLPTR
+
+    definedby := var^.DefinedBy
+
+    IF definedby THEN
+        IF definedby^.Type == IR_STACK_ADDR OR
+            definedby^.Type == IR_ADDR THEN
+
+            retvar^.Opt.Vn.AcquiredByLoadOf = definedby^.Body.Addr.Symbol
+        END
+    END
 
     IrValueNumberVariable (
         retvar, // var
@@ -293,7 +306,24 @@ FN IrGenerateStore (
     inst^.Source1 = destvar
     inst^.Source2 = srcvar
 
+    symbol : ^LexSymbol = NULLPTR
+
+    definedby := destvar^.DefinedBy
+
+    IF definedby THEN
+        IF definedby^.Type == IR_STACK_ADDR OR
+            definedby^.Type == IR_ADDR THEN
+
+            symbol = definedby^.Body.Addr.Symbol
+        END
+    END
+
     IrInsertInstructionTail ( inst )
+
+    IrValueNumberBarrier (
+        TRUE, // onlyloads
+        symbol, // symbol
+    )
 END
 
 FN IrGenerateBranch (
@@ -595,6 +625,7 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
 
                 inst^.Defines = var
                 inst^.Body.Addr.Symbol = symbol
+                inst^.Body.Addr.Offset = 0
 
                 IrInsertInstructionTail ( inst )
 
@@ -1356,22 +1387,6 @@ FN (IrExpressionGenerationF) IrGenerateBitNot (
     )
 END
 
-FN (IrExpressionGenerationF) IrGenerateInverse (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for inverse.
-
-    RETURN IrGenerateUnaryArithmetic (
-        node, // node
-        IR_INVERSE, // type
-        truelabel, // truelabel
-        falselabel, // falselabel
-    )
-END
-
 FN (IrExpressionGenerationF) IrGenerateAddrOf (
     IN node : ^PrsAstNode,
     IN truelabel : ^IrInstruction,
@@ -1705,6 +1720,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
             varinst^.Defines = vartablevar
             varinst^.Body.Addr.Symbol = vartable
+            varinst^.Body.Addr.Offset = 0
 
             IrInsertInstructionTail ( varinst )
 
@@ -2133,7 +2149,6 @@ IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_CARET] = &IrGeneratePtrDereference,
     [TOKEN_LPAREN] = &IrGenerateFunctionCall,
     [TOKEN_ADDROF] = &IrGenerateAddrOf,
-    [TOKEN_INVERSE] = &IrGenerateInverse,
 
     // Use the same table to squirrel away the assignment operators.
 
@@ -2632,6 +2647,7 @@ FN IrGenerate ()
 
         IrValueNumberBarrier (
             FALSE, // onlyloads
+            NULLPTR, // symbol
         )
 
         IrGenerateForFunction ( funcsym )

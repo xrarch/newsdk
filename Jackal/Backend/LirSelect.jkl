@@ -55,11 +55,6 @@ FN LirInsertInstructionTail (
 
     // Insert the instruction at the end of the current chain.
 
-    TlPrintNumber ( lirinst^.Type )
-    TlPrintString ( "\n" )
-    TlPrintNumber ( lirinst^.MachineInstruction )
-    TlPrintString ( "\n" )
-
     lirinst^.Block = LirCurrentFunction
     lirinst^.Next = NULLPTR
     lirinst^.Prev = LirCurrentFunction^.LirTail

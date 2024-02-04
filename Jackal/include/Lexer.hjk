@@ -126,7 +126,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_RSHEQUALS,   // assign
 
     TOKEN_ADDROF, // virtual (to distinguish from bitwise AND)
-    TOKEN_INVERSE, // virtual (to distinguish from subtraction)
 
     TOKEN_IDENTIFIER_NEW,
     TOKEN_IDENTIFIER_FOUND,

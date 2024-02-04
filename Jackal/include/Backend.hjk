@@ -33,12 +33,12 @@ ENUM IrInstructionType : UBYTE
     IR_LOAD_BARRIER_LOW_NUMBER,
 
     IR_CALL,
-    IR_STORE,
     IR_BARRIER,
 
     IR_LOAD_BARRIER_HIGH_NUMBER,
 
-    IR_NOT,
+    IR_STORE,
+
     IR_COMPARE_EQUALS,
     IR_COMPARE_NOT_EQUALS,
     IR_COMPARE_LESS_THAN,
@@ -49,6 +49,7 @@ ENUM IrInstructionType : UBYTE
     IR_COMPARE_GREATER_THAN_SIGNED,
     IR_COMPARE_LTEQ_SIGNED,
     IR_COMPARE_GTEQ_SIGNED,
+    IR_NOT,
     IR_BIT_AND,
     IR_BIT_OR,
     IR_ADD,
@@ -61,7 +62,6 @@ ENUM IrInstructionType : UBYTE
     IR_RIGHT_SHIFT,
     IR_BIT_NOT,
     IR_MULTIPLY,
-    IR_INVERSE,
 
     IR_MAX, // MUST be at the end (other than DEAD)
 
@@ -77,6 +77,8 @@ END
 STRUCT IrVariableValueNumberInfo
     ListEntry : TlListEntry,
     HashEntry : TlListEntry,
+
+    AcquiredByLoadOf : ^LexSymbol,
 
     ConstantValue : UWORD,
 
@@ -146,6 +148,7 @@ END
 
 STRUCT IrAddrBody
     Symbol : ^LexSymbol,
+    Offset : UWORD,
 END
 
 STRUCT IrStringBody

@@ -61,6 +61,7 @@ STRUCT JklTargetInfoRecord
     EntryFunc : JklTargetF,
     ValueNumberConstantFunc : JklValueNumberF,
     LirInfo : ^LirTargetInfoRecord,
+    FoldStackAddr : UBYTE,
     StackAlignment : UBYTE,
     PointerAlignment : UBYTE,
     PointerSize : UBYTE,

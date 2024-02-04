@@ -1596,6 +1596,15 @@ FN (IrSimplifyF) IrSimplifyAdd (
 
                 RETURN FALSE
             END
+
+        ELSEIF inst1^.Type == IR_STACK_ADDR AND JklTargetInfo^.FoldStackAddr THEN
+            inst^.Type = IR_STACK_ADDR
+            inst^.Body.Addr.Offset = inst1^.Body.Addr.Offset + src2value
+            inst^.Body.Addr.Symbol = inst1^.Body.Addr.Symbol
+            inst^.Source1 = NULLPTR
+            inst^.Source2 = NULLPTR
+
+            RETURN FALSE
         END
     END
 
@@ -2268,34 +2277,6 @@ FN (IrSimplifyF) IrSimplifyMultiply (
     RETURN FALSE
 END
 
-FN (IrSimplifyF) IrSimplifyInverse (
-    IN inst : ^IrInstruction,
-) : UBYTE
-
-    // Simplify an INVERSE instruction.
-
-    src1 := inst^.Source1
-
-    IF NOT src1^.DefinedBy THEN
-        // Named local, no opportunities.
-
-        RETURN FALSE
-    END
-
-    IF IrVariableIsConstant ( src1 ) THEN
-        // Nice, turn this into a CONSTANT instruction.
-
-        IrSimplifyToConstant (
-            inst, // inst
-            -IrVariableConstantValue ( src1 ), // constant
-        )
-
-        RETURN TRUE
-    END
-
-    RETURN FALSE
-END
-
 FN (IrSimplifyF) IrSimplifyCall (
     IN inst : ^IrInstruction,
 ) : UBYTE
@@ -2376,7 +2357,6 @@ IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
     [IR_RIGHT_SHIFT] = &IrSimplifyRightShift,
     [IR_BIT_NOT] = &IrSimplifyBitNot,
     [IR_MULTIPLY] = &IrSimplifyMultiply,
-    [IR_INVERSE] = &IrSimplifyInverse,
 
     [IR_CALL] = &IrSimplifyCall,
 }
