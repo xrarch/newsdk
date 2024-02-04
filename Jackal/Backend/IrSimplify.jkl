@@ -171,7 +171,7 @@ FN (IrSimplifyF) IrSimplifyNot (
 
     src1 := inst^.Source1
 
-    IF src1^.Symbol THEN
+    IF NOT src1^.DefinedBy THEN
         // Named local, no opportunities.
 
         RETURN FALSE
@@ -199,7 +199,7 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
 
     src1 := inst^.Source1
 
-    IF src1^.Symbol THEN
+    IF NOT src1^.DefinedBy THEN
         // Named local, no opportunities.
 
         RETURN FALSE
@@ -245,7 +245,7 @@ FN (IrSimplifyF) IrSimplifyBranchZero (
 
     src1 := inst^.Source1
 
-    IF src1^.Symbol THEN
+    IF NOT src1^.DefinedBy THEN
         // Named local, no opportunities.
 
         RETURN FALSE
@@ -292,7 +292,7 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -356,7 +356,7 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -420,7 +420,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -486,7 +486,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -552,7 +552,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -618,7 +618,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -682,7 +682,7 @@ FN (IrSimplifyF) IrSimplifyCmpEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -722,7 +722,7 @@ FN (IrSimplifyF) IrSimplifyCmpNotEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -762,7 +762,7 @@ FN (IrSimplifyF) IrSimplifyCmpLessThan (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -804,7 +804,7 @@ FN (IrSimplifyF) IrSimplifyCmpGreaterThan (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -846,7 +846,7 @@ FN (IrSimplifyF) IrSimplifyCmpLtEq (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -888,7 +888,7 @@ FN (IrSimplifyF) IrSimplifyCmpGtEq (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -932,7 +932,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -998,7 +998,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1064,7 +1064,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1130,7 +1130,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1194,7 +1194,7 @@ FN (IrSimplifyF) IrSimplifyCmpLessThanSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1236,7 +1236,7 @@ FN (IrSimplifyF) IrSimplifyCmpGreaterThanSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1278,7 +1278,7 @@ FN (IrSimplifyF) IrSimplifyCmpLtEqSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1320,7 +1320,7 @@ FN (IrSimplifyF) IrSimplifyCmpGtEqSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1364,7 +1364,7 @@ FN (IrSimplifyF) IrSimplifyBitAnd (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1431,7 +1431,7 @@ FN (IrSimplifyF) IrSimplifyBitOr (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1498,7 +1498,7 @@ FN (IrSimplifyF) IrSimplifyAdd (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1611,7 +1611,7 @@ FN (IrSimplifyF) IrSimplifySubtract (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1704,7 +1704,7 @@ FN (IrSimplifyF) IrSimplifyDivide (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1775,7 +1775,7 @@ FN (IrSimplifyF) IrSimplifyDivideSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1830,7 +1830,7 @@ FN (IrSimplifyF) IrSimplifyModulo (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1901,7 +1901,7 @@ FN (IrSimplifyF) IrSimplifyXor (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -1966,7 +1966,7 @@ FN (IrSimplifyF) IrSimplifyLeftShift (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -2059,7 +2059,7 @@ FN (IrSimplifyF) IrSimplifyRightShift (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -2153,7 +2153,7 @@ FN (IrSimplifyF) IrSimplifyBitNot (
 
     src1 := inst^.Source1
 
-    IF src1^.Symbol THEN
+    IF NOT src1^.DefinedBy THEN
         // Named local, no opportunities.
 
         RETURN FALSE
@@ -2180,7 +2180,7 @@ FN (IrSimplifyF) IrSimplifyMultiply (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF src1^.Symbol AND src2^.Symbol THEN
+    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
         // Both are named locals, no opportunities.
 
         RETURN FALSE
@@ -2276,7 +2276,7 @@ FN (IrSimplifyF) IrSimplifyInverse (
 
     src1 := inst^.Source1
 
-    IF src1^.Symbol THEN
+    IF NOT src1^.DefinedBy THEN
         // Named local, no opportunities.
 
         RETURN FALSE
