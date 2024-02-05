@@ -70,7 +70,10 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[212];
+extern uint64_t LexDefaultSection[234];
+extern uint64_t LexTextSection[234];
+extern uint64_t LexDataSection[234];
+extern uint64_t LexBssSection[234];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -521,8 +524,8 @@ void FeCopyPathFileBlock(uint64_t _mng_fileblock281, uint64_t _mng_filepath282) 
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v283)(__twr_v285, _mng_filepath282, __twr_v286);
     _jkl_epilogue:;
 }
-extern uint64_t CtTargetInfo[10];
-extern uint64_t FoxTargetInfo[10];
+extern uint64_t CtTargetInfo[11];
+extern uint64_t FoxTargetInfo[11];
 uint64_t TrgInfoRecords[8] = {
     (uint64_t)(&CtTargetInfo),
     (uint64_t)(&FoxTargetInfo),

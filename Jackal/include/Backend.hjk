@@ -203,14 +203,27 @@ STRUCT IrInstruction
     Type : IrInstructionType,
 END
 
+#DEFINE IR_MACHINE_REG_MAX 64
+
 STRUCT IrFunction
     Head : ^IrInstruction,
     Tail : ^IrInstruction,
+    EpilogueLabel : ^IrInstruction,
 
     LirHead : ^LirInstruction,
     LirTail : ^LirInstruction,
 
     StackFrameSize : UWORD,
+
+    MaximumInCount : ULONG,
+    MaximumOutCount : ULONG,
+
+    RegisterAllocationStatus : UBYTE[IR_MACHINE_REG_MAX],
+
+    // Technically target-private but common enough to warrant a spot here:
+
+    ScratchAreaSize : UWORD,
+    CallFree : UBYTE,
 END
 
 EXTERN FN IrAllocateStack (

@@ -70,7 +70,10 @@ extern uint64_t LexPopSection();
 extern uint64_t LexNextSymbolSection;
 extern uint64_t LexCurrentSection;
 extern uint64_t LexSectionListHead;
-extern uint64_t LexDefaultSection[212];
+extern uint64_t LexDefaultSection[234];
+extern uint64_t LexTextSection[234];
+extern uint64_t LexDataSection[234];
+extern uint64_t LexBssSection[234];
 extern uint64_t LexCharTreatment[32];
 extern uint64_t LexCurrentStream;
 extern uint64_t LexCurrentMacroScope;
@@ -119,17 +122,18 @@ extern uint64_t IrAllocateStack(uint64_t _mng_func140, uint64_t _mng_bytes141);
 extern uint64_t IrGetStackOffset(uint64_t _mng_func142, uint64_t _mng_symbol143);
 extern void CtTranspile();
 extern uint64_t CtValueNumber(uint64_t _mng_constant144);
-uint64_t CtTargetInfo[10] = {
+uint64_t CtTargetInfo[11] = {
     (uint64_t)(&"CHost"),
     (uint64_t)(&CtTranspile),
     (uint64_t)(&CtValueNumber),
     0x0000000000000000,
-    0x0201000008080800,
-    0x0804020100000804,
-    0x0804020100000000,
-    0x0000080402010000,
-    0x0000010101010001,
-    0x050B000001010101,
+    0x0100000108080800,
+    0x0402010000080402,
+    0x0402010000000008,
+    0x0008040201000008,
+    0x0001010101000100,
+    0x0B00000101010100,
+    0x0000000000000005,
 };
 uint64_t CtBigBuffer[11];
 uint64_t CtFuncBuffer[11];

@@ -1522,6 +1522,9 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
     arglisttail : ^IrArgument = NULLPTR
     outlisttail : ^IrArgument = NULLPTR
 
+    incount := 0
+    outcount := 0
+
     refarg := type^.Body.Function.ArgListHead
 
     argnode := CAST node^.Body.Operator.OperatorSpecific TO ^PrsAstNode
@@ -1558,6 +1561,8 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
             arglisttail = irarg
 
+            incount += 1
+
         ELSE
             // We don't want to generate the expression here yet so stash it in
             // the variable field so we can get to it later.
@@ -1572,6 +1577,8 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
             END
 
             outlisttail = irarg
+
+            outcount += 1
         END
 
         argnode = argnode^.Next
@@ -1722,6 +1729,14 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
         END
 
         outarg = outarg^.Next
+    END
+
+    IF incount > IrCurrentFunction^.MaximumInCount THEN
+        IrCurrentFunction^.MaximumInCount = incount
+    END
+
+    IF outcount > IrCurrentFunction^.MaximumOutCount THEN
+        IrCurrentFunction^.MaximumOutCount = outcount
     END
 
     IF truelabel THEN
@@ -2509,9 +2524,15 @@ FN IrGenerateForFunction (
     IrCurrentFunction^.Tail = NULLPTR
     IrCurrentFunction^.StackFrameSize = 0
 
+    IrCurrentFunction^.MaximumInCount = 0
+    IrCurrentFunction^.MaximumOutCount = 0
+    IrCurrentFunction^.EpilogueLabel = IrCreateLabel ()
+
     funcsym^.InitialValue = IrCurrentFunction
 
     IrGenerateBlock ( funcsym^.SemanticType^.Body.Function.BodyBlock )
+
+    IrInsertInstructionTail ( IrCurrentFunction^.EpilogueLabel )
 END
 
 FN IrGenerate ()

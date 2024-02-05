@@ -33,6 +33,7 @@ ENUM LirRegisterType : UBYTE
     LIR_MACHINE_REG,
     LIR_VIRTUAL_REG,
     LIR_SPILLED_REG,
+    LIR_PREALLOCATED_REG,
 END
 
 STRUCT LirRegister
@@ -47,7 +48,6 @@ STRUCT LirRegister
     LivenessEnd : ULONG,
 
     DefinedYet : UBYTE,
-    UseFound : UBYTE,
     LiveAcrossCall : UBYTE,
 
     MachineRegister : UBYTE,
@@ -127,6 +127,10 @@ EXTERN FN LirGetRegister (
     IN oldvariable : ^IrVariable,
 ) : ^LirRegister
 
+EXTERN FN LirCreatePreallocatedRegister (
+    IN machreg : UBYTE,
+) : ^LirRegister
+
 EXTERN FN LirSelect (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
@@ -149,12 +153,9 @@ ENUM LirAbiUsage : UBYTE
     LIR_REG_CALLER_SAVED,
 END
 
-#DEFINE LIR_MACHINE_REG_MAX 64
-
 STRUCT LirTargetInfoRecord
     SelectionTable : LirSelectF[IR_MAX],
-    RegisterAbiUsage : LirAbiUsage[LIR_MACHINE_REG_MAX],
-    RegisterAllocationStatus : UBYTE[LIR_MACHINE_REG_MAX],
+    RegisterAbiUsage : LirAbiUsage[IR_MACHINE_REG_MAX],
     MaximumRegister : UBYTE,
 END
 

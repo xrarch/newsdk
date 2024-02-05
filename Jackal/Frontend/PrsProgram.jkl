@@ -20,8 +20,6 @@ PrsNullPtrType : ^LexSemanticType = NULLPTR
 PrsConstantType : ^LexSemanticType = NULLPTR
 PrsVarArgType : ^LexSemanticType = NULLPTR
 
-#DEFINE TYPE_SIZE_UNINIT 0xFFFFFFFF
-
 ENUM PrsBlockType : UBYTE
     BLOCK_NULL,
 
@@ -99,6 +97,7 @@ FN PrsCreateType () : ^LexSemanticType
     type^.CachedIsDeclarable = FALSE
     type^.CachedIsValue = FALSE
     type^.Size = TYPE_SIZE_UNINIT
+    type^.MinimumAlignment = 0
 
     RETURN type
 END
@@ -1282,6 +1281,7 @@ FN PrsParseInitializer (
 
         node^.Body.Initializer.ByteArray = bytearray
         node^.Body.Initializer.BpArray = bparray
+        node^.Body.Initializer.Size = type^.Size
 
         // Make sure that any uninitialized locations are zeroed.
 
@@ -2099,25 +2099,41 @@ FN PrsVariableDeclaration (
             )
         END
 
-    ELSEIF initialnode THEN
-        // Statically evaluate the initial value. If it can't be statically
-        // evaluated, that's an error, since this is a global. Note that we
-        // might still leave it as a "complex" AST node if it's a pointer to
-        // some other global or something because we don't know the value of
-        // that immediately.
-
-        IF NOT PrsIsCompileTime ( initialnode ) THEN
-            LexTokenError ( token,
-                "Globals require a compile-time initial value.", 0, 0, 0 )
-        END
-
-        symbol^.InitialValue = initialnode
-
     ELSE
-        // Uninitialized globals have a value of zero, always.
-        // Backend may place this in BSS.
+        IF initialnode THEN
+            // Statically evaluate the initial value. If it can't be statically
+            // evaluated, that's an error, since this is a global. Note that we
+            // might still leave it as a "complex" AST node if it's a pointer to
+            // some other global or something because we don't know the value of
+            // that immediately.
 
-        symbol^.InitialValue = NULLPTR
+            IF NOT PrsIsCompileTime ( initialnode ) THEN
+                LexTokenError ( token,
+                    "Globals require a compile-time initial value.", 0, 0, 0 )
+            END
+
+            symbol^.InitialValue = initialnode
+
+            IF symbol^.Section == &LexDefaultSection THEN
+                IF initialnode^.Type == AST_CONSTANT AND
+                    initialnode^.Body.Constant.Value == 0 THEN
+
+                    symbol^.Section = &LexBssSection
+
+                ELSE
+                    symbol^.Section = &LexDataSection
+                END
+            END
+
+        ELSE
+            // Uninitialized globals have a value of zero, always.
+
+            symbol^.InitialValue = NULLPTR
+
+            IF symbol^.Section == &LexDefaultSection THEN
+                symbol^.Section = &LexBssSection
+            END
+        END
     END
 
     RETURN symbol
@@ -4393,6 +4409,12 @@ FN PrsParseFnDeclaration (
     IF flags & VAR_FLAG_EXTERN THEN
         RETURN symbol
     END
+
+    IF symbol^.Section == &LexDefaultSection THEN
+        symbol^.Section = &LexTextSection
+    END
+
+    type^.MinimumAlignment = JklTargetInfo^.CodeAlignment
 
     // Collect the body of the function.
 

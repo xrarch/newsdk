@@ -697,6 +697,13 @@ FN LexGetTokenContents (
             &LexInternedStringZone, // zone
         ) TO ^LexInternedString
 
+        IF LexCurrentSection == &LexDefaultSection THEN
+            internedstring^.Section = &LexTextSection
+        
+        ELSE
+            internedstring^.Section = LexCurrentSection
+        END
+
         dynamicbuffer := &internedstring^.DynamicBuffer
 
         TlInitializeDynamicBuffer ( dynamicbuffer )

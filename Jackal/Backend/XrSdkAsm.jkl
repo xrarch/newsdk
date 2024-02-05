@@ -5,15 +5,438 @@
 
 #INCLUDE "<inc>/Target.hjk"
 
+XrCurrentSection : ^LexSection
+
+FN XrAsmCopyBytes (
+    IN srcbuf : ^UBYTE,
+    IN length : UWORD,
+)
+
+    // Copy a buffer into the section buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &XrCurrentSection^.DynamicBuffer, // array
+        srcbuf, // srcbuf
+        length, // length
+    )
+END
+
+FN XrAsmInsertString (
+    IN string : ^UBYTE,
+)
+
+    // Insert a string into the section buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &XrCurrentSection^.DynamicBuffer, // array
+        string, // srcbuf
+        TlMeasureString ( string ), // length
+    )
+END
+
+FN XrAsmInsertByte (
+    IN byte : UBYTE,
+)
+    
+    // Insert a single byte into the section buffer.
+
+    TlInsertDynamicBuffer (
+        &XrCurrentSection^.DynamicBuffer, // array
+        byte, // byte
+    )
+END
+
+FN XrAsmInsertNumber (
+    IN number : UWORD,
+)
+
+    // Insert a number into the section buffer.
+
+    TlInsertNumberDynamicBuffer (
+        &XrCurrentSection^.DynamicBuffer, // array
+        number, // number
+        10, // base
+    )
+END
+
+FN XrAsmCopyBytesForward (
+    IN srcbuf : ^UBYTE,
+    IN length : UWORD,
+)
+
+    // Copy a buffer into the section buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &XrCurrentSection^.ForwardDynamicBuffer, // array
+        srcbuf, // srcbuf
+        length, // length
+    )
+END
+
+FN XrAsmInsertStringForward (
+    IN string : ^UBYTE,
+)
+
+    // Insert a string into the section buffer.
+
+    TlCopyIntoDynamicBuffer (
+        &XrCurrentSection^.ForwardDynamicBuffer, // array
+        string, // srcbuf
+        TlMeasureString ( string ), // length
+    )
+END
+
+FN XrAsmInsertByteForward (
+    IN byte : UBYTE,
+)
+    
+    // Insert a single byte into the section buffer.
+
+    TlInsertDynamicBuffer (
+        &XrCurrentSection^.ForwardDynamicBuffer, // array
+        byte, // byte
+    )
+END
+
+FN XrAsmInsertNumberForward (
+    IN number : UWORD,
+)
+
+    // Insert a number into the section buffer.
+
+    TlInsertNumberDynamicBuffer (
+        &XrCurrentSection^.ForwardDynamicBuffer, // array
+        number, // number
+        10, // base
+    )
+END
+
+XrAsmDataDirectives : ^UBYTE[PRIM_TYPE_MAX] = {
+    [PRIM_TYPE_BYTE] = "    .db ",
+    [PRIM_TYPE_INT] = "    .di ",
+    [PRIM_TYPE_LONG] = "    .dl ",
+    [PRIM_TYPE_QUAD] = "    .dq ",
+
+    [PRIM_TYPE_UBYTE] = "    .db ",
+    [PRIM_TYPE_UINT] = "    .di ",
+    [PRIM_TYPE_ULONG] = "    .dl ",
+    [PRIM_TYPE_UQUAD] = "    .dq ",
+
+    [PRIM_TYPE_POINTER] = "    .dp ",
+}
+
+XrAsmStringNumber := 1
+
+FN XrAsmEmitString (
+    IN string : ^LexInternedString
+)
+
+    num := CAST string^.CodeGenContext TO UWORD
+
+    IF num THEN
+        XrAsmInsertString ( "_xrsdk_asm" )
+        XrAsmInsertNumber ( num )
+
+        LEAVE
+    END
+
+    num = XrAsmStringNumber
+    XrAsmStringNumber += 1
+
+    string^.CodeGenContext = CAST num TO ^VOID
+
+    oldsection := XrCurrentSection
+    XrCurrentSection = string^.Section
+
+    XrAsmInsertStringForward ( "_xrsdk_asm" )
+    XrAsmInsertNumberForward ( num )
+    XrAsmInsertStringForward ( ":\n" )
+
+    count := string^.DynamicBuffer.Count
+    buf := string^.DynamicBuffer.Buffer
+
+    WHILE count DO
+        XrAsmInsertStringForward ( "    .db " )
+        XrAsmInsertNumberForward ( buf^ )
+        XrAsmInsertStringForward ( "\n" )
+
+        buf += 1
+        count -= 1
+    END
+
+    XrAsmInsertStringForward ( "\n" )
+
+    XrCurrentSection = oldsection
+
+    XrAsmInsertString ( "_xrsdk_asm" )
+    XrAsmInsertNumber ( num )
+END
+
+EXTERN FN XrAsmEmitInitializer (
+    IN value : ^PrsAstNode,
+    IN primtype : UBYTE,
+)
+
+FN XrAsmEmitCompoundInitializer (
+    IN node : ^PrsAstNode,
+)
+
+    // Emit a compound data type initializer.
+
+    bytearray := node^.Body.Initializer.ByteArray
+    bparray := node^.Body.Initializer.BpArray
+    size := node^.Body.Initializer.Size
+
+    i := 0
+
+    consecutivebytes := 0
+    consecutivebyte := 0
+
+    WHILE i < size DO
+        IF bparray[i] THEN
+            IF consecutivebytes THEN
+                XrAsmInsertString ( "    .bytes " )
+                XrAsmInsertNumber ( consecutivebytes )
+                XrAsmInsertString ( ", " )
+                XrAsmInsertNumber ( consecutivebyte )
+                XrAsmInsertString ( "\n" )
+
+                consecutivebytes = 0
+            END
+
+            XrAsmEmitInitializer (
+                bparray[i], // value
+                PRIM_TYPE_POINTER, // primtype
+            )
+
+            i += JklTargetInfo^.PointerSize
+
+        ELSE
+            byte := bytearray[i]
+
+            IF consecutivebytes AND byte != consecutivebyte THEN
+                XrAsmInsertString ( "    .bytes " )
+                XrAsmInsertNumber ( consecutivebytes )
+                XrAsmInsertString ( ", " )
+                XrAsmInsertNumber ( consecutivebyte )
+                XrAsmInsertString ( "\n" )
+
+                consecutivebytes = 0
+            END
+
+            consecutivebyte = byte
+            consecutivebytes += 1
+
+            i += 1
+        END
+    END
+
+    IF consecutivebytes THEN
+        XrAsmInsertString ( "    .bytes " )
+        XrAsmInsertNumber ( consecutivebytes )
+        XrAsmInsertString ( ", " )
+        XrAsmInsertNumber ( consecutivebyte )
+        XrAsmInsertString ( "\n" )
+    END
+END
+
+FN XrAsmEmitInitializer (
+    IN value : ^PrsAstNode,
+    IN primtype : UBYTE,
+)
+
+    // Generate XR/SDK asm for an initializer.
+
+    // First skip any casts.
+
+    WHILE value^.Type == AST_OPERATOR AND value^.Token.Subtype == TOKEN_CAST DO
+        value = value^.Body.Operator.Left
+    END
+
+    // Because the value has to be known at compile time, there are only a
+    // handful of options for what this could be.
+
+    // 1. A constant.
+
+    IF value^.Type == AST_CONSTANT THEN
+        XrAsmInsertString ( XrAsmDataDirectives[primtype] )
+        XrAsmInsertNumber ( value^.Body.Constant.Value )
+        XrAsmInsertString ( "\n" )
+
+        LEAVE
+    END
+
+    // 2. A string.
+
+    IF value^.Type == AST_STRING THEN
+        XrAsmInsertString ( "    .dp " )
+        XrAsmEmitString ( CAST value^.Token.Payload TO ^LexInternedString )
+        XrAsmInsertString ( "\n" )
+
+        LEAVE
+    END
+
+    // 3. A fancy initializer.
+
+    IF value^.Type == AST_INITIALIZER THEN
+        XrAsmEmitCompoundInitializer ( value )
+
+        LEAVE
+    END
+
+    // 4. An address of an identifier.
+
+    IF value^.Type == AST_OPERATOR AND
+        value^.Token.Subtype == TOKEN_ADDROF THEN
+
+        id := CAST value^.Body.Operator.Left^.Token.Payload TO ^LexSymbol
+
+        XrAsmInsertString ( "    .dp " )
+        XrAsmInsertString ( id^.Name )
+        XrAsmInsertString ( "\n" )
+
+        LEAVE
+    END
+
+    TlInternalError ( "Didn't expect this value here", value^.Type, 0, 0 )
+END
+
+FN XrAsmEmitFunction (
+    IN emitter : ^AsmEmitterRecord,
+    IN sym : ^LexSymbol,
+)
+
+    // Just call the target.
+
+    // emitter^.EmitFunc ( sym )
+END
+
+FN XrAsmEmitGlobal (
+    IN emitter : ^AsmEmitterRecord,
+    IN sym : ^LexSymbol,
+)
+
+    // Emit assembly for the global.
+
+    XrCurrentSection = sym^.Section
+
+    IF sym^.Flags == VAR_FLAG_EXTERN THEN
+        XrAsmInsertString ( ".extern " )
+        XrAsmInsertString ( sym^.Name )
+        XrAsmInsertString ( "\n" )
+
+        LEAVE
+    END
+
+    type := sym^.SemanticType
+
+    // Skip names.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type^.MinimumAlignment != 1 THEN
+        XrAsmInsertString ( ".align " )
+        XrAsmInsertNumber ( type^.MinimumAlignment )
+        XrAsmInsertString ( "\n" )
+    END
+
+    XrAsmInsertString ( sym^.Name )
+    XrAsmInsertString ( ":\n" )
+
+    IF sym^.Flags == VAR_FLAG_PUBLIC THEN
+        XrAsmInsertString ( ".global " )
+        XrAsmInsertString ( sym^.Name )
+        XrAsmInsertString ( "\n" )
+
+    ELSEIF sym^.Flags == VAR_FLAG_EXPORT THEN
+        XrAsmInsertString ( ".export " )
+        XrAsmInsertString ( sym^.Name )
+        XrAsmInsertString ( "\n" )
+    END
+
+    IF NOT sym^.InitialValue OR sym^.Section == &LexBssSection THEN
+        IF type^.Size != TYPE_SIZE_UNINIT THEN
+            XrAsmInsertString ( "    .bytes " )
+            XrAsmInsertNumber ( type^.Size )
+            XrAsmInsertString ( " 0\n" )
+        END
+    
+    ELSEIF type^.Subtype == TYPE_FUNCTION THEN
+        XrAsmEmitFunction (
+            emitter, // emitter
+            sym, // sym
+        )
+
+    ELSE
+        XrAsmEmitInitializer (
+            CAST sym^.InitialValue TO ^PrsAstNode, // sym
+            type^.Body.Primitive.Type, // primtype
+        )
+    END
+
+    XrAsmInsertString ( "\n" )
+END
+
 FN XrAsmEmit (
     IN emitter : ^AsmEmitterRecord,
 )
 
     // Emit XR/SDK assembly for the program.
 
+    // First, prepend sections.
+
+    section := LexSectionListHead
+
+    WHILE section DO
+        XrCurrentSection = section
+
+        XrAsmInsertStringForward ( ".section " )
+        XrAsmInsertStringForward ( &section^.Name[0] )
+        XrAsmInsertStringForward ( "\n\n" )
+
+        section = section^.Next
+    END
+
     // For each global, output the data, with appropriate storage specifiers.
     // Call the target-specific emitter for each function. Also remember to
     // output the ASM blocks.
 
-    TlInternalError ( "TODO XrAsmEmit", 0, 0, 0 )
+    sym := PrsGlobalListHead
+
+    WHILE sym DO
+        XrAsmEmitGlobal (
+            emitter, // emitter
+            sym, // sym
+        )
+
+        sym = sym^.Next
+    END
+
+    // Output the contents of each section to the destination file.
+
+    TlWriteFile (
+        FeOutputFileHandle, // handle
+        LexDefaultSection.DynamicBuffer.Count, // bytes
+        LexDefaultSection.DynamicBuffer.Buffer, // buffer
+    )
+
+    section = LexSectionListHead
+
+    WHILE section DO
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            section^.ForwardDynamicBuffer.Count, // bytes
+            section^.ForwardDynamicBuffer.Buffer, // buffer
+        )
+
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            section^.DynamicBuffer.Count, // bytes
+            section^.DynamicBuffer.Buffer, // buffer
+        )
+
+        section = section^.Next
+    END
 END

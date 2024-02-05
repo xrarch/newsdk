@@ -65,6 +65,7 @@ STRUCT JklTargetInfoRecord
     StackAlignment : UBYTE,
     PointerAlignment : UBYTE,
     PointerSize : UBYTE,
+    CodeAlignment : UBYTE,
     PrimitiveAlignment : UBYTE[PRIM_TYPE_MAX],
     PrimitiveSize : UBYTE[PRIM_TYPE_MAX],
     SupportedTypes : UBYTE[PRIM_TYPE_MAX],

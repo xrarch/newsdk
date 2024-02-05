@@ -21,9 +21,6 @@ EXTERN FN (JklValueNumberF) FoxValueNumber (
 // FORWARD
 EXTERN FoxLirInfo : LirTargetInfoRecord
 
-FoxSp : LirRegister
-FoxFp : LirRegister
-
 FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
@@ -33,6 +30,7 @@ FoxTargetInfo : JklTargetInfoRecord = {
     [StackAlignment] = 4,
     [PointerAlignment] = 4,
     [PointerSize] = 4,
+    [CodeAlignment] = 1,
     [LargestPrimitive] = PRIM_TYPE_ULONG,
     [LargestSignedPrimitive] = PRIM_TYPE_LONG,
     [SupportedTypes] = {
@@ -174,6 +172,7 @@ ENUM FoxRegisters : UBYTE
     FOX_S15,
     FOX_S16,
     FOX_S17,
+    FOX_AT,
 
     FOX_R31,
     FOX_SP,
@@ -212,6 +211,7 @@ FoxRegisterNames : ^UBYTE[FOX_REG_MAX] = {
     [FOX_S15] = "s15",
     [FOX_S16] = "s16",
     [FOX_S17] = "s17",
+    [FOX_AT] = "at",
     [FOX_R31] = "r31",
     [FOX_SP] = "sp",
     [FOX_FP] = "fp",
@@ -349,7 +349,7 @@ FN FoxFillOperandForAccess (
         off := inst2^.Body.Addr.Offset + IrGetStackOffset (
             LirCurrentFunction, // func
             symbol, // symbol
-        )
+        ) + LirCurrentFunction^.ScratchAreaSize
 
         IF off < 256 THEN
             // Great! We can do this directly.
@@ -357,7 +357,11 @@ FN FoxFillOperandForAccess (
             operand^.AccessType = FOX_ACCESS_REG_PTR
             operand^.Constant = off
 
-            RETURN &FoxSp
+            spreg := LirCreatePreallocatedRegister (
+                FOX_SP, // machreg
+            )
+
+            RETURN spreg
         END
 
     ELSEIF inst2^.Type == IR_ADDR THEN
@@ -446,7 +450,7 @@ FN FoxFillOperand (
 
         // We can only select over this if the load width matches.
 
-        IF var^.Opt.Dve.References <= 2 THEN
+        IF var^.Opt.Dve.References == 1 THEN
             bitsize := lirinst^.Body.Machine.Fox.BitSize
 
             IF bitsize == FOX_BITS_UNKNOWN OR
@@ -574,7 +578,7 @@ FN (LirSelectF) FoxSelectStackAddr (
     off := IrGetStackOffset (
         LirCurrentFunction, // func
         symbol, // symbol
-    ) + inst^.Body.Addr.Offset
+    ) + inst^.Body.Addr.Offset + LirCurrentFunction^.ScratchAreaSize
 
     defreg := LirGetRegister ( inst^.Defines )
 
@@ -584,7 +588,9 @@ FN (LirSelectF) FoxSelectStackAddr (
     )
 
     movinst^.Defines = defreg
-    movinst^.Source2 = &FoxSp
+    movinst^.Source2 = LirCreatePreallocatedRegister (
+        FOX_SP, // machreg
+    )
 
     movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -673,33 +679,197 @@ FN (LirSelectF) FoxSelectMove (
     RETURN defreg
 END
 
+FN FoxGeneratePreallocatedMov (
+    IN srcreg : ^LirRegister,
+    IN machreg : UBYTE,
+    IN from : UBYTE,
+) : ^LirRegister
+
+    // Hint.
+
+    srcreg^.Hint = machreg
+
+    // Generate MOV to preallocated reg.
+
+    movinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        FOX_MOV, // machtype
+    )
+
+    retval := LirCreatePreallocatedRegister ( machreg )
+
+    IF from THEN
+        movinst^.Source2 = retval
+        movinst^.Defines = srcreg
+
+    ELSE
+        movinst^.Defines = retval
+        movinst^.Source2 = srcreg
+    END
+
+    movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    LirInsertInstructionTail ( movinst )
+
+    IF from THEN
+        RETURN srcreg
+
+    ELSE
+        RETURN retval
+    END
+END
+
+FN FoxGenerateStackAddress (
+    IN off : ULONG,
+    OUT newoff : ULONG,
+) : ^LirRegister
+
+    IF off > 256 THEN
+        // Generate an add instruction to compute the stack address.
+
+        destreg := LirCreateRegister ()
+
+        movinst := LirCreateInstruction (
+            LIR_MACH_INST, // type
+            FOX_MOV, // machtype
+        )
+
+        movinst^.Defines = destreg
+        movinst^.Source2 = LirCreatePreallocatedRegister (
+            FOX_SP, // machreg
+        )
+
+        movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+        movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+        movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+        movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        LirInsertInstructionTail ( movinst )
+
+        addinst := LirCreateInstruction (
+            LIR_MACH_INST, // type
+            FOX_ADD, // machtype
+        )
+
+        addinst^.Defines = destreg
+        addinst^.Source1 = destreg
+
+        addinst^.Body.Machine.Fox.Op2.Constant = off
+        addinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+        addinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
+        addinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+        addinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        LirInsertInstructionTail ( addinst )
+    
+        newoff = 0
+
+        RETURN destreg
+
+    ELSE
+        RETURN LirCreatePreallocatedRegister ( FOX_SP )
+    END
+END
+
+FN FoxGenerateStoreToStack (
+    IN srcreg : ^LirRegister,
+    IN srcvar : ^IrVariable,
+    IN off : ULONG,
+)
+
+    destreg := FoxGenerateStackAddress (
+        off, // off
+        OUT off, // OUT newoff
+    )
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        FOX_MOVZ, // machtype
+    )
+
+    lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR
+    lirinst^.Body.Machine.Fox.Op1.Constant = off
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    lirinst^.Source1 = destreg
+
+    IF srcreg THEN
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+        lirinst^.Source2 = srcreg
+
+    ELSE
+        lirinst^.Source2 = FoxFillOperand (
+            lirinst, // lirinst
+            &lirinst^.Body.Machine.Fox.Op2, // operand
+            srcvar, // var
+        )
+    END
+
+    LirInsertInstructionTail ( lirinst )
+END
+
+FN FoxGenerateLoadFromStack (
+    IN defreg : ^LirRegister,
+    IN off : ULONG,
+)
+
+    srcreg := FoxGenerateStackAddress (
+        off, // off
+        OUT off, // OUT newoff
+    )
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        FOX_MOVZ, // machtype
+    )
+
+    lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REG_PTR
+    lirinst^.Body.Machine.Fox.Op2.Constant = off
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    lirinst^.Source2 = srcreg
+
+    lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    lirinst^.Defines = defreg
+
+    LirInsertInstructionTail ( lirinst )
+END
+
 FN (LirSelectF) FoxSelectReturn (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
-    srcreg : ^LirRegister = NULLPTR
+    retval : ^LirRegister = NULLPTR
 
     IF inst^.Source1 THEN
-        srcreg = LirSelectOrGetRegister ( inst^.Source1 )
+        srcreg := LirSelectOrGetRegister ( inst^.Source1 )
 
-        // Hint for regalloc to assign it to a3 (per our ABI). If it doesn't, we
-        // will have to manually move it there during code emission.
-
-        srcreg^.Hint = FOX_A3
+        retval = FoxGeneratePreallocatedMov (
+            srcreg, // srcreg
+            FOX_A3, // machreg
+            FALSE, // from
+        )
     END
 
-    // Add a LIR return instruction. We can't directly generate a jump to the
-    // epilogue or something because we don't know how to return this value
-    // until after regalloc; so, we don't generate that jump until emission.
+    // Add an unconditional branch to the epilogue.
 
     lirinst := LirCreateInstruction (
-        LIR_RETURN, // type
-        0, // machtype
+        LIR_BRANCH, // type
+        FOX_RJMP, // machtype
     )
 
-    lirinst^.Source2 = srcreg
+    lirinst^.Source2 = retval
 
-    lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+    lirinst^.TypeBody.Branch.Label =
+        LirGetLabel ( LirCurrentFunction^.EpilogueLabel )
+
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
     LirInsertInstructionTail ( lirinst )
 
@@ -863,15 +1033,12 @@ FN (LirSelectF) FoxSelectCall (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
-    // We generate the call instruction and all of its arguments but we don't
-    // worry at all about the ABI; we need the register allocator to run first.
+    // We generate the call instruction and all of its arguments.
 
     callinst := LirCreateInstruction (
         LIR_CALL, // type
         FOX_CALL, // machtype
     )
-
-    callinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_NONE
 
     defreg : ^LirRegister = NULLPTR
 
@@ -882,20 +1049,27 @@ FN (LirSelectF) FoxSelectCall (
         // passed back in.
 
         defreg^.Hint = FOX_A3
-        
-        callinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     END
 
-    callinst^.Defines = defreg
     callinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     callinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    // Now fill the call.
+
+    callinst^.Source1 = FoxFillOperand (
+        callinst, // lirinst
+        &callinst^.Body.Machine.Fox.Op1, // operand
+        inst^.Source1, // var
+    )
+
+    // First generate all of the arguments.
 
     arglisttail : ^LirArgument = NULLPTR
     callinst^.TypeBody.Call.ArgListHead = NULLPTR
 
     arg := inst^.Body.Call.ArgListHead
-
     count := 0
+    stackoff := 0
 
     WHILE arg DO
         lirarg : ^LirArgument
@@ -909,13 +1083,17 @@ FN (LirSelectF) FoxSelectCall (
             TlInternalError ( "Failed to allocate LIR argument", 0, 0, 0 )
         END
 
-        lirarg^.Register = LirSelectOrGetRegister ( arg^.Variable )
-
         IF count < 4 THEN
-            // First four arguments are hinted to a0-a3 since they're passed to
-            // the callee in those registers.
+            lirarg^.Register = LirSelectOrGetRegister ( arg^.Variable )
 
-            lirarg^.Register^.Hint = FOX_A0 + count
+        ELSE
+            FoxGenerateStoreToStack (
+                NULLPTR, // srcreg
+                arg^.Variable, // srcvar
+                stackoff, // off
+            )
+
+            stackoff += 4
         END
 
         lirarg^.Next = NULLPTR
@@ -934,13 +1112,39 @@ FN (LirSelectF) FoxSelectCall (
         arg = arg^.Next
     END
 
-    callinst^.Source2 = FoxFillOperand (
-        callinst, // lirinst
-        &callinst^.Body.Machine.Fox.Op2, // operand
-        inst^.Source1, // var
-    )
+    // Finally, generate MOVs to A0-A3.
+
+    lirarg := callinst^.TypeBody.Call.ArgListHead
+    count = 0
+
+    WHILE lirarg DO
+        IF count >= 4 THEN
+            BREAK
+        END
+
+        FoxGeneratePreallocatedMov (
+            lirarg^.Register, // reg
+            FOX_A0 + count, // machreg
+            FALSE, // from
+        )
+
+        count += 1
+        lirarg = lirarg^.Next
+    END
+
+    // Now insert the CALL instruction.
 
     LirInsertInstructionTail ( callinst )
+
+    // Now generate a mov from A3 to the destination.
+
+    IF defreg THEN
+        FoxGeneratePreallocatedMov (
+            defreg, // reg
+            FOX_A3, // machreg
+            TRUE, // from
+        )
+    END
 
     outlisttail : ^LirArgument = NULLPTR
     callinst^.TypeBody.Call.OutListHead = NULLPTR
@@ -948,9 +1152,9 @@ FN (LirSelectF) FoxSelectCall (
     arg = inst^.Body.Call.OutListHead
     count = 0
 
-    WHILE arg DO
-        lirarg : ^LirArgument
+    stackoff = 0
 
+    WHILE arg DO
         status := TlBumpAlloc (
             SIZEOF LirArgument, // bytes
             OUT lirarg, // ptr
@@ -966,9 +1170,19 @@ FN (LirSelectF) FoxSelectCall (
             // First three OUT values are hinted to a0-a2 since they're passed
             // to the caller in those registers. a3 is the primary return value.
             // We allocate them "backwards" in the hope that leaving the lower
-            // ones free will help keep the IN arguments in the a0 regs.
+            // ones free will help keep the IN arguments in the other regs.
 
-            lirarg^.Register^.Hint = FOX_A2 - count
+            FoxGeneratePreallocatedMov (
+                lirarg^.Register, // reg
+                FOX_A2 - count, // machreg
+                TRUE, // from
+            )
+        
+        ELSE
+            FoxGenerateLoadFromStack (
+                lirarg^.Register, // defreg
+                stackoff, // off
+            )
         END
 
         lirarg^.Next = NULLPTR
@@ -1502,7 +1716,8 @@ FN FoxDebugPrintLirInst (
 
     IF lirinst^.Type == LIR_MACH_INST OR
         lirinst^.Type == LIR_CALL OR
-        lirinst^.Type == LIR_BRANCH THEN
+        lirinst^.Type == LIR_BRANCH OR
+        lirinst^.Type == LIR_RETURN THEN
 
         TlPrintString ( "    " )
 
@@ -1546,24 +1761,10 @@ FN FoxDebugPrintLirInst (
 
         TlPrintString ( "\n" )
 
-        IF lirinst^.Type == LIR_CALL THEN
-            FoxDebugPrintCallInst ( lirinst )
-        END
-
     ELSEIF lirinst^.Type == LIR_LABEL THEN
         TlPrintString ( "\nL" )
         TlPrintNumber ( CAST lirinst TO UWORD )
         TlPrintString ( ":\n" )
-    
-    ELSEIF lirinst^.Type == LIR_RETURN THEN
-        TlPrintString ( "    RET " )
-
-        IF lirinst^.Source2 THEN
-            FoxDebugPrintOperand (
-                lirinst^.Source2, // reg
-                &lirinst^.Body.Machine.Fox.Op2, // operand
-            )
-        END
 
     ELSE
         TlPrintString ( "    LIR " )
@@ -1603,6 +1804,10 @@ FN (AsmEmitF) FoxEmitFunction (
 
     // First add a prologue and epilogue.
 
+    // Now loop to perform spills. Remember to elide moves that are from a
+    // register to itself; these appeared after regalloc! Also remember to
+    // elide jumps to labels immediately after them, these also exist.
+
     // Now loop to emit the text.
 
     TlInternalError ( "TODO FoxEmitFunction", 0, 0, 0 )
@@ -1631,19 +1836,34 @@ FN (JklTargetF) FoxCompile ()
     
     // Compile the program for the fox32 architecture.
 
-    // Initialize the SP and FP registers.
-
-    FoxSp.Type = LIR_MACHINE_REG
-    FoxSp.MachineRegister = FOX_SP
-
-    FoxFp.Type = LIR_MACHINE_REG
-    FoxFp.MachineRegister = FOX_FP
-
     // Perform instruction selection on each function.
 
     funcsym := PrsFunctionListHead
 
     WHILE funcsym DO
+        // Calculate the scratch area size.
+
+        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+        inscratch := 0
+
+        IF irfunc^.MaximumInCount > 4 THEN
+            inscratch = (irfunc^.MaximumInCount - 4) * 4
+        END
+
+        outscratch := 0
+
+        IF irfunc^.MaximumOutCount > 3 THEN
+            outscratch = (irfunc^.MaximumOutCount - 3) * 4
+        END
+
+        IF inscratch > outscratch THEN
+            irfunc^.ScratchAreaSize = inscratch
+        
+        ELSE
+            irfunc^.ScratchAreaSize = outscratch
+        END
+
         LirSelectForFunction (
             funcsym, // funcsym
         )

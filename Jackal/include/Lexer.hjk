@@ -146,6 +146,7 @@ FNPTR LexGetCharacterF () : UBYTE
 STRUCT LexInternedString
     Entry : TlHashTableEntry, // MUST be at the beginning
     DynamicBuffer : TlDynamicBuffer,
+    Section : ^LexSection,
 
     // Include a context word for the code generator.
     // The code generator will probably fill this in with a label name, for its
@@ -386,6 +387,9 @@ STRUCT LexSection
 
     // Include a context word for the code generator.
 
+    ForwardDynamicBuffer : TlDynamicBuffer,
+    DynamicBuffer : TlDynamicBuffer,
+
     CodeGenContext : ^VOID,
 END
 
@@ -402,7 +406,11 @@ EXTERN FN LexPopSection () : UBYTE
 EXTERN LexNextSymbolSection : ^LexSection
 EXTERN LexCurrentSection : ^LexSection
 EXTERN LexSectionListHead : ^LexSection
+
 EXTERN LexDefaultSection : LexSection
+EXTERN LexTextSection : LexSection
+EXTERN LexDataSection : LexSection
+EXTERN LexBssSection : LexSection
 
 EXTERN LexCharTreatment : LexCharBehavior[256]
 

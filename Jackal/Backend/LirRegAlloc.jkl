@@ -9,6 +9,8 @@ LirIntervalListHead : TlListEntry
 
 LirSortedIntervalListHead : TlListEntry
 
+LirFirstBlock := FALSE
+
 FN LirInsertionSortInterval (
     IN reg : ^LirRegister,
 )
@@ -111,9 +113,16 @@ FN LirRegFirstSighting (
         reg^.LivenessFirst = firstinst
         reg^.LivenessStart = 1
 
-        // Defined already.
+        IF LirFirstBlock THEN
+            // Defined already.
 
-        reg^.DefinedYet = TRUE
+            reg^.DefinedYet = TRUE
+
+            TlInsertAtHeadList (
+                &LirDefinedYetListHead, // head
+                &reg^.DefinedYetListEntry, // entry
+            )
+        END
 
     ELSE
         // Otherwise.
@@ -143,13 +152,21 @@ FN LirUseRegister (
     END
 
     IF NOT reg^.DefinedYet THEN
-        // Use before def. Cover entire function.
+        IF reg^.Type == LIR_PREALLOCATED_REG THEN
+            reg^.DefinedYet = TRUE
 
-        reg^.UseFound = TRUE
+            TlInsertAtHeadList (
+                &LirDefinedYetListHead, // head
+                &reg^.DefinedYetListEntry, // entry
+            )
+        
+        ELSE
+            // Use before def. Cover entire function.
 
-        reg^.LivenessFirst = firstinst
-        reg^.LivenessStart = 1
-        reg^.LivenessEnd = CAST -1 TO ULONG
+            reg^.LivenessFirst = firstinst
+            reg^.LivenessStart = 1
+            reg^.LivenessEnd = CAST -1 TO ULONG
+        END
 
     ELSEIF instnum > reg^.LivenessEnd THEN
         // Extend liveness range.
@@ -205,6 +222,8 @@ FN LirLivenessForFunction (
     inst := irfunc^.LirHead
     instnum := 1
 
+    LirFirstBlock = TRUE
+
     WHILE inst DO
         def := inst^.Defines
         src1 := inst^.Source1
@@ -228,21 +247,6 @@ FN LirLivenessForFunction (
             )
         END
 
-        IF inst^.Type == LIR_CALL THEN
-            arg := inst^.TypeBody.Call.ArgListHead
-
-            WHILE arg DO
-                LirUseRegister (
-                    arg^.Register, // reg
-                    irfunc^.LirHead, // firstinst
-                    inst, // inst
-                    instnum, // instnum
-                )
-
-                arg = arg^.Next
-            END
-        END
-
         IF def THEN
             LirDefRegister (
                 def, // reg
@@ -252,25 +256,11 @@ FN LirLivenessForFunction (
             )
         END
 
-        IF inst^.Type == LIR_CALL THEN
-            out := inst^.TypeBody.Call.OutListHead
-
-            WHILE out DO
-                LirDefRegister (
-                    out^.Register, // reg
-                    irfunc^.LirHead, // firstinst
-                    inst, // inst
-                    instnum, // instnum
-                )
-
-                out = out^.Next
-            END
-        END
-
         IF inst^.Type == LIR_BRANCH OR inst^.Type == LIR_LABEL THEN
             // End of the basic block, empty the defined list.
 
             LirFlushDefinedYet ()
+            LirFirstBlock = FALSE
         END
 
         inst = inst^.Next
@@ -300,66 +290,9 @@ FN LirLivenessForFunction (
 
         WHILE liveinst AND count DO
             IF liveinst^.Type == LIR_CALL THEN
-                // It's live across the call if it's live-in and live-out from
-                // the call. This is the case if any of the following hold:
-                //
-                //  1. The call is not either the first or last instruction of
-                //     the interval.
-                //  2. If the call is the first, it was not used by the call.
-                //  3. If the call is the last, it was not defined by the call.
+                reg^.LiveAcrossCall = TRUE
 
-                IF i == 0 THEN
-                    // First. Check if used by call.
-
-                    IF liveinst^.Source1 == reg THEN
-                        reg^.LiveAcrossCall = TRUE
-
-                    ELSE
-                        // Check args.
-
-                        arg := liveinst^.TypeBody.Call.ArgListHead
-
-                        WHILE arg DO
-                            IF arg^.Register == reg THEN
-                                reg^.LiveAcrossCall = TRUE
-
-                                BREAK
-                            END
-
-                            arg = arg^.Next
-                        END
-                    END
-
-                ELSEIF count == 1 THEN
-                    // Last. Check if defined by call.
-
-                    IF liveinst^.Defines == reg THEN
-                        reg^.LiveAcrossCall = TRUE
-
-                    ELSE
-                        // Check outs.
-
-                        out := liveinst^.TypeBody.Call.OutListHead
-
-                        WHILE out DO
-                            IF out^.Register == reg THEN
-                                reg^.LiveAcrossCall = TRUE
-
-                                BREAK
-                            END
-
-                            out = out^.Next
-                        END
-                    END
-                ELSE
-                    // Neither first nor last.
-
-                    reg^.LiveAcrossCall = TRUE
-                END
-
-                IF reg^.LiveAcrossCall THEN
-                    BREAK
-                END
+                BREAK
             END
 
             liveinst = liveinst^.Next
@@ -385,7 +318,7 @@ FN LirResetRegPool ()
 
     i := 0
     max := lirinfo^.MaximumRegister
-    statmap := &lirinfo^.RegisterAllocationStatus[0]
+    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
 
     WHILE i < max DO
@@ -409,7 +342,7 @@ FN LirAllocateRegister (
 
     lirinfo := JklTargetInfo^.LirInfo
 
-    statmap := &lirinfo^.RegisterAllocationStatus[0]
+    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
 
     IF hint AND
@@ -445,7 +378,18 @@ FN LirFreeRegister (
     IN reg : UBYTE,
 )
 
-    JklTargetInfo^.LirInfo^.RegisterAllocationStatus[reg] = FALSE
+    lirinfo := JklTargetInfo^.LirInfo
+
+    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    abimap := &lirinfo^.RegisterAbiUsage[0]
+
+    // An unusable reg might get freed when a preallocated machine reg's live
+    // interval expires, so prevent that. We never ever allocate unusable regs,
+    // those are entirely the province of the target specific code.
+
+    IF abimap[reg] != LIR_REG_UNUSABLE THEN
+        statmap[reg] = FALSE
+    END
 END
 
 LirActiveIntervalList : TlListEntry
@@ -514,28 +458,108 @@ FN LirSpillAtInterval (
 
     // Look at the last entry in the active list.
 
-    spillentry := LirActiveIntervalList.Prev
+    head := &LirActiveIntervalList
+    spillentry := head^.Prev
 
-    spillreg := CONTAINEROF spillentry TO LirRegister.DefinedYetListEntry
+    WHILE spillentry != head DO
+        spillreg := CONTAINEROF spillentry TO LirRegister.DefinedYetListEntry
 
-    IF spillreg^.LivenessEnd > reg^.LivenessEnd THEN
-        // Spill that register and steal its machine reg.
+        IF spillreg^.Type == LIR_PREALLOCATED_REG THEN
+            spillentry = spillentry^.Prev
 
-        reg^.MachineRegister = spillreg^.MachineRegister
-        reg^.Type = LIR_MACHINE_REG
+            CONTINUE
+        END
 
-        TlRemoveEntryList ( spillentry )
+        IF spillreg^.LivenessEnd > reg^.LivenessEnd THEN
+            // Spill that register and steal its machine reg.
 
-        spillreg^.Type = LIR_SPILLED_REG
+            reg^.MachineRegister = spillreg^.MachineRegister
+            reg^.Type = LIR_MACHINE_REG
 
-        // Insert this reg into the active list.
+            TlRemoveEntryList ( spillentry )
 
-        LirAddToActiveList ( reg )
+            spillreg^.Type = LIR_SPILLED_REG
 
-    ELSE
-        // Spill this register.
+            // Insert this reg into the active list.
 
-        reg^.Type = LIR_SPILLED_REG
+            LirAddToActiveList ( reg )
+
+        ELSE
+            // Spill this register.
+
+            reg^.Type = LIR_SPILLED_REG
+        END
+
+        LEAVE
+    END
+
+    TlInternalError (
+        "LirSpillAtInterval: Too many preallocated registers", 0, 0, 0 )
+END
+
+FN LirPreallocateRegister (
+    IN reg : UBYTE,
+)
+
+    // Pre-allocate a machine reg.
+
+    lirinfo := JklTargetInfo^.LirInfo
+
+    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    abimap := &lirinfo^.RegisterAbiUsage[0]
+
+    IF abimap[reg] == LIR_REG_UNUSABLE THEN
+        // Don't care. Nobody else can be using it.
+
+        LEAVE
+    END
+
+    IF NOT statmap[reg] THEN
+        // Nobody was using it; good.
+
+        statmap[reg] = TRUE
+
+        LEAVE
+    END
+
+    // Scan the active list.
+
+    head := &LirActiveIntervalList
+    entry := head^.Next
+
+    WHILE head != entry DO
+        otherreg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
+
+        IF otherreg^.MachineRegister == reg THEN
+            // Found the sucker.
+
+            IF otherreg^.Type == LIR_PREALLOCATED_REG THEN
+                TlInternalError ( "Can't steal from preallocated reg",
+                    otherreg^.MachineRegister, 0, 0 )
+            END
+
+            newreg := LirAllocateRegister (
+                otherreg^.LiveAcrossCall, // calleesavedonly
+                0, // hint
+            )
+
+            IF newreg == -1 THEN
+                // Sucks for him, spill him.
+
+                otherreg^.Type = LIR_SPILLED_REG
+
+                TlRemoveEntryList ( entry )
+
+            ELSE
+                // Give him this new machine register.
+
+                otherreg^.MachineRegister = reg
+            END
+
+            LEAVE
+        END
+
+        entry = entry^.Next
     END
 END
 
@@ -559,19 +583,33 @@ FN LirLinearScan ()
 
         LirExpireOldIntervals ( reg )
 
-        machinereg := LirAllocateRegister (
-            reg^.LiveAcrossCall, // calleesavedonly
-            reg^.Hint, // hint
-        )
+        IF reg^.Type == LIR_VIRTUAL_REG THEN
+            machinereg := LirAllocateRegister (
+                reg^.LiveAcrossCall, // calleesavedonly
+                reg^.Hint, // hint
+            )
 
-        IF machinereg == -1 THEN
-            LirSpillAtInterval ( reg )
+            IF machinereg == -1 THEN
+                LirSpillAtInterval ( reg )
 
-        ELSE
-            reg^.MachineRegister = machinereg
-            reg^.Type = LIR_MACHINE_REG
+            ELSE
+                reg^.MachineRegister = machinereg
+                reg^.Type = LIR_MACHINE_REG
+
+                LirAddToActiveList ( reg )
+            END
+
+        ELSEIF reg^.Type == LIR_PREALLOCATED_REG THEN
+            // Must be a pre-allocated machine reg. If someone else is using it
+            // we have to kick their ass and make them grab another one, or
+            // spill them.
+
+            LirPreallocateRegister ( reg^.MachineRegister )
 
             LirAddToActiveList ( reg )
+        
+        ELSE
+            TlInternalError ( "LirLinearScan: Incorrect reg type", 0, 0, 0 )
         END
 
         entry = entry^.Next
@@ -593,6 +631,8 @@ FN LirAllocateRegistersForFunction (
     TlInitializeList ( &LirIntervalListHead )
 
     TlInitializeList ( &LirSortedIntervalListHead )
+
+    LirCurrentFunction = irfunc
 
     // First do a simple liveness analysis.
 

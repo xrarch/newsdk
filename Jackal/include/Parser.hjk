@@ -12,6 +12,8 @@ EXTERN PrsFunctionListHead : ^LexSymbol
 #DEFINE VAR_FLAG_PUBLIC 2
 #DEFINE VAR_FLAG_EXPORT 4
 
+#DEFINE TYPE_SIZE_UNINIT 0xFFFFFFFF
+
 ENUM PrsAstType : UBYTE
     AST_IDENTIFIER,
     AST_ASSIGN,
@@ -79,6 +81,7 @@ END
 STRUCT PrsAstInitializer
     ByteArray : ^UBYTE,
     BpArray : ^^PrsAstNode,
+    Size : UWORD,
 END
 
 UNION PrsAstBody

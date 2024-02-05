@@ -16,6 +16,9 @@ LexSectionHashTable : TlHashTable
 LexSectionStackTop : ^LexSectionStackElement
 
 PUBLIC LexDefaultSection : LexSection
+PUBLIC LexTextSection : LexSection
+PUBLIC LexDataSection : LexSection
+PUBLIC LexBssSection : LexSection
 
 FN LexInitializeSection (
     IN section : ^LexSection,
@@ -42,17 +45,24 @@ FN LexInitializeSection (
 
     TlInitializeHashTable ( &section^.InternedStringHashTable )
 
-    // Add the section to the ordered list of all sections.
+    // Initialize the dynamic buffer.
 
-    section^.Next = NULLPTR
+    TlInitializeDynamicBuffer ( &section^.DynamicBuffer )
+    TlInitializeDynamicBuffer ( &section^.ForwardDynamicBuffer )
 
-    IF LexSectionListTail THEN
-        LexSectionListTail^.Next = section
-    ELSE
-        LexSectionListHead = section
+    IF section != &LexDefaultSection THEN
+        // Add the section to the ordered list of all sections.
+
+        section^.Next = NULLPTR
+
+        IF LexSectionListTail THEN
+            LexSectionListTail^.Next = section
+        ELSE
+            LexSectionListHead = section
+        END
+
+        LexSectionListTail = section
     END
-
-    LexSectionListTail = section
 END
 
 FN LexInitializeSectionStuff ()
@@ -70,11 +80,26 @@ FN LexInitializeSectionStuff ()
 
     TlInitializeHashTable ( &LexSectionHashTable )
 
-    // Initialize the default section.
+    // Initialize the default sections.
 
     LexInitializeSection (
         &LexDefaultSection, // section
         "DEFAULT_SECTION", // name
+    )
+
+    LexInitializeSection (
+        &LexTextSection, // section
+        "text", // name
+    )
+
+    LexInitializeSection (
+        &LexDataSection, // section
+        "data", // name
+    )
+
+    LexInitializeSection (
+        &LexBssSection, // section
+        "bss", // name
     )
 
     LexCurrentSection = &LexDefaultSection
