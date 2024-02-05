@@ -4817,6 +4817,10 @@ FN PrsParseStorageClassSpecifier (
         )
     END
 
+    IF symbol^.Flags == VAR_FLAG_EXTERN THEN
+        symbol^.Section = &LexDefaultSection
+    END
+
     RETURN symbol
 END
 
