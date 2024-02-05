@@ -1283,10 +1283,6 @@ FN FoxHintFunction (
         IF irvar THEN
             irreg := LirGetRegister ( irvar )
 
-            IF arg^.InOut == ARG_IN THEN
-                irreg^.DefinedYet = TRUE
-            END
-
             IF arg^.InOut == ARG_IN AND incount < 4 THEN
                 irreg^.Hint = FOX_A0 + incount
 
