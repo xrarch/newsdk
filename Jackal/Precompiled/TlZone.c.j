@@ -63,11 +63,11 @@ void TlInitializeZone(uint64_t _mng_zone96, uint64_t _mng_blocksize97) {
     uint64_t __twr_v105;
     uint64_t __twr_v106;
     __twr_v98 = 8ULL;
-    if (_mng_blocksize97 >= __twr_v98) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l2:;
+    if (_mng_blocksize97 >= __twr_v98) { goto __twr_l2; } else { goto __twr_l3; }
+    __twr_l3:;
     __twr_v99 = 8ULL;
     _mng_blocksize97 = __twr_v99;
-    __twr_l1:;
+    __twr_l2:;
     __twr_v100 = 7ULL;
     __twr_v101 = _mng_blocksize97 + __twr_v100;
     _mng_blocksize97 = __twr_v101;
@@ -79,6 +79,7 @@ void TlInitializeZone(uint64_t _mng_zone96, uint64_t _mng_blocksize97) {
     __twr_v105 = 8ULL;
     __twr_v106 = _mng_zone96 + __twr_v105;
     *(uint64_t*)(__twr_v106) = __twr_v104;
+    __twr_l1:;
     _jkl_epilogue:;
 }
 uint64_t TlAllocateFromZone(uint64_t _mng_zone107) {
@@ -114,34 +115,34 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone107) {
     __twr_v109 = _mng_zone107 + __twr_v108;
     __twr_v110 = *(uint64_t*)(__twr_v109);
     _mng_block111 = __twr_v110;
-    if (!(__twr_v110)) { goto __twr_l3; } else { goto __twr_l4; }
-    __twr_l4:;
+    if (!(__twr_v110)) { goto __twr_l5; } else { goto __twr_l6; }
+    __twr_l6:;
     __twr_v112 = *(uint64_t*)(_mng_block111);
     __twr_v113 = 8ULL;
     __twr_v114 = _mng_zone107 + __twr_v113;
     *(uint64_t*)(__twr_v114) = __twr_v112;
     _jkl_retv = _mng_block111;
     goto _jkl_epilogue;
-    __twr_l3:;
+    __twr_l5:;
     __twr_v115 = *(uint64_t*)(_mng_zone107);
     _mng_blocksize116 = __twr_v115;
     __twr_v117 = 5ULL;
     __twr_v118 = __twr_v115 << __twr_v117;
     __twr_v119 = (uint64_t)(&TlBumpAlloc);
     __twr_v120 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v119)(__twr_v118, (uint64_t)(&_mng_chunk121));
-    if (!(__twr_v120)) { goto __twr_l5; } else { goto __twr_l6; }
-    __twr_l6:;
+    if (!(__twr_v120)) { goto __twr_l7; } else { goto __twr_l8; }
+    __twr_l8:;
     __twr_v122 = (uint64_t)(&TlInternalError);
     __twr_v123 = (uint64_t)(&"Failed to allocate zone chunk");
     __twr_v124 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v122)(__twr_v123, __twr_v124, __twr_v124, __twr_v124);
-    __twr_l5:;
+    __twr_l7:;
     _mng_block111 = _mng_chunk121;
     __twr_v125 = _mng_chunk121 + _mng_blocksize116;
     _mng_chunk121 = __twr_v125;
     __twr_v126 = 1ULL;
     _mng_i127 = __twr_v126;
-    __twr_l7:;
+    __twr_l9:;
     __twr_v128 = 8ULL;
     __twr_v129 = _mng_zone107 + __twr_v128;
     __twr_v130 = *(uint64_t*)(__twr_v129);
@@ -152,12 +153,13 @@ uint64_t TlAllocateFromZone(uint64_t _mng_zone107) {
     _mng_i127 = __twr_v132;
     __twr_v133 = _mng_chunk121 + _mng_blocksize116;
     _mng_chunk121 = __twr_v133;
-    __twr_l9:;
+    __twr_l11:;
     __twr_v134 = 32ULL;
-    if (_mng_i127 < __twr_v134) { goto __twr_l7; } else { goto __twr_l8; }
-    __twr_l8:;
+    if (_mng_i127 < __twr_v134) { goto __twr_l9; } else { goto __twr_l10; }
+    __twr_l10:;
     _jkl_retv = _mng_block111;
     goto _jkl_epilogue;
+    __twr_l4:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -170,5 +172,6 @@ void TlFreeToZone(uint64_t _mng_zone135, uint64_t _mng_block136) {
     __twr_v139 = *(uint64_t*)(__twr_v138);
     *(uint64_t*)(_mng_block136) = __twr_v139;
     *(uint64_t*)(__twr_v138) = _mng_block136;
+    __twr_l12:;
     _jkl_epilogue:;
 }

@@ -72,6 +72,7 @@ void TlInitializeDynamicBuffer(uint64_t _mng_array96) {
     __twr_v103 = 16ULL;
     __twr_v104 = _mng_array96 + __twr_v103;
     *(uint64_t*)(__twr_v104) = __twr_v102;
+    __twr_l1:;
     _jkl_epilogue:;
 }
 void TlUninitializeDynamicBuffer(uint64_t _mng_array105) {
@@ -87,14 +88,15 @@ void TlUninitializeDynamicBuffer(uint64_t _mng_array105) {
     __twr_v107 = _mng_array105 + __twr_v106;
     __twr_v108 = *(uint64_t*)(__twr_v107);
     __twr_v109 = 64ULL;
-    if (__twr_v108 == __twr_v109) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l2:;
+    if (__twr_v108 == __twr_v109) { goto __twr_l3; } else { goto __twr_l4; }
+    __twr_l4:;
     __twr_v110 = (uint64_t)(&TlFree);
     __twr_v111 = 16ULL;
     __twr_v112 = _mng_array105 + __twr_v111;
     __twr_v113 = *(uint64_t*)(__twr_v112);
     ((void (*)(uint64_t))__twr_v110)(__twr_v113);
-    __twr_l1:;
+    __twr_l3:;
+    __twr_l2:;
     _jkl_epilogue:;
 }
 void TlInsertDynamicBuffer(uint64_t _mng_array114, uint64_t _mng_byte115) {
@@ -155,8 +157,8 @@ void TlInsertDynamicBuffer(uint64_t _mng_array114, uint64_t _mng_byte115) {
     __twr_v119 = 8ULL;
     __twr_v120 = _mng_array114 + __twr_v119;
     __twr_v121 = *(uint64_t*)(__twr_v120);
-    if (__twr_v118 >= __twr_v121) { goto __twr_l3; } else { goto __twr_l4; }
-    __twr_l4:;
+    if (__twr_v118 >= __twr_v121) { goto __twr_l6; } else { goto __twr_l7; }
+    __twr_l7:;
     __twr_v122 = 16ULL;
     __twr_v123 = _mng_array114 + __twr_v122;
     __twr_v124 = *(uint64_t*)(__twr_v123);
@@ -168,7 +170,7 @@ void TlInsertDynamicBuffer(uint64_t _mng_array114, uint64_t _mng_byte115) {
     __twr_v129 = __twr_v128 + __twr_v126;
     *(uint64_t*)(_mng_array114) = __twr_v129;
     goto _jkl_epilogue;
-    __twr_l3:;
+    __twr_l6:;
     __twr_v130 = (uint64_t)(&TlAlloc);
     __twr_v131 = 8ULL;
     __twr_v132 = _mng_array114 + __twr_v131;
@@ -176,13 +178,13 @@ void TlInsertDynamicBuffer(uint64_t _mng_array114, uint64_t _mng_byte115) {
     __twr_v134 = 1ULL;
     __twr_v135 = __twr_v133 << __twr_v134;
     __twr_v136 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v130)(__twr_v135, (uint64_t)(&_mng_newbuffer137));
-    if (!(__twr_v136)) { goto __twr_l5; } else { goto __twr_l6; }
-    __twr_l6:;
+    if (!(__twr_v136)) { goto __twr_l8; } else { goto __twr_l9; }
+    __twr_l9:;
     __twr_v138 = (uint64_t)(&TlInternalError);
     __twr_v139 = (uint64_t)(&"Failed to grow dynamic buffer");
     __twr_v140 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v138)(__twr_v139, __twr_v140, __twr_v140, __twr_v140);
-    __twr_l5:;
+    __twr_l8:;
     __twr_v141 = (uint64_t)(&TlCopyMemory);
     __twr_v142 = 16ULL;
     __twr_v143 = _mng_array114 + __twr_v142;
@@ -193,14 +195,14 @@ void TlInsertDynamicBuffer(uint64_t _mng_array114, uint64_t _mng_byte115) {
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v141)(_mng_newbuffer137, __twr_v144, __twr_v147);
     __twr_v148 = *(uint64_t*)(__twr_v146);
     __twr_v149 = 64ULL;
-    if (__twr_v148 == __twr_v149) { goto __twr_l7; } else { goto __twr_l8; }
-    __twr_l8:;
+    if (__twr_v148 == __twr_v149) { goto __twr_l10; } else { goto __twr_l11; }
+    __twr_l11:;
     __twr_v150 = (uint64_t)(&TlFree);
     __twr_v151 = 16ULL;
     __twr_v152 = _mng_array114 + __twr_v151;
     __twr_v153 = *(uint64_t*)(__twr_v152);
     ((void (*)(uint64_t))__twr_v150)(__twr_v153);
-    __twr_l7:;
+    __twr_l10:;
     __twr_v154 = 16ULL;
     __twr_v155 = _mng_array114 + __twr_v154;
     *(uint64_t*)(__twr_v155) = _mng_newbuffer137;
@@ -218,6 +220,7 @@ void TlInsertDynamicBuffer(uint64_t _mng_array114, uint64_t _mng_byte115) {
     __twr_v165 = *(uint64_t*)(_mng_array114);
     __twr_v166 = __twr_v165 + __twr_v163;
     *(uint64_t*)(_mng_array114) = __twr_v166;
+    __twr_l5:;
     _jkl_epilogue:;
 }
 void TlCopyIntoDynamicBuffer(uint64_t _mng_array167, uint64_t _mng_srcbuf168, uint64_t _mng_length169) {
@@ -279,8 +282,8 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array167, uint64_t _mng_srcbuf168, ui
     __twr_v172 = 8ULL;
     __twr_v173 = _mng_array167 + __twr_v172;
     __twr_v174 = *(uint64_t*)(__twr_v173);
-    if (__twr_v171 >= __twr_v174) { goto __twr_l9; } else { goto __twr_l10; }
-    __twr_l10:;
+    if (__twr_v171 >= __twr_v174) { goto __twr_l13; } else { goto __twr_l14; }
+    __twr_l14:;
     __twr_v175 = (uint64_t)(&TlCopyMemory);
     __twr_v176 = 16ULL;
     __twr_v177 = _mng_array167 + __twr_v176;
@@ -292,7 +295,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array167, uint64_t _mng_srcbuf168, ui
     __twr_v182 = __twr_v181 + _mng_length169;
     *(uint64_t*)(_mng_array167) = __twr_v182;
     goto _jkl_epilogue;
-    __twr_l9:;
+    __twr_l13:;
     __twr_v183 = 8ULL;
     __twr_v184 = _mng_array167 + __twr_v183;
     __twr_v185 = *(uint64_t*)(__twr_v184);
@@ -301,25 +304,25 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array167, uint64_t _mng_srcbuf168, ui
     _mng_newlength188 = __twr_v187;
     __twr_v189 = *(uint64_t*)(_mng_array167);
     __twr_v190 = __twr_v189 + _mng_length169;
-    if (__twr_v190 <= __twr_v187) { goto __twr_l12; } else { goto __twr_l11; }
-    __twr_l11:;
+    if (__twr_v190 <= __twr_v187) { goto __twr_l16; } else { goto __twr_l15; }
+    __twr_l15:;
     __twr_v191 = 1ULL;
     __twr_v192 = _mng_newlength188 << __twr_v191;
     _mng_newlength188 = __twr_v192;
-    __twr_l13:;
+    __twr_l17:;
     __twr_v193 = *(uint64_t*)(_mng_array167);
     __twr_v194 = __twr_v193 + _mng_length169;
-    if (__twr_v194 > _mng_newlength188) { goto __twr_l11; } else { goto __twr_l12; }
-    __twr_l12:;
+    if (__twr_v194 > _mng_newlength188) { goto __twr_l15; } else { goto __twr_l16; }
+    __twr_l16:;
     __twr_v195 = (uint64_t)(&TlAlloc);
     __twr_v196 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v195)(_mng_newlength188, (uint64_t)(&_mng_newbuffer197));
-    if (!(__twr_v196)) { goto __twr_l14; } else { goto __twr_l15; }
-    __twr_l15:;
+    if (!(__twr_v196)) { goto __twr_l18; } else { goto __twr_l19; }
+    __twr_l19:;
     __twr_v198 = (uint64_t)(&TlInternalError);
     __twr_v199 = (uint64_t)(&"Failed to grow dynamic buffer");
     __twr_v200 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v198)(__twr_v199, __twr_v200, __twr_v200, __twr_v200);
-    __twr_l14:;
+    __twr_l18:;
     __twr_v201 = (uint64_t)(&TlCopyMemory);
     __twr_v202 = 16ULL;
     __twr_v203 = _mng_array167 + __twr_v202;
@@ -330,14 +333,14 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array167, uint64_t _mng_srcbuf168, ui
     __twr_v207 = _mng_array167 + __twr_v206;
     __twr_v208 = *(uint64_t*)(__twr_v207);
     __twr_v209 = 64ULL;
-    if (__twr_v208 == __twr_v209) { goto __twr_l16; } else { goto __twr_l17; }
-    __twr_l17:;
+    if (__twr_v208 == __twr_v209) { goto __twr_l20; } else { goto __twr_l21; }
+    __twr_l21:;
     __twr_v210 = (uint64_t)(&TlFree);
     __twr_v211 = 16ULL;
     __twr_v212 = _mng_array167 + __twr_v211;
     __twr_v213 = *(uint64_t*)(__twr_v212);
     ((void (*)(uint64_t))__twr_v210)(__twr_v213);
-    __twr_l16:;
+    __twr_l20:;
     __twr_v214 = 16ULL;
     __twr_v215 = _mng_array167 + __twr_v214;
     *(uint64_t*)(__twr_v215) = _mng_newbuffer197;
@@ -351,6 +354,7 @@ void TlCopyIntoDynamicBuffer(uint64_t _mng_array167, uint64_t _mng_srcbuf168, ui
     __twr_v221 = *(uint64_t*)(_mng_array167);
     __twr_v222 = __twr_v221 + _mng_length169;
     *(uint64_t*)(_mng_array167) = __twr_v222;
+    __twr_l12:;
     _jkl_epilogue:;
 }
 void TlInsertNumberDynamicBuffer(uint64_t _mng_array223, uint64_t _mng_number224, uint64_t _mng_base225) {
@@ -385,29 +389,29 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array223, uint64_t _mng_number224
     uint64_t __twr_v254;
     uint64_t __twr_v255;
     __twr_v226 = 10ULL;
-    if (_mng_base225 == __twr_v226) { goto __twr_l18; } else { goto __twr_l19; }
-    __twr_l19:;
+    if (_mng_base225 == __twr_v226) { goto __twr_l23; } else { goto __twr_l24; }
+    __twr_l24:;
     __twr_v227 = (uint64_t)(&TlInternalError);
     __twr_v228 = (uint64_t)(&"Only base 10 supported");
     __twr_v229 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v227)(__twr_v228, __twr_v229, __twr_v229, __twr_v229);
-    __twr_l18:;
+    __twr_l23:;
     __twr_v230 = 0ULL;
-    if (_mng_number224 != __twr_v230) { goto __twr_l20; } else { goto __twr_l21; }
-    __twr_l21:;
+    if (_mng_number224 != __twr_v230) { goto __twr_l25; } else { goto __twr_l26; }
+    __twr_l26:;
     __twr_v231 = (uint64_t)(&TlInsertDynamicBuffer);
     __twr_v232 = 48ULL;
     ((void (*)(uint64_t, uint64_t))__twr_v231)(_mng_array223, __twr_v232);
     goto _jkl_epilogue;
-    __twr_l20:;
+    __twr_l25:;
     __twr_v233 = 0ULL;
     _mng_log10234 = __twr_v233;
     __twr_v235 = 1ULL;
     _mng_divisor236 = __twr_v235;
     _mng_n237 = _mng_number224;
     __twr_v238 = 10ULL;
-    if (_mng_number224 < __twr_v238) { goto __twr_l23; } else { goto __twr_l22; }
-    __twr_l22:;
+    if (_mng_number224 < __twr_v238) { goto __twr_l28; } else { goto __twr_l27; }
+    __twr_l27:;
     __twr_v239 = 10ULL;
     __twr_v240 = _mng_divisor236 * __twr_v239;
     _mng_divisor236 = __twr_v240;
@@ -416,15 +420,15 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array223, uint64_t _mng_number224
     __twr_v242 = 1ULL;
     __twr_v243 = _mng_log10234 + __twr_v242;
     _mng_log10234 = __twr_v243;
-    __twr_l24:;
+    __twr_l29:;
     __twr_v244 = 10ULL;
-    if (_mng_n237 >= __twr_v244) { goto __twr_l22; } else { goto __twr_l23; }
-    __twr_l23:;
+    if (_mng_n237 >= __twr_v244) { goto __twr_l27; } else { goto __twr_l28; }
+    __twr_l28:;
     __twr_v245 = 1ULL;
     __twr_v246 = _mng_log10234 + __twr_v245;
     _mng_log10234 = __twr_v246;
-    if (!(__twr_v246)) { goto __twr_l26; } else { goto __twr_l25; }
-    __twr_l25:;
+    if (!(__twr_v246)) { goto __twr_l31; } else { goto __twr_l30; }
+    __twr_l30:;
     __twr_v247 = (uint64_t)(&TlInsertDynamicBuffer);
     __twr_v248 = _mng_number224 / _mng_divisor236;
     __twr_v249 = 10ULL;
@@ -437,9 +441,10 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array223, uint64_t _mng_number224
     _mng_log10234 = __twr_v254;
     __twr_v255 = _mng_divisor236 / __twr_v249;
     _mng_divisor236 = __twr_v255;
-    __twr_l27:;
-    if (_mng_log10234) { goto __twr_l25; } else { goto __twr_l26; }
-    __twr_l26:;
+    __twr_l32:;
+    if (_mng_log10234) { goto __twr_l30; } else { goto __twr_l31; }
+    __twr_l31:;
+    __twr_l22:;
     _jkl_epilogue:;
 }
 uint64_t TlPopDynamicBuffer(uint64_t _mng_array256) {
@@ -456,12 +461,12 @@ uint64_t TlPopDynamicBuffer(uint64_t _mng_array256) {
     uint64_t __twr_v266;
     uint64_t __twr_v267;
     __twr_v257 = *(uint64_t*)(_mng_array256);
-    if (__twr_v257) { goto __twr_l28; } else { goto __twr_l29; }
-    __twr_l29:;
+    if (__twr_v257) { goto __twr_l34; } else { goto __twr_l35; }
+    __twr_l35:;
     __twr_v258 = 0ULL;
     _jkl_retv = __twr_v258;
     goto _jkl_epilogue;
-    __twr_l28:;
+    __twr_l34:;
     __twr_v259 = 1ULL;
     __twr_v260 = *(uint64_t*)(_mng_array256);
     __twr_v261 = __twr_v260 - __twr_v259;
@@ -474,6 +479,7 @@ uint64_t TlPopDynamicBuffer(uint64_t _mng_array256) {
     __twr_v267 = *(uint8_t*)(__twr_v266);
     _jkl_retv = __twr_v267;
     goto _jkl_epilogue;
+    __twr_l33:;
     _jkl_epilogue:;
     return _jkl_retv;
 }

@@ -157,13 +157,13 @@ uint64_t LirCreateInstruction(uint64_t _mng_type156, uint64_t _mng_machtype157) 
     __twr_v158 = (uint64_t)(&TlBumpAlloc);
     __twr_v159 = 98ULL;
     __twr_v160 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v158)(__twr_v159, (uint64_t)(&_mng_lirinst161));
-    if (!(__twr_v160)) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l2:;
+    if (!(__twr_v160)) { goto __twr_l2; } else { goto __twr_l3; }
+    __twr_l3:;
     __twr_v162 = (uint64_t)(&TlInternalError);
     __twr_v163 = (uint64_t)(&"Failed to create LIR instruction");
     __twr_v164 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v162)(__twr_v163, __twr_v164, __twr_v164, __twr_v164);
-    __twr_l1:;
+    __twr_l2:;
     __twr_v165 = 97ULL;
     __twr_v166 = _mng_lirinst161 + __twr_v165;
     *(uint8_t*)(__twr_v166) = _mng_type156;
@@ -182,6 +182,7 @@ uint64_t LirCreateInstruction(uint64_t _mng_type156, uint64_t _mng_machtype157) 
     *(uint8_t*)(__twr_v175) = _mng_machtype157;
     _jkl_retv = _mng_lirinst161;
     goto _jkl_epilogue;
+    __twr_l1:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -209,13 +210,13 @@ uint64_t LirCreateRegister() {
     __twr_v176 = (uint64_t)(&TlBumpAlloc);
     __twr_v177 = 61ULL;
     __twr_v178 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v176)(__twr_v177, (uint64_t)(&_mng_reg179));
-    if (!(__twr_v178)) { goto __twr_l3; } else { goto __twr_l4; }
-    __twr_l4:;
+    if (!(__twr_v178)) { goto __twr_l5; } else { goto __twr_l6; }
+    __twr_l6:;
     __twr_v180 = (uint64_t)(&TlInternalError);
     __twr_v181 = (uint64_t)(&"Failed to create LIR register");
     __twr_v182 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v180)(__twr_v181, __twr_v182, __twr_v182, __twr_v182);
-    __twr_l3:;
+    __twr_l5:;
     __twr_v183 = 1ULL;
     __twr_v184 = 60ULL;
     __twr_v185 = _mng_reg179 + __twr_v184;
@@ -236,6 +237,7 @@ uint64_t LirCreateRegister() {
     *(uint8_t*)(__twr_v194) = __twr_v186;
     _jkl_retv = _mng_reg179;
     goto _jkl_epilogue;
+    __twr_l4:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -259,6 +261,7 @@ uint64_t LirCreatePreallocatedRegister(uint64_t _mng_machreg195) {
     *(uint8_t*)(__twr_v202) = _mng_machreg195;
     _jkl_retv = __twr_v197;
     goto _jkl_epilogue;
+    __twr_l7:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -307,27 +310,28 @@ void LirInsertInstructionTail(uint64_t _mng_lirinst203) {
     __twr_v215 = *(uint64_t*)(__twr_v204);
     __twr_v216 = __twr_v215 + __twr_v210;
     __twr_v217 = *(uint64_t*)(__twr_v216);
-    if (__twr_v217) { goto __twr_l7; } else { goto __twr_l6; }
-    __twr_l6:;
+    if (__twr_v217) { goto __twr_l11; } else { goto __twr_l10; }
+    __twr_l10:;
     __twr_v218 = (uint64_t)(&LirCurrentFunction);
     __twr_v219 = *(uint64_t*)(__twr_v218);
     __twr_v220 = 24ULL;
     __twr_v221 = __twr_v219 + __twr_v220;
     *(uint64_t*)(__twr_v221) = _mng_lirinst203;
-    goto __twr_l5;
-    __twr_l7:;
+    goto __twr_l9;
+    __twr_l11:;
     __twr_v222 = (uint64_t)(&LirCurrentFunction);
     __twr_v223 = *(uint64_t*)(__twr_v222);
     __twr_v224 = 32ULL;
     __twr_v225 = __twr_v223 + __twr_v224;
     __twr_v226 = *(uint64_t*)(__twr_v225);
     *(uint64_t*)(__twr_v226) = _mng_lirinst203;
-    __twr_l5:;
+    __twr_l9:;
     __twr_v227 = (uint64_t)(&LirCurrentFunction);
     __twr_v228 = *(uint64_t*)(__twr_v227);
     __twr_v229 = 32ULL;
     __twr_v230 = __twr_v228 + __twr_v229;
     *(uint64_t*)(__twr_v230) = _mng_lirinst203;
+    __twr_l8:;
     _jkl_epilogue:;
 }
 void LirRemoveInstruction(uint64_t _mng_lirinst231) {
@@ -361,35 +365,36 @@ void LirRemoveInstruction(uint64_t _mng_lirinst231) {
     __twr_v237 = _mng_lirinst231 + __twr_v236;
     __twr_v238 = *(uint64_t*)(__twr_v237);
     _mng_p239 = __twr_v238;
-    if (!(__twr_v238)) { goto __twr_l10; } else { goto __twr_l9; }
-    __twr_l9:;
+    if (!(__twr_v238)) { goto __twr_l15; } else { goto __twr_l14; }
+    __twr_l14:;
     __twr_v240 = *(uint64_t*)(_mng_lirinst231);
     *(uint64_t*)(_mng_p239) = __twr_v240;
-    goto __twr_l8;
-    __twr_l10:;
+    goto __twr_l13;
+    __twr_l15:;
     __twr_v241 = *(uint64_t*)(_mng_lirinst231);
     __twr_v242 = 24ULL;
     __twr_v243 = _mng_block235 + __twr_v242;
     *(uint64_t*)(__twr_v243) = __twr_v241;
-    __twr_l8:;
+    __twr_l13:;
     __twr_v244 = *(uint64_t*)(_mng_lirinst231);
     _mng_p239 = __twr_v244;
-    if (!(__twr_v244)) { goto __twr_l13; } else { goto __twr_l12; }
-    __twr_l12:;
+    if (!(__twr_v244)) { goto __twr_l18; } else { goto __twr_l17; }
+    __twr_l17:;
     __twr_v245 = 8ULL;
     __twr_v246 = _mng_lirinst231 + __twr_v245;
     __twr_v247 = *(uint64_t*)(__twr_v246);
     __twr_v248 = _mng_p239 + __twr_v245;
     *(uint64_t*)(__twr_v248) = __twr_v247;
-    goto __twr_l11;
-    __twr_l13:;
+    goto __twr_l16;
+    __twr_l18:;
     __twr_v249 = 8ULL;
     __twr_v250 = _mng_lirinst231 + __twr_v249;
     __twr_v251 = *(uint64_t*)(__twr_v250);
     __twr_v252 = 32ULL;
     __twr_v253 = _mng_block235 + __twr_v252;
     *(uint64_t*)(__twr_v253) = __twr_v251;
-    __twr_l11:;
+    __twr_l16:;
+    __twr_l12:;
     _jkl_epilogue:;
 }
 uint64_t LirGetLabel(uint64_t _mng_oldlabel254) {
@@ -415,8 +420,8 @@ uint64_t LirGetLabel(uint64_t _mng_oldlabel254) {
     __twr_v256 = _mng_oldlabel254 + __twr_v255;
     __twr_v257 = *(uint64_t*)(__twr_v256);
     _mng_lirinst258 = __twr_v257;
-    if (!(__twr_v257)) { goto __twr_l14; } else { goto __twr_l15; }
-    __twr_l15:;
+    if (!(__twr_v257)) { goto __twr_l20; } else { goto __twr_l21; }
+    __twr_l21:;
     __twr_v259 = 1ULL;
     __twr_v260 = 48ULL;
     __twr_v261 = _mng_lirinst258 + __twr_v260;
@@ -425,7 +430,7 @@ uint64_t LirGetLabel(uint64_t _mng_oldlabel254) {
     *(uint32_t*)(__twr_v261) = __twr_v263;
     _jkl_retv = _mng_lirinst258;
     goto _jkl_epilogue;
-    __twr_l14:;
+    __twr_l20:;
     __twr_v264 = (uint64_t)(&LirCreateInstruction);
     __twr_v265 = 1ULL;
     __twr_v266 = 0ULL;
@@ -439,6 +444,7 @@ uint64_t LirGetLabel(uint64_t _mng_oldlabel254) {
     *(uint32_t*)(__twr_v271) = __twr_v265;
     _jkl_retv = __twr_v267;
     goto _jkl_epilogue;
+    __twr_l19:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -457,11 +463,11 @@ uint64_t LirGetRegister(uint64_t _mng_oldvariable272) {
     __twr_v274 = _mng_oldvariable272 + __twr_v273;
     __twr_v275 = *(uint64_t*)(__twr_v274);
     _mng_lirreg276 = __twr_v275;
-    if (!(__twr_v275)) { goto __twr_l16; } else { goto __twr_l17; }
-    __twr_l17:;
+    if (!(__twr_v275)) { goto __twr_l23; } else { goto __twr_l24; }
+    __twr_l24:;
     _jkl_retv = _mng_lirreg276;
     goto _jkl_epilogue;
-    __twr_l16:;
+    __twr_l23:;
     __twr_v277 = (uint64_t)(&LirCreateRegister);
     __twr_v278 = ((uint64_t (*)())__twr_v277)();
     _mng_lirreg276 = __twr_v278;
@@ -472,6 +478,7 @@ uint64_t LirGetRegister(uint64_t _mng_oldvariable272) {
     *(uint64_t*)(__twr_v278) = __twr_v281;
     _jkl_retv = __twr_v278;
     goto _jkl_epilogue;
+    __twr_l22:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -507,11 +514,11 @@ uint64_t LirSelect(uint64_t _mng_inst282) {
     __twr_v284 = _mng_inst282 + __twr_v283;
     __twr_v285 = *(uint64_t*)(__twr_v284);
     _mng_reg286 = __twr_v285;
-    if (!(__twr_v285)) { goto __twr_l18; } else { goto __twr_l19; }
-    __twr_l19:;
+    if (!(__twr_v285)) { goto __twr_l26; } else { goto __twr_l27; }
+    __twr_l27:;
     _jkl_retv = _mng_reg286;
     goto _jkl_epilogue;
-    __twr_l18:;
+    __twr_l26:;
     __twr_v287 = (uint64_t)(&JklTargetInfo);
     __twr_v288 = *(uint64_t*)(__twr_v287);
     __twr_v289 = 24ULL;
@@ -526,24 +533,25 @@ uint64_t LirSelect(uint64_t _mng_inst282) {
     __twr_v298 = *(uint64_t*)(__twr_v297);
     __twr_v299 = ((uint64_t (*)(uint64_t))__twr_v298)(_mng_inst282);
     _mng_reg286 = __twr_v299;
-    if (!(__twr_v299)) { goto __twr_l20; } else { goto __twr_l22; }
-    __twr_l22:;
+    if (!(__twr_v299)) { goto __twr_l28; } else { goto __twr_l30; }
+    __twr_l30:;
     __twr_v300 = 60ULL;
     __twr_v301 = _mng_reg286 + __twr_v300;
     __twr_v302 = *(uint8_t*)(__twr_v301);
     __twr_v303 = 3ULL;
-    if (__twr_v302 != __twr_v303) { goto __twr_l20; } else { goto __twr_l21; }
-    __twr_l21:;
+    if (__twr_v302 != __twr_v303) { goto __twr_l28; } else { goto __twr_l29; }
+    __twr_l29:;
     __twr_v304 = (uint64_t)(&TlInternalError);
     __twr_v305 = (uint64_t)(&"Prealloc -> Virt TODO");
     __twr_v306 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v304)(__twr_v305, __twr_v306, __twr_v306, __twr_v306);
-    __twr_l20:;
+    __twr_l28:;
     __twr_v307 = 80ULL;
     __twr_v308 = _mng_inst282 + __twr_v307;
     *(uint64_t*)(__twr_v308) = _mng_reg286;
     _jkl_retv = _mng_reg286;
     goto _jkl_epilogue;
+    __twr_l25:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -562,8 +570,8 @@ uint64_t LirSelectOrGetRegister(uint64_t _mng_var309) {
     __twr_v310 = 8ULL;
     __twr_v311 = _mng_var309 + __twr_v310;
     __twr_v312 = *(uint64_t*)(__twr_v311);
-    if (!(__twr_v312)) { goto __twr_l23; } else { goto __twr_l24; }
-    __twr_l24:;
+    if (!(__twr_v312)) { goto __twr_l32; } else { goto __twr_l33; }
+    __twr_l33:;
     __twr_v313 = (uint64_t)(&LirSelect);
     __twr_v314 = 8ULL;
     __twr_v315 = _mng_var309 + __twr_v314;
@@ -571,11 +579,12 @@ uint64_t LirSelectOrGetRegister(uint64_t _mng_var309) {
     __twr_v317 = ((uint64_t (*)(uint64_t))__twr_v313)(__twr_v316);
     _jkl_retv = __twr_v317;
     goto _jkl_epilogue;
-    __twr_l23:;
+    __twr_l32:;
     __twr_v318 = (uint64_t)(&LirGetRegister);
     __twr_v319 = ((uint64_t (*)(uint64_t))__twr_v318)(_mng_var309);
     _jkl_retv = __twr_v319;
     goto _jkl_epilogue;
+    __twr_l31:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -651,20 +660,20 @@ void LirSelectForFunction(uint64_t _mng_funcsym320) {
     _mng_inst330 = __twr_v329;
     __twr_v331 = (uint64_t)(&LirCurrentFunction);
     *(uint64_t*)(__twr_v331) = __twr_v323;
-    if (!(__twr_v329)) { goto __twr_l26; } else { goto __twr_l25; }
-    __twr_l25:;
+    if (!(__twr_v329)) { goto __twr_l36; } else { goto __twr_l35; }
+    __twr_l35:;
     __twr_v332 = 88ULL;
     __twr_v333 = _mng_inst330 + __twr_v332;
     __twr_v334 = *(uint8_t*)(__twr_v333);
     __twr_v335 = 21ULL;
-    if (__twr_v334 != __twr_v335) { goto __twr_l30; } else { goto __twr_l29; }
-    __twr_l29:;
+    if (__twr_v334 != __twr_v335) { goto __twr_l40; } else { goto __twr_l39; }
+    __twr_l39:;
     __twr_v336 = 8ULL;
     __twr_v337 = _mng_inst330 + __twr_v336;
     __twr_v338 = *(uint64_t*)(__twr_v337);
     _mng_lirinst339 = __twr_v338;
-    if (__twr_v338) { goto __twr_l31; } else { goto __twr_l32; }
-    __twr_l32:;
+    if (__twr_v338) { goto __twr_l41; } else { goto __twr_l42; }
+    __twr_l42:;
     __twr_v340 = (uint64_t)(&LirCreateInstruction);
     __twr_v341 = 1ULL;
     __twr_v342 = 0ULL;
@@ -676,56 +685,57 @@ void LirSelectForFunction(uint64_t _mng_funcsym320) {
     __twr_v346 = 48ULL;
     __twr_v347 = __twr_v343 + __twr_v346;
     *(uint32_t*)(__twr_v347) = __twr_v342;
-    __twr_l31:;
+    __twr_l41:;
     __twr_v348 = (uint64_t)(&LirInsertInstructionTail);
     ((void (*)(uint64_t))__twr_v348)(_mng_lirinst339);
-    goto __twr_l28;
-    __twr_l30:;
+    goto __twr_l38;
+    __twr_l40:;
     __twr_v349 = 88ULL;
     __twr_v350 = _mng_inst330 + __twr_v349;
     __twr_v351 = *(uint8_t*)(__twr_v350);
     __twr_v352 = 25ULL;
-    if (__twr_v351 == __twr_v352) { goto __twr_l33; } else { goto __twr_l36; }
-    __twr_l36:;
+    if (__twr_v351 == __twr_v352) { goto __twr_l43; } else { goto __twr_l46; }
+    __twr_l46:;
     __twr_v353 = 88ULL;
     __twr_v354 = _mng_inst330 + __twr_v353;
     __twr_v355 = *(uint8_t*)(__twr_v354);
     __twr_v356 = 28ULL;
-    if (__twr_v355 == __twr_v356) { goto __twr_l33; } else { goto __twr_l35; }
-    __twr_l35:;
+    if (__twr_v355 == __twr_v356) { goto __twr_l43; } else { goto __twr_l45; }
+    __twr_l45:;
     __twr_v357 = 88ULL;
     __twr_v358 = _mng_inst330 + __twr_v357;
     __twr_v359 = *(uint8_t*)(__twr_v358);
     __twr_v360 = 6ULL;
-    if (__twr_v359 != __twr_v360) { goto __twr_l34; } else { goto __twr_l37; }
-    __twr_l37:;
+    if (__twr_v359 != __twr_v360) { goto __twr_l44; } else { goto __twr_l47; }
+    __twr_l47:;
     __twr_v361 = 48ULL;
     __twr_v362 = _mng_inst330 + __twr_v361;
     __twr_v363 = *(uint64_t*)(__twr_v362);
     __twr_v364 = *(uint64_t*)(__twr_v363);
-    if (__twr_v364) { goto __twr_l33; } else { goto __twr_l34; }
-    __twr_l34:;
+    if (__twr_v364) { goto __twr_l43; } else { goto __twr_l44; }
+    __twr_l44:;
     __twr_v365 = 88ULL;
     __twr_v366 = _mng_inst330 + __twr_v365;
     __twr_v367 = *(uint8_t*)(__twr_v366);
     __twr_v368 = 7ULL;
-    if (__twr_v367 <= __twr_v368) { goto __twr_l28; } else { goto __twr_l38; }
-    __twr_l38:;
+    if (__twr_v367 <= __twr_v368) { goto __twr_l38; } else { goto __twr_l48; }
+    __twr_l48:;
     __twr_v369 = 88ULL;
     __twr_v370 = _mng_inst330 + __twr_v369;
     __twr_v371 = *(uint8_t*)(__twr_v370);
     __twr_v372 = 23ULL;
-    if (__twr_v371 >= __twr_v372) { goto __twr_l28; } else { goto __twr_l33; }
-    __twr_l33:;
+    if (__twr_v371 >= __twr_v372) { goto __twr_l38; } else { goto __twr_l43; }
+    __twr_l43:;
     __twr_v373 = (uint64_t)(&LirSelect);
     __twr_v374 = ((uint64_t (*)(uint64_t))__twr_v373)(_mng_inst330);
-    __twr_l28:;
+    __twr_l38:;
     __twr_v375 = 32ULL;
     __twr_v376 = _mng_inst330 + __twr_v375;
     __twr_v377 = *(uint64_t*)(__twr_v376);
     _mng_inst330 = __twr_v377;
-    __twr_l27:;
-    if (_mng_inst330) { goto __twr_l25; } else { goto __twr_l26; }
-    __twr_l26:;
+    __twr_l37:;
+    if (_mng_inst330) { goto __twr_l35; } else { goto __twr_l36; }
+    __twr_l36:;
+    __twr_l34:;
     _jkl_epilogue:;
 }

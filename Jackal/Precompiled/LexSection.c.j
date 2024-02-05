@@ -171,28 +171,29 @@ void LexInitializeSection(uint64_t _mng_section139, uint64_t _mng_name140) {
     __twr_v154 = _mng_section139 + __twr_v153;
     ((void (*)(uint64_t))__twr_v150)(__twr_v154);
     __twr_v155 = (uint64_t)(&LexDefaultSection);
-    if (_mng_section139 == __twr_v155) { goto __twr_l1; } else { goto __twr_l2; }
-    __twr_l2:;
+    if (_mng_section139 == __twr_v155) { goto __twr_l2; } else { goto __twr_l3; }
+    __twr_l3:;
     __twr_v156 = 0ULL;
     __twr_v157 = 112ULL;
     __twr_v158 = _mng_section139 + __twr_v157;
     *(uint64_t*)(__twr_v158) = __twr_v156;
     __twr_v159 = (uint64_t)(&LexSectionListTail);
     __twr_v160 = *(uint64_t*)(__twr_v159);
-    if (!(__twr_v160)) { goto __twr_l5; } else { goto __twr_l4; }
-    __twr_l4:;
+    if (!(__twr_v160)) { goto __twr_l6; } else { goto __twr_l5; }
+    __twr_l5:;
     __twr_v161 = (uint64_t)(&LexSectionListTail);
     __twr_v162 = *(uint64_t*)(__twr_v161);
     __twr_v163 = 112ULL;
     __twr_v164 = __twr_v162 + __twr_v163;
     *(uint64_t*)(__twr_v164) = _mng_section139;
-    goto __twr_l3;
-    __twr_l5:;
+    goto __twr_l4;
+    __twr_l6:;
     __twr_v165 = (uint64_t)(&LexSectionListHead);
     *(uint64_t*)(__twr_v165) = _mng_section139;
-    __twr_l3:;
+    __twr_l4:;
     __twr_v166 = (uint64_t)(&LexSectionListTail);
     *(uint64_t*)(__twr_v166) = _mng_section139;
+    __twr_l2:;
     __twr_l1:;
     _jkl_epilogue:;
 }
@@ -234,6 +235,7 @@ void LexInitializeSectionStuff() {
     ((void (*)(uint64_t, uint64_t))__twr_v172)(__twr_v179, __twr_v180);
     __twr_v181 = (uint64_t)(&LexCurrentSection);
     *(uint64_t*)(__twr_v181) = __twr_v173;
+    __twr_l7:;
     _jkl_epilogue:;
 }
 uint64_t LexLookupSection(uint64_t _mng_name182) {
@@ -250,26 +252,27 @@ uint64_t LexLookupSection(uint64_t _mng_name182) {
     uint64_t __twr_v192;
     __twr_v183 = 0ULL;
     __twr_v184 = *(uint8_t*)(_mng_name182);
-    if (__twr_v184 != __twr_v183) { goto __twr_l6; } else { goto __twr_l7; }
-    __twr_l7:;
+    if (__twr_v184 != __twr_v183) { goto __twr_l9; } else { goto __twr_l10; }
+    __twr_l10:;
     __twr_v185 = (uint64_t)(&LexDefaultSection);
     _jkl_retv = __twr_v185;
     goto _jkl_epilogue;
-    __twr_l6:;
+    __twr_l9:;
     __twr_v186 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
     __twr_v187 = (uint64_t)(&LexSectionHashTable);
     __twr_v188 = 1872ULL;
     __twr_v189 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v186)(__twr_v187, __twr_v188, _mng_name182, (uint64_t)(&_mng_created190));
     _mng_section191 = __twr_v189;
-    if (_mng_created190) { goto __twr_l8; } else { goto __twr_l9; }
-    __twr_l9:;
+    if (_mng_created190) { goto __twr_l11; } else { goto __twr_l12; }
+    __twr_l12:;
     _jkl_retv = _mng_section191;
     goto _jkl_epilogue;
-    __twr_l8:;
+    __twr_l11:;
     __twr_v192 = (uint64_t)(&LexInitializeSection);
     ((void (*)(uint64_t, uint64_t))__twr_v192)(_mng_section191, _mng_name182);
     _jkl_retv = _mng_section191;
     goto _jkl_epilogue;
+    __twr_l8:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
@@ -296,6 +299,7 @@ void LexPushSection(uint64_t _mng_section193) {
     *(uint64_t*)(__twr_v202) = __twr_v200;
     *(uint64_t*)(__twr_v197) = __twr_v196;
     *(uint64_t*)(__twr_v199) = _mng_section193;
+    __twr_l13:;
     _jkl_epilogue:;
 }
 uint64_t LexPopSection() {
@@ -316,12 +320,12 @@ uint64_t LexPopSection() {
     __twr_v203 = (uint64_t)(&LexSectionStackTop);
     __twr_v204 = *(uint64_t*)(__twr_v203);
     _mng_elem205 = __twr_v204;
-    if (__twr_v204) { goto __twr_l10; } else { goto __twr_l11; }
-    __twr_l11:;
+    if (__twr_v204) { goto __twr_l15; } else { goto __twr_l16; }
+    __twr_l16:;
     __twr_v206 = 0ULL;
     _jkl_retv = __twr_v206;
     goto _jkl_epilogue;
-    __twr_l10:;
+    __twr_l15:;
     __twr_v207 = *(uint64_t*)(_mng_elem205);
     __twr_v208 = (uint64_t)(&LexSectionStackTop);
     *(uint64_t*)(__twr_v208) = __twr_v207;
@@ -336,6 +340,7 @@ uint64_t LexPopSection() {
     __twr_v215 = 1ULL;
     _jkl_retv = __twr_v215;
     goto _jkl_epilogue;
+    __twr_l14:;
     _jkl_epilogue:;
     return _jkl_retv;
 }

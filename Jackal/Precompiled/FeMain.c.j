@@ -147,6 +147,7 @@ void LexStreamError(uint64_t _mng_str146, uint64_t _mng_err1147, uint64_t _mng_e
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v152)(__twr_v157, __twr_v160, __twr_v163, _mng_str146, _mng_err1147, _mng_err2148, _mng_err3149);
     __twr_v164 = (uint64_t)(&TlErrorExit);
     ((void (*)())__twr_v164)();
+    __twr_l1:;
     _jkl_epilogue:;
 }
 void LexTokenError(uint64_t _mng_token165, uint64_t _mng_str166, uint64_t _mng_err1167, uint64_t _mng_err2168, uint64_t _mng_err3169) {
@@ -178,5 +179,6 @@ void LexTokenError(uint64_t _mng_token165, uint64_t _mng_str166, uint64_t _mng_e
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v170)(__twr_v175, __twr_v178, __twr_v181, _mng_str166, _mng_err1167, _mng_err2168, _mng_err3169);
     __twr_v182 = (uint64_t)(&TlErrorExit);
     ((void (*)())__twr_v182)();
+    __twr_l2:;
     _jkl_epilogue:;
 }

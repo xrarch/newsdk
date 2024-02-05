@@ -61,5 +61,6 @@ void TlInitialize() {
     __twr_v97 = (uint64_t)(&TlSymbolTableZone);
     __twr_v98 = 1584ULL;
     ((void (*)(uint64_t, uint64_t))__twr_v96)(__twr_v97, __twr_v98);
+    __twr_l1:;
     _jkl_epilogue:;
 }
