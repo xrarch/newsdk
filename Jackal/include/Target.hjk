@@ -24,6 +24,7 @@ ENUM LirInstructionType : UBYTE
     LIR_CALL,
     LIR_MACH_INST,
     LIR_RETURN,
+    LIR_BRANCH,
 
     LIR_MAX, // MUST be at the end
 END
@@ -53,6 +54,20 @@ STRUCT LirArgument
     Register : ^LirRegister,
 END
 
+STRUCT LirInstructionCallBody
+    ArgListHead : ^LirArgument,
+    OutListHead : ^LirArgument,
+END
+
+STRUCT LirInstructionBranchBody
+    Label : ^LirInstruction,
+END
+
+UNION LirInstructionTypeBody
+    Call : LirInstructionCallBody,
+    Branch : LirInstructionBranchBody,
+END
+
 STRUCT LirInstruction
     Next : ^LirInstruction,
     Prev : ^LirInstruction,
@@ -64,8 +79,7 @@ STRUCT LirInstruction
 
     Body : LirInstructionBody,
 
-    ArgListHead : ^LirArgument,
-    OutListHead : ^LirArgument,
+    TypeBody : LirInstructionTypeBody,
 
     MachineInstruction : UBYTE,
     Type : LirInstructionType,
@@ -120,9 +134,11 @@ ENUM LirAbiUsage : UBYTE
     LIR_REG_CALLER_SAVED,
 END
 
+#DEFINE LIR_MACHINE_REG_MAX 64
+
 STRUCT LirTargetInfoRecord
     SelectionTable : LirSelectF[IR_MAX],
-    RegisterAbiUsage : LirAbiUsage[64],
+    RegisterAbiUsage : LirAbiUsage[LIR_MACHINE_REG_MAX],
     MaximumRegister : UBYTE,
 END
 

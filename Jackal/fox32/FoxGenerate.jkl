@@ -717,14 +717,11 @@ FN FoxGenerateFalseBranch (
     // Generate the false branch.
 
     jmpinst := LirCreateInstruction (
-        LIR_MACH_INST, // type
+        LIR_BRANCH, // type
         FOX_RJMP, // machtype
     )
 
-    jmpinst^.Body.Machine.Fox.Op1.Constant =
-        CAST LirGetLabel ( inst^.Body.Branch.FalseLabel ) TO UWORD
-
-    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.FalseLabel )
     jmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -762,14 +759,11 @@ FN (LirSelectF) FoxSelectZeroBranch (
     LirInsertInstructionTail ( cmpinst )
 
     jmpinst := LirCreateInstruction (
-        LIR_MACH_INST, // type
+        LIR_BRANCH, // type
         FOX_RJMP, // machtype
     )
 
-    jmpinst^.Body.Machine.Fox.Op1.Constant =
-        CAST LirGetLabel ( inst^.Body.Branch.TrueLabel ) TO UWORD
-
-    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.TrueLabel )
 
     IF inst^.Type == IR_BRANCH_NONZERO THEN
         jmpinst^.Body.Machine.Fox.Condition = FOX_COND_IFNZ
@@ -822,14 +816,11 @@ FN (LirSelectF) FoxSelectBranch (
     LirInsertInstructionTail ( cmpinst )
 
     jmpinst := LirCreateInstruction (
-        LIR_MACH_INST, // type
+        LIR_BRANCH, // type
         FOX_RJMP, // machtype
     )
 
-    jmpinst^.Body.Machine.Fox.Op1.Constant =
-        CAST LirGetLabel ( inst^.Body.Branch.TrueLabel ) TO UWORD
-
-    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.TrueLabel )
     jmpinst^.Body.Machine.Fox.Condition = FoxIrInstToCondition[inst^.Type]
     jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -853,14 +844,11 @@ FN (LirSelectF) FoxSelectJump (
     END
 
     jmpinst := LirCreateInstruction (
-        LIR_MACH_INST, // type
+        LIR_BRANCH, // type
         FOX_RJMP, // machtype
     )
 
-    jmpinst^.Body.Machine.Fox.Op1.Constant =
-        CAST LirGetLabel ( inst^.Body.Jump.Label ) TO UWORD
-
-    jmpinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_IMM_LABEL
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Jump.Label )
     jmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     jmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -901,7 +889,7 @@ FN (LirSelectF) FoxSelectCall (
     callinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
     arglisttail : ^LirArgument = NULLPTR
-    callinst^.ArgListHead = NULLPTR
+    callinst^.TypeBody.Call.ArgListHead = NULLPTR
 
     arg := inst^.Body.Call.ArgListHead
 
@@ -934,7 +922,7 @@ FN (LirSelectF) FoxSelectCall (
             arglisttail^.Next = lirarg
 
         ELSE
-            callinst^.ArgListHead = lirarg
+            callinst^.TypeBody.Call.ArgListHead = lirarg
         END
 
         arglisttail = lirarg
@@ -953,7 +941,7 @@ FN (LirSelectF) FoxSelectCall (
     LirInsertInstructionTail ( callinst )
 
     outlisttail : ^LirArgument = NULLPTR
-    callinst^.OutListHead = NULLPTR
+    callinst^.TypeBody.Call.OutListHead = NULLPTR
 
     arg = inst^.Body.Call.OutListHead
     count = 0
@@ -985,7 +973,7 @@ FN (LirSelectF) FoxSelectCall (
             outlisttail^.Next = lirarg
 
         ELSE
-            callinst^.OutListHead = lirarg
+            callinst^.TypeBody.Call.OutListHead = lirarg
         END
 
         outlisttail = lirarg
@@ -1332,8 +1320,6 @@ FoxLirInfo : LirTargetInfoRecord = {
         [FOX_T2] = LIR_REG_CALLER_SAVED,
         [FOX_T3] = LIR_REG_CALLER_SAVED,
         [FOX_T4] = LIR_REG_CALLER_SAVED,
-        [FOX_T5] = LIR_REG_CALLER_SAVED,
-        [FOX_T6] = LIR_REG_CALLER_SAVED,
         [FOX_A0] = LIR_REG_CALLER_SAVED,
         [FOX_A1] = LIR_REG_CALLER_SAVED,
         [FOX_A2] = LIR_REG_CALLER_SAVED,
@@ -1400,10 +1386,6 @@ FN FoxDebugPrintOperand (
         operand^.AccessType == FOX_ACCESS_IMM THEN
 
         TlPrintNumber ( operand^.Constant )
-
-    ELSEIF operand^.AccessType == FOX_ACCESS_IMM_LABEL THEN
-        TlPrintString ( "L" )
-        TlPrintNumber ( operand^.Constant )
     
     ELSEIF operand^.AccessType == FOX_ACCESS_IMM_STRING THEN
         string := CAST operand^.Constant TO ^LexInternedString
@@ -1434,7 +1416,7 @@ FN FoxDebugPrintCallInst (
 
     TlPrintString ( "        IN: (" )
 
-    arg := lirinst^.ArgListHead
+    arg := lirinst^.TypeBody.Call.ArgListHead
 
     WHILE arg DO
         FoxDebugPrintRegister ( arg^.Register )
@@ -1448,7 +1430,7 @@ FN FoxDebugPrintCallInst (
 
     TlPrintString ( ")\n" )
 
-    arg = lirinst^.OutListHead
+    arg = lirinst^.TypeBody.Call.OutListHead
 
     IF arg THEN
         TlPrintString ( "        OUT: (" )
@@ -1471,7 +1453,10 @@ FN FoxDebugPrintLirInst (
     IN lirinst : ^LirInstruction,
 )
 
-    IF lirinst^.Type == LIR_MACH_INST OR lirinst^.Type == LIR_CALL THEN
+    IF lirinst^.Type == LIR_MACH_INST OR
+        lirinst^.Type == LIR_CALL OR
+        lirinst^.Type == LIR_BRANCH THEN
+
         TlPrintString ( "    " )
 
         TlPrintString ( FoxConditionNames[lirinst^.Body.Machine.Fox.Condition] )
@@ -1482,28 +1467,34 @@ FN FoxDebugPrintLirInst (
 
         TlPrintString ( " " )
 
-        reg1 := lirinst^.Defines
+        IF lirinst^.Type == LIR_BRANCH THEN
+            TlPrintString ( "L" )
+            TlPrintNumber ( CAST lirinst^.TypeBody.Branch.Label TO UWORD )
 
-        IF NOT reg1 THEN
-            reg1 = lirinst^.Source1
-        END
+        ELSE
+            reg1 := lirinst^.Defines
 
-        reg2 := lirinst^.Source2
+            IF NOT reg1 THEN
+                reg1 = lirinst^.Source1
+            END
 
-        IF lirinst^.Body.Machine.Fox.Op1.AccessType != FOX_ACCESS_NONE THEN
-            FoxDebugPrintOperand (
-                reg1, // reg
-                &lirinst^.Body.Machine.Fox.Op1, // operand
-            )
-        END
+            reg2 := lirinst^.Source2
 
-        IF lirinst^.Body.Machine.Fox.Op2.AccessType != FOX_ACCESS_NONE THEN
-            TlPrintString ( ", " )
+            IF lirinst^.Body.Machine.Fox.Op1.AccessType != FOX_ACCESS_NONE THEN
+                FoxDebugPrintOperand (
+                    reg1, // reg
+                    &lirinst^.Body.Machine.Fox.Op1, // operand
+                )
+            END
 
-            FoxDebugPrintOperand (
-                reg2, // reg
-                &lirinst^.Body.Machine.Fox.Op2, // operand
-            )
+            IF lirinst^.Body.Machine.Fox.Op2.AccessType != FOX_ACCESS_NONE THEN
+                TlPrintString ( ", " )
+
+                FoxDebugPrintOperand (
+                    reg2, // reg
+                    &lirinst^.Body.Machine.Fox.Op2, // operand
+                )
+            END
         END
 
         TlPrintString ( "\n" )
@@ -1516,6 +1507,11 @@ FN FoxDebugPrintLirInst (
         TlPrintString ( "\nL" )
         TlPrintNumber ( CAST lirinst TO UWORD )
         TlPrintString ( ":\n" )
+    
+    ELSE
+        TlPrintString ( "    LIR " )
+        TlPrintNumber ( lirinst^.Type )
+        TlPrintString ( "\n" )
     END
 END
 
