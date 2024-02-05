@@ -35,6 +35,20 @@ ENUM LirRegisterType : UBYTE
 END
 
 STRUCT LirRegister
+    Symbol : ^LexSymbol,
+
+    IntervalListEntry : TlListEntry,
+    DefinedYetListEntry : TlListEntry,
+
+    LivenessFirst : ^LirInstruction,
+
+    LivenessStart : ULONG,
+    LivenessEnd : ULONG,
+
+    DefinedYet : UBYTE,
+    UseFound : UBYTE,
+    LiveAcrossCall : UBYTE,
+
     MachineRegister : UBYTE,
     Hint : UBYTE,
     Type : LirRegisterType,
@@ -139,6 +153,7 @@ END
 STRUCT LirTargetInfoRecord
     SelectionTable : LirSelectF[IR_MAX],
     RegisterAbiUsage : LirAbiUsage[LIR_MACHINE_REG_MAX],
+    RegisterAllocationStatus : UBYTE[LIR_MACHINE_REG_MAX],
     MaximumRegister : UBYTE,
 END
 

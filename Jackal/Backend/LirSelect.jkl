@@ -45,6 +45,11 @@ FN LirCreateRegister () : ^LirRegister
     END
 
     reg^.Type = LIR_VIRTUAL_REG
+    reg^.Symbol = NULLPTR
+    reg^.DefinedYet = FALSE
+    reg^.UseFound = FALSE
+    reg^.LiveAcrossCall = FALSE
+    reg^.LivenessStart = 0
 
     RETURN reg
 END
@@ -134,6 +139,8 @@ FN LirGetRegister (
     lirreg = LirCreateRegister ()
 
     oldvariable^.LirRegister = lirreg
+
+    lirreg^.Symbol = oldvariable^.Symbol
 
     RETURN lirreg
 END

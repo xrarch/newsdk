@@ -4,6 +4,423 @@
 
 #INCLUDE "<inc>/Target.hjk"
 
+LirDefinedYetListHead : TlListEntry
+LirIntervalListHead : TlListEntry
+
+LirSortedIntervalListHead : TlListEntry
+LirSortedByEndIntervalListHead : TlListEntry
+
+FN LirInsertionSortInterval (
+    IN reg : ^LirRegister,
+)
+
+    // Insertion sort this interval into the sorted-by-start and sorted-by-end
+    // lists, for which we reuse IntervalListEntry and DefinedYetListEntry
+    // respectively. This should be average O(1) because they are almost always
+    // in reverse order in the original list.
+
+    head := &LirSortedIntervalListHead
+    entry := head^.Next
+
+    WHILE TRUE DO
+        IF entry == head THEN
+            TlInsertAtTailList (
+                head, // head
+                &reg^.IntervalListEntry, // entry
+            )
+
+            BREAK
+        END
+
+        otherreg := CONTAINEROF entry TO LirRegister.IntervalListEntry
+
+        IF otherreg^.LivenessStart >= reg^.LivenessStart THEN
+            // Insert ourselves before this guy.
+
+            TlInsertAtTailList (
+                entry, // head
+                &reg^.IntervalListEntry, // entry
+            )
+
+            BREAK
+        END
+
+        entry = entry^.Next
+    END
+
+    head = &LirSortedByEndIntervalListHead
+    entry = head^.Next
+
+    WHILE TRUE DO
+        IF entry == head THEN
+            TlInsertAtTailList (
+                head, // head
+                &reg^.DefinedYetListEntry, // entry
+            )
+
+            BREAK
+        END
+
+        otherreg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
+
+        IF otherreg^.LivenessEnd >= reg^.LivenessEnd THEN
+            // Insert ourselves before this guy.
+
+            TlInsertAtTailList (
+                entry, // head
+                &reg^.DefinedYetListEntry, // entry
+            )
+
+            BREAK
+        END
+
+        entry = entry^.Next
+    END
+END
+
+FN LirFlushDefinedYet ()
+
+    // Flush the defined-yet list.
+
+    head := &LirDefinedYetListHead
+    entry := head^.Next
+
+    WHILE entry != head DO
+        reg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
+
+        reg^.DefinedYet = FALSE
+
+        TlRemoveEntryList ( entry )
+
+        entry = entry^.Next
+    END
+END
+
+FN LirUseRegister (
+    IN reg : ^LirRegister,
+    IN firstinst : ^LirInstruction,
+    IN inst : ^LirInstruction,
+    IN instnum : ULONG,
+)
+
+    IF NOT reg^.UseFound THEN
+        // Insert in interval list.
+
+        // Insert at the head so that we end up with a mostly backwards sorted
+        // list. This will make it faster to insertion sort it forwards in a
+        // bit.
+
+        TlInsertAtHeadList (
+            &LirIntervalListHead, // head
+            &reg^.IntervalListEntry, // entry
+        )
+    END
+
+    IF NOT reg^.DefinedYet THEN
+        // Use before def. Cover entire function.
+
+        reg^.UseFound = TRUE
+
+        reg^.LivenessFirst = firstinst
+        reg^.LivenessStart = 1
+        reg^.LivenessEnd = CAST -1 TO ULONG
+
+    ELSEIF NOT reg^.UseFound THEN
+        reg^.UseFound = TRUE
+
+        sym := reg^.Symbol
+
+        paramtype := ARG_NULL
+
+        IF sym THEN
+            paramtype = sym^.ParameterType
+        END
+
+        IF paramtype == ARG_OUT THEN
+            // OUT parameter. Live until end of function.
+
+            IF NOT reg^.LivenessStart THEN
+                reg^.LivenessFirst = inst
+                reg^.LivenessStart = instnum
+            END
+
+            reg^.LivenessEnd = CAST -1 TO ULONG
+
+        ELSEIF paramtype == ARG_IN THEN
+            // IN parameter. Live from start of function.
+
+            reg^.LivenessFirst = firstinst
+            reg^.LivenessStart = 1
+            reg^.LivenessEnd = instnum
+
+        ELSE
+            // Otherwise.
+
+            IF NOT reg^.LivenessStart THEN
+                reg^.LivenessFirst = inst
+                reg^.LivenessStart = instnum
+            END
+
+            reg^.LivenessEnd = instnum
+        END
+
+    ELSEIF instnum > reg^.LivenessEnd THEN
+        // Extend liveness range.
+
+        reg^.LivenessEnd = instnum
+    END
+END
+
+FN LirDefRegister (
+    IN reg : ^LirRegister,
+    IN inst : ^LirInstruction,
+    IN instnum : ULONG,
+)
+
+    IF NOT reg^.LivenessStart THEN
+        reg^.LivenessStart = instnum
+        reg^.LivenessFirst = inst
+    END
+
+    IF NOT reg^.DefinedYet THEN
+        reg^.DefinedYet = TRUE
+
+        TlInsertAtHeadList (
+            &LirDefinedYetListHead, // head
+            &reg^.DefinedYetListEntry, // entry
+        )
+    END
+END
+
+FN LirLivenessForFunction (
+    IN irfunc : ^IrFunction,
+)
+
+    // Do a very simple liveness analysis with the following rules:
+    //
+    //  1. If a register is ever used before its first definition in a basic
+    //     block, assume it is live across the entire function.
+    //  2. Otherwise, its liveness interval is the region between its first
+    //     definition and last use over the entire IR.
+    //  3. If a register is an IN parameter, the above rules apply, except its
+    //     liveness region must begin at the start of the function.
+    //  4. If a register is an OUT parameter, the above rules apply, except its
+    //     liveness region must conclude at the end of the function.
+    //
+    // The technical term for this is "god awful liveness analysis". Patent
+    // pending.
+
+    inst := irfunc^.LirHead
+    instnum := 1
+
+    WHILE inst DO
+        def := inst^.Defines
+        src1 := inst^.Source1
+        src2 := inst^.Source2
+
+        IF src1 THEN
+            LirUseRegister (
+                src1, // reg
+                irfunc^.LirHead, // firstinst
+                inst, // inst
+                instnum, // instnum
+            )
+        END
+
+        IF src2 THEN
+            LirUseRegister (
+                src2, // reg
+                irfunc^.LirHead, // firstinst
+                inst, // inst
+                instnum, // instnum
+            )
+        END
+
+        IF inst^.Type == LIR_CALL THEN
+            arg := inst^.TypeBody.Call.ArgListHead
+
+            WHILE arg DO
+                LirUseRegister (
+                    arg^.Register, // reg
+                    irfunc^.LirHead, // firstinst
+                    inst, // inst
+                    instnum, // instnum
+                )
+
+                arg = arg^.Next
+            END
+        END
+
+        IF def THEN
+            LirDefRegister (
+                def, // reg
+                inst, // inst
+                instnum, // instnum
+            )
+        END
+
+        IF inst^.Type == LIR_CALL THEN
+            out := inst^.TypeBody.Call.OutListHead
+
+            WHILE out DO
+                LirDefRegister (
+                    out^.Register, // reg
+                    inst, // inst
+                    instnum, // instnum
+                )
+
+                out = out^.Next
+            END
+        END
+
+        IF inst^.Type == LIR_BRANCH OR inst^.Type == LIR_LABEL THEN
+            // End of the basic block, empty the defined list.
+
+            LirFlushDefinedYet ()
+        END
+
+        inst = inst^.Next
+        instnum += 1
+    END
+
+    // For each liveness interval, check if it's live across a function call.
+
+    head := &LirIntervalListHead
+    entry := head^.Next
+
+    WHILE entry != head DO
+        reg := CONTAINEROF entry TO LirRegister.IntervalListEntry
+
+        liveinst := reg^.LivenessFirst
+
+        count : UWORD
+
+        IF reg^.LivenessEnd == -1 THEN
+            count = -1
+
+        ELSE
+            count = reg^.LivenessEnd - reg^.LivenessStart + 1
+        END
+
+        i := 0
+
+        WHILE liveinst AND count DO
+            IF liveinst^.Type == LIR_CALL THEN
+                // It's live across the call if it's live-in and live-out from
+                // the call. This is the case if any of the following hold:
+                //
+                //  1. The call is not either the first or last instruction of
+                //     the interval.
+                //  2. If the call is the first, it was not used by the call.
+                //  3. If the call is the last, it was not defined by the call.
+
+                IF i == 0 THEN
+                    // First. Check if used by call.
+
+                    IF liveinst^.Source1 == reg THEN
+                        reg^.LiveAcrossCall = TRUE
+
+                    ELSE
+                        // Check args.
+
+                        arg := liveinst^.TypeBody.Call.ArgListHead
+
+                        WHILE arg DO
+                            IF arg^.Register == reg THEN
+                                reg^.LiveAcrossCall = TRUE
+
+                                BREAK
+                            END
+
+                            arg = arg^.Next
+                        END
+                    END
+
+                ELSEIF count == 1 THEN
+                    // Last. Check if defined by call.
+
+                    IF liveinst^.Defines == reg THEN
+                        reg^.LiveAcrossCall = TRUE
+
+                    ELSE
+                        // Check outs.
+
+                        out := liveinst^.TypeBody.Call.OutListHead
+
+                        WHILE out DO
+                            IF out^.Register == reg THEN
+                                reg^.LiveAcrossCall = TRUE
+
+                                BREAK
+                            END
+
+                            out = out^.Next
+                        END
+                    END
+                ELSE
+                    // Neither first nor last.
+
+                    reg^.LiveAcrossCall = TRUE
+                END
+
+                IF reg^.LiveAcrossCall THEN
+                    BREAK
+                END
+            END
+
+            liveinst = liveinst^.Next
+            count -= 1
+            i += 1
+        END
+
+        // While we're at it, insertion sort this entry.
+
+        nextentry := entry^.Next
+
+        LirInsertionSortInterval ( reg )
+
+        entry = nextentry
+    END
+
+    TlPrintString ( "Sorted by start:\n" )
+
+    head = &LirSortedIntervalListHead
+    entry = head^.Next
+
+    WHILE head != entry DO
+        reg := CONTAINEROF entry TO LirRegister.IntervalListEntry
+
+        TlPrintString ( "    vr" )
+        TlPrintNumber ( CAST reg TO UWORD)
+        TlPrintString ( ": " )
+        TlPrintNumber ( reg^.LivenessStart )
+        TlPrintString ( " to " )
+        TlPrintNumber ( reg^.LivenessEnd )
+        TlPrintString ( "\n" )
+
+        entry = entry^.Next
+    END
+
+    TlPrintString ( "Sorted by end:\n" )
+
+    head = &LirSortedByEndIntervalListHead
+    entry = head^.Next
+
+    WHILE head != entry DO
+        reg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
+
+        TlPrintString ( "    vr" )
+        TlPrintNumber ( CAST reg TO UWORD)
+        TlPrintString ( ": " )
+        TlPrintNumber ( reg^.LivenessStart )
+        TlPrintString ( " to " )
+        TlPrintNumber ( reg^.LivenessEnd )
+        TlPrintString ( "\n" )
+
+        entry = entry^.Next
+    END
+END
+
 FN LirAllocateRegistersForFunction (
     IN funcsym : ^LexSymbol,
 )
@@ -12,5 +429,19 @@ FN LirAllocateRegistersForFunction (
 
     irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
-    TlInternalError ( "LirAllocateRegistersForFunction: TODO", 0, 0, 0 )
+    // Initialize structures.
+
+    TlInitializeList ( &LirDefinedYetListHead )
+
+    TlInitializeList ( &LirIntervalListHead )
+
+    TlInitializeList ( &LirSortedIntervalListHead )
+
+    TlInitializeList ( &LirSortedByEndIntervalListHead )
+
+    // First do a simple liveness analysis.
+
+    LirLivenessForFunction ( irfunc )
+
+    // TlInternalError ( "LirAllocateRegistersForFunction: TODO", 0, 0, 0 )
 END
