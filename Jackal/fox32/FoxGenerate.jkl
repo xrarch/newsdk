@@ -699,6 +699,8 @@ FN (LirSelectF) FoxSelectReturn (
 
     lirinst^.Source2 = srcreg
 
+    lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+
     LirInsertInstructionTail ( lirinst )
 
     RETURN NULLPTR
@@ -963,8 +965,10 @@ FN (LirSelectF) FoxSelectCall (
         IF count < 3 THEN
             // First three OUT values are hinted to a0-a2 since they're passed
             // to the caller in those registers. a3 is the primary return value.
+            // We allocate them "backwards" in the hope that leaving the lower
+            // ones free will help keep the IN arguments in the a0 regs.
 
-            lirarg^.Register^.Hint = FOX_A0 + count
+            lirarg^.Register^.Hint = FOX_A2 - count
         END
 
         lirarg^.Next = NULLPTR
@@ -1258,6 +1262,50 @@ FN (LirSelectF) FoxSelectArithmetic (
     RETURN defreg
 END
 
+FN FoxHintFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Hint the first four arguments to a0-a3.
+
+    functype := funcsym^.SemanticType
+
+    arg := functype^.Body.Function.ArgListHead
+
+    incount := 0
+    outcount := 0
+
+    WHILE arg DO
+        symbol := arg^.Symbol
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        IF irvar THEN
+            irreg := LirGetRegister ( irvar )
+
+            IF arg^.InOut == ARG_IN THEN
+                irreg^.DefinedYet = TRUE
+            END
+
+            IF arg^.InOut == ARG_IN AND incount < 4 THEN
+                irreg^.Hint = FOX_A0 + incount
+
+            ELSEIF arg^.InOut == ARG_OUT AND outcount < 3 THEN
+                irreg^.Hint = FOX_A2 - outcount
+            END
+        END
+
+        IF arg^.InOut == ARG_IN THEN
+            incount += 1
+
+        ELSE
+            outcount += 1
+        END
+
+        arg = arg^.Next
+    END
+END
+
 FoxLirInfo : LirTargetInfoRecord = {
     [SelectionTable] = {
         [IR_LOAD] = &FoxSelectLoad,
@@ -1511,6 +1559,16 @@ FN FoxDebugPrintLirInst (
         TlPrintNumber ( CAST lirinst TO UWORD )
         TlPrintString ( ":\n" )
     
+    ELSEIF lirinst^.Type == LIR_RETURN THEN
+        TlPrintString ( "    RET " )
+
+        IF lirinst^.Source2 THEN
+            FoxDebugPrintOperand (
+                lirinst^.Source2, // reg
+                &lirinst^.Body.Machine.Fox.Op2, // operand
+            )
+        END
+
     ELSE
         TlPrintString ( "    LIR " )
         TlPrintNumber ( lirinst^.Type )
@@ -1602,11 +1660,17 @@ FN (JklTargetF) FoxCompile ()
     funcsym = PrsFunctionListHead
 
     WHILE funcsym DO
+        // Apply hints to the formal parameters.
+
+        FoxHintFunction ( funcsym )
+
+        // Do regalloc.
+
         LirAllocateRegistersForFunction (
             funcsym, // funcsym
         )
 
-        // FoxDebugPrintLir ( funcsym )
+        FoxDebugPrintLir ( funcsym )
 
         funcsym = funcsym^.NextFunction
     END

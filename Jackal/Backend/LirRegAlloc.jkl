@@ -65,6 +65,67 @@ FN LirFlushDefinedYet ()
     END
 END
 
+FN LirRegFirstSighting (
+    IN reg : ^LirRegister,
+    IN firstinst : ^LirInstruction,
+    IN inst : ^LirInstruction,
+    IN instnum : ULONG,
+)
+
+    // Insert in interval list.
+
+    // Insert at the head so that we end up with a mostly backwards sorted
+    // list. This will make it faster to insertion sort it forwards in a
+    // bit.
+
+    TlInsertAtHeadList (
+        &LirIntervalListHead, // head
+        &reg^.IntervalListEntry, // entry
+    )
+
+    sym := reg^.Symbol
+
+    paramtype := ARG_NULL
+
+    IF sym THEN
+        paramtype = sym^.ParameterType
+    END
+
+    IF paramtype == ARG_OUT THEN
+        // OUT parameter. Live until end of function.
+
+        IF NOT reg^.LivenessStart THEN
+            reg^.LivenessFirst = inst
+            reg^.LivenessStart = instnum
+        END
+
+        reg^.LivenessEnd = CAST -1 TO ULONG
+
+    ELSEIF paramtype == ARG_IN THEN
+        // IN parameter. Live from start of function.
+
+        IF NOT reg^.LivenessStart THEN
+            reg^.LivenessEnd = instnum
+        END
+
+        reg^.LivenessFirst = firstinst
+        reg^.LivenessStart = 1
+
+        // Defined already.
+
+        reg^.DefinedYet = TRUE
+
+    ELSE
+        // Otherwise.
+
+        IF NOT reg^.LivenessStart THEN
+            reg^.LivenessFirst = inst
+            reg^.LivenessStart = instnum
+            reg^.LivenessEnd = instnum
+        END
+    END
+END
+
 FN LirUseRegister (
     IN reg : ^LirRegister,
     IN firstinst : ^LirInstruction,
@@ -73,15 +134,11 @@ FN LirUseRegister (
 )
 
     IF NOT reg^.LivenessStart THEN
-        // Insert in interval list.
-
-        // Insert at the head so that we end up with a mostly backwards sorted
-        // list. This will make it faster to insertion sort it forwards in a
-        // bit.
-
-        TlInsertAtHeadList (
-            &LirIntervalListHead, // head
-            &reg^.IntervalListEntry, // entry
+        LirRegFirstSighting (
+            reg, // reg
+            firstinst, // firstinst
+            inst, // inst
+            instnum - 1, // instnum
         )
     END
 
@@ -94,49 +151,7 @@ FN LirUseRegister (
         reg^.LivenessStart = 1
         reg^.LivenessEnd = CAST -1 TO ULONG
 
-    ELSEIF NOT reg^.UseFound THEN
-        reg^.UseFound = TRUE
-
-        sym := reg^.Symbol
-
-        paramtype := ARG_NULL
-
-        IF sym THEN
-            paramtype = sym^.ParameterType
-        END
-
-        IF paramtype == ARG_OUT THEN
-            // OUT parameter. Live until end of function.
-
-            IF NOT reg^.LivenessStart THEN
-                reg^.LivenessFirst = inst
-                reg^.LivenessStart = instnum
-            END
-
-            reg^.LivenessEnd = CAST -1 TO ULONG
-
-        ELSEIF paramtype == ARG_IN THEN
-            // IN parameter. Live from start of function.
-
-            IF NOT reg^.LivenessStart THEN
-                reg^.LivenessEnd = instnum - 1
-            END
-
-            reg^.LivenessFirst = firstinst
-            reg^.LivenessStart = 1
-
-        ELSE
-            // Otherwise.
-
-            IF NOT reg^.LivenessStart THEN
-                reg^.LivenessFirst = inst
-                reg^.LivenessStart = instnum
-                reg^.LivenessEnd = instnum - 1
-            END
-        END
-    END
-
-    IF instnum > reg^.LivenessEnd THEN
+    ELSEIF instnum > reg^.LivenessEnd THEN
         // Extend liveness range.
 
         reg^.LivenessEnd = instnum - 1
@@ -145,19 +160,18 @@ END
 
 FN LirDefRegister (
     IN reg : ^LirRegister,
+    IN firstinst : ^LirInstruction,
     IN inst : ^LirInstruction,
     IN instnum : ULONG,
 )
 
     IF NOT reg^.LivenessStart THEN
-        TlInsertAtHeadList (
-            &LirIntervalListHead, // head
-            &reg^.IntervalListEntry, // entry
+        LirRegFirstSighting (
+            reg, // reg
+            firstinst, // firstinst
+            inst, // inst
+            instnum, // instnum
         )
-
-        reg^.LivenessStart = instnum
-        reg^.LivenessEnd = instnum
-        reg^.LivenessFirst = inst
     END
 
     IF NOT reg^.DefinedYet THEN
@@ -232,6 +246,7 @@ FN LirLivenessForFunction (
         IF def THEN
             LirDefRegister (
                 def, // reg
+                irfunc^.LirHead, // firstinst
                 inst, // inst
                 instnum, // instnum
             )
@@ -243,6 +258,7 @@ FN LirLivenessForFunction (
             WHILE out DO
                 LirDefRegister (
                     out^.Register, // reg
+                    irfunc^.LirHead, // firstinst
                     inst, // inst
                     instnum, // instnum
                 )
