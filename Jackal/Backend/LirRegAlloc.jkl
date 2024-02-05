@@ -8,16 +8,14 @@ LirDefinedYetListHead : TlListEntry
 LirIntervalListHead : TlListEntry
 
 LirSortedIntervalListHead : TlListEntry
-LirSortedByEndIntervalListHead : TlListEntry
 
 FN LirInsertionSortInterval (
     IN reg : ^LirRegister,
 )
 
-    // Insertion sort this interval into the sorted-by-start and sorted-by-end
-    // lists, for which we reuse IntervalListEntry and DefinedYetListEntry
-    // respectively. This should be average O(1) because they are almost always
-    // in reverse order in the original list.
+    // Insertion sort this interval into the sorted-by-start list, for which we
+    // reuse IntervalListEntry. This should be average O(1) because they are
+    // almost always in reverse order in the original list.
 
     head := &LirSortedIntervalListHead
     entry := head^.Next
@@ -40,35 +38,6 @@ FN LirInsertionSortInterval (
             TlInsertAtTailList (
                 entry, // head
                 &reg^.IntervalListEntry, // entry
-            )
-
-            BREAK
-        END
-
-        entry = entry^.Next
-    END
-
-    head = &LirSortedByEndIntervalListHead
-    entry = head^.Next
-
-    WHILE TRUE DO
-        IF entry == head THEN
-            TlInsertAtTailList (
-                head, // head
-                &reg^.DefinedYetListEntry, // entry
-            )
-
-            BREAK
-        END
-
-        otherreg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
-
-        IF otherreg^.LivenessEnd >= reg^.LivenessEnd THEN
-            // Insert ourselves before this guy.
-
-            TlInsertAtTailList (
-                entry, // head
-                &reg^.DefinedYetListEntry, // entry
             )
 
             BREAK
@@ -103,7 +72,7 @@ FN LirUseRegister (
     IN instnum : ULONG,
 )
 
-    IF NOT reg^.UseFound THEN
+    IF NOT reg^.LivenessStart THEN
         // Insert in interval list.
 
         // Insert at the head so that we end up with a mostly backwards sorted
@@ -149,9 +118,12 @@ FN LirUseRegister (
         ELSEIF paramtype == ARG_IN THEN
             // IN parameter. Live from start of function.
 
+            IF NOT reg^.LivenessStart THEN
+                reg^.LivenessEnd = instnum - 1
+            END
+
             reg^.LivenessFirst = firstinst
             reg^.LivenessStart = 1
-            reg^.LivenessEnd = instnum
 
         ELSE
             // Otherwise.
@@ -159,15 +131,15 @@ FN LirUseRegister (
             IF NOT reg^.LivenessStart THEN
                 reg^.LivenessFirst = inst
                 reg^.LivenessStart = instnum
+                reg^.LivenessEnd = instnum - 1
             END
-
-            reg^.LivenessEnd = instnum
         END
+    END
 
-    ELSEIF instnum > reg^.LivenessEnd THEN
+    IF instnum > reg^.LivenessEnd THEN
         // Extend liveness range.
 
-        reg^.LivenessEnd = instnum
+        reg^.LivenessEnd = instnum - 1
     END
 END
 
@@ -178,7 +150,13 @@ FN LirDefRegister (
 )
 
     IF NOT reg^.LivenessStart THEN
+        TlInsertAtHeadList (
+            &LirIntervalListHead, // head
+            &reg^.IntervalListEntry, // entry
+        )
+
         reg^.LivenessStart = instnum
+        reg^.LivenessEnd = instnum
         reg^.LivenessFirst = inst
     END
 
@@ -381,41 +359,204 @@ FN LirLivenessForFunction (
 
         entry = nextentry
     END
+END
 
-    TlPrintString ( "Sorted by start:\n" )
+FN LirResetRegPool ()
 
-    head = &LirSortedIntervalListHead
-    entry = head^.Next
+    // Reset the register allocation map.
+
+    lirinfo := JklTargetInfo^.LirInfo
+
+    i := 0
+    max := lirinfo^.MaximumRegister
+    statmap := &lirinfo^.RegisterAllocationStatus[0]
+    abimap := &lirinfo^.RegisterAbiUsage[0]
+
+    WHILE i < max DO
+        IF abimap[i] == LIR_REG_UNUSABLE THEN
+            statmap[i] = TRUE
+
+        ELSE
+            statmap[i] = FALSE
+        END
+
+        i += 1
+    END
+END
+
+FN LirAllocateRegister (
+    IN calleesavedonly : UBYTE,
+    IN hint : UBYTE,
+) : UWORD
+
+    // Allocate a machine register. Returns -1 on failure.
+
+    lirinfo := JklTargetInfo^.LirInfo
+
+    statmap := &lirinfo^.RegisterAllocationStatus[0]
+    abimap := &lirinfo^.RegisterAbiUsage[0]
+
+    IF hint AND
+        NOT statmap[hint] AND
+        (NOT calleesavedonly OR abimap[hint] == LIR_REG_CALLEE_SAVED) THEN
+
+        // Take the hint.
+
+        statmap[hint] = TRUE
+
+        RETURN hint
+    END
+
+    i := 0
+    max := lirinfo^.MaximumRegister
+
+    WHILE i < max DO
+        IF NOT statmap[i] THEN
+            IF NOT calleesavedonly OR abimap[i] == LIR_REG_CALLEE_SAVED THEN
+                statmap[i] = TRUE
+
+                RETURN i
+            END
+        END
+
+        i += 1
+    END
+
+    RETURN -1
+END
+
+FN LirFreeRegister (
+    IN reg : UBYTE,
+)
+
+    JklTargetInfo^.LirInfo^.RegisterAllocationStatus[reg] = FALSE
+END
+
+LirActiveIntervalList : TlListEntry
+
+FN LirAddToActiveList (
+    IN reg : ^LirRegister,
+)
+
+    // Insertion sort into the active list by end point.
+
+    head := &LirActiveIntervalList
+    entry := head^.Next
+
+    WHILE TRUE DO
+        IF entry == head THEN
+            TlInsertAtTailList (
+                head, // head
+                &reg^.DefinedYetListEntry, // entry
+            )
+
+            BREAK
+        END
+
+        otherreg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
+
+        IF otherreg^.LivenessEnd >= reg^.LivenessEnd THEN
+            // Insert ourselves before this guy.
+
+            TlInsertAtTailList (
+                entry, // head
+                &reg^.DefinedYetListEntry, // entry
+            )
+
+            BREAK
+        END
+
+        entry = entry^.Next
+    END
+END
+
+FN LirExpireOldIntervals (
+    IN reg : ^LirRegister,
+)
+
+    head := &LirActiveIntervalList
+    entry := head^.Next
+
+    WHILE head != entry DO
+        otherreg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
+
+        IF otherreg^.LivenessEnd >= reg^.LivenessStart THEN
+            LEAVE
+        END
+
+        LirFreeRegister ( otherreg^.MachineRegister )
+
+        TlRemoveEntryList ( entry )
+
+        entry = entry^.Next
+    END
+END
+
+FN LirSpillAtInterval (
+    IN reg : ^LirRegister,
+)
+
+    // Look at the last entry in the active list.
+
+    spillentry := LirActiveIntervalList.Prev
+
+    spillreg := CONTAINEROF spillentry TO LirRegister.DefinedYetListEntry
+
+    IF spillreg^.LivenessEnd > reg^.LivenessEnd THEN
+        // Spill that register and steal its machine reg.
+
+        reg^.MachineRegister = spillreg^.MachineRegister
+        reg^.Type = LIR_MACHINE_REG
+
+        TlRemoveEntryList ( spillentry )
+
+        spillreg^.Type = LIR_SPILLED_REG
+
+        // Insert this reg into the active list.
+
+        LirAddToActiveList ( reg )
+
+    ELSE
+        // Spill this register.
+
+        reg^.Type = LIR_SPILLED_REG
+    END
+END
+
+FN LirLinearScan ()
+
+    // Linear scan register allocation.
+
+    // First reset the regalloc pool.
+
+    LirResetRegPool ()
+
+    // Reset the active list.
+
+    TlInitializeList ( &LirActiveIntervalList )
+
+    head := &LirSortedIntervalListHead
+    entry := head^.Next
 
     WHILE head != entry DO
         reg := CONTAINEROF entry TO LirRegister.IntervalListEntry
 
-        TlPrintString ( "    vr" )
-        TlPrintNumber ( CAST reg TO UWORD)
-        TlPrintString ( ": " )
-        TlPrintNumber ( reg^.LivenessStart )
-        TlPrintString ( " to " )
-        TlPrintNumber ( reg^.LivenessEnd )
-        TlPrintString ( "\n" )
+        LirExpireOldIntervals ( reg )
 
-        entry = entry^.Next
-    END
+        machinereg := LirAllocateRegister (
+            reg^.LiveAcrossCall, // calleesavedonly
+            reg^.Hint, // hint
+        )
 
-    TlPrintString ( "Sorted by end:\n" )
+        IF machinereg == -1 THEN
+            LirSpillAtInterval ( reg )
 
-    head = &LirSortedByEndIntervalListHead
-    entry = head^.Next
+        ELSE
+            reg^.MachineRegister = machinereg
+            reg^.Type = LIR_MACHINE_REG
 
-    WHILE head != entry DO
-        reg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
-
-        TlPrintString ( "    vr" )
-        TlPrintNumber ( CAST reg TO UWORD)
-        TlPrintString ( ": " )
-        TlPrintNumber ( reg^.LivenessStart )
-        TlPrintString ( " to " )
-        TlPrintNumber ( reg^.LivenessEnd )
-        TlPrintString ( "\n" )
+            LirAddToActiveList ( reg )
+        END
 
         entry = entry^.Next
     END
@@ -437,11 +578,13 @@ FN LirAllocateRegistersForFunction (
 
     TlInitializeList ( &LirSortedIntervalListHead )
 
-    TlInitializeList ( &LirSortedByEndIntervalListHead )
-
     // First do a simple liveness analysis.
 
     LirLivenessForFunction ( irfunc )
+
+    // Now do linear scan.
+
+    LirLinearScan ()
 
     // TlInternalError ( "LirAllocateRegistersForFunction: TODO", 0, 0, 0 )
 END

@@ -677,7 +677,7 @@ FN (LirSelectF) FoxSelectReturn (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
-    srcreg : ^LirRegister
+    srcreg : ^LirRegister = NULLPTR
 
     IF inst^.Source1 THEN
         srcreg = LirSelectOrGetRegister ( inst^.Source1 )
@@ -1355,6 +1355,9 @@ FN FoxDebugPrintRegister (
         TlPrintString ( "vr" )
         TlPrintNumber ( CAST reg TO UWORD )
 
+    ELSEIF reg^.Type == LIR_SPILLED_REG THEN
+        TlPrintString ( "SPILLED" )
+
     ELSE
         TlPrintString ( FoxRegisterNames[reg^.MachineRegister] )
     END
@@ -1591,8 +1594,6 @@ FN (JklTargetF) FoxCompile ()
             funcsym, // funcsym
         )
 
-        FoxDebugPrintLir ( funcsym )
-
         funcsym = funcsym^.NextFunction
     END
 
@@ -1604,6 +1605,8 @@ FN (JklTargetF) FoxCompile ()
         LirAllocateRegistersForFunction (
             funcsym, // funcsym
         )
+
+        // FoxDebugPrintLir ( funcsym )
 
         funcsym = funcsym^.NextFunction
     END

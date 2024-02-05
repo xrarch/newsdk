@@ -50,6 +50,7 @@ FN LirCreateRegister () : ^LirRegister
     reg^.UseFound = FALSE
     reg^.LiveAcrossCall = FALSE
     reg^.LivenessStart = 0
+    reg^.Hint = 0
 
     RETURN reg
 END
