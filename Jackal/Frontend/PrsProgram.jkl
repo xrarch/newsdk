@@ -4182,6 +4182,7 @@ FN PrsParseFnSignature (
 
                 varargtablesymbol^.Type = SYM_VAR
                 varargtablesymbol^.Flags = 0
+                varargtablesymbol^.ParameterType = ARG_IN
 
                 type^.Body.Function.VarArgTable = varargtablesymbol
 
@@ -4209,6 +4210,7 @@ FN PrsParseFnSignature (
 
                 varargcountsymbol^.Type = SYM_VAR
                 varargcountsymbol^.Flags = 0
+                varargcountsymbol^.ParameterType = ARG_IN
 
                 type^.Body.Function.VarArgCount = varargcountsymbol
 
