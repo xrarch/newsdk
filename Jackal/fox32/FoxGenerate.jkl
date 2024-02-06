@@ -315,6 +315,10 @@ FoxIrInstToFoxOp : FoxInstructionTypes[IR_MAX] = {
     [IR_RIGHT_SHIFT] = FOX_SRL,
 }
 
+FoxTmpsContain : ^LirRegister[2]
+FoxTmps : LirRegister[2]
+FoxTmpAt : LirRegister
+
 FN FoxFillOperandForAccess (
     IN lirinst : ^LirInstruction,
     IN operand : ^LirFoxOperand,
@@ -734,7 +738,7 @@ FN FoxGenerateStackAddress (
         IF beforeinst THEN
             // This is a spill; use AT.
 
-            destreg = LirCreatePreallocatedRegister ( FOX_AT )
+            destreg = &FoxTmpAt
 
         ELSE
             destreg = LirCreateRegister ()
@@ -1581,8 +1585,6 @@ FN FoxElideUselessJump (
     // TODO that
 END
 
-FoxTmpsContain : ^LirRegister[2]
-
 FN FoxGenerateSpillForOperand (
     IN inst : ^LirInstruction,
     IN spilledreg : ^LirRegister,
@@ -1618,11 +1620,11 @@ FN FoxGenerateSpillForOperand (
     // temporary into the instruction.
 
     IF FoxTmpsContain[0] == spilledreg THEN
-        RETURN LirCreatePreallocatedRegister ( FOX_T5 )
+        RETURN &FoxTmps[0]
     END
 
     IF FoxTmpsContain[1] == spilledreg THEN
-        RETURN LirCreatePreallocatedRegister ( FOX_T6 )
+        RETURN &FoxTmps[1]
     END
 
     spreg := FoxGenerateStackAddress (
@@ -1633,7 +1635,7 @@ FN FoxGenerateSpillForOperand (
 
     FoxTmpsContain[tmp] = spilledreg
 
-    tmpreg := LirCreatePreallocatedRegister ( FOX_T5 + tmp )
+    tmpreg := &FoxTmps[tmp]
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
@@ -1794,6 +1796,8 @@ FN FoxGenerateAbiStuff (
     // Remember not to generate MOVs from a register to itself, we already
     // generated the spill code so there's no pass after this to get rid of
     // redundant MOVs again.
+
+
 END
 
 FoxLirInfo : LirTargetInfoRecord = {
@@ -2068,6 +2072,15 @@ END
 FN (JklTargetF) FoxCompile ()
     
     // Compile the program for the fox32 architecture.
+
+    FoxTmps[0].Type = LIR_PREALLOCATED_REG
+    FoxTmps[0].MachineRegister = FOX_T5
+
+    FoxTmps[1].Type = LIR_PREALLOCATED_REG
+    FoxTmps[1].MachineRegister = FOX_T6
+
+    FoxTmpAt.Type = LIR_PREALLOCATED_REG
+    FoxTmpAt.MachineRegister = FOX_AT
 
     // Perform instruction selection on each function.
 
