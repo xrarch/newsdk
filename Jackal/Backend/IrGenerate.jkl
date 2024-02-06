@@ -1514,7 +1514,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
     )
 
     var := IrCreateVariable (
-        inst, // definedby
+        NULLPTR, // definedby
     )
 
     funcvar := IrGenerateExpression (

@@ -729,6 +729,7 @@ FN FoxGeneratePreallocatedMov (
 END
 
 FN FoxGenerateStackAddress (
+    IN tmp : ^LirRegister,
     IN beforeinst : ^LirInstruction,
     IN afterinst : ^LirInstruction,
     IN off : ULONG,
@@ -742,10 +743,8 @@ FN FoxGenerateStackAddress (
 
         destreg : ^LirRegister = NULLPTR
 
-        IF beforeinst OR afterinst THEN
-            // This is a spill; use AT.
-
-            destreg = &FoxTmpAt
+        IF tmp THEN
+            destreg = tmp
 
         ELSE
             destreg = LirCreateRegister ()
@@ -808,7 +807,7 @@ FN FoxGenerateStackAddress (
 
         ELSEIF afterinst THEN
             LirInsertInstructionAfter (
-                afterinst, // afterinst
+                movinst, // afterinst
                 addinst, // inst
             )
 
@@ -819,6 +818,9 @@ FN FoxGenerateStackAddress (
         newoff = 0
 
         RETURN destreg
+
+    ELSEIF afterinst OR beforeinst THEN
+        RETURN &FoxSp
 
     ELSE
         RETURN LirCreatePreallocatedRegister ( FOX_SP )
@@ -832,6 +834,7 @@ FN FoxGenerateStoreToStack (
 )
 
     destreg := FoxGenerateStackAddress (
+        NULLPTR, // tmp
         NULLPTR, // beforeinst
         NULLPTR, // afterinst
         off, // off
@@ -871,6 +874,7 @@ FN FoxGenerateLoadFromStack (
 )
 
     srcreg := FoxGenerateStackAddress (
+        NULLPTR, // tmp
         NULLPTR, // beforeinst
         NULLPTR, // afterinst
         off, // off
@@ -1108,6 +1112,7 @@ FN (LirSelectF) FoxSelectCall (
 
     callinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     callinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+    callinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
 
     // Now fill the call.
 
@@ -1240,8 +1245,6 @@ FN (LirSelectF) FoxSelectCall (
                     lirarg^.Register, // defreg
                     stackoff, // off
                 )
-
-                stackoff += 4
             END
         END
 
@@ -1623,11 +1626,16 @@ FN FoxGenerateSpillForOperand (
         // Replace in-place with an [SP + OFF].
 
         spreg := FoxGenerateStackAddress (
+            &FoxTmps[tmp], // tmp
             inst, // beforeinst
             NULLPTR, // afterinst
             spilloff, // off
             OUT spilloff, // OUT newoff
         )
+
+        IF spreg == &FoxTmps[tmp] THEN
+            FoxTmpsContain[tmp] = NULLPTR
+        END
 
         operand^.AccessType = FOX_ACCESS_REG_PTR
         operand^.Constant = spilloff
@@ -1651,6 +1659,7 @@ FN FoxGenerateSpillForOperand (
     END
 
     spreg := FoxGenerateStackAddress (
+        &FoxTmpAt, // tmp
         inst, // beforeinst
         NULLPTR, // afterinst
         spilloff, // off
@@ -1829,8 +1838,8 @@ FN FoxGenerateAbiStuff (
     //  PUSH FP
     //  MOV FP, SP
     //  PUSH { all allocated callee saved regs }
-    //  MOV { all arguments }, { their input reg or stack location }
     //  SUB SP, { frame size }
+    //  MOV { all arguments }, { their input reg or stack location }
 
     head := irfunc^.LirHead
     regmap := &irfunc^.RegisterAllocationStatus[0]
@@ -1844,6 +1853,7 @@ FN FoxGenerateAbiStuff (
 
     inst^.Source1 = &FoxFp
     inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
     inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -1890,6 +1900,7 @@ FN FoxGenerateAbiStuff (
             inst^.Source1 = &FoxCalleeSaved[i - FOX_S0]
 
             inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+            inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
             inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
             inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -1904,12 +1915,38 @@ FN FoxGenerateAbiStuff (
         i += 1
     END
 
+    //  SUB SP, { frame size }
+
+    framesize := irfunc^.StackFrameSize + irfunc^.ScratchAreaSize
+
+    IF framesize THEN
+        inst = LirCreateInstruction (
+            LIR_MACH_INST, // type
+            FOX_SUB, // machtype
+        )
+
+        inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
+        inst^.Body.Machine.Fox.Op2.Constant = framesize
+        inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+        inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        inst^.Defines = &FoxSp
+        inst^.Source1 = &FoxSp
+
+        inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+
+        LirInsertInstructionBefore (
+            head, // beforeinst
+            inst, // inst
+        )
+    END
+
     //  MOV { all arguments }, { their input reg or stack location }
 
     arg := functype^.Body.Function.ArgListHead
     count := 0
 
-    scratchoff := stackoff
+    scratchoff := stackoff + framesize
     varargextras := 0
 
     IF functype^.Body.Function.IsVarArg THEN
@@ -1947,35 +1984,57 @@ FN FoxGenerateAbiStuff (
         IF irvar THEN
             irreg := LirGetRegister ( irvar )
 
-            IF irreg^.Type == LIR_MACHINE_REG THEN
-                // Move it from the right place.
+            // Move it from the right place.
+
+            IF irreg^.Type == LIR_MACHINE_REG AND
+                count < 4 AND
+                irreg^.MachineRegister == FOX_A0 + count THEN
+
+                // Oh it's already there, nvm.
+            
+            ELSE
+                inst = LirCreateInstruction (
+                    LIR_MACH_INST, // type
+                    FOX_MOV, // machtype
+                )
+
+                inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+                inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+                IF irreg^.Type == LIR_MACHINE_REG THEN
+                    // To register.
+
+                    inst^.Defines = irreg
+                    inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+
+                ELSEIF irreg^.Type == LIR_SPILLED_REG THEN
+                    // To stack location.
+
+                    off := irreg^.SpilledOffset
+
+                    spreg := FoxGenerateStackAddress (
+                        &FoxTmps[0], // tmp
+                        head, // beforeinst
+                        NULLPTR, // afterinst
+                        off, // off
+                        OUT off, // OUT newoff
+                    )
+
+                    inst^.Source1 = spreg
+                    inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR
+                    inst^.Body.Machine.Fox.Op1.Constant = off
+
+                ELSE
+                    TlInternalError ( "Unexpected reg type", irreg^.Type, 0, 0 )
+                END
 
                 IF count < 4 THEN
                     // From arg reg.
 
-                    IF irreg^.MachineRegister != FOX_A0 + count THEN
-                        inst = LirCreateInstruction (
-                            LIR_MACH_INST, // type
-                            FOX_MOV, // machtype
-                        )
+                    inst^.Source2 = &FoxArg[count]
 
-                        inst^.Defines = irreg
-                        inst^.Source2 = &FoxArg[count]
-
-                        inst^.Body.Machine.Fox.Op1.AccessType =
-                            FOX_ACCESS_REGISTER
-
-                        inst^.Body.Machine.Fox.Op2.AccessType =
-                            FOX_ACCESS_REGISTER
-
-                        inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-                        inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
-
-                        LirInsertInstructionBefore (
-                            head, // beforeinst
-                            inst, // inst
-                        )
-                    END
+                    inst^.Body.Machine.Fox.Op2.AccessType =
+                        FOX_ACCESS_REGISTER
 
                 ELSE
                     // From stack.
@@ -1983,32 +2042,23 @@ FN FoxGenerateAbiStuff (
                     off := scratchoff
 
                     spreg := FoxGenerateStackAddress (
+                        &FoxTmps[1], // tmp
                         head, // beforeinst
                         NULLPTR, // afterinst
                         off, // off
                         OUT off, // OUT newoff
                     )
 
-                    inst = LirCreateInstruction (
-                        LIR_MACH_INST, // type
-                        FOX_MOVZ, // machtype
-                    )
-
                     inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REG_PTR
                     inst^.Body.Machine.Fox.Op2.Constant = off
-                    inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-                    inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
                     inst^.Source2 = spreg
-
-                    inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
-                    inst^.Defines = irreg
-
-                    LirInsertInstructionBefore (
-                        head, // beforeinst
-                        inst, // inst
-                    )
                 END
+
+                LirInsertInstructionBefore (
+                    head, // beforeinst
+                    inst, // inst
+                )
             END
         END
 
@@ -2023,39 +2073,119 @@ FN FoxGenerateAbiStuff (
         END
     END
 
-    //  SUB SP, { frame size }
-
-    framesize := irfunc^.StackFrameSize + irfunc^.ScratchAreaSize
-
-    IF framesize THEN
-        inst = LirCreateInstruction (
-            LIR_MACH_INST, // type
-            FOX_SUB, // machtype
-        )
-
-        inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
-        inst^.Body.Machine.Fox.Op2.Constant = framesize
-        inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-        inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
-
-        inst^.Defines = &FoxSp
-        inst^.Source1 = &FoxSp
-
-        inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
-
-        LirInsertInstructionBefore (
-            head, // beforeinst
-            inst, // inst
-        )
-    END
-
     // Now generate the epilogue. The epilogue is:
     //
-    //  ADD SP, { frame size }
     //  MOV { their output reg or stack location }, { all OUT parameters }
+    //  ADD SP, { frame size }
     //  POP { all allocated callee saved regs, reverse order }
     //  POP FP
     //  RET
+
+    //  MOV { their output reg or stack location }, { all OUT parameters }
+
+    arg = functype^.Body.Function.ArgListHead
+
+    count = 0
+    scratchoff = stackoff + framesize
+
+    WHILE arg DO
+        IF arg^.InOut != ARG_OUT THEN
+            arg = arg^.Next
+
+            CONTINUE
+        END
+
+        symbol := arg^.Symbol
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        IF irvar THEN
+            irreg := LirGetRegister ( irvar )
+
+            IF irreg^.Type == LIR_MACHINE_REG AND
+                count < 3 AND
+                irreg^.MachineRegister == FOX_A2 - count THEN
+
+                // Oh it's already there, nvm.
+            
+            ELSE
+                inst = LirCreateInstruction (
+                    LIR_MACH_INST, // type
+                    FOX_MOV, // machtype
+                )
+
+                inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+                inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+                IF irreg^.Type == LIR_MACHINE_REG THEN
+                    // From register.
+
+                    inst^.Source2 = irreg
+                    inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+
+                ELSEIF irreg^.Type == LIR_SPILLED_REG THEN
+                    // From stack location.
+
+                    off := irreg^.SpilledOffset
+
+                    spreg := FoxGenerateStackAddress (
+                        &FoxTmps[0], // tmp
+                        NULLPTR, // beforeinst
+                        irfunc^.LirTail, // afterinst
+                        off, // off
+                        OUT off, // OUT newoff
+                    )
+
+                    inst^.Source2 = spreg
+                    inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REG_PTR
+                    inst^.Body.Machine.Fox.Op2.Constant = off
+
+                ELSE
+                    TlInternalError ( "Unexpected reg type", irreg^.Type, 0, 0 )
+                END
+
+                IF count < 3 THEN
+                    // To arg reg.
+
+                    inst^.Defines = &FoxArg[2 - count]
+
+                    inst^.Body.Machine.Fox.Op1.AccessType =
+                        FOX_ACCESS_REGISTER
+
+                ELSE
+                    // To stack.
+
+                    off := scratchoff
+
+                    spreg := FoxGenerateStackAddress (
+                        &FoxTmps[1], // tmp
+                        NULLPTR, // beforeinst
+                        irfunc^.LirTail, // afterinst
+                        off, // off
+                        OUT off, // OUT newoff
+                    )
+
+                    inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR
+                    inst^.Body.Machine.Fox.Op1.Constant = off
+
+                    inst^.Source1 = spreg
+                END
+
+                LirInsertInstructionAfter (
+                    irfunc^.LirTail, // afterinst
+                    inst, // inst
+                )
+            END
+        END
+
+        IF count >= 3 THEN
+            scratchoff += 4
+        END
+
+        count += 1
+
+        arg = arg^.Next
+    END
 
     //  ADD SP, { frame size }
 
@@ -2081,101 +2211,6 @@ FN FoxGenerateAbiStuff (
         )
     END
 
-    //  MOV { their output reg or stack location }, { all OUT parameters }
-
-    arg = functype^.Body.Function.ArgListHead
-
-    count = 0
-    scratchoff = stackoff
-
-    WHILE arg DO
-        IF arg^.InOut != ARG_OUT THEN
-            arg = arg^.Next
-
-            CONTINUE
-        END
-
-        symbol := arg^.Symbol
-
-        irvar := CAST symbol^.IrContext TO ^IrVariable
-
-        IF irvar THEN
-            irreg := LirGetRegister ( irvar )
-
-            IF irreg^.Type == LIR_MACHINE_REG THEN
-                // Move it to the right place.
-
-                IF count < 3 THEN
-                    // To arg reg.
-
-                    IF irreg^.MachineRegister != FOX_A2 - count THEN
-                        inst = LirCreateInstruction (
-                            LIR_MACH_INST, // type
-                            FOX_MOV, // machtype
-                        )
-
-                        inst^.Defines = &FoxArg[2 - count]
-                        inst^.Source2 = irreg
-
-                        inst^.Body.Machine.Fox.Op1.AccessType =
-                            FOX_ACCESS_REGISTER
-
-                        inst^.Body.Machine.Fox.Op2.AccessType =
-                            FOX_ACCESS_REGISTER
-
-                        inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-                        inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
-
-                        LirInsertInstructionAfter (
-                            irfunc^.LirTail, // afterinst
-                            inst, // inst
-                        )
-                    END
-
-                ELSE
-                    // To stack.
-
-                    off := scratchoff
-
-                    spreg := FoxGenerateStackAddress (
-                        NULLPTR, // beforeinst
-                        irfunc^.LirTail, // afterinst
-                        off, // off
-                        OUT off, // OUT newoff
-                    )
-
-                    inst = LirCreateInstruction (
-                        LIR_MACH_INST, // type
-                        FOX_MOVZ, // machtype
-                    )
-
-                    inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR
-                    inst^.Body.Machine.Fox.Op1.Constant = off
-                    inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-                    inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
-
-                    inst^.Source1 = spreg
-
-                    inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
-                    inst^.Source2 = irreg
-
-                    LirInsertInstructionAfter (
-                        irfunc^.LirTail, // afterinst
-                        inst, // inst
-                    )
-                END
-            END
-        END
-
-        IF count >= 3 THEN
-            scratchoff += 4
-        END
-
-        count += 1
-
-        arg = arg^.Next
-    END
-
     //  POP { all allocated callee saved regs, reverse order }
 
     WHILE i > FOX_S0 DO
@@ -2190,6 +2225,7 @@ FN FoxGenerateAbiStuff (
             inst^.Defines = &FoxCalleeSaved[i - FOX_S0]
 
             inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+            inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
             inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
             inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -2209,6 +2245,7 @@ FN FoxGenerateAbiStuff (
 
     inst^.Defines = &FoxFp
     inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
     inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -2226,6 +2263,8 @@ FN FoxGenerateAbiStuff (
 
     inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+    inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_NONE
+    inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
 
     LirInsertInstructionAfter (
         irfunc^.LirTail, // afterinst

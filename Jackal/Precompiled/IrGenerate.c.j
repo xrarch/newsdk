@@ -2905,7 +2905,7 @@ uint64_t IrGenerateFunctionCall(uint64_t _mng_node1185, uint64_t _mng_truelabel1
     __twr_v1197 = ((uint64_t (*)(uint64_t))__twr_v1195)(__twr_v1196);
     _mng_inst1198 = __twr_v1197;
     __twr_v1199 = (uint64_t)(&IrCreateVariable);
-    __twr_v1200 = ((uint64_t (*)(uint64_t))__twr_v1199)(__twr_v1197);
+    __twr_v1200 = ((uint64_t (*)(uint64_t))__twr_v1199)(__twr_v1191);
     _mng_var1201 = __twr_v1200;
     __twr_v1202 = (uint64_t)(&IrGenerateExpression);
     __twr_v1203 = *(uint64_t*)(__twr_v1190);
