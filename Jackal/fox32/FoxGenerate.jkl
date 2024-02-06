@@ -727,6 +727,8 @@ FN FoxGenerateStackAddress (
     OUT newoff : ULONG,
 ) : ^LirRegister
 
+    newoff = off
+
     IF off > 256 THEN
         // Generate an add instruction to compute the stack address.
 
@@ -1183,6 +1185,8 @@ FN (LirSelectF) FoxSelectCall (
                 lirarg^.Register, // defreg
                 stackoff, // off
             )
+
+            stackoff += 4
         END
 
         lirarg^.Next = NULLPTR
@@ -1668,45 +1672,6 @@ FN FoxDebugPrintOperand (
         operand^.AccessType == FOX_ACCESS_IMM_PTR_NAME THEN
 
         TlPrintString ( "]" )
-    END
-END
-
-FN FoxDebugPrintCallInst (
-    IN lirinst : ^LirInstruction,
-)
-
-    TlPrintString ( "        IN: (" )
-
-    arg := lirinst^.TypeBody.Call.ArgListHead
-
-    WHILE arg DO
-        FoxDebugPrintRegister ( arg^.Register )
-
-        arg = arg^.Next
-
-        IF arg THEN
-            TlPrintString ( ", " )
-        END
-    END
-
-    TlPrintString ( ")\n" )
-
-    arg = lirinst^.TypeBody.Call.OutListHead
-
-    IF arg THEN
-        TlPrintString ( "        OUT: (" )
-
-        WHILE arg DO
-            FoxDebugPrintRegister ( arg^.Register )
-
-            arg = arg^.Next
-
-            IF arg THEN
-                TlPrintString ( ", " )
-            END
-        END
-
-        TlPrintString ( ")\n" )
     END
 END
 

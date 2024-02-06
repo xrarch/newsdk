@@ -1586,14 +1586,20 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
         refarg = refarg^.Next
     END
 
+    vartablevar : ^IrVariable = NULLPTR
+
     IF argnode THEN
+        IF NOT type^.Body.Function.IsVarArg THEN
+            TlInternalError ( "More args but not varargs", 0, 0, 0 )
+        END
+
         // There are still varargs.
 
         offset := 0
 
         vartable := type^.Body.Function.VarTable
 
-        vartablevar := IrFindConstant (
+        vartablevar = IrFindConstant (
             CAST vartable TO UWORD, // constant
             IR_STACK_ADDR, // op
         )
@@ -1634,6 +1640,12 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
             offset += JklTargetInfo^.PointerSize
             argnode = argnode^.Next
         END
+    END
+
+    IF type^.Body.Function.IsVarArg THEN
+        // Add the vartable and arg count arguments.
+
+        incount += 2
 
         // Add the vartable as the penultimate argument.
 
@@ -1648,7 +1660,12 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
             TlInternalError ( "Failed to allocate IR argument", 0, 0, 0 )
         END
 
-        irarg^.Variable = vartablevar
+        IF vartablevar THEN
+            irarg^.Variable = vartablevar
+
+        ELSE
+            irarg^.Variable = IrCreateConstantVariable ( 0 )
+        END
 
         IF arglisttail THEN
             arglisttail^.Next = irarg
