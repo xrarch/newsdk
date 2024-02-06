@@ -384,38 +384,49 @@ FN IrCreateConstantVariable (
 
     // Create a variable with a constant value.
 
-    var : ^IrVariable
-
     dovaluenumber := JklTargetInfo^.ValueNumberConstantFunc ( value )
 
-    IF dovaluenumber THEN
-        var = IrFindConstant (
-            value, // constant
-            IR_CONSTANT, // op
-        )
+    // Look up the value even if we've decided not to value number this
+    // constant. We will see why in a second.
 
-        IF var THEN
-            RETURN var
-        END
+    valvar := IrFindConstant (
+        value, // constant
+        IR_CONSTANT, // op
+    )
+
+    IF dovaluenumber AND valvar THEN
+        // Cool, we're allowed to use this.
+
+        RETURN valvar
     END
 
     inst := IrCreateInstruction (
         IR_CONSTANT, // type
     )
 
-    var = IrCreateVariable (
+    var := IrCreateVariable (
         inst, // definedby
     )
 
     inst^.Defines = var
     inst^.Body.Constant.Constant = value
 
-    IF dovaluenumber THEN
+    IF dovaluenumber OR NOT valvar THEN
+        // Value number this constant variable in the case that we're here for
+        // that, or that we didn't find an existing value.
+
         IrValueNumberConstantVariable (
             var, // var
             value, // value
             IR_CONSTANT, // op
         )
+
+    ELSEIF valvar THEN
+        // We weren't allowed to value number this constant, but we found an
+        // existing identical constant. Steal its value number so that common
+        // expressions are still value numbered together.
+
+        var^.Opt.Vn.ValueNumber = valvar^.Opt.Vn.ValueNumber
     END
 
     IrInsertInstructionTail ( inst )

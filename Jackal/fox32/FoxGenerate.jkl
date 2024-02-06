@@ -1518,6 +1518,34 @@ FN FoxHintFunction (
 
         arg = arg^.Next
     END
+
+    IF functype^.Body.Function.IsVarArg THEN
+        // Hint the vartable and argcount symbols.
+
+        i := 0
+
+        WHILE incount < 4 DO
+            symbol : ^LexSymbol
+
+            IF NOT i THEN
+                symbol = functype^.Body.Function.VarArgTable
+
+            ELSE
+                symbol = functype^.Body.Function.VarArgCount
+            END
+
+            irvar := CAST symbol^.IrContext TO ^IrVariable
+
+            IF irvar THEN
+                irreg := LirGetRegister ( irvar )
+
+                irreg^.Hint = FOX_A0 + incount
+            END
+
+            incount += 1
+            i += 1
+        END
+    END
 END
 
 FoxLirInfo : LirTargetInfoRecord = {
@@ -1767,11 +1795,11 @@ FN (AsmEmitF) FoxEmitFunction (
 
     // Emit the final assembly language for a function.
 
-    // First add a prologue and epilogue.
-
     // Now loop to perform spills. Remember to elide moves that are from a
     // register to itself; these appeared after regalloc! Also remember to
     // elide jumps to labels immediately after them, these also exist.
+
+    // First add a prologue and epilogue.
 
     // Now loop to emit the text.
 
