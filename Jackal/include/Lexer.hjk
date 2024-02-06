@@ -368,6 +368,7 @@ END
 
 STRUCT LexAsmBlock
     Next : ^LexAsmBlock,
+    Section : ^LexSection,
 
     Token : LexToken,
     Contents : TlDynamicBuffer,

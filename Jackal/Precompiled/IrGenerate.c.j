@@ -165,7 +165,7 @@ uint64_t IrAllocateStack(uint64_t _mng_func163, uint64_t _mng_bytes164) {
     __twr_v168 = _mng_bytes164 + __twr_v167;
     __twr_v169 = (uint64_t)(&JklTargetInfo);
     __twr_v170 = *(uint64_t*)(__twr_v169);
-    __twr_v171 = 33ULL;
+    __twr_v171 = 41ULL;
     __twr_v172 = __twr_v170 + __twr_v171;
     __twr_v173 = *(uint8_t*)(__twr_v172);
     __twr_v174 = 1ULL;
@@ -3062,7 +3062,7 @@ uint64_t IrGenerateFunctionCall(uint64_t _mng_node1185, uint64_t _mng_truelabel1
     ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v1287)(_mng_vartablevar1257, __twr_v1286, _mng_offset1265);
     __twr_v1288 = (uint64_t)(&JklTargetInfo);
     __twr_v1289 = *(uint64_t*)(__twr_v1288);
-    __twr_v1290 = 35ULL;
+    __twr_v1290 = 43ULL;
     __twr_v1291 = __twr_v1289 + __twr_v1290;
     __twr_v1292 = *(uint8_t*)(__twr_v1291);
     __twr_v1293 = _mng_offset1265 + __twr_v1292;

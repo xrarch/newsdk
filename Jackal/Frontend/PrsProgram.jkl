@@ -936,6 +936,8 @@ FN PrsCheckConstant (
         LEAVE
     END
 
+    value &= JklTargetInfo^.ConstantMask
+
     masked := value & JklPrimitiveTypeMasks[type^.Body.Primitive.Type]
 
     IF masked != value THEN

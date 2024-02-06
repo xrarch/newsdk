@@ -122,11 +122,12 @@ extern uint64_t IrAllocateStack(uint64_t _mng_func140, uint64_t _mng_bytes141);
 extern uint64_t IrGetStackOffset(uint64_t _mng_func142, uint64_t _mng_symbol143);
 extern void CtTranspile();
 extern uint64_t CtValueNumber(uint64_t _mng_constant144);
-uint64_t CtTargetInfo[11] = {
+uint64_t CtTargetInfo[12] = {
     (uint64_t)(&"CHost"),
     (uint64_t)(&CtTranspile),
     (uint64_t)(&CtValueNumber),
     0x0000000000000000,
+    0xFFFFFFFFFFFFFFFF,
     0x0100000108080800,
     0x0402010000080402,
     0x0402010000000008,

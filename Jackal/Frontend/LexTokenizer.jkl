@@ -543,6 +543,11 @@ FN LexCrunchNumber (
                 i += 1
             END
 
+            IF (num & JklTargetInfo^.ConstantMask) != num THEN
+                LexTokenError ( token,
+                    "Number does not fit in machine word.", 0, 0, 0 )
+            END
+
             RETURN num
         END
 
@@ -578,6 +583,11 @@ FN LexCrunchNumber (
             i += 1
         END
 
+        IF (num & JklTargetInfo^.ConstantMask) != num THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
         RETURN num
     END
 
@@ -609,6 +619,11 @@ FN LexCrunchNumber (
         END
 
         i += 1
+    END
+
+    IF (num & JklTargetInfo^.ConstantMask) != num THEN
+        LexTokenError ( token,
+            "Number does not fit in machine word.", 0, 0, 0 )
     END
 
     RETURN num

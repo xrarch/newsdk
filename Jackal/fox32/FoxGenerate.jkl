@@ -28,6 +28,7 @@ FoxTargetInfo : JklTargetInfoRecord = {
     [ValueNumberConstantFunc] = &FoxValueNumber,
     [FoldStackAddr] = TRUE,
     [LirInfo] = &FoxLirInfo,
+    [ConstantMask] = 0xFFFFFFFF,
     [StackAlignment] = 4,
     [PointerAlignment] = 4,
     [PointerSize] = 4,
@@ -1466,7 +1467,6 @@ FN FoxGenerateArithmeticMove (
         movinst^.Source2 = srcreg
 
         movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
-        movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
         movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
         movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
@@ -1910,15 +1910,37 @@ FN FoxGenerateAbiStuff (
     count := 0
 
     scratchoff := stackoff
+    varargextras := 0
 
-    WHILE arg DO
-        IF arg^.InOut != ARG_IN THEN
-            arg = arg^.Next
+    IF functype^.Body.Function.IsVarArg THEN
+        varargextras = 2
+    END
 
-            CONTINUE
+    WHILE TRUE DO
+        symbol : ^LexSymbol
+
+        IF arg THEN
+            IF arg^.InOut != ARG_IN THEN
+                arg = arg^.Next
+
+                CONTINUE
+            END
+
+            symbol = arg^.Symbol
+
+        ELSEIF NOT varargextras THEN
+            BREAK
+
+        ELSE
+            IF varargextras == 2 THEN
+                symbol = functype^.Body.Function.VarArgTable
+
+            ELSE
+                symbol = functype^.Body.Function.VarArgCount
+            END
+
+            varargextras -= 1
         END
-
-        symbol := arg^.Symbol
 
         irvar := CAST symbol^.IrContext TO ^IrVariable
 
@@ -1996,7 +2018,9 @@ FN FoxGenerateAbiStuff (
 
         count += 1
 
-        arg = arg^.Next
+        IF arg THEN
+            arg = arg^.Next
+        END
     END
 
     //  SUB SP, { frame size }

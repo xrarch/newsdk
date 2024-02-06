@@ -319,6 +319,7 @@ FN LirSelectForFunction (
                 inst^.Body.Label.LirLabel = lirinst
 
                 lirinst^.Body.Label.References = 0
+                lirinst^.Body.Label.Number = 0xFFFFFFFF
             END
 
             LirInsertInstructionTail ( lirinst )

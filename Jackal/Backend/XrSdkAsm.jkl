@@ -400,6 +400,21 @@ FN XrAsmEmit (
         section = section^.Next
     END
 
+    // Next, put the assembly blocks.
+
+    asm := LexAsmBlockListHead
+
+    WHILE asm DO
+        XrCurrentSection = asm^.Section
+
+        XrAsmCopyBytesForward (
+            asm^.Contents.Buffer, // srcbuf
+            asm^.Contents.Count - 1, // length
+        )
+
+        asm = asm^.Next
+    END
+
     // For each global, output the data, with appropriate storage specifiers.
     // Call the target-specific emitter for each function. Also remember to
     // output the ASM blocks.

@@ -6098,7 +6098,7 @@ uint64_t IrSimplifyAdd(uint64_t _mng_inst2365) {
     __twr_l456:;
     __twr_v2488 = (uint64_t)(&JklTargetInfo);
     __twr_v2489 = *(uint64_t*)(__twr_v2488);
-    __twr_v2490 = 32ULL;
+    __twr_v2490 = 40ULL;
     __twr_v2491 = __twr_v2489 + __twr_v2490;
     __twr_v2492 = *(uint8_t*)(__twr_v2491);
     if (!(__twr_v2492)) { goto __twr_l449; } else { goto __twr_l455; }

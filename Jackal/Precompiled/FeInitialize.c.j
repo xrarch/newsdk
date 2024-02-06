@@ -528,8 +528,8 @@ void FeCopyPathFileBlock(uint64_t _mng_fileblock281, uint64_t _mng_filepath282) 
     __twr_l36:;
     _jkl_epilogue:;
 }
-extern uint64_t CtTargetInfo[11];
-extern uint64_t FoxTargetInfo[11];
+extern uint64_t CtTargetInfo[12];
+extern uint64_t FoxTargetInfo[12];
 uint64_t TrgInfoRecords[8] = {
     (uint64_t)(&CtTargetInfo),
     (uint64_t)(&FoxTargetInfo),
