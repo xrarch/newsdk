@@ -44,6 +44,8 @@ STRUCT LirRegister
 
     LivenessFirst : ^LirInstruction,
 
+    SpilledOffset : ULONG,
+
     LivenessStart : ULONG,
     LivenessEnd : ULONG,
 
@@ -146,6 +148,21 @@ EXTERN FN LirSelectForFunction (
 EXTERN FN LirAllocateRegistersForFunction (
     IN funcsym : ^LexSymbol,
 )
+
+EXTERN FN LirInsertInstructionBefore (
+    IN beforeinst : ^LirInstruction,
+    IN inst : ^LirInstruction,
+)
+
+EXTERN FN LirInsertInstructionAfter (
+    IN afterinst : ^LirInstruction,
+    IN inst : ^LirInstruction,
+)
+
+EXTERN FN LirGetSpillOffset (
+    IN irfunc : ^IrFunction,
+    IN spilledreg : ^LirRegister,
+) : UWORD
 
 ENUM LirAbiUsage : UBYTE
     LIR_REG_UNUSABLE, // MUST be first in the enum

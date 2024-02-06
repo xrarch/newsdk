@@ -1,5 +1,5 @@
 //
-// Implements the backbone of instruction selection.
+// Implements generic support routines for target-specific code.
 //
 
 #INCLUDE "<inc>/Target.hjk"
@@ -50,6 +50,7 @@ FN LirCreateRegister () : ^LirRegister
     reg^.LiveAcrossCall = FALSE
     reg^.LivenessStart = 0
     reg^.Hint = 0
+    reg^.SpilledOffset = 0xFFFFFFFF
 
     RETURN reg
 END
@@ -83,6 +84,52 @@ FN LirInsertInstructionTail (
     END
 
     LirCurrentFunction^.LirTail = lirinst
+END
+
+FN LirInsertInstructionBefore (
+    IN beforeinst : ^LirInstruction,
+    IN inst : ^LirInstruction,
+)
+
+    // Insert inst before beforeinst.
+
+    prev := beforeinst^.Prev
+
+    IF prev THEN
+        prev^.Next = inst
+
+    ELSE
+        // beforeinst must have been the head.
+
+        beforeinst^.Block^.LirHead = inst
+    END
+
+    beforeinst^.Prev = inst
+    inst^.Next = beforeinst
+    inst^.Prev = prev
+END
+
+FN LirInsertInstructionAfter (
+    IN afterinst : ^LirInstruction,
+    IN inst : ^LirInstruction,
+)
+
+    // Insert inst after afterinst.
+
+    next := afterinst^.Next
+
+    IF next THEN
+        next^.Prev = inst
+
+    ELSE
+        // afterinst must have been the tail.
+
+        afterinst^.Block^.LirTail = inst
+    END
+
+    afterinst^.Next = inst
+    inst^.Prev = afterinst
+    inst^.Next = next
 END
 
 FN LirRemoveInstruction (
@@ -155,6 +202,26 @@ FN LirGetRegister (
     lirreg^.Symbol = oldvariable^.Symbol
 
     RETURN lirreg
+END
+
+FN LirGetSpillOffset (
+    IN irfunc : ^IrFunction,
+    IN spilledreg : ^LirRegister,
+) : UWORD
+
+    spilloff := spilledreg^.SpilledOffset
+
+    IF spilloff != 0xFFFFFFFF THEN
+        RETURN spilloff
+    END
+
+    spilloff = irfunc^.StackFrameSize + irfunc^.ScratchAreaSize
+
+    spilledreg^.SpilledOffset = spilloff
+
+    irfunc^.StackFrameSize += JklTargetInfo^.PointerSize
+
+    RETURN spilloff
 END
 
 FN LirSelect (

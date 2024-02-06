@@ -357,9 +357,7 @@ FN FoxFillOperandForAccess (
             operand^.AccessType = FOX_ACCESS_REG_PTR
             operand^.Constant = off
 
-            spreg := LirCreatePreallocatedRegister (
-                FOX_SP, // machreg
-            )
+            spreg := LirCreatePreallocatedRegister ( FOX_SP )
 
             RETURN spreg
         END
@@ -588,9 +586,7 @@ FN (LirSelectF) FoxSelectStackAddr (
     )
 
     movinst^.Defines = defreg
-    movinst^.Source2 = LirCreatePreallocatedRegister (
-        FOX_SP, // machreg
-    )
+    movinst^.Source2 = LirCreatePreallocatedRegister ( FOX_SP )
 
     movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -723,6 +719,7 @@ FN FoxGeneratePreallocatedMov (
 END
 
 FN FoxGenerateStackAddress (
+    IN beforeinst : ^LirInstruction,
     IN off : ULONG,
     OUT newoff : ULONG,
 ) : ^LirRegister
@@ -732,7 +729,16 @@ FN FoxGenerateStackAddress (
     IF off > 256 THEN
         // Generate an add instruction to compute the stack address.
 
-        destreg := LirCreateRegister ()
+        destreg : ^LirRegister = NULLPTR
+
+        IF beforeinst THEN
+            // This is a spill; use AT.
+
+            destreg = LirCreatePreallocatedRegister ( FOX_AT )
+
+        ELSE
+            destreg = LirCreateRegister ()
+        END
 
         movinst := LirCreateInstruction (
             LIR_MACH_INST, // type
@@ -740,16 +746,22 @@ FN FoxGenerateStackAddress (
         )
 
         movinst^.Defines = destreg
-        movinst^.Source2 = LirCreatePreallocatedRegister (
-            FOX_SP, // machreg
-        )
+        movinst^.Source2 = LirCreatePreallocatedRegister ( FOX_SP )
 
         movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
         movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
         movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
         movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
-        LirInsertInstructionTail ( movinst )
+        IF beforeinst THEN
+            LirInsertInstructionBefore (
+                beforeinst, // beforeinst
+                movinst, // inst
+            )
+
+        ELSE
+            LirInsertInstructionTail ( movinst )
+        END
 
         addinst := LirCreateInstruction (
             LIR_MACH_INST, // type
@@ -765,7 +777,15 @@ FN FoxGenerateStackAddress (
         addinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
         addinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
-        LirInsertInstructionTail ( addinst )
+        IF beforeinst THEN
+            LirInsertInstructionBefore (
+                beforeinst, // beforeinst
+                addinst, // inst
+            )
+
+        ELSE
+            LirInsertInstructionTail ( addinst )
+        END
     
         newoff = 0
 
@@ -783,6 +803,7 @@ FN FoxGenerateStoreToStack (
 )
 
     destreg := FoxGenerateStackAddress (
+        NULLPTR, // beforeinst
         off, // off
         OUT off, // OUT newoff
     )
@@ -820,6 +841,7 @@ FN FoxGenerateLoadFromStack (
 )
 
     srcreg := FoxGenerateStackAddress (
+        NULLPTR, // beforeinst
         off, // off
         OUT off, // OUT newoff
     )
@@ -1548,6 +1570,232 @@ FN FoxHintFunction (
     END
 END
 
+FN FoxElideUselessJump (
+    IN inst : ^LirInstruction,
+)
+
+    // Check if this branch instruction is followed by both its true and false
+    // label. We walk along each label until we reach the first non-label
+    // instruction so that we catch all the cases.
+
+    // TODO that
+END
+
+FoxTmpsContain : ^LirRegister[2]
+
+FN FoxGenerateSpillForOperand (
+    IN inst : ^LirInstruction,
+    IN spilledreg : ^LirRegister,
+    IN operand : ^LirFoxOperand,
+    IN tmp : UWORD,
+) : ^LirRegister
+
+    spilloff := LirGetSpillOffset (
+        inst^.Block, // irfunc
+        spilledreg, // spilledreg
+    )
+
+    IF operand^.AccessType == FOX_ACCESS_REGISTER THEN
+        // Replace in-place with an [SP + OFF].
+
+        spreg := FoxGenerateStackAddress (
+            inst, // beforeinst
+            spilloff, // off
+            OUT spilloff, // OUT newoff
+        )
+
+        operand^.AccessType = FOX_ACCESS_REG_PTR
+        operand^.Constant = spilloff
+
+        RETURN spreg
+    END
+
+    IF operand^.AccessType != FOX_ACCESS_REG_PTR THEN
+        TlInternalError ( "Fox: Bad spill", 0, 0, 0 )
+    END
+
+    // We have to load the spilled reg into a temporary, then shove that
+    // temporary into the instruction.
+
+    IF FoxTmpsContain[0] == spilledreg THEN
+        RETURN LirCreatePreallocatedRegister ( FOX_T5 )
+    END
+
+    IF FoxTmpsContain[1] == spilledreg THEN
+        RETURN LirCreatePreallocatedRegister ( FOX_T6 )
+    END
+
+    spreg := FoxGenerateStackAddress (
+        inst, // beforeinst
+        spilloff, // off
+        OUT spilloff, // OUT newoff
+    )
+
+    FoxTmpsContain[tmp] = spilledreg
+
+    tmpreg := LirCreatePreallocatedRegister ( FOX_T5 + tmp )
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        FOX_MOVZ, // machtype
+    )
+
+    lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REG_PTR
+    lirinst^.Body.Machine.Fox.Op2.Constant = spilloff
+    lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    lirinst^.Source2 = spreg
+
+    lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    lirinst^.Defines = tmpreg
+
+    LirInsertInstructionBefore (
+        inst, // beforeinst
+        lirinst, // inst
+    )
+
+    RETURN tmpreg
+END
+
+FN FoxGenerateSpills (
+    IN irfunc : ^IrFunction,
+)
+
+    // Iterate the regalloc'd LIR to generate spill code.
+    // We use three permanently reserved temporaries: T5, T6, and AT, which were
+    // previously excluded from regalloc decisions. T5 and T6 are used to hold
+    // spilled registers, of which there can be at most two per instruction. AT
+    // is used in the case that the spill location for a register is outside the
+    // readily accessible stack and needs to be calculated.
+    //
+    // Whenever the spilled register is a direct register operand, we can
+    // replace it with the [SP + OFF] in-place. Otherwise, it must be an
+    // indirect memory access. In that case, we load it into a temporary and
+    // then replace the spilled reg with the temporary in-place.
+    //
+    // These are the replacement cases (not counting when off > 256):
+    //
+    //  SPILL, R                     ->  [SP + OFF], R
+    //
+    //  R, SPILL                     ->  R, [SP + OFF]
+    //
+    //  SPILL, SPILL                 ->  [SP + OFF], [SP + OFF]
+    //
+    //  [SPILL + X], R               ->  T5 = [SP + OFF]
+    //                               ->  [T5 + X], R
+    //
+    //  R, [SPILL + X]               ->  T5 = [SP + OFF]
+    //                                   R, [T5 + X]
+    //
+    //  [SPILL + X], [SPILL + X]     ->  T5 = [SP + OFF]
+    //                                   T6 = [SP + OFF]
+    //                                   [T5 + X], [T6 + X]
+
+    // Remember to elide moves that are from a register to itself; these
+    // appeared after regalloc! We don't elide useless jumps here because there
+    // are still opportunities for them to appear. We do that at code emission
+    // time instead.
+
+    FoxTmpsContain[0] = NULLPTR
+    FoxTmpsContain[1] = NULLPTR
+
+    inst := irfunc^.LirHead
+
+    WHILE inst DO
+        def := inst^.Defines
+        src1 := inst^.Source1
+        src2 := inst^.Source2
+
+        type := inst^.Type
+        machinst := inst^.MachineInstruction
+        access1 := inst^.Body.Machine.Fox.Op1.AccessType
+        access2 := inst^.Body.Machine.Fox.Op2.AccessType
+
+        // First check if this is a useless move. Despite the massive bundle of
+        // conditions below, this is a pretty common occurrence after regalloc,
+        // since we didn't know if register hinting would be successful until
+        // after we generated lots of MOVs into function argument registers and
+        // so on.
+
+        IF type == LIR_MACH_INST AND
+            (machinst == FOX_MOV OR machinst == FOX_MOVZ) AND
+            inst^.Body.Machine.Fox.BitSize == FOX_BITS_32 AND
+            access1 == FOX_ACCESS_REGISTER AND
+            access2 == FOX_ACCESS_REGISTER THEN
+
+            IF def == src2 OR
+                (def^.Type == LIR_PREALLOCATED_REG OR
+                def^.Type == LIR_MACHINE_REG) AND
+                (src2^.Type == LIR_PREALLOCATED_REG OR
+                src2^.Type == LIR_MACHINE_REG) AND
+                (def^.MachineRegister == src2^.MachineRegister) THEN
+
+                // Elide this useless move.
+
+                LirRemoveInstruction ( inst )
+
+                inst = inst^.Next
+
+                CONTINUE
+            END
+        END
+
+        tmp := 0
+
+        IF def AND def^.Type == LIR_SPILLED_REG THEN
+            inst^.Defines = FoxGenerateSpillForOperand (
+                inst, // inst
+                def, // spilledreg
+                &inst^.Body.Machine.Fox.Op1, // operand
+                tmp, // tmp
+            )
+
+            tmp += 1
+
+        ELSEIF src1 AND src1^.Type == LIR_SPILLED_REG THEN
+            inst^.Source1 = FoxGenerateSpillForOperand (
+                inst, // inst
+                src1, // spilledreg
+                &inst^.Body.Machine.Fox.Op1, // operand
+                tmp, // tmp
+            )
+
+            tmp += 1
+        END
+
+        IF src2 AND src2^.Type == LIR_SPILLED_REG THEN
+            inst^.Source2 = FoxGenerateSpillForOperand (
+                inst, // inst
+                src2, // spilledreg
+                &inst^.Body.Machine.Fox.Op2, // operand
+                tmp, // tmp
+            )
+        END
+
+        IF inst^.Type == LIR_BRANCH OR
+            inst^.Type == LIR_LABEL OR
+            inst^.Type == LIR_CALL THEN
+
+            FoxTmpsContain[0] = NULLPTR
+            FoxTmpsContain[1] = NULLPTR
+        END
+
+        inst = inst^.Next
+    END
+END
+
+FN FoxGenerateAbiStuff (
+    IN irfunc : ^IrFunction,
+)
+
+    // Generate a prologue and epilogue for the function.
+
+    // Remember not to generate MOVs from a register to itself, we already
+    // generated the spill code so there's no pass after this to get rid of
+    // redundant MOVs again.
+END
+
 FoxLirInfo : LirTargetInfoRecord = {
     [SelectionTable] = {
         [IR_LOAD] = &FoxSelectLoad,
@@ -1795,14 +2043,6 @@ FN (AsmEmitF) FoxEmitFunction (
 
     // Emit the final assembly language for a function.
 
-    // Now loop to perform spills. Remember to elide moves that are from a
-    // register to itself; these appeared after regalloc! Also remember to
-    // elide jumps to labels immediately after them, these also exist.
-
-    // First add a prologue and epilogue.
-
-    // Now loop to emit the text.
-
     TlInternalError ( "TODO FoxEmitFunction", 0, 0, 0 )
 END
 
@@ -1857,9 +2097,7 @@ FN (JklTargetF) FoxCompile ()
             irfunc^.ScratchAreaSize = outscratch
         END
 
-        LirSelectForFunction (
-            funcsym, // funcsym
-        )
+        LirSelectForFunction ( funcsym )
 
         funcsym = funcsym^.NextFunction
     END
@@ -1875,9 +2113,17 @@ FN (JklTargetF) FoxCompile ()
 
         // Do regalloc.
 
-        LirAllocateRegistersForFunction (
-            funcsym, // funcsym
-        )
+        LirAllocateRegistersForFunction ( funcsym )
+
+        // Generate spill code.
+
+        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+        FoxGenerateSpills ( irfunc )
+
+        // Generate the prologue and epilogue.
+
+        FoxGenerateAbiStuff ( irfunc )
 
         FoxDebugPrintLir ( funcsym )
 
