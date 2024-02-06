@@ -59,6 +59,7 @@ END
 
 STRUCT LirLabelBody
     References : ULONG,
+    Number : ULONG,
 END
 
 UNION LirInstructionBody
@@ -173,6 +174,7 @@ END
 STRUCT LirTargetInfoRecord
     SelectionTable : LirSelectF[IR_MAX],
     RegisterAbiUsage : LirAbiUsage[IR_MACHINE_REG_MAX],
+    RegisterAllocationStatus : LirAbiUsage[IR_MACHINE_REG_MAX],
     MaximumRegister : UBYTE,
 END
 
@@ -183,9 +185,5 @@ FNPTR AsmEmitF (
 STRUCT AsmEmitterRecord
     EmitFunc : AsmEmitF,
 END
-
-EXTERN FN XrAsmEmit (
-    IN emitter : ^AsmEmitterRecord,
-)
 
 EXTERN LirCurrentFunction : ^IrFunction

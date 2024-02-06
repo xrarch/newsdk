@@ -4,6 +4,7 @@
 //
 
 #INCLUDE "<inc>/Target.hjk"
+#INCLUDE "<inc>/XrSdkAsm.hjk"
 
 XrCurrentSection : ^LexSection
 
@@ -308,7 +309,7 @@ FN XrAsmEmitFunction (
 
     // Just call the target.
 
-    // emitter^.EmitFunc ( sym )
+    emitter^.EmitFunc ( sym )
 END
 
 FN XrAsmEmitGlobal (

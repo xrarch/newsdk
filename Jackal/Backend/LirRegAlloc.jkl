@@ -256,6 +256,12 @@ FN LirLivenessForFunction (
             )
         END
 
+        IF inst^.Type == LIR_BRANCH THEN
+            // Since we're here, refcount labels.
+
+            inst^.TypeBody.Branch.Label^.Body.Label.References += 1
+        END
+
         IF inst^.Type == LIR_BRANCH OR inst^.Type == LIR_LABEL THEN
             // End of the basic block, empty the defined list.
 
@@ -318,7 +324,8 @@ FN LirResetRegPool ()
 
     i := 0
     max := lirinfo^.MaximumRegister
-    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    statmap := &lirinfo^.RegisterAllocationStatus[0]
+    everalloced := &LirCurrentFunction^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
 
     WHILE i < max DO
@@ -328,6 +335,8 @@ FN LirResetRegPool ()
         ELSE
             statmap[i] = FALSE
         END
+
+        everalloced[i] = FALSE
 
         i += 1
     END
@@ -342,8 +351,9 @@ FN LirAllocateRegister (
 
     lirinfo := JklTargetInfo^.LirInfo
 
-    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    statmap := &lirinfo^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
+    everalloced := &LirCurrentFunction^.RegisterAllocationStatus[0]
 
     IF hint AND
         NOT statmap[hint] AND
@@ -352,6 +362,7 @@ FN LirAllocateRegister (
         // Take the hint.
 
         statmap[hint] = TRUE
+        everalloced[hint] = TRUE
 
         RETURN hint
     END
@@ -363,6 +374,7 @@ FN LirAllocateRegister (
         IF NOT statmap[i] THEN
             IF NOT calleesavedonly OR abimap[i] == LIR_REG_CALLEE_SAVED THEN
                 statmap[i] = TRUE
+                everalloced[i] = TRUE
 
                 RETURN i
             END
@@ -380,7 +392,7 @@ FN LirFreeRegister (
 
     lirinfo := JklTargetInfo^.LirInfo
 
-    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    statmap := &lirinfo^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
 
     // An unusable reg might get freed when a preallocated machine reg's live
@@ -505,7 +517,7 @@ FN LirPreallocateRegister (
 
     lirinfo := JklTargetInfo^.LirInfo
 
-    statmap := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    statmap := &lirinfo^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
 
     IF abimap[reg] == LIR_REG_UNUSABLE THEN

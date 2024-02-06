@@ -95,6 +95,8 @@ FN LirInsertInstructionBefore (
 
     prev := beforeinst^.Prev
 
+    inst^.Block = beforeinst^.Block
+
     IF prev THEN
         prev^.Next = inst
 
@@ -117,6 +119,8 @@ FN LirInsertInstructionAfter (
     // Insert inst after afterinst.
 
     next := afterinst^.Next
+
+    inst^.Block = afterinst^.Block
 
     IF next THEN
         next^.Prev = inst
@@ -166,8 +170,6 @@ FN LirGetLabel (
     lirinst := oldlabel^.Body.Label.LirLabel
 
     IF lirinst THEN
-        lirinst^.Body.Label.References += 1
-
         RETURN lirinst
     END
 
@@ -178,7 +180,8 @@ FN LirGetLabel (
 
     oldlabel^.Body.Label.LirLabel = lirinst
 
-    lirinst^.Body.Label.References = 1
+    lirinst^.Body.Label.References = 0
+    lirinst^.Body.Label.Number = 0xFFFFFFFF
 
     RETURN lirinst
 END

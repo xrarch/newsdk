@@ -453,6 +453,8 @@ FN IrCreateConstantBefore (
     inst^.Defines = var
     inst^.Body.Constant.Constant = value
 
+    inst^.Block = beforeinst^.Block
+
     prev := beforeinst^.Prev
 
     IF prev THEN

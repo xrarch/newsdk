@@ -1,0 +1,41 @@
+EXTERN FN XrAsmEmit (
+    IN emitter : ^AsmEmitterRecord,
+)
+
+EXTERN FN XrAsmCopyBytes (
+    IN srcbuf : ^UBYTE,
+    IN length : UWORD,
+)
+
+EXTERN FN XrAsmInsertString (
+    IN string : ^UBYTE,
+)
+
+EXTERN FN XrAsmInsertByte (
+    IN byte : UBYTE,
+)
+
+EXTERN FN XrAsmInsertNumber (
+    IN number : UWORD,
+)
+
+EXTERN FN XrAsmCopyBytesForward (
+    IN srcbuf : ^UBYTE,
+    IN length : UWORD,
+)
+
+EXTERN FN XrAsmInsertStringForward (
+    IN string : ^UBYTE,
+)
+
+EXTERN FN XrAsmInsertByteForward (
+    IN byte : UBYTE,
+)
+
+EXTERN FN XrAsmInsertNumberForward (
+    IN number : UWORD,
+)
+
+EXTERN FN XrAsmEmitString (
+    IN string : ^LexInternedString
+)
