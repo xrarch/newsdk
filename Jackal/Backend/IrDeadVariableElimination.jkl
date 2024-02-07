@@ -82,14 +82,7 @@ FN IrUndeadifyVariable (
     IF NOT var^.ConsideredForDve THEN
         var^.ConsideredForDve = TRUE
 
-        IF var^.Symbol AND var^.Symbol^.ParameterType == ARG_OUT THEN
-            // Never kill OUT parameters.
-
-            var^.Opt.Dve.References = 2
-
-        ELSE
-            var^.Opt.Dve.References = 1
-        END
+        var^.Opt.Dve.References = 1
 
     ELSE
         IF NOT var^.Opt.Dve.References THEN
@@ -110,6 +103,30 @@ FN IrEliminateForFunction (
 
     irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
+    // First set the OUT parameter refcounts to 1, because they are *always*
+    // saved at the end of the function.
+
+    type := funcsym^.SemanticType
+
+    outarg := type^.Body.Function.ArgListHead
+
+    WHILE outarg DO
+        IF outarg^.InOut != ARG_OUT THEN
+            outarg = outarg^.Next
+
+            CONTINUE
+        END
+
+        symbol := outarg^.Symbol
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        irvar^.ConsideredForDve = TRUE
+        irvar^.Opt.Dve.References = 1
+
+        outarg = outarg^.Next
+    END
+
     // Do an initial scan over the IR to construct use counts for each variable
     // and the initial dead variable list.
 
@@ -122,24 +139,17 @@ FN IrEliminateForFunction (
             IF NOT def^.ConsideredForDve THEN
                 def^.ConsideredForDve = TRUE
 
-                IF def^.Symbol AND def^.Symbol^.ParameterType == ARG_OUT THEN
-                    // Never kill OUT parameters.
+                // Optimistically place it on the dead variable list.
 
-                    def^.Opt.Dve.References = 1
+                TlInsertAtTailList (
+                    &IrDeadVariableListHead, // head
+                    &def^.Opt.Dve.DeadListEntry, // entry
+                )
 
-                ELSE
-                    // Optimistically place it on the dead variable list.
+                def^.Opt.Dve.References = 0
 
-                    TlInsertAtTailList (
-                        &IrDeadVariableListHead, // head
-                        &def^.Opt.Dve.DeadListEntry, // entry
-                    )
-
-                    def^.Opt.Dve.References = 0
-
-                    IF def^.Symbol THEN
-                        def^.Opt.Dve.DefinedByListHead = NULLPTR
-                    END
+                IF def^.Symbol THEN
+                    def^.Opt.Dve.DefinedByListHead = NULLPTR
                 END
             END
 

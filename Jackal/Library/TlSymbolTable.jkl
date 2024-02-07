@@ -8,7 +8,7 @@
 
 #INCLUDE "<inc>/Runtime.hjk"
 
-TlSymbolTableZone : TlZone
+PUBLIC TlSymbolTableZone : TlZone
 
 FN TlInitializeSymbolTable (
     IN symboltable : ^TlSymbolTable,

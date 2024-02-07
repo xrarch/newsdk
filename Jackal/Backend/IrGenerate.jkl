@@ -2560,6 +2560,39 @@ FN IrGenerateForFunction (
 
     funcsym^.InitialValue = IrCurrentFunction
 
+    // Make sure all the OUT parameters have an IR variable.
+
+    type := funcsym^.SemanticType
+
+    outarg := type^.Body.Function.ArgListHead
+
+    WHILE outarg DO
+        IF outarg^.InOut != ARG_OUT THEN
+            outarg = outarg^.Next
+
+            CONTINUE
+        END
+
+        symbol := outarg^.Symbol
+
+        irvar := IrCreateVariable (
+            NULLPTR, // definedby
+        )
+
+        symbol^.IrContext = irvar
+
+        irvar^.Symbol = symbol
+
+        irvar^.Annotation = IR_VAR_LOCAL
+
+        irvar^.ConsideredForDve = TRUE
+        irvar^.Opt.Dve.References = 1
+
+        outarg = outarg^.Next
+    END
+
+    // Generate the function block.
+
     IrGenerateBlock ( funcsym^.SemanticType^.Body.Function.BodyBlock )
 
     IrInsertInstructionTail ( IrCurrentFunction^.EpilogueLabel )

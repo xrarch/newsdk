@@ -202,7 +202,7 @@ FN LirDefRegister (
 END
 
 FN LirLivenessForFunction (
-    IN irfunc : ^IrFunction,
+    IN funcsym : ^LexSymbol,
 )
 
     // Do a very simple liveness analysis with the following rules:
@@ -218,6 +218,48 @@ FN LirLivenessForFunction (
     //
     // The technical term for this is "god awful liveness analysis". Patent
     // pending.
+
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+    // First make sure all the IN parameters are live on entry.
+
+    type := funcsym^.SemanticType
+
+    arg := type^.Body.Function.ArgListHead
+
+    WHILE arg DO
+        IF arg^.InOut != ARG_IN THEN
+            arg = arg^.Next
+
+            CONTINUE
+        END
+
+        symbol := arg^.Symbol
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        IF irvar THEN
+            lirreg := LirGetRegister ( irvar )
+
+            lirreg^.LivenessStart = 1
+            lirreg^.LivenessEnd = 0
+            lirreg^.LivenessFirst = irfunc^.LirHead
+
+            lirreg^.DefinedYet = TRUE
+
+            TlInsertAtHeadList (
+                &LirDefinedYetListHead, // head
+                &lirreg^.DefinedYetListEntry, // entry
+            )
+
+            TlInsertAtHeadList (
+                &LirIntervalListHead, // head
+                &lirreg^.IntervalListEntry, // entry
+            )
+        END
+
+        arg = arg^.Next
+    END
 
     inst := irfunc^.LirHead
     instnum := 1
@@ -412,6 +454,8 @@ FN LirAddToActiveList (
 
     // Insertion sort into the active list by end point.
 
+    reg^.Active = TRUE
+
     head := &LirActiveIntervalList
     entry := head^.Next
 
@@ -460,6 +504,8 @@ FN LirExpireOldIntervals (
 
         TlRemoveEntryList ( entry )
 
+        otherreg^.Active = FALSE
+
         entry = entry^.Next
     END
 END
@@ -491,6 +537,7 @@ FN LirSpillAtInterval (
             TlRemoveEntryList ( spillentry )
 
             spillreg^.Type = LIR_SPILLED_REG
+            spillreg^.Active = FALSE
 
             // Insert this reg into the active list.
 
@@ -507,6 +554,61 @@ FN LirSpillAtInterval (
 
     TlInternalError (
         "LirSpillAtInterval: Too many preallocated registers", 0, 0, 0 )
+END
+
+FN LirReallocateRegister (
+    IN reg : ^LirRegister,
+)
+
+    // Re-allocate a register for the given LIR register. We have to scan all
+    // intervals and recursively re-allocate any that it interferes with.
+
+    newreg := LirAllocateRegister (
+        reg^.LiveAcrossCall, // calleesavedonly
+        0, // hint
+    )
+
+    IF newreg == -1 THEN
+        // Spill :(
+
+        IF reg^.Active THEN
+            reg^.Active = FALSE
+
+            TlRemoveEntryList ( &reg^.DefinedYetListEntry )
+        END
+
+        reg^.Type = LIR_SPILLED_REG
+
+        LEAVE
+    END
+
+    reg^.MachineRegister = newreg
+
+    head := &LirSortedIntervalListHead
+    entry := head^.Next
+
+    WHILE head != entry DO
+        otherreg := CONTAINEROF entry TO LirRegister.IntervalListEntry
+
+        IF otherreg == reg THEN
+            entry = entry^.Next
+
+            CONTINUE
+        END
+
+        IF otherreg^.LivenessStart > reg^.LivenessEnd THEN
+            LEAVE
+        END
+
+        IF otherreg^.LivenessEnd >= reg^.LivenessStart AND
+            otherreg^.Type == LIR_MACHINE_REG AND
+            otherreg^.MachineRegister == newreg THEN
+
+            LirReallocateRegister ( otherreg )
+        END
+
+        entry = entry^.Next
+    END
 END
 
 FN LirPreallocateRegister (
@@ -550,23 +652,7 @@ FN LirPreallocateRegister (
                     otherreg^.MachineRegister, 0, 0 )
             END
 
-            newreg := LirAllocateRegister (
-                otherreg^.LiveAcrossCall, // calleesavedonly
-                0, // hint
-            )
-
-            IF newreg == -1 THEN
-                // Sucks for him, spill him.
-
-                otherreg^.Type = LIR_SPILLED_REG
-
-                TlRemoveEntryList ( entry )
-
-            ELSE
-                // Give him this new machine register.
-
-                otherreg^.MachineRegister = reg
-            END
+            LirReallocateRegister ( otherreg )
 
             LEAVE
         END
@@ -648,7 +734,7 @@ FN LirAllocateRegistersForFunction (
 
     // First do a simple liveness analysis.
 
-    LirLivenessForFunction ( irfunc )
+    LirLivenessForFunction ( funcsym )
 
     // Now do linear scan.
 

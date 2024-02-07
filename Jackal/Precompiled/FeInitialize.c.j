@@ -553,7 +553,7 @@ void TrgInitialize() {
     __twr_v282 = (uint64_t)(&TrgInfoRecords);
     __twr_v283 = 0ULL;
     _mng_target284 = __twr_v282;
-    __twr_v285 = *(uint64_t*)(__twr_v282);
+    __twr_v285 = *(uint64_t*)(_mng_target284);
     if (__twr_v285 == __twr_v283) { goto __twr_l39; } else { goto __twr_l38; }
     __twr_l38:;
     __twr_v286 = (uint64_t)(&TlCompareString);
@@ -594,7 +594,7 @@ void FeInitialize(uint64_t _mng_argc301, uint64_t _mng_argv302) {
     uint64_t __twr_v309;
     uint64_t __twr_v310;
     uint64_t __twr_v311;
-    uint64_t __twr_v312;
+    uint64_t _mng_status312;
     uint64_t __twr_v313;
     uint64_t __twr_v314;
     uint64_t __twr_v315;
@@ -608,6 +608,7 @@ void FeInitialize(uint64_t _mng_argc301, uint64_t _mng_argv302) {
     uint64_t __twr_v323;
     uint64_t __twr_v324;
     uint64_t __twr_v325;
+    uint64_t __twr_v326;
     __twr_v303 = (uint64_t)(&TlInitializeHashTable);
     __twr_v304 = (uint64_t)(&FeFileBlockHashTable);
     ((void (*)(uint64_t))__twr_v303)(__twr_v304);
@@ -620,39 +621,40 @@ void FeInitialize(uint64_t _mng_argc301, uint64_t _mng_argv302) {
     __twr_v309 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v307)(__twr_v308, (uint64_t)(&__twr_v310));
     __twr_v311 = (uint64_t)(&FeInputFileHandle);
     *(uint64_t*)(__twr_v311) = __twr_v310;
-    if (!(__twr_v309)) { goto __twr_l44; } else { goto __twr_l45; }
+    _mng_status312 = __twr_v309;
+    if (!(_mng_status312)) { goto __twr_l44; } else { goto __twr_l45; }
     __twr_l45:;
-    __twr_v312 = (uint64_t)(&TlUserError);
-    __twr_v313 = (uint64_t)(&"Failed to open source file.");
-    __twr_v314 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v312)(__twr_v313, __twr_v314, __twr_v314, __twr_v314);
+    __twr_v313 = (uint64_t)(&TlUserError);
+    __twr_v314 = (uint64_t)(&"Failed to open source file.");
+    __twr_v315 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v313)(__twr_v314, __twr_v315, __twr_v315, __twr_v315);
     __twr_l44:;
-    __twr_v315 = (uint64_t)(&TlOpenDestination);
-    __twr_v316 = (uint64_t)(&FeOutputFile);
-    __twr_v317 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v315)(__twr_v316, (uint64_t)(&__twr_v318));
-    __twr_v319 = (uint64_t)(&FeOutputFileHandle);
-    *(uint64_t*)(__twr_v319) = __twr_v318;
-    if (!(__twr_v317)) { goto __twr_l46; } else { goto __twr_l47; }
+    __twr_v316 = (uint64_t)(&TlOpenDestination);
+    __twr_v317 = (uint64_t)(&FeOutputFile);
+    __twr_v318 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v316)(__twr_v317, (uint64_t)(&__twr_v319));
+    __twr_v320 = (uint64_t)(&FeOutputFileHandle);
+    *(uint64_t*)(__twr_v320) = __twr_v319;
+    _mng_status312 = __twr_v318;
+    if (!(_mng_status312)) { goto __twr_l46; } else { goto __twr_l47; }
     __twr_l47:;
-    __twr_v320 = (uint64_t)(&TlUserError);
-    __twr_v321 = (uint64_t)(&"Failed to open destination file.");
-    __twr_v322 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v320)(__twr_v321, __twr_v322, __twr_v322, __twr_v322);
+    __twr_v321 = (uint64_t)(&TlUserError);
+    __twr_v322 = (uint64_t)(&"Failed to open destination file.");
+    __twr_v323 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v321)(__twr_v322, __twr_v323, __twr_v323, __twr_v323);
     __twr_l46:;
-    __twr_v323 = (uint64_t)(&TrgInitialize);
-    ((void (*)())__twr_v323)();
-    __twr_v324 = (uint64_t)(&LexInitialize);
+    __twr_v324 = (uint64_t)(&TrgInitialize);
     ((void (*)())__twr_v324)();
-    __twr_v325 = (uint64_t)(&PrsInitialize);
+    __twr_v325 = (uint64_t)(&LexInitialize);
     ((void (*)())__twr_v325)();
+    __twr_v326 = (uint64_t)(&PrsInitialize);
+    ((void (*)())__twr_v326)();
     __twr_l43:;
     _jkl_epilogue:;
 }
 extern void IrGenerate();
 extern void IrSimplify();
 extern void IrEliminateDeadVariables();
-void JklCompileProgram(uint64_t _mng_argc326, uint64_t _mng_argv327) {
-    uint64_t __twr_v328;
+void JklCompileProgram(uint64_t _mng_argc327, uint64_t _mng_argv328) {
     uint64_t __twr_v329;
     uint64_t __twr_v330;
     uint64_t __twr_v331;
@@ -662,22 +664,23 @@ void JklCompileProgram(uint64_t _mng_argc326, uint64_t _mng_argv327) {
     uint64_t __twr_v335;
     uint64_t __twr_v336;
     uint64_t __twr_v337;
-    __twr_v328 = (uint64_t)(&FeInitialize);
-    ((void (*)(uint64_t, uint64_t))__twr_v328)(_mng_argc326, _mng_argv327);
-    __twr_v329 = (uint64_t)(&PrsProgram);
-    ((void (*)())__twr_v329)();
-    __twr_v330 = (uint64_t)(&IrGenerate);
+    uint64_t __twr_v338;
+    __twr_v329 = (uint64_t)(&FeInitialize);
+    ((void (*)(uint64_t, uint64_t))__twr_v329)(_mng_argc327, _mng_argv328);
+    __twr_v330 = (uint64_t)(&PrsProgram);
     ((void (*)())__twr_v330)();
-    __twr_v331 = (uint64_t)(&IrSimplify);
+    __twr_v331 = (uint64_t)(&IrGenerate);
     ((void (*)())__twr_v331)();
-    __twr_v332 = (uint64_t)(&IrEliminateDeadVariables);
+    __twr_v332 = (uint64_t)(&IrSimplify);
     ((void (*)())__twr_v332)();
-    __twr_v333 = (uint64_t)(&JklTargetInfo);
-    __twr_v334 = *(uint64_t*)(__twr_v333);
-    __twr_v335 = 8ULL;
-    __twr_v336 = __twr_v334 + __twr_v335;
-    __twr_v337 = *(uint64_t*)(__twr_v336);
-    ((void (*)())__twr_v337)();
+    __twr_v333 = (uint64_t)(&IrEliminateDeadVariables);
+    ((void (*)())__twr_v333)();
+    __twr_v334 = (uint64_t)(&JklTargetInfo);
+    __twr_v335 = *(uint64_t*)(__twr_v334);
+    __twr_v336 = 8ULL;
+    __twr_v337 = __twr_v335 + __twr_v336;
+    __twr_v338 = *(uint64_t*)(__twr_v337);
+    ((void (*)())__twr_v338)();
     __twr_l48:;
     _jkl_epilogue:;
 }

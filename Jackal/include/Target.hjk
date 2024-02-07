@@ -51,6 +51,7 @@ STRUCT LirRegister
 
     DefinedYet : UBYTE,
     LiveAcrossCall : UBYTE,
+    Active : UBYTE,
 
     MachineRegister : UBYTE,
     Hint : UBYTE,

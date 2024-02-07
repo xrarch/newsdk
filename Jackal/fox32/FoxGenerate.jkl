@@ -22,7 +22,7 @@ EXTERN FN (JklValueNumberF) FoxValueNumber (
 // FORWARD
 EXTERN FoxLirInfo : LirTargetInfoRecord
 
-FoxTargetInfo : JklTargetInfoRecord = {
+PUBLIC FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
     [ValueNumberConstantFunc] = &FoxValueNumber,
@@ -429,6 +429,7 @@ FN FoxFillOperand (
     IN lirinst : ^LirInstruction,
     IN operand : ^LirFoxOperand,
     IN var : ^IrVariable,
+    IN allowimm : UWORD,
 ) : ^LirRegister
 
     // Fill the source fields of the instruction appropriately.
@@ -477,19 +478,23 @@ FN FoxFillOperand (
         // Gotta be a named imm.
         // TODO investigate sharing to reduce code size
 
-        operand^.AccessType = FOX_ACCESS_IMM_NAME
-        operand^.Constant = CAST inst^.Body.Addr.Symbol TO UWORD
+        IF allowimm THEN
+            operand^.AccessType = FOX_ACCESS_IMM_NAME
+            operand^.Constant = CAST inst^.Body.Addr.Symbol TO UWORD
 
-        RETURN NULLPTR
+            RETURN NULLPTR
+        END
 
     ELSEIF inst^.Type == IR_CONSTANT THEN
         // Gotta be a numeric imm.
         // TODO investigate sharing to reduce code size
 
-        operand^.AccessType = FOX_ACCESS_IMM
-        operand^.Constant = inst^.Body.Constant.Constant
+        IF allowimm THEN
+            operand^.AccessType = FOX_ACCESS_IMM
+            operand^.Constant = inst^.Body.Constant.Constant
 
-        RETURN NULLPTR
+            RETURN NULLPTR
+        END
     END
 
     // If we got here we've decided to use reg.
@@ -862,6 +867,7 @@ FN FoxGenerateStoreToStack (
             lirinst, // lirinst
             &lirinst^.Body.Machine.Fox.Op2, // operand
             srcvar, // var
+            TRUE, // allowimm
         )
     END
 
@@ -983,6 +989,7 @@ FN (LirSelectF) FoxSelectZeroBranch (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op1, // operand
         inst^.Source1, // var
+        FALSE, // allowimm
     )
 
     FoxSetIfUnknown ( cmpinst )
@@ -1036,12 +1043,14 @@ FN (LirSelectF) FoxSelectBranch (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op1, // operand
         inst^.Source1, // var
+        FALSE, // allowimm
     )
 
     cmpinst^.Source2 = FoxFillOperand (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op2, // operand
         inst^.Source2, // var
+        TRUE, // allowimm
     )
 
     LirInsertInstructionTail ( cmpinst )
@@ -1120,6 +1129,7 @@ FN (LirSelectF) FoxSelectCall (
         callinst, // lirinst
         &callinst^.Body.Machine.Fox.Op1, // operand
         inst^.Source1, // var
+        TRUE, // allowimm
     )
 
     // First generate all of the arguments.
@@ -1295,6 +1305,7 @@ FN (LirSelectF) FoxSelectStore (
         lirinst, // lirinst
         &lirinst^.Body.Machine.Fox.Op2, // operand
         inst^.Source2, // var
+        TRUE, // allowimm
     )
 
     LirInsertInstructionTail ( lirinst )
@@ -1341,12 +1352,14 @@ FN (LirSelectF) FoxSelectCompare (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op1, // operand
         inst^.Source1, // var
+        FALSE, // allowimm
     )
 
     cmpinst^.Source2 = FoxFillOperand (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op2, // operand
         inst^.Source2, // var
+        TRUE, // allowimm
     )
 
     LirInsertInstructionTail ( cmpinst )
@@ -1410,6 +1423,7 @@ FN (LirSelectF) FoxSelectNot (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op1, // operand
         inst^.Source1, // var
+        FALSE, // allowimm
     )
 
     LirInsertInstructionTail ( cmpinst )
@@ -1465,6 +1479,7 @@ FN FoxGenerateArithmeticMove (
             movinst, // lirinst
             &movinst^.Body.Machine.Fox.Op2, // operand
             inst^.Source1, // var
+            TRUE, // allowimm
         )
 
         movinst^.Source2 = srcreg
@@ -1535,6 +1550,7 @@ FN (LirSelectF) FoxSelectArithmetic (
         lirinst, // lirinst
         &lirinst^.Body.Machine.Fox.Op2, // operand
         inst^.Source2, // var
+        TRUE, // allowimm
     )
 
     LirInsertInstructionTail ( lirinst )
@@ -2099,9 +2115,13 @@ FN FoxGenerateAbiStuff (
 
         irvar := CAST symbol^.IrContext TO ^IrVariable
 
-        IF irvar THEN
-            irreg := LirGetRegister ( irvar )
+        // If the refcount for this OUT parameter is only 1, then it was never
+        // referenced in the function body. Don't try to output it or we will
+        // choke since the regalloc didn't give it a machine register.
 
+        irreg := LirGetRegister ( irvar )
+
+        IF irreg^.Type != LIR_VIRTUAL_REG THEN
             IF irreg^.Type == LIR_MACHINE_REG AND
                 count < 3 AND
                 irreg^.MachineRegister == FOX_A2 - count THEN

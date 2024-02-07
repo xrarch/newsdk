@@ -371,9 +371,25 @@ FN XrAsmEmitGlobal (
         )
 
     ELSE
+        primtype : UBYTE
+
+        IF type^.Subtype == TYPE_ARRAY OR type^.Subtype == TYPE_COMPOUND THEN
+            primtype = PRIM_TYPE_POINTER
+
+        ELSEIF type^.Subtype == TYPE_POINTER THEN
+            primtype = PRIM_TYPE_POINTER
+
+        ELSEIF type^.Subtype == TYPE_PRIMITIVE THEN
+            primtype = type^.Body.Primitive.Type
+
+        ELSE
+            TlInternalError (
+                "Didn't expect this type here", type^.Subtype, 0, 0 )
+        END
+
         XrAsmEmitInitializer (
             CAST sym^.InitialValue TO ^PrsAstNode, // sym
-            type^.Body.Primitive.Type, // primtype
+            primtype, // primtype
         )
     END
 

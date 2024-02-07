@@ -2282,7 +2282,7 @@ FN IrSimplifyForFunction (
                     inst^.Body.Constant.Constant, // constant
                 )
 
-            ELSE
+            ELSEIF def^.DefinedBy THEN
                 IF NOT def^.Known THEN
                     def^.Known = TRUE
 

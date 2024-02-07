@@ -5498,6 +5498,8 @@ FN (PrsOperatorEvalF) PrsEvalAddrOf (
 
     ptrtype^.Subtype = TYPE_POINTER
     ptrtype^.Body.Pointer.Base = type
+    ptrtype^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+    ptrtype^.Size = JklTargetInfo^.PointerSize
 
     RETURN ptrtype
 END
