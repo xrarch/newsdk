@@ -743,7 +743,7 @@ FN FoxGenerateStackAddress (
 
     newoff = off
 
-    IF off > 256 THEN
+    IF off >= 256 THEN
         // Generate an add instruction to compute the stack address.
 
         destreg : ^LirRegister = NULLPTR
@@ -1631,7 +1631,10 @@ FN FoxGenerateSpillForOperand (
     IN spilledreg : ^LirRegister,
     IN operand : ^LirFoxOperand,
     IN tmp : UWORD,
+    IN src : UWORD,
 ) : ^LirRegister
+
+    tmpreg := &FoxTmps[tmp]
 
     spilloff := LirGetSpillOffset (
         inst^.Block, // irfunc
@@ -1639,24 +1642,108 @@ FN FoxGenerateSpillForOperand (
     )
 
     IF operand^.AccessType == FOX_ACCESS_REGISTER THEN
-        // Replace in-place with an [SP + OFF].
-
         spreg := FoxGenerateStackAddress (
-            &FoxTmps[tmp], // tmp
+            tmpreg, // tmp
             inst, // beforeinst
             NULLPTR, // afterinst
             spilloff, // off
             OUT spilloff, // OUT newoff
         )
 
-        IF spreg == &FoxTmps[tmp] THEN
+        IF spreg == tmpreg THEN
             FoxTmpsContain[tmp] = NULLPTR
         END
 
-        operand^.AccessType = FOX_ACCESS_REG_PTR
-        operand^.Constant = spilloff
+        IF src OR inst^.Body.Machine.Fox.BitSize == FOX_BITS_32 THEN
+            // Replace in-place with an [SP + OFF].
 
-        RETURN spreg
+            operand^.AccessType = FOX_ACCESS_REG_PTR
+            operand^.Constant = spilloff
+
+            RETURN spreg
+        END
+
+        // Bits aren't right and this is a destination. We have to do
+        // an intermediate store of the correct width and maybe a load too.
+
+        IF spilledreg == inst^.Source1 THEN
+            // Generate load.
+
+            lirinst := LirCreateInstruction (
+                LIR_MACH_INST, // type
+                FOX_MOVZ, // machtype
+            )
+
+            lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REG_PTR
+            lirinst^.Body.Machine.Fox.Op2.Constant = spilloff
+            lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+            lirinst^.Body.Machine.Fox.BitSize = inst^.Body.Machine.Fox.BitSize
+
+            lirinst^.Source2 = spreg
+
+            lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+            lirinst^.Defines = tmpreg
+
+            LirInsertInstructionBefore (
+                inst, // beforeinst
+                lirinst, // inst
+            )
+
+            FoxTmpsContain[tmp] = spilledreg
+
+            IF spilledreg == inst^.Defines THEN
+                // Re-generate the SP offset.
+
+                spilloff = LirGetSpillOffset (
+                    inst^.Block, // irfunc
+                    spilledreg, // spilledreg
+                )
+
+                spreg = FoxGenerateStackAddress (
+                    tmpreg, // tmp
+                    NULLPTR, // beforeinst
+                    inst, // afterinst
+                    spilloff, // off
+                    OUT spilloff, // OUT newoff
+                )
+
+                IF spreg == tmpreg THEN
+                    FoxTmpsContain[tmp] = NULLPTR
+                END
+            END
+        END
+
+        IF spilledreg == inst^.Defines THEN
+            // Generate store. 
+
+            lirinst := LirCreateInstruction (
+                LIR_MACH_INST, // type
+                FOX_MOVZ, // machtype
+            )
+
+            lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR
+            lirinst^.Body.Machine.Fox.Op1.Constant = spilloff
+            lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+            lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+            lirinst^.Source1 = spreg
+            lirinst^.Source2 = tmpreg
+
+            lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+
+            LirInsertInstructionAfter (
+                inst, // afterinst
+                lirinst, // inst
+            )
+        END
+
+        IF spilledreg == inst^.Source1 THEN
+            inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+        END
+
+        operand^.AccessType = FOX_ACCESS_REGISTER
+
+        RETURN tmpreg
     END
 
     IF operand^.AccessType != FOX_ACCESS_REG_PTR THEN
@@ -1683,8 +1770,6 @@ FN FoxGenerateSpillForOperand (
     )
 
     FoxTmpsContain[tmp] = spilledreg
-
-    tmpreg := &FoxTmps[tmp]
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
@@ -1800,6 +1885,7 @@ FN FoxGenerateSpills (
                 def, // spilledreg
                 &inst^.Body.Machine.Fox.Op1, // operand
                 tmp, // tmp
+                FALSE, // src
             )
 
             tmp += 1
@@ -1810,6 +1896,7 @@ FN FoxGenerateSpills (
                 src1, // spilledreg
                 &inst^.Body.Machine.Fox.Op1, // operand
                 tmp, // tmp
+                TRUE, // src
             )
 
             tmp += 1
@@ -1821,6 +1908,7 @@ FN FoxGenerateSpills (
                 src2, // spilledreg
                 &inst^.Body.Machine.Fox.Op2, // operand
                 tmp, // tmp
+                TRUE, // src
             )
         END
 

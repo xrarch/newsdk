@@ -242,7 +242,7 @@ FN LirLivenessForFunction (
             lirreg := LirGetRegister ( irvar )
 
             lirreg^.LivenessStart = 1
-            lirreg^.LivenessEnd = 0
+            lirreg^.LivenessEnd = 1
             lirreg^.LivenessFirst = irfunc^.LirHead
 
             lirreg^.DefinedYet = TRUE
