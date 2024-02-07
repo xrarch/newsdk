@@ -4282,10 +4282,16 @@ FN PrsParseFnSignature (
 
         argsymbol^.SemanticType = PrsCreateType ()
 
+        // Reset scope while parsing type.
+
+        funcargscope := LexResetScope ( oldscope )
+
         PrsType (
             argsymbol^.SemanticType, // type
             0, // depth
         )
+
+        LexResetScope ( funcargscope )
 
         IF NOT PrsTypeIsValue (
             &argtoken, // errtoken
