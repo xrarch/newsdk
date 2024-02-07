@@ -16,11 +16,11 @@ END
 IrConstantTable : IrConstantTableRecord
 
 #MACRO IrVariableIsConstant ( var ) [
-    ((var)^.DefinedBy AND (var)^.DefinedBy^.Type == IR_CONSTANT)
+    ((var)^.KnownConstant)
 ]
 
 #MACRO IrVariableConstantValue ( var ) [
-    ((var)^.DefinedBy^.Body.Constant.Constant)
+    ((var)^.Opt.Sim.ConstantValue)
 ]
 
 #MACRO IrEliminateUselessBranch ( inst ) [
@@ -171,12 +171,6 @@ FN (IrSimplifyF) IrSimplifyNot (
 
     src1 := inst^.Source1
 
-    IF NOT src1^.DefinedBy THEN
-        // Named local, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) THEN
         // Nice, turn this into a CONSTANT instruction.
 
@@ -198,12 +192,6 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
     IrEliminateUselessBranch ( inst )
 
     src1 := inst^.Source1
-
-    IF NOT src1^.DefinedBy THEN
-        // Named local, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) THEN
         // Convert to unconditional branch.
@@ -245,12 +233,6 @@ FN (IrSimplifyF) IrSimplifyBranchZero (
 
     src1 := inst^.Source1
 
-    IF NOT src1^.DefinedBy THEN
-        // Named local, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) THEN
         // Convert to unconditional branch.
 
@@ -291,12 +273,6 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -356,12 +332,6 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -419,12 +389,6 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -486,12 +450,6 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -551,12 +509,6 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -618,12 +570,6 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -682,12 +628,6 @@ FN (IrSimplifyF) IrSimplifyCmpEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -722,12 +662,6 @@ FN (IrSimplifyF) IrSimplifyCmpNotEquals (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -761,12 +695,6 @@ FN (IrSimplifyF) IrSimplifyCmpLessThan (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -804,12 +732,6 @@ FN (IrSimplifyF) IrSimplifyCmpGreaterThan (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -846,12 +768,6 @@ FN (IrSimplifyF) IrSimplifyCmpLtEq (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -887,12 +803,6 @@ FN (IrSimplifyF) IrSimplifyCmpGtEq (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -931,12 +841,6 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -998,12 +902,6 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1063,12 +961,6 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -1130,12 +1022,6 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1194,12 +1080,6 @@ FN (IrSimplifyF) IrSimplifyCmpLessThanSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1235,12 +1115,6 @@ FN (IrSimplifyF) IrSimplifyCmpGreaterThanSigned (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -1278,12 +1152,6 @@ FN (IrSimplifyF) IrSimplifyCmpLtEqSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1319,12 +1187,6 @@ FN (IrSimplifyF) IrSimplifyCmpGtEqSigned (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -1363,12 +1225,6 @@ FN (IrSimplifyF) IrSimplifyBitAnd (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -1431,12 +1287,6 @@ FN (IrSimplifyF) IrSimplifyBitOr (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1497,12 +1347,6 @@ FN (IrSimplifyF) IrSimplifyAdd (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -1620,12 +1464,6 @@ FN (IrSimplifyF) IrSimplifySubtract (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1713,12 +1551,6 @@ FN (IrSimplifyF) IrSimplifyDivide (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1784,12 +1616,6 @@ FN (IrSimplifyF) IrSimplifyDivideSigned (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1838,12 +1664,6 @@ FN (IrSimplifyF) IrSimplifyModulo (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -1910,12 +1730,6 @@ FN (IrSimplifyF) IrSimplifyXor (
     src1 := inst^.Source1
     src2 := inst^.Source2
 
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
@@ -1974,12 +1788,6 @@ FN (IrSimplifyF) IrSimplifyLeftShift (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -2067,12 +1875,6 @@ FN (IrSimplifyF) IrSimplifyRightShift (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -2162,12 +1964,6 @@ FN (IrSimplifyF) IrSimplifyBitNot (
 
     src1 := inst^.Source1
 
-    IF NOT src1^.DefinedBy THEN
-        // Named local, no opportunities.
-
-        RETURN FALSE
-    END
-
     IF IrVariableIsConstant ( src1 ) THEN
         // Nice, turn this into a CONSTANT instruction.
 
@@ -2188,12 +1984,6 @@ FN (IrSimplifyF) IrSimplifyMultiply (
 
     src1 := inst^.Source1
     src2 := inst^.Source2
-
-    IF NOT src1^.DefinedBy AND NOT src2^.DefinedBy THEN
-        // Both are named locals, no opportunities.
-
-        RETURN FALSE
-    END
 
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
@@ -2478,21 +2268,37 @@ FN IrSimplifyForFunction (
         def := inst^.Defines
 
         IF inst^.Type == IR_MOVE THEN
-            IF NOT def^.Known THEN
-                def^.Known = TRUE
+            src1 = inst^.Source1
 
-                TlInsertAtHeadList (
-                    &IrKnownVariableListHead, // head
-                    &def^.Opt.Sim.KnownListEntry, // entry
+            IF src1^.KnownConstant THEN
+                // We can become a known constant too.
+
+                inst^.Type = IR_CONSTANT
+                inst^.Source1 = NULLPTR
+                inst^.Body.Constant.Constant = src1^.Opt.Sim.ConstantValue
+
+                IrCacheConstant (
+                    def, // var
+                    inst^.Body.Constant.Constant, // constant
                 )
-            END
 
-            def^.Opt.Sim.Contents = inst^.Source1
+            ELSE
+                IF NOT def^.Known THEN
+                    def^.Known = TRUE
+
+                    TlInsertAtHeadList (
+                        &IrKnownVariableListHead, // head
+                        &def^.Opt.Sim.KnownListEntry, // entry
+                    )
+                END
+
+                def^.Opt.Sim.Contents = inst^.Source1
+            END
 
         ELSEIF inst^.Type == IR_CONSTANT THEN
             IrCacheConstant (
                 def, // var
-                inst^.Body.Constant.Constant, // constnat
+                inst^.Body.Constant.Constant, // constant
             )
         END
 

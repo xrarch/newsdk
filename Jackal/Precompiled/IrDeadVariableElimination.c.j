@@ -209,7 +209,7 @@ void IrEliminateDeadInstruction(uint64_t _mng_inst163) {
     *(uint64_t*)(__twr_v184) = __twr_v182;
     __twr_l4:;
     __twr_l2:;
-    if (_mng_src2172) { goto __twr_l7; } else { goto __twr_l6; }
+    if (!(_mng_src2172)) { goto __twr_l6; } else { goto __twr_l7; }
     __twr_l7:;
     __twr_v188 = 1ULL;
     __twr_v189 = 0ULL;
@@ -562,7 +562,7 @@ void IrEliminateForFunction(uint64_t _mng_funcsym257) {
     __twr_v311 = (uint64_t)(&IrUndeadifyVariable);
     ((void (*)(uint64_t))__twr_v311)(_mng_src1306);
     __twr_l46:;
-    if (_mng_src2310) { goto __twr_l49; } else { goto __twr_l48; }
+    if (!(_mng_src2310)) { goto __twr_l48; } else { goto __twr_l49; }
     __twr_l49:;
     __twr_v312 = (uint64_t)(&IrUndeadifyVariable);
     ((void (*)(uint64_t))__twr_v312)(_mng_src2310);

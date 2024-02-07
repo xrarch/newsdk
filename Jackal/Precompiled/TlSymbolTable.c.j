@@ -130,7 +130,7 @@ uint64_t TlLookupSymbolTable(uint64_t _mng_symboltable120, uint64_t _mng_name121
     __twr_v122 = (uint64_t)(&TlHashString);
     __twr_v123 = ((uint64_t (*)(uint64_t))__twr_v122)(_mng_name121);
     _mng_hash124 = __twr_v123;
-    if (_mng_symboltable120) { goto __twr_l5; } else { goto __twr_l6; }
+    if (!(_mng_symboltable120)) { goto __twr_l6; } else { goto __twr_l5; }
     __twr_l5:;
     __twr_v125 = (uint64_t)(&TlLookupHashTableByHash);
     __twr_v126 = 8ULL;

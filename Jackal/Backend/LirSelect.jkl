@@ -327,6 +327,7 @@ FN LirSelectForFunction (
         ELSEIF inst^.Type == IR_CALL OR
             inst^.Type == IR_STORE OR
             (inst^.Type == IR_MOVE AND inst^.Defines^.Symbol) OR
+            (inst^.Type == IR_CONSTANT AND inst^.Defines^.Symbol) OR
             (inst^.Type > IR_BRANCH_LOW_NUMBER AND
             inst^.Type < IR_BRANCH_HIGH_NUMBER) THEN
 
