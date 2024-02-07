@@ -317,7 +317,6 @@ FoxIrInstToFoxOp : FoxInstructionTypes[IR_MAX] = {
     [IR_RIGHT_SHIFT] = FOX_SRL,
 }
 
-FoxTmpsContain : ^LirRegister[2]
 FoxTmps : LirRegister[2]
 FoxTmpAt : LirRegister
 FoxSp : LirRegister
@@ -1650,10 +1649,6 @@ FN FoxGenerateSpillForOperand (
             OUT spilloff, // OUT newoff
         )
 
-        IF spreg == tmpreg THEN
-            FoxTmpsContain[tmp] = NULLPTR
-        END
-
         IF src OR inst^.Body.Machine.Fox.BitSize == FOX_BITS_32 THEN
             // Replace in-place with an [SP + OFF].
 
@@ -1689,8 +1684,6 @@ FN FoxGenerateSpillForOperand (
                 lirinst, // inst
             )
 
-            FoxTmpsContain[tmp] = spilledreg
-
             IF spilledreg == inst^.Defines THEN
                 // Re-generate the SP offset.
 
@@ -1706,10 +1699,6 @@ FN FoxGenerateSpillForOperand (
                     spilloff, // off
                     OUT spilloff, // OUT newoff
                 )
-
-                IF spreg == tmpreg THEN
-                    FoxTmpsContain[tmp] = NULLPTR
-                END
             END
         END
 
@@ -1753,14 +1742,6 @@ FN FoxGenerateSpillForOperand (
     // We have to load the spilled reg into a temporary, then shove that
     // temporary into the instruction.
 
-    IF FoxTmpsContain[0] == spilledreg THEN
-        RETURN &FoxTmps[0]
-    END
-
-    IF FoxTmpsContain[1] == spilledreg THEN
-        RETURN &FoxTmps[1]
-    END
-
     spreg := FoxGenerateStackAddress (
         &FoxTmpAt, // tmp
         inst, // beforeinst
@@ -1768,8 +1749,6 @@ FN FoxGenerateSpillForOperand (
         spilloff, // off
         OUT spilloff, // OUT newoff
     )
-
-    FoxTmpsContain[tmp] = spilledreg
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
@@ -1832,9 +1811,6 @@ FN FoxGenerateSpills (
     // appeared after regalloc! We don't elide useless jumps here because there
     // are still opportunities for them to appear. We do that at code emission
     // time instead.
-
-    FoxTmpsContain[0] = NULLPTR
-    FoxTmpsContain[1] = NULLPTR
 
     inst := irfunc^.LirHead
 
@@ -1910,14 +1886,6 @@ FN FoxGenerateSpills (
                 tmp, // tmp
                 TRUE, // src
             )
-        END
-
-        IF inst^.Type == LIR_BRANCH OR
-            inst^.Type == LIR_LABEL OR
-            inst^.Type == LIR_CALL THEN
-
-            FoxTmpsContain[0] = NULLPTR
-            FoxTmpsContain[1] = NULLPTR
         END
 
         inst = inst^.Next
