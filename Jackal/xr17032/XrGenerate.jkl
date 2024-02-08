@@ -287,6 +287,12 @@ XrBitsToMaximumOffset : UWORD[XR_BITS_MAX] = {
     [XR_BITS_32] = 262144,
 }
 
+XrBitsOffsetMask : UBYTE[XR_BITS_MAX] = {
+    [XR_BITS_8] = 0,
+    [XR_BITS_16] = 1,
+    [XR_BITS_32] = 3,
+}
+
 ENUM XrShiftTypes : UBYTE
     XR_SHIFT_LSH,
     XR_SHIFT_RSH,
@@ -372,7 +378,9 @@ FN XrFillAccess (
             symbol, // symbol
         ) + LirCurrentFunction^.ScratchAreaSize
 
-        IF off < XrBitsToMaximumOffset[bits] THEN
+        IF off < XrBitsToMaximumOffset[bits] AND
+            off & XrBitsOffsetMask[bits] == 0 THEN
+
             // Great! We can do this directly.
 
             lirinst^.Body.Machine.Xr.Op3.Constant = off
