@@ -267,31 +267,36 @@ FN LirLivenessForFunction (
     LirFirstBlock = TRUE
 
     WHILE inst DO
-        def := inst^.Defines
-        src1 := inst^.Source1
-        src2 := inst^.Source2
-
-        IF src1 THEN
+        IF inst^.Source1 THEN
             LirUseRegister (
-                src1, // reg
+                inst^.Source1, // reg
                 irfunc^.LirHead, // firstinst
                 inst, // inst
                 instnum, // instnum
             )
         END
 
-        IF src2 THEN
+        IF inst^.Source2 THEN
             LirUseRegister (
-                src2, // reg
+                inst^.Source2, // reg
                 irfunc^.LirHead, // firstinst
                 inst, // inst
                 instnum, // instnum
             )
         END
 
-        IF def THEN
+        IF inst^.Source3 THEN
+            LirUseRegister (
+                inst^.Source3, // reg
+                irfunc^.LirHead, // firstinst
+                inst, // inst
+                instnum, // instnum
+            )
+        END
+
+        IF inst^.Defines THEN
             LirDefRegister (
-                def, // reg
+                inst^.Defines, // reg
                 irfunc^.LirHead, // firstinst
                 inst, // inst
                 instnum, // instnum

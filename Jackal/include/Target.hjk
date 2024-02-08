@@ -13,8 +13,24 @@ STRUCT LirFoxSpecific
     BitSize : UBYTE,
 END
 
+STRUCT LirXrOperand
+    Constant : UWORD,
+    AccessType : UBYTE,
+END
+
+STRUCT LirXrSpecific
+    Op1 : LirXrOperand,
+    Op2 : LirXrOperand,
+    Op3 : LirXrOperand,
+
+    BitSize : UBYTE,
+    ShiftType : UBYTE,
+    ShiftAmount : UBYTE,
+END
+
 UNION LirMachineSpecific
     Fox : LirFoxSpecific,
+    Xr : LirXrSpecific,
 END
 
 ENUM LirInstructionType : UBYTE
@@ -95,6 +111,7 @@ STRUCT LirInstruction
     Defines : ^LirRegister,
     Source1 : ^LirRegister,
     Source2 : ^LirRegister,
+    Source3 : ^LirRegister,
 
     Body : LirInstructionBody,
 
