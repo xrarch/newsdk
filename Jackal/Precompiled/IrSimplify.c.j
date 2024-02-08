@@ -59,6 +59,7 @@ extern uint64_t FeInputFile[32];
 extern uint64_t FeOutputFile[32];
 extern uint64_t FeInputFileHandle;
 extern uint64_t FeOutputFileHandle;
+extern uint64_t FeOutputHeaders;
 extern uint64_t JklTargetInfo;
 extern uint64_t JklPrimitiveTypeMasks[14];
 extern uint64_t FeIsMacroArgument(uint64_t _mng_arg98);

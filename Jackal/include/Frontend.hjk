@@ -22,6 +22,8 @@ EXTERN FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN FeInputFileHandle : ^VOID
 EXTERN FeOutputFileHandle : ^VOID
 
+EXTERN FeOutputHeaders : ^UBYTE
+
 EXTERN JklTargetInfo : ^JklTargetInfoRecord
 
 ENUM JklPrimitiveType : UBYTE

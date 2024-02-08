@@ -13,6 +13,8 @@ PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC FeInputFileHandle : ^VOID
 PUBLIC FeOutputFileHandle : ^VOID
 
+PUBLIC FeOutputHeaders : ^UBYTE = NULLPTR
+
 PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
 
 PUBLIC JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX] = {
@@ -29,8 +31,6 @@ PUBLIC JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_QUAD] = 0xFFFFFFFFFFFFFFFF,
 #END
 }
-
-PUBLIC JklCHost := FALSE
 
 FeFileBlockHashTable : TlHashTable
 
@@ -94,13 +94,10 @@ FN FeParseArguments (
                 FE_PATH_BUFFER_SIZE, // bufsize
             )
 
-            IF TlCompareString ( &FeTargetString[0], "CHost" ) == 0 THEN
-                JklCHost = TRUE
-            ELSE
-                JklCHost = FALSE
-            END
-
             foundtarget = TRUE
+
+        ELSEIF TlCompareStringWithMax ( argv[i], "header=", 7 ) == 0 THEN
+            FeOutputHeaders = &argv[i][7]
 
         ELSEIF FeIsMacroArgument ( argv[i] ) THEN
             LexDefineMacroFromArgumentString ( argv[i] )
@@ -140,13 +137,7 @@ FN FeParseArguments (
     END
 
     IF NOT foundtarget THEN
-        // Default is xr17032.
-
-        TlCopyString (
-            &FeTargetString[0], // dest
-            "xr17032", // src
-            FE_PATH_BUFFER_SIZE, // bufsize
-        )
+        TlUserError ( "No target specified.", 0, 0, 0 )
     END
 END
 
@@ -254,15 +245,6 @@ FN FeInitialize (
         TlUserError ( "Failed to open source file.", 0, 0, 0 )
     END
 
-    status = TlOpenDestination (
-        &FeOutputFile[0], // filename
-        OUT FeOutputFileHandle, // handle
-    )
-
-    IF status THEN
-        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
-    END
-
     // Initialize the target.
 
     TrgInitialize ()
@@ -274,6 +256,54 @@ FN FeInitialize (
     // Initialize the parser.
 
     PrsInitialize ()
+END
+
+FN FeOutputHeaderDependencies ()
+
+    // Output all of the header dependencies of this source file to a file.
+
+    handle : ^VOID
+
+    status := TlOpenDestination (
+        FeOutputHeaders, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open header dependencies file.", 0, 0, 0 )
+    END
+
+    headerbuf : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &headerbuf )
+
+    head := &FeFileBlockHashTable.OrderedListHead
+    entry := head^.Prev^.Prev
+
+    WHILE head != entry DO
+        hashentry := CONTAINEROF entry TO TlHashTableEntry.OrderedEntry
+
+        fileblock := CAST hashentry TO ^FeFileBlock
+
+        TlCopyIntoDynamicBuffer (
+            &headerbuf, // array
+            &fileblock^.FilePath[0], // srcbuf
+            TlMeasureString ( &fileblock^.FilePath[0] ), // length
+        )
+
+        TlInsertDynamicBuffer (
+            &headerbuf, // array
+            '\n', // byte
+        )
+
+        entry = entry^.Prev
+    END
+
+    TlWriteFile (
+        handle, // handle
+        headerbuf.Count, // bytes
+        headerbuf.Buffer, // buffer
+    )
 END
 
 EXTERN FN IrGenerate ()
@@ -311,7 +341,25 @@ FN JklCompileProgram (
 
     IrEliminateDeadVariables ()
 
+    // Open the output file.
+
+    status := TlOpenDestination (
+        &FeOutputFile[0], // filename
+        OUT FeOutputFileHandle, // handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
+    END
+
     // Call the target-specific code to finish compilation.
 
     JklTargetInfo^.EntryFunc ()
+
+    // Output header dependencies to a text file, in order of when they were
+    // encountered.
+
+    IF FeOutputHeaders THEN
+        FeOutputHeaderDependencies ()
+    END
 END
