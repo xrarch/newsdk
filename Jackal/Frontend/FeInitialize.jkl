@@ -186,6 +186,7 @@ END
 
 EXTERN CtTargetInfo : JklTargetInfoRecord
 EXTERN FoxTargetInfo : JklTargetInfoRecord
+EXTERN XrTargetInfo : JklTargetInfoRecord
 
 TrgInfoRecords : ^JklTargetInfoRecord[8] = {
 #IF TRG_CT
@@ -193,6 +194,9 @@ TrgInfoRecords : ^JklTargetInfoRecord[8] = {
 #END
 #IF TRG_FOX32
     &FoxTargetInfo,
+#END
+#IF TRG_XR17032
+    &XrTargetInfo,
 #END
 
     NULLPTR, // MUST be here, as a sentinel
@@ -304,6 +308,8 @@ FN FeOutputHeaderDependencies ()
         headerbuf.Count, // bytes
         headerbuf.Buffer, // buffer
     )
+
+    TlUninitializeDynamicBuffer ( &headerbuf )
 END
 
 EXTERN FN IrGenerate ()

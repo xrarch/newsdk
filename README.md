@@ -14,7 +14,7 @@ Note that compiling the compiler itself will create `./build/jkl` and leave the 
 
 - [x] Jackal -> C bootstrap transpiler.
 - [x] Self-hosted Jackal compiler w/ C backend.
-- [ ] Fox32 backend.
+- [x] Fox32 backend.
 - [ ] XR/17032 backend.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.
 - [ ] MINTIA port of the new compiler.

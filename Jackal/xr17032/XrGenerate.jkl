@@ -1,0 +1,534 @@
+//
+// Implements the XR/17032 code generator.
+//
+
+#INCLUDE "<inc>/Target.hjk"
+#INCLUDE "<inc>/XrSdkAsm.hjk"
+
+// FORWARD
+EXTERN FN (JklTargetF) XrCompile ()
+
+// FORWARD
+EXTERN FN (JklValueNumberF) XrValueNumber (
+    IN constant : UWORD,
+) : UBYTE
+
+// FORWARD
+EXTERN XrLirInfo : LirTargetInfoRecord
+
+PUBLIC XrTargetInfo : JklTargetInfoRecord = {
+    [Name] = "xr17032",
+    [EntryFunc] = &XrCompile,
+    [ValueNumberConstantFunc] = &XrValueNumber,
+    [FoldStackAddr] = TRUE,
+    [LirInfo] = &XrLirInfo,
+    [ConstantMask] = 0xFFFFFFFF,
+    [StackAlignment] = 4,
+    [PointerAlignment] = 4,
+    [PointerSize] = 4,
+    [CodeAlignment] = 1,
+    [LargestPrimitive] = PRIM_TYPE_ULONG,
+    [LargestSignedPrimitive] = PRIM_TYPE_LONG,
+    [SupportedTypes] = {
+        [PRIM_TYPE_VOID] = TRUE,
+        [PRIM_TYPE_UBYTE] = TRUE,
+        [PRIM_TYPE_UINT] = TRUE,
+        [PRIM_TYPE_ULONG] = TRUE,
+        [PRIM_TYPE_UQUAD] = FALSE,
+        [PRIM_TYPE_BYTE] = TRUE,
+        [PRIM_TYPE_INT] = TRUE,
+        [PRIM_TYPE_LONG] = TRUE,
+        [PRIM_TYPE_QUAD] = FALSE,
+    },
+    [PrimitiveAlignment] = {
+        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_UBYTE] = 1,
+        [PRIM_TYPE_UINT] = 2,
+        [PRIM_TYPE_ULONG] = 4,
+        [PRIM_TYPE_UQUAD] = 8,
+        [PRIM_TYPE_BYTE] = 1,
+        [PRIM_TYPE_INT] = 2,
+        [PRIM_TYPE_LONG] = 4,
+        [PRIM_TYPE_QUAD] = 8,
+    },
+    [PrimitiveSize] = {
+        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_UBYTE] = 1,
+        [PRIM_TYPE_UINT] = 2,
+        [PRIM_TYPE_ULONG] = 4,
+        [PRIM_TYPE_UQUAD] = 8,
+        [PRIM_TYPE_BYTE] = 1,
+        [PRIM_TYPE_INT] = 2,
+        [PRIM_TYPE_LONG] = 4,
+        [PRIM_TYPE_QUAD] = 8,
+    },
+}
+
+ENUM XrRegisters : UBYTE
+    XR_NULL,
+
+    XR_T0,
+    XR_T1,
+    XR_T2,
+    XR_T3,
+    XR_T4,
+    XR_T5,
+    XR_A0,
+    XR_A1,
+    XR_A2,
+    XR_A3,
+    XR_S0,
+    XR_S1,
+    XR_S2,
+    XR_S3,
+    XR_S4,
+    XR_S5,
+    XR_S6,
+    XR_S7,
+    XR_S8,
+    XR_S9,
+    XR_S10,
+    XR_S11,
+    XR_S12,
+    XR_S13,
+    XR_S14,
+    XR_S15,
+    XR_S16,
+    XR_S17,
+
+    XR_SP,
+    XR_LR,
+
+    XR_REG_MAX,
+END
+
+XrRegisterNames : ^UBYTE[XR_REG_MAX] = {
+    [XR_T0] = "t0",
+    [XR_T1] = "t1",
+    [XR_T2] = "t2",
+    [XR_T3] = "t3",
+    [XR_T4] = "t4",
+    [XR_T5] = "t5",
+    [XR_A0] = "a0",
+    [XR_A1] = "a1",
+    [XR_A2] = "a2",
+    [XR_A3] = "a3",
+    [XR_S0] = "s0",
+    [XR_S1] = "s1",
+    [XR_S2] = "s2",
+    [XR_S3] = "s3",
+    [XR_S4] = "s4",
+    [XR_S5] = "s5",
+    [XR_S6] = "s6",
+    [XR_S7] = "s7",
+    [XR_S8] = "s8",
+    [XR_S9] = "s9",
+    [XR_S10] = "s10",
+    [XR_S11] = "s11",
+    [XR_S12] = "s12",
+    [XR_S13] = "s13",
+    [XR_S14] = "s14",
+    [XR_S15] = "s15",
+    [XR_S16] = "s16",
+    [XR_S17] = "s17",
+    [XR_SP] = "sp",
+    [XR_LR] = "lr",
+}
+
+XrTmps : LirRegister[2]
+XrSp : LirRegister
+XrLr : LirRegister
+XrCalleeSaved : LirRegister[XR_S17 - XR_S0 + 1]
+XrArg : LirRegister[XR_A3 - XR_A0 + 1]
+
+FN XrHintFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Hint the first four arguments to a0-a3.
+
+    functype := funcsym^.SemanticType
+
+    arg := functype^.Body.Function.ArgListHead
+
+    incount := 0
+    outcount := 0
+
+    WHILE arg DO
+        symbol := arg^.Symbol
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        IF irvar THEN
+            irreg := LirGetRegister ( irvar )
+
+            IF arg^.InOut == ARG_IN AND incount < 4 THEN
+                irreg^.Hint = XR_A0 + incount
+
+            ELSEIF arg^.InOut == ARG_OUT AND outcount < 3 THEN
+                irreg^.Hint = XR_A2 - outcount
+            END
+        END
+
+        IF arg^.InOut == ARG_IN THEN
+            incount += 1
+
+        ELSE
+            outcount += 1
+        END
+
+        arg = arg^.Next
+    END
+
+    IF functype^.Body.Function.IsVarArg THEN
+        // Hint the vartable and argcount symbols.
+
+        i := 0
+
+        WHILE incount < 4 DO
+            symbol : ^LexSymbol
+
+            IF NOT i THEN
+                symbol = functype^.Body.Function.VarArgTable
+
+            ELSE
+                symbol = functype^.Body.Function.VarArgCount
+            END
+
+            irvar := CAST symbol^.IrContext TO ^IrVariable
+
+            IF irvar THEN
+                irreg := LirGetRegister ( irvar )
+
+                irreg^.Hint = XR_A0 + incount
+            END
+
+            incount += 1
+            i += 1
+        END
+    END
+END
+
+FN XrGenerateSpills (
+    IN irfunc : ^IrFunction,
+)
+
+    TlInternalError ( "TODO XrGenerateSpills", 0, 0, 0 )
+END
+
+FN XrGenerateAbiStuff (
+    IN funcsym : ^LexSymbol,
+    IN irfunc : ^IrFunction,
+)
+
+    TlInternalError ( "TODO XrGenerateAbiStuff", 0, 0, 0 )
+END
+
+XrLirInfo : LirTargetInfoRecord = {
+    [SelectionTable] = {
+#IF 0
+        [IR_LOAD] = &XrSelectLoad,
+        [IR_ADDR] = &XrSelectAddr,
+        [IR_STRING_ADDR] = &XrSelectAddr,
+        [IR_STACK_ADDR] = &XrSelectStackAddr,
+        [IR_CONSTANT] = &XrSelectAddr,
+        [IR_MOVE] = &XrSelectMove,
+
+        [IR_RETURN] = &XrSelectReturn,
+
+        [IR_BRANCH_NONZERO] = &XrSelectZeroBranch,
+        [IR_BRANCH_ZERO] = &XrSelectZeroBranch,
+
+        [IR_BRANCH_EQUALS] = &XrSelectBranch,
+        [IR_BRANCH_NOT_EQUALS] = &XrSelectBranch,
+        [IR_BRANCH_LESS_THAN] = &XrSelectBranch,
+        [IR_BRANCH_GREATER_THAN] = &XrSelectBranch,
+        [IR_BRANCH_LTEQ] = &XrSelectBranch,
+        [IR_BRANCH_GTEQ] = &XrSelectBranch,
+        [IR_BRANCH_LESS_THAN_SIGNED] = &XrSelectBranch,
+        [IR_BRANCH_GREATER_THAN_SIGNED] = &XrSelectBranch,
+        [IR_BRANCH_LTEQ_SIGNED] = &XrSelectBranch,
+        [IR_BRANCH_GTEQ_SIGNED] = &XrSelectBranch,
+        [IR_JUMP] = &XrSelectJump,
+
+        [IR_CALL] = &XrSelectCall,
+        [IR_STORE] = &XrSelectStore,
+
+        [IR_COMPARE_EQUALS] = &XrSelectCompare,
+        [IR_COMPARE_NOT_EQUALS] = &XrSelectCompare,
+        [IR_COMPARE_LESS_THAN] = &XrSelectCompare,
+        [IR_COMPARE_GREATER_THAN] = &XrSelectCompare,
+        [IR_COMPARE_LTEQ] = &XrSelectCompare,
+        [IR_COMPARE_GTEQ] = &XrSelectCompare,
+        [IR_COMPARE_LESS_THAN_SIGNED] = &XrSelectCompare,
+        [IR_COMPARE_GREATER_THAN_SIGNED] = &XrSelectCompare,
+        [IR_COMPARE_LTEQ_SIGNED] = &XrSelectCompare,
+        [IR_COMPARE_GTEQ_SIGNED] = &XrSelectCompare,
+
+        [IR_NOT] = &XrSelectNot,
+
+        [IR_BIT_AND] = &XrSelectArithmetic,
+        [IR_BIT_OR] = &XrSelectArithmetic,
+        [IR_ADD] = &XrSelectArithmetic,
+        [IR_SUBTRACT] = &XrSelectArithmetic,
+        [IR_DIVIDE] = &XrSelectArithmetic,
+        [IR_DIVIDE_SIGNED] = &XrSelectArithmetic,
+        [IR_MODULO] = &XrSelectArithmetic,
+        [IR_BIT_XOR] = &XrSelectArithmetic,
+        [IR_LEFT_SHIFT] = &XrSelectArithmetic,
+        [IR_RIGHT_SHIFT] = &XrSelectArithmetic,
+        [IR_MULTIPLY] = &XrSelectArithmetic,
+
+        [IR_BIT_NOT] = &XrSelectBitNot,
+#END
+    },
+    [RegisterAbiUsage] = {
+        [XR_T0] = LIR_REG_CALLER_SAVED,
+        [XR_T1] = LIR_REG_CALLER_SAVED,
+        [XR_T2] = LIR_REG_CALLER_SAVED,
+        [XR_T3] = LIR_REG_CALLER_SAVED,
+        [XR_A0] = LIR_REG_CALLER_SAVED,
+        [XR_A1] = LIR_REG_CALLER_SAVED,
+        [XR_A2] = LIR_REG_CALLER_SAVED,
+        [XR_A3] = LIR_REG_CALLER_SAVED,
+        [XR_S0] = LIR_REG_CALLEE_SAVED,
+        [XR_S1] = LIR_REG_CALLEE_SAVED,
+        [XR_S2] = LIR_REG_CALLEE_SAVED,
+        [XR_S3] = LIR_REG_CALLEE_SAVED,
+        [XR_S4] = LIR_REG_CALLEE_SAVED,
+        [XR_S5] = LIR_REG_CALLEE_SAVED,
+        [XR_S6] = LIR_REG_CALLEE_SAVED,
+        [XR_S7] = LIR_REG_CALLEE_SAVED,
+        [XR_S8] = LIR_REG_CALLEE_SAVED,
+        [XR_S9] = LIR_REG_CALLEE_SAVED,
+        [XR_S10] = LIR_REG_CALLEE_SAVED,
+        [XR_S11] = LIR_REG_CALLEE_SAVED,
+        [XR_S12] = LIR_REG_CALLEE_SAVED,
+        [XR_S13] = LIR_REG_CALLEE_SAVED,
+        [XR_S14] = LIR_REG_CALLEE_SAVED,
+        [XR_S15] = LIR_REG_CALLEE_SAVED,
+        [XR_S16] = LIR_REG_CALLEE_SAVED,
+        [XR_S17] = LIR_REG_CALLEE_SAVED,
+    },
+    [MaximumRegister] = XR_REG_MAX,
+}
+
+XrNextBranchNumber := 0
+
+FN XrEmitInstruction (
+    IN lirinst : ^LirInstruction,
+)
+
+    IF lirinst^.Type == LIR_MACH_INST OR
+        lirinst^.Type == LIR_CALL OR
+        lirinst^.Type == LIR_BRANCH OR
+        lirinst^.Type == LIR_RETURN THEN
+
+        TlInternalError ( "TODO XrEmitInstruction", 0, 0, 0 )
+
+    ELSEIF lirinst^.Type == LIR_LABEL THEN
+        num := lirinst^.Body.Label.Number
+
+        IF num == 0xFFFFFFFF THEN
+            num = XrNextBranchNumber
+            lirinst^.Body.Label.Number = num
+
+            XrNextBranchNumber += 1
+        END
+
+        XrAsmInsertString ( ".L" )
+        XrAsmInsertNumber ( num )
+        XrAsmInsertString ( ":\n" )
+
+    ELSE
+        TlInternalError ( "Xr: Weird LIR type", lirinst^.Type, 0, 0 )
+    END
+END
+
+FN XrElideUselessJump (
+    IN inst : ^LirInstruction,
+) : UWORD
+
+    // Check if this branch instruction is followed by both its true and false
+    // label. We walk along each label until we reach the first non-label
+    // instruction so that we catch all the cases.
+
+    next := inst^.Next
+
+    WHILE next AND next^.Type == LIR_LABEL DO
+        IF inst^.TypeBody.Branch.Label == next THEN
+            next^.Body.Label.References -= 1
+
+            RETURN TRUE
+        END
+
+        next = next^.Next
+    END
+
+    RETURN FALSE
+END
+
+FN (AsmEmitF) XrEmitFunction (
+    IN funcsym : ^LexSymbol,
+)
+
+    // Emit the final assembly language for a function.
+
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+    inst := irfunc^.LirHead
+
+    WHILE inst DO
+        IF inst^.Type == LIR_LABEL AND NOT inst^.Body.Label.References THEN
+            inst = inst^.Next
+
+            CONTINUE
+        END
+
+        IF inst^.Type == LIR_BRANCH AND XrElideUselessJump ( inst ) THEN
+            inst = inst^.Next
+
+            CONTINUE
+        END
+
+        XrEmitInstruction ( inst )
+
+        inst = inst^.Next
+    END
+END
+
+XrAsmEmitter : AsmEmitterRecord = {
+    [EmitFunc] = &XrEmitFunction,
+}
+
+FN (JklValueNumberF) XrValueNumber (
+    IN constant : UWORD,
+) : UBYTE
+
+    // Return whether to value number this constant.
+    // Doing this too much could create too many callee-saved registers if the
+    // constant is live over a function call. Doing it too little will
+    // recompute large constants too much.
+
+    IF constant < 65536 THEN
+        // It probably fits in an instruction, don't bother.
+
+        RETURN FALSE
+    END
+
+    IF constant >= 0xFFFF0001 THEN
+        // It can be loaded with a single SUBI instruction, don't bother.
+
+        RETURN FALSE
+    END
+
+    IF constant & 0xFFFF == 0 THEN
+        // It can be loaded with a single LUI instruction, don't bother.
+
+        RETURN FALSE
+    END
+
+    // Takes two instructions to load. Bother.
+
+    RETURN TRUE
+END
+
+FN (JklTargetF) XrCompile ()
+    
+    // Compile the program for the XR/17032 architecture.
+
+    XrTmps[0].Type = LIR_PREALLOCATED_REG
+    XrTmps[0].MachineRegister = XR_T4
+
+    XrTmps[1].Type = LIR_PREALLOCATED_REG
+    XrTmps[1].MachineRegister = XR_T5
+
+    XrSp.Type = LIR_PREALLOCATED_REG
+    XrSp.MachineRegister = XR_SP
+
+    XrLr.Type = LIR_PREALLOCATED_REG
+    XrLr.MachineRegister = XR_LR
+
+    i := 0
+
+    WHILE i < (XR_S17 - XR_S0 + 1) DO
+        XrCalleeSaved[i].Type = LIR_PREALLOCATED_REG
+        XrCalleeSaved[i].MachineRegister = XR_S0 + i
+
+        i += 1
+    END
+
+    i = 0
+
+    WHILE i < (XR_A3 - XR_A0 + 1) DO
+        XrArg[i].Type = LIR_PREALLOCATED_REG
+        XrArg[i].MachineRegister = XR_A0 + i
+
+        i += 1
+    END
+
+    // Perform instruction selection on each function.
+
+    funcsym := PrsFunctionListHead
+
+    WHILE funcsym DO
+        // Calculate the scratch area size.
+
+        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+        inscratch := 0
+
+        IF irfunc^.MaximumInCount > 4 THEN
+            inscratch = (irfunc^.MaximumInCount - 4) * 4
+        END
+
+        outscratch := 0
+
+        IF irfunc^.MaximumOutCount > 3 THEN
+            outscratch = (irfunc^.MaximumOutCount - 3) * 4
+        END
+
+        IF inscratch > outscratch THEN
+            irfunc^.ScratchAreaSize = inscratch
+        
+        ELSE
+            irfunc^.ScratchAreaSize = outscratch
+        END
+
+        LirSelectForFunction ( funcsym )
+
+        funcsym = funcsym^.NextFunction
+    END
+
+    // Do regalloc over the low level IR (LIR).
+
+    funcsym = PrsFunctionListHead
+
+    WHILE funcsym DO
+        // Apply hints to the formal parameters.
+
+        XrHintFunction ( funcsym )
+
+        // Do regalloc.
+
+        LirAllocateRegistersForFunction ( funcsym )
+
+        // Generate spill code.
+
+        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+        XrGenerateSpills ( irfunc )
+
+        // Generate the prologue and epilogue.
+
+        XrGenerateAbiStuff ( funcsym, irfunc )
+
+        funcsym = funcsym^.NextFunction
+    END
+
+    // Emit the final assembly language.
+
+    XrAsmEmit (
+        &XrAsmEmitter, // emitter
+    )
+END
