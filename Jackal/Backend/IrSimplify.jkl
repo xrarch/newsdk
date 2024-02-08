@@ -163,6 +163,17 @@ FN IrSimplifyToMove (
     inst^.Source2 = NULLPTR
 END
 
+FN IrSimplifyToJump (
+    IN inst : ^IrInstruction,
+)
+
+    // Simplify the instruction to a jump.
+
+    inst^.Type = IR_JUMP
+    inst^.Source1 = NULLPTR
+    inst^.Source2 = NULLPTR
+END
+
 FN (IrSimplifyF) IrSimplifyNot (
     IN inst : ^IrInstruction,
 ) : UBYTE
@@ -196,7 +207,7 @@ FN (IrSimplifyF) IrSimplifyBranchNonZero (
     IF IrVariableIsConstant ( src1 ) THEN
         // Convert to unconditional branch.
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) THEN
             inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
@@ -236,7 +247,7 @@ FN (IrSimplifyF) IrSimplifyBranchZero (
     IF IrVariableIsConstant ( src1 ) THEN
         // Convert to unconditional branch.
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF NOT IrVariableConstantValue ( src1 ) THEN
             inst^.Body.Jump.Label = inst^.Body.Branch.TrueLabel
@@ -277,7 +288,7 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) ==
             IrVariableConstantValue ( src2 ) THEN
@@ -320,6 +331,17 @@ FN (IrSimplifyF) IrSimplifyBranchEquals (
         src2 = inst^.Source2
     END
 
+    IF IrVariableIsConstant ( src2 ) AND
+        IrVariableConstantValue ( src2 ) == 0 THEN
+
+        // Turn into a branch if zero.
+
+        inst^.Type = IR_BRANCH_ZERO
+        inst^.Source2 = NULLPTR
+
+        RETURN TRUE
+    END
+
     RETURN FALSE
 END
 
@@ -335,7 +357,7 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) !=
             IrVariableConstantValue ( src2 ) THEN
@@ -378,6 +400,17 @@ FN (IrSimplifyF) IrSimplifyBranchNotEquals (
         src2 = inst^.Source2
     END
 
+    IF IrVariableIsConstant ( src2 ) AND
+        IrVariableConstantValue ( src2 ) == 0 THEN
+
+        // Turn into a branch if not zero.
+
+        inst^.Type = IR_BRANCH_NONZERO
+        inst^.Source2 = NULLPTR
+
+        RETURN TRUE
+    END
+
     RETURN FALSE
 END
 
@@ -393,7 +426,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThan (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) <
             IrVariableConstantValue ( src2 ) THEN
@@ -453,7 +486,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThan (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) >
             IrVariableConstantValue ( src2 ) THEN
@@ -513,7 +546,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEq (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) <=
             IrVariableConstantValue ( src2 ) THEN
@@ -573,7 +606,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEq (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF IrVariableConstantValue ( src1 ) >=
             IrVariableConstantValue ( src2 ) THEN
@@ -845,7 +878,7 @@ FN (IrSimplifyF) IrSimplifyBranchLessThanSigned (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF CAST IrVariableConstantValue ( src1 ) TO WORD <
             CAST IrVariableConstantValue ( src2 ) TO WORD THEN
@@ -905,7 +938,7 @@ FN (IrSimplifyF) IrSimplifyBranchGreaterThanSigned (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF CAST IrVariableConstantValue ( src1 ) TO WORD >
             CAST IrVariableConstantValue ( src2 ) TO WORD THEN
@@ -965,7 +998,7 @@ FN (IrSimplifyF) IrSimplifyBranchLtEqSigned (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF CAST IrVariableConstantValue ( src1 ) TO WORD <=
             CAST IrVariableConstantValue ( src2 ) TO WORD THEN
@@ -1025,7 +1058,7 @@ FN (IrSimplifyF) IrSimplifyBranchGtEqSigned (
     IF IrVariableIsConstant ( src1 ) AND
         IrVariableIsConstant ( src2 ) THEN
 
-        inst^.Type = IR_JUMP
+        IrSimplifyToJump ( inst )
 
         IF CAST IrVariableConstantValue ( src1 ) TO WORD >=
             CAST IrVariableConstantValue ( src2 ) TO WORD THEN

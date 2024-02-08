@@ -368,10 +368,10 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array225, uint64_t _mng_number226
     uint64_t __twr_v231;
     uint64_t __twr_v232;
     uint64_t __twr_v233;
-    uint64_t __twr_v234;
-    uint64_t _mng_log10235;
-    uint64_t _mng_divisor236;
-    uint64_t _mng_n237;
+    uint64_t _mng_log10234;
+    uint64_t _mng_divisor235;
+    uint64_t _mng_n236;
+    uint64_t __twr_v237;
     uint64_t __twr_v238;
     uint64_t __twr_v239;
     uint64_t __twr_v240;
@@ -389,7 +389,6 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array225, uint64_t _mng_number226
     uint64_t __twr_v252;
     uint64_t __twr_v253;
     uint64_t __twr_v254;
-    uint64_t __twr_v255;
     __twr_v228 = 10ULL;
     if (_mng_base227 == __twr_v228) { goto __twr_l23; } else { goto __twr_l24; }
     __twr_l24:;
@@ -398,57 +397,57 @@ void TlInsertNumberDynamicBuffer(uint64_t _mng_array225, uint64_t _mng_number226
     __twr_v231 = 0ULL;
     ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v229)(__twr_v230, __twr_v231, __twr_v231, __twr_v231);
     __twr_l23:;
-    __twr_v232 = 0ULL;
-    if (_mng_number226 != __twr_v232) { goto __twr_l25; } else { goto __twr_l26; }
+    if (_mng_number226) { goto __twr_l25; } else { goto __twr_l26; }
     __twr_l26:;
-    __twr_v233 = (uint64_t)(&TlInsertDynamicBuffer);
-    __twr_v234 = 48ULL;
-    ((void (*)(uint64_t, uint64_t))__twr_v233)(_mng_array225, __twr_v234);
+    __twr_v232 = (uint64_t)(&TlInsertDynamicBuffer);
+    __twr_v233 = 48ULL;
+    ((void (*)(uint64_t, uint64_t))__twr_v232)(_mng_array225, __twr_v233);
     goto _jkl_epilogue;
     __twr_l25:;
-    _mng_log10235 = 0ULL;
-    _mng_divisor236 = 1ULL;
-    _mng_n237 = _mng_number226;
-    __twr_v238 = 10ULL;
-    if (_mng_n237 < __twr_v238) { goto __twr_l28; } else { goto __twr_l27; }
+    _mng_log10234 = 0ULL;
+    _mng_divisor235 = 1ULL;
+    _mng_n236 = _mng_number226;
+    __twr_v237 = 10ULL;
+    if (_mng_n236 < __twr_v237) { goto __twr_l28; } else { goto __twr_l27; }
     __twr_l27:;
-    __twr_v239 = 10ULL;
-    __twr_v240 = _mng_divisor236 * __twr_v239;
-    _mng_divisor236 = __twr_v240;
-    __twr_v241 = _mng_n237 / __twr_v239;
-    _mng_n237 = __twr_v241;
-    __twr_v242 = 1ULL;
-    __twr_v243 = _mng_log10235 + __twr_v242;
-    _mng_log10235 = __twr_v243;
+    __twr_v238 = 10ULL;
+    __twr_v239 = _mng_divisor235 * __twr_v238;
+    _mng_divisor235 = __twr_v239;
+    __twr_v240 = _mng_n236 / __twr_v238;
+    _mng_n236 = __twr_v240;
+    __twr_v241 = 1ULL;
+    __twr_v242 = _mng_log10234 + __twr_v241;
+    _mng_log10234 = __twr_v242;
     __twr_l29:;
-    __twr_v244 = 10ULL;
-    if (_mng_n237 >= __twr_v244) { goto __twr_l27; } else { goto __twr_l28; }
+    __twr_v243 = 10ULL;
+    if (_mng_n236 >= __twr_v243) { goto __twr_l27; } else { goto __twr_l28; }
     __twr_l28:;
-    __twr_v245 = 1ULL;
-    __twr_v246 = _mng_log10235 + __twr_v245;
-    _mng_log10235 = __twr_v246;
-    if (!(_mng_log10235)) { goto __twr_l31; } else { goto __twr_l30; }
+    __twr_v244 = 1ULL;
+    __twr_v245 = _mng_log10234 + __twr_v244;
+    _mng_log10234 = __twr_v245;
+    if (!(_mng_log10234)) { goto __twr_l31; } else { goto __twr_l30; }
     __twr_l30:;
-    __twr_v247 = (uint64_t)(&TlInsertDynamicBuffer);
-    __twr_v248 = _mng_number226 / _mng_divisor236;
-    __twr_v249 = 10ULL;
-    __twr_v250 = __twr_v248 % __twr_v249;
-    __twr_v251 = 48ULL;
-    __twr_v252 = __twr_v250 + __twr_v251;
-    ((void (*)(uint64_t, uint64_t))__twr_v247)(_mng_array225, __twr_v252);
-    __twr_v253 = 1ULL;
-    __twr_v254 = _mng_log10235 - __twr_v253;
-    _mng_log10235 = __twr_v254;
-    __twr_v255 = _mng_divisor236 / __twr_v249;
-    _mng_divisor236 = __twr_v255;
+    __twr_v246 = (uint64_t)(&TlInsertDynamicBuffer);
+    __twr_v247 = _mng_number226 / _mng_divisor235;
+    __twr_v248 = 10ULL;
+    __twr_v249 = __twr_v247 % __twr_v248;
+    __twr_v250 = 48ULL;
+    __twr_v251 = __twr_v249 + __twr_v250;
+    ((void (*)(uint64_t, uint64_t))__twr_v246)(_mng_array225, __twr_v251);
+    __twr_v252 = 1ULL;
+    __twr_v253 = _mng_log10234 - __twr_v252;
+    _mng_log10234 = __twr_v253;
+    __twr_v254 = _mng_divisor235 / __twr_v248;
+    _mng_divisor235 = __twr_v254;
     __twr_l32:;
-    if (_mng_log10235) { goto __twr_l30; } else { goto __twr_l31; }
+    if (_mng_log10234) { goto __twr_l30; } else { goto __twr_l31; }
     __twr_l31:;
     __twr_l22:;
     _jkl_epilogue:;
 }
-uint64_t TlPopDynamicBuffer(uint64_t _mng_array256) {
+uint64_t TlPopDynamicBuffer(uint64_t _mng_array255) {
     uint64_t _jkl_retv;
+    uint64_t __twr_v256;
     uint64_t __twr_v257;
     uint64_t __twr_v258;
     uint64_t __twr_v259;
@@ -459,25 +458,24 @@ uint64_t TlPopDynamicBuffer(uint64_t _mng_array256) {
     uint64_t __twr_v264;
     uint64_t __twr_v265;
     uint64_t __twr_v266;
-    uint64_t __twr_v267;
-    __twr_v257 = *(uint64_t*)(_mng_array256);
-    if (__twr_v257) { goto __twr_l34; } else { goto __twr_l35; }
+    __twr_v256 = *(uint64_t*)(_mng_array255);
+    if (__twr_v256) { goto __twr_l34; } else { goto __twr_l35; }
     __twr_l35:;
-    __twr_v258 = 0ULL;
-    _jkl_retv = __twr_v258;
+    __twr_v257 = 0ULL;
+    _jkl_retv = __twr_v257;
     goto _jkl_epilogue;
     __twr_l34:;
-    __twr_v259 = 1ULL;
-    __twr_v260 = *(uint64_t*)(_mng_array256);
-    __twr_v261 = __twr_v260 - __twr_v259;
-    *(uint64_t*)(_mng_array256) = __twr_v261;
-    __twr_v262 = 16ULL;
-    __twr_v263 = _mng_array256 + __twr_v262;
-    __twr_v264 = *(uint64_t*)(__twr_v263);
-    __twr_v265 = *(uint64_t*)(_mng_array256);
-    __twr_v266 = __twr_v264 + __twr_v265;
-    __twr_v267 = *(uint8_t*)(__twr_v266);
-    _jkl_retv = __twr_v267;
+    __twr_v258 = 1ULL;
+    __twr_v259 = *(uint64_t*)(_mng_array255);
+    __twr_v260 = __twr_v259 - __twr_v258;
+    *(uint64_t*)(_mng_array255) = __twr_v260;
+    __twr_v261 = 16ULL;
+    __twr_v262 = _mng_array255 + __twr_v261;
+    __twr_v263 = *(uint64_t*)(__twr_v262);
+    __twr_v264 = *(uint64_t*)(_mng_array255);
+    __twr_v265 = __twr_v263 + __twr_v264;
+    __twr_v266 = *(uint8_t*)(__twr_v265);
+    _jkl_retv = __twr_v266;
     goto _jkl_epilogue;
     __twr_l33:;
     _jkl_epilogue:;

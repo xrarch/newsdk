@@ -537,7 +537,6 @@ uint64_t LexStreamNextCharacter() {
     uint64_t __twr_v394;
     uint64_t __twr_v395;
     uint64_t __twr_v396;
-    uint64_t __twr_v397;
     __twr_v234 = (uint64_t)(&LexCurrentStream);
     __twr_v235 = *(uint64_t*)(__twr_v234);
     if (!(__twr_v235)) { goto __twr_l16; } else { goto __twr_l15; }
@@ -745,61 +744,60 @@ uint64_t LexStreamNextCharacter() {
     __twr_v368 = *(uint8_t*)(__twr_v367);
     _mng_byte247 = __twr_v368;
     __twr_l18:;
-    __twr_v369 = 0ULL;
-    if (_mng_byte247 != __twr_v369) { goto __twr_l45; } else { goto __twr_l44; }
+    if (_mng_byte247) { goto __twr_l45; } else { goto __twr_l44; }
     __twr_l44:;
-    __twr_v370 = (uint64_t)(&LexStreamError);
-    __twr_v371 = (uint64_t)(&"An invalid byte was found in the source file.");
-    __twr_v372 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v370)(__twr_v371, _mng_byte247, __twr_v372, __twr_v372);
+    __twr_v369 = (uint64_t)(&LexStreamError);
+    __twr_v370 = (uint64_t)(&"An invalid byte was found in the source file.");
+    __twr_v371 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v369)(__twr_v370, _mng_byte247, __twr_v371, __twr_v371);
     goto __twr_l43;
     __twr_l45:;
-    __twr_v373 = 13ULL;
-    if (_mng_byte247 != __twr_v373) { goto __twr_l47; } else { goto __twr_l46; }
+    __twr_v372 = 13ULL;
+    if (_mng_byte247 != __twr_v372) { goto __twr_l47; } else { goto __twr_l46; }
     __twr_l46:;
-    __twr_v374 = (uint64_t)(&LexStreamError);
-    __twr_v375 = (uint64_t)(&"DOS line endings were detected in the source file.");
-    __twr_v376 = 0ULL;
-    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v374)(__twr_v375, __twr_v376, __twr_v376, __twr_v376);
+    __twr_v373 = (uint64_t)(&LexStreamError);
+    __twr_v374 = (uint64_t)(&"DOS line endings were detected in the source file.");
+    __twr_v375 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v373)(__twr_v374, __twr_v375, __twr_v375, __twr_v375);
     goto __twr_l43;
     __twr_l47:;
-    __twr_v377 = 10ULL;
-    if (_mng_byte247 != __twr_v377) { goto __twr_l49; } else { goto __twr_l48; }
+    __twr_v376 = 10ULL;
+    if (_mng_byte247 != __twr_v376) { goto __twr_l49; } else { goto __twr_l48; }
     __twr_l48:;
-    __twr_v378 = 1ULL;
-    __twr_v379 = 44ULL;
-    __twr_v380 = _mng_stream238 + __twr_v379;
-    __twr_v381 = *(uint32_t*)(__twr_v380);
-    __twr_v382 = __twr_v381 + __twr_v378;
-    *(uint32_t*)(__twr_v380) = __twr_v382;
-    __twr_v383 = 48ULL;
-    __twr_v384 = _mng_stream238 + __twr_v383;
-    *(uint32_t*)(__twr_v384) = __twr_v378;
-    __twr_v385 = 64ULL;
-    __twr_v386 = _mng_stream238 + __twr_v385;
-    *(uint8_t*)(__twr_v386) = __twr_v378;
+    __twr_v377 = 1ULL;
+    __twr_v378 = 44ULL;
+    __twr_v379 = _mng_stream238 + __twr_v378;
+    __twr_v380 = *(uint32_t*)(__twr_v379);
+    __twr_v381 = __twr_v380 + __twr_v377;
+    *(uint32_t*)(__twr_v379) = __twr_v381;
+    __twr_v382 = 48ULL;
+    __twr_v383 = _mng_stream238 + __twr_v382;
+    *(uint32_t*)(__twr_v383) = __twr_v377;
+    __twr_v384 = 64ULL;
+    __twr_v385 = _mng_stream238 + __twr_v384;
+    *(uint8_t*)(__twr_v385) = __twr_v377;
     goto __twr_l43;
     __twr_l49:;
-    __twr_v387 = 1ULL;
-    __twr_v388 = 48ULL;
-    __twr_v389 = _mng_stream238 + __twr_v388;
-    __twr_v390 = *(uint32_t*)(__twr_v389);
-    __twr_v391 = __twr_v390 + __twr_v387;
-    *(uint32_t*)(__twr_v389) = __twr_v391;
-    __twr_v392 = 0ULL;
-    __twr_v393 = 64ULL;
-    __twr_v394 = _mng_stream238 + __twr_v393;
-    *(uint8_t*)(__twr_v394) = __twr_v392;
+    __twr_v386 = 1ULL;
+    __twr_v387 = 48ULL;
+    __twr_v388 = _mng_stream238 + __twr_v387;
+    __twr_v389 = *(uint32_t*)(__twr_v388);
+    __twr_v390 = __twr_v389 + __twr_v386;
+    *(uint32_t*)(__twr_v388) = __twr_v390;
+    __twr_v391 = 0ULL;
+    __twr_v392 = 64ULL;
+    __twr_v393 = _mng_stream238 + __twr_v392;
+    *(uint8_t*)(__twr_v393) = __twr_v391;
     __twr_l43:;
     _jkl_retv = _mng_byte247;
     goto _jkl_epilogue;
     __twr_l17:;
-    __twr_v395 = (uint64_t)(&LexCurrentStream);
-    __twr_v396 = *(uint64_t*)(__twr_v395);
-    if (__twr_v396) { goto __twr_l15; } else { goto __twr_l16; }
+    __twr_v394 = (uint64_t)(&LexCurrentStream);
+    __twr_v395 = *(uint64_t*)(__twr_v394);
+    if (__twr_v395) { goto __twr_l15; } else { goto __twr_l16; }
     __twr_l16:;
-    __twr_v397 = 0ULL;
-    _jkl_retv = __twr_v397;
+    __twr_v396 = 0ULL;
+    _jkl_retv = __twr_v396;
     goto _jkl_epilogue;
     __twr_l14:;
     _jkl_epilogue:;
