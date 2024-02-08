@@ -16,12 +16,11 @@ Note that compiling the compiler itself will create `./build/jkl` and leave the 
 - [x] Self-hosted Jackal compiler w/ C backend.
 - [x] Fox32 backend.
 - [ ] XR/17032 backend.
-- [ ] Complete rewrite of the MINTIA OS in Jackal.
-- [ ] MINTIA port of the new compiler.
+- [ ] Self-hosted build tool ("xrbt") to replace `make`.
 - [ ] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [ ] New linker written in Jackal with XR/17032 and Fox32 support.
-- [ ] Native build system "xrbuild" to replace make.
-- [ ] MINTIA build system replaced with xrbuild and made completely self-hosting, except for version control.
+- [ ] Complete rewrite of the MINTIA OS in Jackal.
+- [ ] MINTIA port of the new compiler.
 - [ ] RISCV64 assembler and linker support.
 - [ ] RISCV64 compiler backend.
 - [ ] MINTIA port to RISCV64.
