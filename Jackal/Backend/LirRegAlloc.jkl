@@ -221,46 +221,6 @@ FN LirLivenessForFunction (
 
     irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
-    // First make sure all the IN parameters are live on entry.
-
-    type := funcsym^.SemanticType
-
-    arg := type^.Body.Function.ArgListHead
-
-    WHILE arg DO
-        IF arg^.InOut != ARG_IN THEN
-            arg = arg^.Next
-
-            CONTINUE
-        END
-
-        symbol := arg^.Symbol
-
-        irvar := CAST symbol^.IrContext TO ^IrVariable
-
-        IF irvar THEN
-            lirreg := LirGetRegister ( irvar )
-
-            lirreg^.LivenessStart = 1
-            lirreg^.LivenessEnd = 1
-            lirreg^.LivenessFirst = irfunc^.LirHead
-
-            lirreg^.DefinedYet = TRUE
-
-            TlInsertAtHeadList (
-                &LirDefinedYetListHead, // head
-                &lirreg^.DefinedYetListEntry, // entry
-            )
-
-            TlInsertAtHeadList (
-                &LirIntervalListHead, // head
-                &lirreg^.IntervalListEntry, // entry
-            )
-        END
-
-        arg = arg^.Next
-    END
-
     inst := irfunc^.LirHead
     instnum := 1
 
@@ -744,6 +704,4 @@ FN LirAllocateRegistersForFunction (
     // Now do linear scan.
 
     LirLinearScan ()
-
-    // TlInternalError ( "LirAllocateRegistersForFunction: TODO", 0, 0, 0 )
 END

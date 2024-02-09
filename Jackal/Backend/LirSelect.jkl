@@ -93,11 +93,21 @@ FN LirInsertInstructionBefore (
     IN inst : ^LirInstruction,
 )
 
+    inst^.Block = LirCurrentFunction
+
+    IF NOT beforeinst THEN
+        inst^.Prev = NULLPTR
+        inst^.Next = NULLPTR
+
+        inst^.Block^.LirTail = inst
+        inst^.Block^.LirHead = inst 
+
+        LEAVE
+    END
+
     // Insert inst before beforeinst.
 
     prev := beforeinst^.Prev
-
-    inst^.Block = beforeinst^.Block
 
     IF prev THEN
         prev^.Next = inst
@@ -120,9 +130,19 @@ FN LirInsertInstructionAfter (
 
     // Insert inst after afterinst.
 
-    next := afterinst^.Next
+    inst^.Block = LirCurrentFunction
 
-    inst^.Block = afterinst^.Block
+    IF NOT afterinst THEN
+        inst^.Prev = NULLPTR
+        inst^.Next = NULLPTR
+
+        inst^.Block^.LirTail = inst
+        inst^.Block^.LirHead = inst 
+
+        LEAVE
+    END
+
+    next := afterinst^.Next
 
     IF next THEN
         next^.Prev = inst

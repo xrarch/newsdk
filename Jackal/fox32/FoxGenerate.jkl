@@ -1559,9 +1559,12 @@ END
 
 FN FoxHintFunction (
     IN funcsym : ^LexSymbol,
+    IN irfunc : ^IrFunction,
 )
 
     // Hint the first four arguments to a0-a3.
+
+    head := irfunc^.LirHead
 
     functype := funcsym^.SemanticType
 
@@ -1581,8 +1584,44 @@ FN FoxHintFunction (
             IF arg^.InOut == ARG_IN AND incount < 4 THEN
                 irreg^.Hint = FOX_A0 + incount
 
+                // Create a junk node that defines this at the start of the
+                // function, for regalloc purposes.
+
+                junkinst := LirCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines = irreg
+
+                junkinst^.Source1 =
+                    LirCreatePreallocatedRegister ( FOX_A0 + incount )
+
+                LirInsertInstructionBefore (
+                    head, // beforeinst
+                    junkinst, // inst
+                )
+
             ELSEIF arg^.InOut == ARG_OUT AND outcount < 3 THEN
                 irreg^.Hint = FOX_A2 - outcount
+
+                // Create a junk node that defines this at the end of the
+                // function, for regalloc purposes.
+
+                junkinst := LirCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines =
+                    LirCreatePreallocatedRegister ( FOX_A2 - outcount )
+
+                junkinst^.Source1 = irreg
+
+                LirInsertInstructionAfter (
+                    irfunc^.LirTail, // afterinst
+                    junkinst, // inst
+                )
             END
         END
 
@@ -1601,7 +1640,7 @@ FN FoxHintFunction (
 
         i := 0
 
-        WHILE incount < 4 DO
+        WHILE incount < 4 AND i < 2 DO
             symbol : ^LexSymbol
 
             IF NOT i THEN
@@ -1617,6 +1656,21 @@ FN FoxHintFunction (
                 irreg := LirGetRegister ( irvar )
 
                 irreg^.Hint = FOX_A0 + incount
+
+                junkinst := LirCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines = irreg
+
+                junkinst^.Source1 =
+                    LirCreatePreallocatedRegister ( FOX_A0 + incount )
+
+                LirInsertInstructionBefore (
+                    head, // beforeinst
+                    junkinst, // inst
+                )
             END
 
             incount += 1
@@ -1823,6 +1877,14 @@ FN FoxGenerateSpills (
         machinst := inst^.MachineInstruction
         access1 := inst^.Body.Machine.Fox.Op1.AccessType
         access2 := inst^.Body.Machine.Fox.Op2.AccessType
+
+        IF type == LIR_JUNK THEN
+            LirRemoveInstruction ( inst )
+
+            inst = inst^.Next
+
+            CONTINUE
+        END
 
         // First check if this is a useless move. Despite the massive bundle of
         // conditions below, this is a pretty common occurrence after regalloc,
@@ -2724,15 +2786,17 @@ FN (JklTargetF) FoxCompile ()
     WHILE funcsym DO
         // Apply hints to the formal parameters.
 
-        FoxHintFunction ( funcsym )
+        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+        LirCurrentFunction = irfunc
+
+        FoxHintFunction ( funcsym, irfunc )
 
         // Do regalloc.
 
         LirAllocateRegistersForFunction ( funcsym )
 
         // Generate spill code.
-
-        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
         FoxGenerateSpills ( irfunc )
 

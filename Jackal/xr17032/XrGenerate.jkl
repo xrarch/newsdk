@@ -973,8 +973,8 @@ FN XrGeneratePreallocatedMov (
         movinst^.Source2 = srcreg
     END
 
-    movinst^.Body.Machine.Fox.Op1.AccessType = XR_ACCESS_REGISTER
-    movinst^.Body.Machine.Fox.Op2.AccessType = XR_ACCESS_REGISTER
+    movinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+    movinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
 
     LirInsertInstructionTail ( movinst )
 
@@ -1749,9 +1749,12 @@ XrLirInfo : LirTargetInfoRecord = {
 
 FN XrHintFunction (
     IN funcsym : ^LexSymbol,
+    IN irfunc : ^IrFunction,
 )
 
     // Hint the first four arguments to a0-a3.
+
+    head := irfunc^.LirHead
 
     functype := funcsym^.SemanticType
 
@@ -1771,8 +1774,44 @@ FN XrHintFunction (
             IF arg^.InOut == ARG_IN AND incount < 4 THEN
                 irreg^.Hint = XR_A0 + incount
 
+                // Create a junk node that defines this at the start of the
+                // function, for regalloc purposes.
+
+                junkinst := XrCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines = irreg
+
+                junkinst^.Source1 =
+                    LirCreatePreallocatedRegister ( XR_A0 + incount )
+
+                LirInsertInstructionBefore (
+                    head, // beforeinst
+                    junkinst, // inst
+                )
+
             ELSEIF arg^.InOut == ARG_OUT AND outcount < 3 THEN
                 irreg^.Hint = XR_A2 - outcount
+
+                // Create a junk node that defines this at the end of the
+                // function, for regalloc purposes.
+
+                junkinst := XrCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines =
+                    LirCreatePreallocatedRegister ( XR_A2 - outcount )
+
+                junkinst^.Source1 = irreg
+
+                LirInsertInstructionAfter (
+                    irfunc^.LirTail, // afterinst
+                    junkinst, // inst
+                )
             END
         END
 
@@ -1791,7 +1830,7 @@ FN XrHintFunction (
 
         i := 0
 
-        WHILE incount < 4 DO
+        WHILE incount < 4 AND i < 2 DO
             symbol : ^LexSymbol
 
             IF NOT i THEN
@@ -1807,6 +1846,21 @@ FN XrHintFunction (
                 irreg := LirGetRegister ( irvar )
 
                 irreg^.Hint = XR_A0 + incount
+
+                junkinst := XrCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines = irreg
+
+                junkinst^.Source1 =
+                    LirCreatePreallocatedRegister ( XR_A0 + incount )
+
+                LirInsertInstructionBefore (
+                    head, // beforeinst
+                    junkinst, // inst
+                )
             END
 
             incount += 1
@@ -2064,6 +2118,18 @@ FN XrGenerateSpills (
 
     inst := irfunc^.LirHead
 
+    i := 0
+
+    WHILE i < 3 DO
+        XrTmpsContain[i] = NULLPTR
+        XrTmpsRef[i] = 0
+        XrTmpsModified[i] = FALSE
+
+        i += 1
+    END
+
+    XrTmpsModifiedCount = 0
+
     WHILE inst DO
         def := inst^.Defines
         src1 := inst^.Source1
@@ -2180,7 +2246,7 @@ FN XrGenerateSpills (
             type == LIR_CALL OR
             type == LIR_LABEL THEN
 
-            i := 0
+            i = 0
 
             WHILE i < 3 DO
                 IF XrTmpsModified[i] THEN
@@ -2253,7 +2319,7 @@ FN XrGenerateAbiStuff (
     //  SUBI SP, SP, { frame size }
 
     IF framesize THEN
-        inst := LirCreateInstruction (
+        inst := XrCreateInstruction (
             LIR_MACH_INST, // type
             XR_INST_NULL, // machtype
         )
@@ -2708,7 +2774,7 @@ FN XrGenerateAbiStuff (
     //  ADDI SP, SP, { frame size }
 
     IF framesize THEN
-        inst := LirCreateInstruction (
+        inst := XrCreateInstruction (
             LIR_MACH_INST, // type
             XR_INST_NULL, // machtype
         )
@@ -2748,7 +2814,7 @@ FN XrGenerateAbiStuff (
 
     // RET
 
-    inst := LirCreateInstruction (
+    inst := XrCreateInstruction (
         LIR_MACH_INST, // type
         XR_RET, // machtype
     )
@@ -3139,15 +3205,17 @@ FN (JklTargetF) XrCompile ()
     WHILE funcsym DO
         // Apply hints to the formal parameters.
 
-        XrHintFunction ( funcsym )
+        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+        LirCurrentFunction = irfunc
+
+        XrHintFunction ( funcsym, irfunc )
 
         // Do regalloc.
 
         LirAllocateRegistersForFunction ( funcsym )
 
         // Generate spill code.
-
-        irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
         XrGenerateSpills ( irfunc )
 
