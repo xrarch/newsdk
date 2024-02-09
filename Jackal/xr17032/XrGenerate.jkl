@@ -26,7 +26,7 @@ PUBLIC XrTargetInfo : JklTargetInfoRecord = {
     [StackAlignment] = 4,
     [PointerAlignment] = 4,
     [PointerSize] = 4,
-    [CodeAlignment] = 1,
+    [CodeAlignment] = 4,
     [LargestPrimitive] = PRIM_TYPE_ULONG,
     [LargestSignedPrimitive] = PRIM_TYPE_LONG,
     [SupportedTypes] = {
@@ -293,6 +293,12 @@ XrBitsOffsetMask : UBYTE[XR_BITS_MAX] = {
     [XR_BITS_32] = 3,
 }
 
+XrBitsNames : ^UBYTE[XR_BITS_MAX] = {
+    [XR_BITS_8] = "byte",
+    [XR_BITS_16] = "int",
+    [XR_BITS_32] = "long",
+}
+
 ENUM XrShiftTypes : UBYTE
     XR_SHIFT_LSH,
     XR_SHIFT_RSH,
@@ -453,7 +459,8 @@ FN XrFillAccess (
         lirinst^.Source2 = LirGetRegister ( inst^.Source1 )
         lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
 
-        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_ZERO
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+        lirinst^.Body.Machine.Xr.Op3.Constant = 0
 
         LEAVE
     END
@@ -568,7 +575,8 @@ FN XrFillAccess (
 
     lirinst^.Source2 = LirSelect ( srcinst )
 
-    lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_ZERO
+    lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+    lirinst^.Body.Machine.Xr.Op3.Constant = 0
 END
 
 FN (LirSelectF) XrSelectLoad (
@@ -608,15 +616,24 @@ FN (LirSelectF) XrSelectStore (
         XR_MOV_STORE, // machtype
     )
 
+    XrFillAccess (
+        inst, // inst
+        lirinst, // lirinst
+    )
+
     // If the source is an imm between -16 and 15, we can do it in the
-    // instruction.
+    // instruction. The instruction also needs to either have an immediate
+    // offset (XR_ACCESS_IMM on Op3) or be an inline store
+    // (XR_ACCESS_IMM_NAME on Op2).
 
     defby := inst^.Source2^.DefinedBy
 
     IF defby AND
         defby^.Type == IR_CONSTANT AND
         (defby^.Body.Constant.Constant & 0xFFFFFFFF >= 0xFFFFFFF0 OR
-        defby^.Body.Constant.Constant < 16) THEN
+        defby^.Body.Constant.Constant < 16) AND
+        (lirinst^.Body.Machine.Xr.Op3.AccessType == XR_ACCESS_IMM OR
+        lirinst^.Body.Machine.Xr.Op2.AccessType == XR_ACCESS_IMM_NAME) THEN
 
         lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_IMM
 
@@ -627,11 +644,6 @@ FN (LirSelectF) XrSelectStore (
         lirinst^.Source1 = LirSelectOrGetRegister ( inst^.Source2 )
         lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
     END
-
-    XrFillAccess (
-        inst, // inst
-        lirinst, // lirinst
-    )
 
     LirInsertInstructionTail ( lirinst )
 
@@ -647,23 +659,33 @@ FN XrFillConstant (
 
     const &= 0xFFFFFFFF
 
-    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM
-
     IF const < 65536 THEN
         lirinst^.MachineInstruction = XR_LI
+
         lirinst^.Body.Machine.Xr.Op2.Constant = const
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM
 
     ELSEIF const >= 0xFFFF0001 THEN
         lirinst^.MachineInstruction = XR_SUBI
-        lirinst^.Body.Machine.Xr.Op2.Constant = (~const + 1) & 0xFFFFFFFF
+
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_ZERO
+
+        lirinst^.Body.Machine.Xr.Op3.Constant = (~const + 1) & 0xFFFFFFFF
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
 
     ELSEIF const & 0xFFFF == 0 THEN
         lirinst^.MachineInstruction = XR_LUI
-        lirinst^.Body.Machine.Xr.Op2.Constant = const
+
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_ZERO
+
+        lirinst^.Body.Machine.Xr.Op3.Constant = const
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
 
     ELSE
         lirinst^.MachineInstruction = XR_LA
+
         lirinst^.Body.Machine.Xr.Op2.Constant = const
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM
     END
 END
 
@@ -1707,6 +1729,49 @@ FN XrGenerateAbiStuff (
     TlInternalError ( "TODO XrGenerateAbiStuff", 0, 0, 0 )
 END
 
+FN XrEmitRegister (
+    IN reg : ^LirRegister,
+)
+
+    IF reg^.Type == LIR_SPILLED_REG THEN
+        XrAsmInsertString ( "SPILLED" )
+        XrAsmInsertNumber ( CAST reg TO UWORD )
+
+    ELSEIF reg^.Type == LIR_VIRTUAL_REG THEN
+        XrAsmInsertString ( "VIRTUAL" )
+        XrAsmInsertNumber ( CAST reg TO UWORD )
+
+    ELSE
+        XrAsmInsertString ( XrRegisterNames[reg^.MachineRegister] )
+    END
+END
+
+FN XrEmitOperand (
+    IN operand : ^LirXrOperand,
+    IN reg : ^LirRegister,
+)
+
+    IF operand^.AccessType == XR_ACCESS_IMM THEN
+        XrAsmInsertNumber ( operand^.Constant )
+
+    ELSEIF operand^.AccessType == XR_ACCESS_REGISTER THEN
+        XrEmitRegister ( reg )
+
+    ELSEIF operand^.AccessType == XR_ACCESS_ZERO THEN
+        XrAsmInsertString ( "zero" )
+
+    ELSEIF operand^.AccessType == XR_ACCESS_IMM_STRING THEN
+        string := CAST operand^.Constant TO ^LexInternedString
+
+        XrAsmEmitString ( string )
+
+    ELSEIF operand^.AccessType == XR_ACCESS_IMM_NAME THEN
+        symbol := CAST operand^.Constant TO ^LexSymbol
+
+        XrAsmInsertString ( symbol^.Name )
+    END
+END
+
 XrNextBranchNumber := 0
 
 FN XrEmitInstruction (
@@ -1715,10 +1780,152 @@ FN XrEmitInstruction (
 
     IF lirinst^.Type == LIR_MACH_INST OR
         lirinst^.Type == LIR_CALL OR
-        lirinst^.Type == LIR_BRANCH OR
-        lirinst^.Type == LIR_RETURN THEN
+        lirinst^.Type == LIR_BRANCH THEN
 
-        TlInternalError ( "TODO XrEmitInstruction", 0, 0, 0 )
+        XrAsmInsertString ( "    " )
+
+        XrAsmInsertString ( XrInstructionNames[lirinst^.MachineInstruction] )
+
+        XrAsmInsertString ( " " )
+
+        reg1 := lirinst^.Defines
+
+        IF NOT reg1 THEN
+            reg1 = lirinst^.Source1
+        END
+
+        reg2 := lirinst^.Source2
+        reg3 := lirinst^.Source3
+
+        IF lirinst^.Type == LIR_BRANCH THEN
+            IF reg1 THEN
+                XrEmitRegister ( reg1 )
+                XrAsmInsertString ( ", " )
+            END
+
+            num := lirinst^.TypeBody.Branch.Label^.Body.Label.Number
+
+            IF num == 0xFFFFFFFF THEN
+                num = XrNextBranchNumber
+                lirinst^.TypeBody.Branch.Label^.Body.Label.Number = num
+
+                XrNextBranchNumber += 1
+            END
+
+            XrAsmInsertString ( ".L" )
+            XrAsmInsertNumber ( num )
+
+        ELSEIF lirinst^.MachineInstruction == XR_MOV_LOAD OR
+            lirinst^.MachineInstruction == XR_MOV_STORE OR
+            lirinst^.MachineInstruction == XR_MOV_LOAD_INLINED OR
+            lirinst^.MachineInstruction == XR_MOV_STORE_INLINED THEN
+
+            IF lirinst^.MachineInstruction == XR_MOV_LOAD OR
+                lirinst^.MachineInstruction == XR_MOV_LOAD_INLINED THEN
+
+                XrEmitRegister ( reg1 )
+                XrAsmInsertString ( ", " )
+            END
+
+            XrAsmInsertString ( XrBitsNames[lirinst^.Body.Machine.Xr.BitSize] )
+
+            XrAsmInsertString ( " [" )
+
+            IF lirinst^.MachineInstruction == XR_MOV_LOAD OR
+                lirinst^.MachineInstruction == XR_MOV_STORE THEN
+
+                XrEmitRegister ( reg2 )
+
+                IF lirinst^.Body.Machine.Xr.Op3.AccessType == XR_ACCESS_IMM AND
+                    lirinst^.Body.Machine.Xr.Op3.Constant THEN
+
+                    XrAsmInsertString ( " + " )
+                    XrAsmInsertNumber ( lirinst^.Body.Machine.Xr.Op3.Constant )
+                
+                ELSEIF lirinst^.Body.Machine.Xr.Op3.AccessType ==
+                    XR_ACCESS_REGISTER THEN
+
+                    XrAsmInsertString ( " + " )
+                    XrEmitRegister ( reg3 )
+
+                    IF lirinst^.Body.Machine.Xr.ShiftAmount THEN
+                        XrAsmInsertString ( " " )
+
+                        XrAsmInsertString (
+                        XrShiftTypeNames[lirinst^.Body.Machine.Xr.ShiftType] )
+
+                        XrAsmInsertString ( " " )
+
+                        XrAsmInsertNumber (
+                            lirinst^.Body.Machine.Xr.ShiftAmount )
+                    END
+                END
+
+            ELSE
+                symbol :=
+                    CAST lirinst^.Body.Machine.Xr.Op2.Constant TO ^LexSymbol
+
+                XrAsmInsertString ( symbol^.Name )
+            END
+
+            XrAsmInsertString ( "]" )
+
+            IF lirinst^.MachineInstruction == XR_MOV_STORE OR
+                lirinst^.MachineInstruction == XR_MOV_STORE_INLINED THEN
+
+                XrAsmInsertString ( ", " )
+
+                IF lirinst^.Source1 THEN
+                    XrEmitRegister ( lirinst^.Source1 )
+
+                ELSE
+                    XrAsmInsertNumber ( lirinst^.Body.Machine.Xr.Op1.Constant )
+                END
+
+                IF lirinst^.MachineInstruction == XR_MOV_STORE_INLINED THEN
+                    XrAsmInsertString ( ", tmp=" )
+                    XrEmitRegister ( lirinst^.Defines )
+                END
+            END
+
+        ELSE
+            commatime := FALSE
+
+            IF lirinst^.Body.Machine.Xr.Op1.AccessType != XR_ACCESS_NONE THEN
+                XrEmitOperand (
+                    &lirinst^.Body.Machine.Xr.Op1, // operand
+                    reg1, // reg
+                )
+
+                commatime = TRUE
+            END
+
+            IF lirinst^.Body.Machine.Xr.Op2.AccessType != XR_ACCESS_NONE THEN
+                IF commatime THEN
+                    XrAsmInsertString ( ", " )
+                END
+
+                XrEmitOperand (
+                    &lirinst^.Body.Machine.Xr.Op2, // operand
+                    reg2, // reg
+                )
+
+                commatime = TRUE
+            END
+
+            IF lirinst^.Body.Machine.Xr.Op3.AccessType != XR_ACCESS_NONE THEN
+                IF commatime THEN
+                    XrAsmInsertString ( ", " )
+                END
+
+                XrEmitOperand (
+                    &lirinst^.Body.Machine.Xr.Op3, // operand
+                    reg3, // reg
+                )
+            END
+        END
+
+        XrAsmInsertString ( "\n" )
 
     ELSEIF lirinst^.Type == LIR_LABEL THEN
         num := lirinst^.Body.Label.Number
@@ -1894,11 +2101,11 @@ FN (JklTargetF) XrCompile ()
 
         irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
-        XrGenerateSpills ( irfunc )
+        // XrGenerateSpills ( irfunc )
 
         // Generate the prologue and epilogue.
 
-        XrGenerateAbiStuff ( funcsym, irfunc )
+        // XrGenerateAbiStuff ( funcsym, irfunc )
 
         funcsym = funcsym^.NextFunction
     END
