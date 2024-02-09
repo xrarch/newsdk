@@ -2400,6 +2400,7 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_BIT_XOR] = &FoxSelectArithmetic,
         [IR_LEFT_SHIFT] = &FoxSelectArithmetic,
         [IR_RIGHT_SHIFT] = &FoxSelectArithmetic,
+        // [IR_RIGHT_SHIFT_SIGNED] = &XrSelectArithmetic,
         [IR_MULTIPLY] = &FoxSelectArithmetic,
 
         [IR_BIT_NOT] = &FoxSelectBitNot,

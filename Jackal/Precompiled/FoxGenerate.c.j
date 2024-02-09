@@ -148,7 +148,7 @@ extern void XrAsmInsertNumberForward(uint64_t _mng_number171);
 extern void XrAsmEmitString(uint64_t _mng_string172);
 extern void FoxCompile();
 extern uint64_t FoxValueNumber(uint64_t _mng_constant173);
-extern uint64_t FoxLirInfo[69];
+extern uint64_t FoxLirInfo[70];
 uint64_t FoxTargetInfo[12] = {
     (uint64_t)(&"fox32"),
     (uint64_t)(&FoxCompile),
@@ -268,7 +268,7 @@ uint64_t FoxIrInstToFoxOp[7] = {
     0x0000000000000000,
     0x0000000000000000,
     0x161D001514000B02,
-    0x0000000001000D03,
+    0x0000000100000D03,
 };
 uint64_t FoxTmps[18];
 uint64_t FoxTmpAt[9];
@@ -5089,7 +5089,7 @@ void FoxGenerateAbiStuff(uint64_t _mng_funcsym1654, uint64_t _mng_irfunc1655) {
     __twr_l230:;
     _jkl_epilogue:;
 }
-uint64_t FoxLirInfo[69] = {
+uint64_t FoxLirInfo[70] = {
     0x0000000000000000,
     (uint64_t)(&FoxSelectLoad),
     (uint64_t)(&FoxSelectAddr),
@@ -5140,6 +5140,7 @@ uint64_t FoxLirInfo[69] = {
     (uint64_t)(&FoxSelectArithmetic),
     (uint64_t)(&FoxSelectArithmetic),
     (uint64_t)(&FoxSelectArithmetic),
+    0x0000000000000000,
     (uint64_t)(&FoxSelectBitNot),
     (uint64_t)(&FoxSelectArithmetic),
     0x0000020202020200,

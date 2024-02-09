@@ -1686,6 +1686,22 @@ FN (IrSimplifyF) IrSimplifyDivideSigned (
 
             RETURN TRUE
         END
+
+        pwrtwo := TlIsPowerOfTwo ( src2value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a right shift.
+
+            constvar := IrConstantTableGet (
+                inst, // beforeinst
+                pwrtwo, // constant
+            )
+
+            inst^.Type = IR_RIGHT_SHIFT_SIGNED
+            inst^.Source2 = constvar
+
+            RETURN TRUE
+        END
     END
 
     RETURN FALSE
@@ -1989,6 +2005,93 @@ FN (IrSimplifyF) IrSimplifyRightShift (
     RETURN FALSE
 END
 
+FN (IrSimplifyF) IrSimplifyRightShiftSigned (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := CAST IrVariableConstantValue ( src1 ) TO WORD >>
+            IrVariableConstantValue ( src2 )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            CAST res TO UWORD, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        inst1 := src1^.DefinedBy
+
+        IF NOT inst1 THEN
+            RETURN FALSE
+        END
+
+        IF inst1^.Type == IR_RIGHT_SHIFT_SIGNED THEN
+            // Possible re-association opportunity if it turns out we have
+            // something of the form:
+
+            // ASH a, b, constantA
+            // ASH c, a, constantB
+
+            // We can turn it into:
+
+            // ASH c, b, (constantA + constantB)
+
+            inst1src2 := inst1^.Source2
+
+            IF IrVariableIsConstant ( inst1src2 ) THEN
+                // Woo-hoo!
+
+                inst1src1val := IrVariableConstantValue ( inst1src2 )
+                inst1src1val += src2value
+
+                constvar := IrConstantTableGet (
+                    inst, // beforeinst
+                    inst1src1val, // constant
+                )
+
+                inst^.Type = IR_RIGHT_SHIFT_SIGNED
+                inst^.Source1 = inst1^.Source1
+                inst^.Source2 = constvar
+
+                RETURN FALSE
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
 FN (IrSimplifyF) IrSimplifyBitNot (
     IN inst : ^IrInstruction,
 ) : UBYTE
@@ -2178,6 +2281,7 @@ IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
     [IR_BIT_XOR] = &IrSimplifyXor,
     [IR_LEFT_SHIFT] = &IrSimplifyLeftShift,
     [IR_RIGHT_SHIFT] = &IrSimplifyRightShift,
+    [IR_RIGHT_SHIFT_SIGNED] = &IrSimplifyRightShiftSigned,
     [IR_BIT_NOT] = &IrSimplifyBitNot,
     [IR_MULTIPLY] = &IrSimplifyMultiply,
 

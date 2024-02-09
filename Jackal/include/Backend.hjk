@@ -60,6 +60,7 @@ ENUM IrInstructionType : UBYTE
     IR_BIT_XOR,
     IR_LEFT_SHIFT,
     IR_RIGHT_SHIFT,
+    IR_RIGHT_SHIFT_SIGNED,
     IR_BIT_NOT,
     IR_MULTIPLY,
 

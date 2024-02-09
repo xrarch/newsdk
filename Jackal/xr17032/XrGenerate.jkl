@@ -419,8 +419,36 @@ FN XrFillAccess (
         END
 
     ELSEIF srcinst^.Type == IR_ADD THEN
+        // This is an offset by a base. Fill in the base register.
+
+        lirinst^.Source2 = LirSelectOrGetRegister ( srcinst^.Source1 )
+
         // TODO NEXT: `add` cases; shifts; etc
 
+        inst2 := srcinst^.Source2^.DefinedBy
+
+        IF inst2 THEN
+            IF inst2^.Type == IR_CONSTANT AND
+                inst2^.Body.Constant.Constant < XrBitsToMaximumOffset[bits] AND
+                inst2^.Body.Constant.Constant & XrBitsOffsetMask[bits] == 0 THEN
+
+                // Great! We can do this directly.
+
+                lirinst^.Body.Machine.Xr.Op3.Constant =
+                    inst2^.Body.Constant.Constant
+
+                lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+
+                LEAVE
+            END
+        END
+
+        // Just offset by a register.
+
+        lirinst^.Source3 = LirSelectOrGetRegister ( srcinst^.Source2 )
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+
+        LEAVE
     END
 
     // Just fill it with a zero offset from the register.
@@ -509,6 +537,7 @@ XrLirInfo : LirTargetInfoRecord = {
         [IR_BIT_XOR] = &XrSelectArithmetic,
         [IR_LEFT_SHIFT] = &XrSelectArithmetic,
         [IR_RIGHT_SHIFT] = &XrSelectArithmetic,
+        [IR_RIGHT_SHIFT_SIGNED] = &XrSelectArithmetic,
         [IR_MULTIPLY] = &XrSelectArithmetic,
 
         [IR_BIT_NOT] = &XrSelectBitNot,

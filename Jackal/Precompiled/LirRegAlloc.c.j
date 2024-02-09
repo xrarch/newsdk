@@ -1080,11 +1080,11 @@ void LirResetRegPool() {
     __twr_v517 = *(uint64_t*)(__twr_v516);
     _mng_lirinfo518 = __twr_v517;
     _mng_i519 = 0ULL;
-    __twr_v520 = 544ULL;
+    __twr_v520 = 552ULL;
     __twr_v521 = _mng_lirinfo518 + __twr_v520;
     __twr_v522 = *(uint8_t*)(__twr_v521);
     _mng_max523 = __twr_v522;
-    __twr_v524 = 480ULL;
+    __twr_v524 = 488ULL;
     __twr_v525 = _mng_lirinfo518 + __twr_v524;
     _mng_statmap526 = __twr_v525;
     __twr_v527 = (uint64_t)(&LirCurrentFunction);
@@ -1092,7 +1092,7 @@ void LirResetRegPool() {
     __twr_v529 = 56ULL;
     __twr_v530 = __twr_v528 + __twr_v529;
     _mng_everalloced531 = __twr_v530;
-    __twr_v532 = 416ULL;
+    __twr_v532 = 424ULL;
     __twr_v533 = _mng_lirinfo518 + __twr_v532;
     _mng_abimap534 = __twr_v533;
     if (_mng_max523 <= _mng_i519) { goto __twr_l82; } else { goto __twr_l81; }
@@ -1171,10 +1171,10 @@ uint64_t LirAllocateRegister(uint64_t _mng_calleesavedonly545, uint64_t _mng_hin
     __twr_v550 = __twr_v548 + __twr_v549;
     __twr_v551 = *(uint64_t*)(__twr_v550);
     _mng_lirinfo552 = __twr_v551;
-    __twr_v553 = 480ULL;
+    __twr_v553 = 488ULL;
     __twr_v554 = _mng_lirinfo552 + __twr_v553;
     _mng_statmap555 = __twr_v554;
-    __twr_v556 = 416ULL;
+    __twr_v556 = 424ULL;
     __twr_v557 = _mng_lirinfo552 + __twr_v556;
     _mng_abimap558 = __twr_v557;
     __twr_v559 = (uint64_t)(&LirCurrentFunction);
@@ -1204,7 +1204,7 @@ uint64_t LirAllocateRegister(uint64_t _mng_calleesavedonly545, uint64_t _mng_hin
     goto _jkl_epilogue;
     __twr_l88:;
     _mng_i572 = 0ULL;
-    __twr_v573 = 544ULL;
+    __twr_v573 = 552ULL;
     __twr_v574 = _mng_lirinfo552 + __twr_v573;
     __twr_v575 = *(uint8_t*)(__twr_v574);
     _mng_max576 = __twr_v575;
@@ -1266,10 +1266,10 @@ void LirFreeRegister(uint64_t _mng_reg588) {
     __twr_v592 = __twr_v590 + __twr_v591;
     __twr_v593 = *(uint64_t*)(__twr_v592);
     _mng_lirinfo594 = __twr_v593;
-    __twr_v595 = 480ULL;
+    __twr_v595 = 488ULL;
     __twr_v596 = _mng_lirinfo594 + __twr_v595;
     _mng_statmap597 = __twr_v596;
-    __twr_v598 = 416ULL;
+    __twr_v598 = 424ULL;
     __twr_v599 = _mng_lirinfo594 + __twr_v598;
     _mng_abimap600 = __twr_v599;
     __twr_v601 = _mng_abimap600 + _mng_reg588;
@@ -1776,10 +1776,10 @@ void LirPreallocateRegister(uint64_t _mng_reg776) {
     __twr_v780 = __twr_v778 + __twr_v779;
     __twr_v781 = *(uint64_t*)(__twr_v780);
     _mng_lirinfo782 = __twr_v781;
-    __twr_v783 = 480ULL;
+    __twr_v783 = 488ULL;
     __twr_v784 = _mng_lirinfo782 + __twr_v783;
     _mng_statmap785 = __twr_v784;
-    __twr_v786 = 416ULL;
+    __twr_v786 = 424ULL;
     __twr_v787 = _mng_lirinfo782 + __twr_v786;
     _mng_abimap788 = __twr_v787;
     __twr_v789 = _mng_abimap788 + _mng_reg776;

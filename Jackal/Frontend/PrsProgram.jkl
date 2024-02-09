@@ -2862,30 +2862,16 @@ FN (PrsOperatorF) PrsParseDivide (
         LEAVE
     END
 
-    IF right^.Type == AST_CONSTANT THEN
-        IF right^.Body.Constant.Value == 1 THEN
-            // We can roll this into the left side.
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 1 THEN
+        // We can roll this into the left side.
 
-            TlCopyMemory (
-                node, // dest
-                left, // src
-                SIZEOF PrsAstNode, // sz
-            )
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode, // sz
+        )
 
-            LEAVE
-        END
-
-        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
-
-        IF pwrtwo != -1 THEN
-            // Cool, it's a power of two, we can reduce this into a right shift.
-
-            node^.Token.Subtype = TOKEN_RIGHTSHIFT
-
-            right^.Body.Constant.Value = pwrtwo
-
-            LEAVE
-        END
+        LEAVE
     END
 END
 

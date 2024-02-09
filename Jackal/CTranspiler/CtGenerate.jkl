@@ -928,6 +928,16 @@ FN (CtGenerateF) CtGenerateRightShift (
     )
 END
 
+FN (CtGenerateF) CtGenerateRightShiftSigned (
+    IN inst : ^IrInstruction,
+)
+
+    CtGenerateSignedArithmetic (
+        inst, // inst
+        ">>", // string
+    )
+END
+
 FN (CtGenerateF) CtGenerateBitNot (
     IN inst : ^IrInstruction,
 )
@@ -1096,6 +1106,7 @@ CtGenerateInstructionFunctions : CtGenerateF[IR_MAX] = {
     [IR_BIT_XOR] = &CtGenerateBitXor,
     [IR_LEFT_SHIFT] = &CtGenerateLeftShift,
     [IR_RIGHT_SHIFT] = &CtGenerateRightShift,
+    [IR_RIGHT_SHIFT_SIGNED] = &CtGenerateRightShiftSigned,
     [IR_BIT_NOT] = &CtGenerateBitNot,
     [IR_MULTIPLY] = &CtGenerateMul,
     [IR_CALL] = &CtGenerateCall,

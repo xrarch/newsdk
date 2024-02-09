@@ -1241,8 +1241,29 @@ IrGenerateBinOp ( IrGenerateMinus, IR_SUBTRACT )
 IrGenerateBinOp ( IrGenerateModulo, IR_MODULO )
 IrGenerateBinOp ( IrGenerateBitXor, IR_BIT_XOR )
 IrGenerateBinOp ( IrGenerateLeftShift, IR_LEFT_SHIFT )
-IrGenerateBinOp ( IrGenerateRightShift, IR_RIGHT_SHIFT )
 IrGenerateBinOp ( IrGenerateMul, IR_MULTIPLY )
+
+FN (IrExpressionGenerationF) IrGenerateRightShift (
+    IN node : ^PrsAstNode,
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
+
+    // Generate IR for right shift.
+
+    type := IR_RIGHT_SHIFT
+
+    IF IrIsSignedType ( node^.Body.Operator.Left ) THEN
+        type = IR_RIGHT_SHIFT_SIGNED
+    END
+
+    RETURN IrGenerateArithmetic (
+        node, // node
+        type, // type
+        truelabel, // truelabel
+        falselabel, // falselabel
+    )
+END
 
 FN (IrExpressionGenerationF) IrGenerateDivide (
     IN node : ^PrsAstNode,
