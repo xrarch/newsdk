@@ -1805,6 +1805,8 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
         IrCurrentFunction^.MaximumOutCount = outcount
     END
 
+    IrCurrentFunction^.CallCount += 1
+
     IF truelabel THEN
         IrGenerateBranch (
             node, // node
@@ -2592,6 +2594,7 @@ FN IrGenerateForFunction (
 
     IrCurrentFunction^.MaximumInCount = 0
     IrCurrentFunction^.MaximumOutCount = 0
+    IrCurrentFunction^.CallCount = 0
     IrCurrentFunction^.EpilogueLabel = IrCreateLabel ()
 
     funcsym^.InitialValue = IrCurrentFunction

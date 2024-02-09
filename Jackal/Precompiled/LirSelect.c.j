@@ -633,7 +633,7 @@ uint64_t LirGetSpillOffset(uint64_t _mng_irfunc330, uint64_t _mng_spilledreg331)
     __twr_v337 = 40ULL;
     __twr_v338 = _mng_irfunc330 + __twr_v337;
     __twr_v339 = *(uint64_t*)(__twr_v338);
-    __twr_v340 = 120ULL;
+    __twr_v340 = 128ULL;
     __twr_v341 = _mng_irfunc330 + __twr_v340;
     __twr_v342 = *(uint64_t*)(__twr_v341);
     __twr_v343 = __twr_v339 + __twr_v342;

@@ -2211,7 +2211,552 @@ FN XrGenerateAbiStuff (
     IN irfunc : ^IrFunction,
 )
 
-    TlInternalError ( "TODO XrGenerateAbiStuff", 0, 0, 0 )
+    // Generate a prologue and epilogue for the function.
+
+    functype := funcsym^.SemanticType
+
+    // Remember not to generate MOVs from a register to itself, we already
+    // generated the spill code so there's no pass after this to get rid of
+    // redundant MOVs again.
+
+    // First generate the prologue. The prologue is:
+    //
+    //  SUBI SP, SP, { frame size }
+    //  MOV [SP + OFF], { all allocated callee saved regs }
+    //  MOV [SP + OFF], lr
+    //  MOV { all arguments }, { their input reg or stack location }
+
+    head := irfunc^.LirHead
+    regmap := &irfunc^.RegisterAllocationStatus[0]
+
+    i := XR_S0
+    saveds := 0
+
+    WHILE i <= XR_S17 DO
+        IF regmap[i] THEN
+            saveds += 1
+        END
+
+        i += 1
+    END
+
+    IF irfunc^.CallCount THEN
+        // We have to save LR, so account for that.
+
+        saveds += 1
+    END
+
+    savearea := irfunc^.StackFrameSize + irfunc^.ScratchAreaSize
+
+    framesize := savearea + saveds * 4
+
+    //  SUBI SP, SP, { frame size }
+
+    IF framesize THEN
+        inst := LirCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_INST_NULL, // machtype
+        )
+
+        inst^.Defines = &XrSp
+        inst^.Source2 = &XrSp
+        
+        inst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+        inst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+        IF framesize < 65536 THEN
+            inst^.MachineInstruction = XR_SUBI
+
+            inst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+            inst^.Body.Machine.Xr.Op3.Constant = framesize
+
+        ELSE
+            inst^.MachineInstruction = XR_SUB
+
+            XrGenerateConstant (
+                &XrTmps[0], // tmp
+                framesize, // const
+                NULLPTR, // afterinst
+                head, // beforeinst
+            )
+
+            inst^.Source3 = &XrTmps[0]
+
+            inst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+        END
+
+        LirInsertInstructionBefore (
+            head, // beforeinst
+            inst, // inst
+        )
+    END
+
+    //  MOV [SP + OFF], { all allocated callee saved regs }
+
+    offset := savearea
+    i = XR_S0
+
+    WHILE i <= XR_S17 DO
+        IF regmap[i] THEN
+            lirinst := XrCreateInstruction (
+                LIR_MACH_INST, // type
+                XR_MOV_STORE, // machtype
+            )
+
+            lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+            lirinst^.Source1 = &XrCalleeSaved[i - XR_S0]
+
+            XrFillForStackAccess (
+                &XrTmps[0], // tmp
+                head, // beforeinst
+                NULLPTR, // afterinst
+                lirinst, // lirinst
+                offset, // off
+                FALSE, // insert
+            )
+
+            LirInsertInstructionBefore (
+                head, // beforeinst
+                lirinst, // inst
+            )
+
+            offset += 4
+        END
+
+        i += 1
+    END
+
+    //  MOV [SP + OFF], lr
+
+    // NOTE: lr MUST be saved last so that it is predictably at the top of the
+    //       stack frame for stack traces.
+
+    IF irfunc^.CallCount THEN
+        lirinst := XrCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_MOV_STORE, // machtype
+        )
+
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Source1 = &XrLr
+
+        XrFillForStackAccess (
+            &XrTmps[0], // tmp
+            head, // beforeinst
+            NULLPTR, // afterinst
+            lirinst, // lirinst
+            offset, // off
+            FALSE, // insert
+        )
+
+        LirInsertInstructionBefore (
+            head, // beforeinst
+            lirinst, // inst
+        )
+
+        offset += 4
+    END
+
+    //  MOV { all arguments }, { their input reg or stack location }
+
+    arg := functype^.Body.Function.ArgListHead
+    count := 0
+
+    scratchoff := offset
+    varargextras := 0
+
+    IF functype^.Body.Function.IsVarArg THEN
+        varargextras = 2
+    END
+
+    WHILE TRUE DO
+        symbol : ^LexSymbol
+
+        IF arg THEN
+            IF arg^.InOut != ARG_IN THEN
+                arg = arg^.Next
+
+                CONTINUE
+            END
+
+            symbol = arg^.Symbol
+
+        ELSEIF NOT varargextras THEN
+            BREAK
+
+        ELSE
+            IF varargextras == 2 THEN
+                symbol = functype^.Body.Function.VarArgTable
+
+            ELSE
+                symbol = functype^.Body.Function.VarArgCount
+            END
+
+            varargextras -= 1
+        END
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        IF irvar THEN
+            irreg := LirGetRegister ( irvar )
+
+            // Move it from the right place.
+
+            IF irreg^.Type == LIR_MACHINE_REG AND
+                count < 4 AND
+                irreg^.MachineRegister == XR_A0 + count THEN
+
+                // Oh it's already there, nvm.
+            
+            ELSE
+                srcreg : ^LirRegister = NULLPTR
+
+                IF count < 4 THEN
+                    srcreg = &XrArg[count]
+                
+                ELSE
+                    // Have to generate a stack load.
+
+                    lirinst := XrCreateInstruction (
+                        LIR_MACH_INST, // type
+                        XR_MOV_LOAD, // machtype
+                    )
+
+                    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+                    IF irreg^.Type == LIR_SPILLED_REG THEN
+                        srcreg = &XrTmps[0]
+                        lirinst^.Defines = &XrTmps[0]
+
+                    ELSE
+                        lirinst^.Defines = irreg
+                    END
+
+                    XrFillForStackAccess (
+                        &XrTmps[1], // tmp
+                        head, // beforeinst
+                        NULLPTR, // afterinst
+                        lirinst, // lirinst
+                        scratchoff, // off
+                        FALSE, // insert
+                    )
+
+                    LirInsertInstructionBefore (
+                        head, // beforeinst
+                        lirinst, // inst
+                    )
+                END
+
+                IF irreg^.Type == LIR_SPILLED_REG THEN
+                    // Need to generate a stack store.
+
+                    lirinst := XrCreateInstruction (
+                        LIR_MACH_INST, // type
+                        XR_MOV_STORE, // machtype
+                    )
+
+                    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+                    lirinst^.Source1 = srcreg
+
+                    XrFillForStackAccess (
+                        &XrTmps[1], // tmp
+                        head, // beforeinst
+                        NULLPTR, // afterinst
+                        lirinst, // lirinst
+                        LirGetSpillOffset ( irfunc, irreg ), // off
+                        FALSE, // insert
+                    )
+
+                    LirInsertInstructionBefore (
+                        head, // beforeinst
+                        lirinst, // inst
+                    )
+
+                ELSEIF srcreg THEN
+                    lirinst := XrCreateInstruction (
+                        LIR_MACH_INST, // type
+                        XR_MOV_REG, // machtype
+                    )
+
+                    lirinst^.Defines = irreg
+                    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+                    lirinst^.Source2 = srcreg
+                    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+                    LirInsertInstructionBefore (
+                        head, // beforeinst
+                        lirinst, // inst
+                    )
+                END
+            END
+        END
+
+        IF count >= 4 THEN
+            scratchoff += 4
+        END
+
+        count += 1
+
+        IF arg THEN
+            arg = arg^.Next
+        END
+    END
+
+    // Now generate the epilogue. The epilogue is:
+    //
+    //  MOV { their output reg or stack location }, { all OUT parameters }
+    //  MOV lr, [SP + OFF]
+    //  MOV { all allocated callee saved regs }, [SP + OFF]
+    //  ADDI SP, SP, { frame size }
+    //  RET
+
+    //  MOV { their output reg or stack location }, { all OUT parameters }
+
+    arg = functype^.Body.Function.ArgListHead
+
+    count = 0
+    scratchoff = offset
+
+    WHILE arg DO
+        IF arg^.InOut != ARG_OUT THEN
+            arg = arg^.Next
+
+            CONTINUE
+        END
+
+        symbol := arg^.Symbol
+
+        irvar := CAST symbol^.IrContext TO ^IrVariable
+
+        // If the refcount for this OUT parameter is only 1, then it was never
+        // referenced in the function body. Don't try to output it or we will
+        // choke since the regalloc didn't give it a machine register.
+
+        irreg := LirGetRegister ( irvar )
+
+        IF irreg^.Type != LIR_VIRTUAL_REG THEN
+            IF irreg^.Type == LIR_MACHINE_REG AND
+                count < 3 AND
+                irreg^.MachineRegister == XR_A2 - count THEN
+
+                // Oh it's already there, nvm.
+            
+            ELSE
+                srcreg : ^LirRegister = NULLPTR
+
+                IF irreg^.Type == LIR_SPILLED_REG THEN
+                    // Have to generate a stack load.
+
+                    lirinst := XrCreateInstruction (
+                        LIR_MACH_INST, // type
+                        XR_MOV_LOAD, // machtype
+                    )
+
+                    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+                    IF count < 3 THEN
+                        lirinst^.Defines = &XrArg[2 - count]
+
+                    ELSE
+                        srcreg = &XrTmps[0]
+                        lirinst^.Defines = srcreg
+                    END
+
+                    XrFillForStackAccess (
+                        &XrTmps[1], // tmp
+                        NULLPTR, // beforeinst
+                        irfunc^.LirTail, // afterinst
+                        lirinst, // lirinst
+                        LirGetSpillOffset ( irfunc, irreg ), // off
+                        FALSE, // insert
+                    )
+
+                    LirInsertInstructionAfter (
+                        irfunc^.LirTail, // afterinst
+                        lirinst, // inst
+                    )
+
+                ELSE
+                    srcreg = irreg
+                END
+
+                IF count < 3 THEN
+                    IF srcreg THEN
+                        lirinst := XrCreateInstruction (
+                            LIR_MACH_INST, // type
+                            XR_MOV_REG, // machtype
+                        )
+
+                        lirinst^.Defines = &XrArg[2 - count]
+
+                        lirinst^.Body.Machine.Xr.Op1.AccessType =
+                            XR_ACCESS_REGISTER
+
+                        lirinst^.Source2 = srcreg
+
+                        lirinst^.Body.Machine.Xr.Op2.AccessType =
+                            XR_ACCESS_REGISTER
+
+                        LirInsertInstructionAfter (
+                            irfunc^.LirTail, // afterinst
+                            lirinst, // inst
+                        )
+                    END
+
+                ELSE
+                    // Have to generate a stack store.
+
+                    lirinst := XrCreateInstruction (
+                        LIR_MACH_INST, // type
+                        XR_MOV_STORE, // machtype
+                    )
+
+                    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+                    lirinst^.Source1 = srcreg
+
+                    XrFillForStackAccess (
+                        &XrTmps[1], // tmp
+                        NULLPTR, // beforeinst
+                        irfunc^.LirTail, // afterinst
+                        lirinst, // lirinst
+                        scratchoff, // off
+                        FALSE, // insert
+                    )
+
+                    LirInsertInstructionAfter (
+                        irfunc^.LirTail, // afterinst
+                        lirinst, // inst
+                    )
+                END
+            END
+        END
+
+        IF count >= 3 THEN
+            scratchoff += 4
+        END
+
+        count += 1
+
+        arg = arg^.Next
+    END
+
+    //  MOV lr, [SP + OFF]
+
+    IF irfunc^.CallCount THEN
+        offset -= 4
+
+        lirinst := XrCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_MOV_LOAD, // machtype
+        )
+
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Defines = &XrLr
+
+        XrFillForStackAccess (
+            &XrTmps[0], // tmp
+            NULLPTR, // beforeinst
+            irfunc^.LirTail, // afterinst
+            lirinst, // lirinst
+            offset, // off
+            FALSE, // insert
+        )
+
+        LirInsertInstructionAfter (
+            irfunc^.LirTail, // afterinst
+            lirinst, // inst
+        )
+    END
+
+    //  MOV { all allocated callee saved regs }, [SP + OFF]
+
+    WHILE i > XR_S0 DO
+        i -= 1
+
+        IF regmap[i] THEN
+            offset -= 4
+
+            lirinst := XrCreateInstruction (
+                LIR_MACH_INST, // type
+                XR_MOV_LOAD, // machtype
+            )
+
+            lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+            lirinst^.Defines = &XrCalleeSaved[i - XR_S0]
+
+            XrFillForStackAccess (
+                &XrTmps[0], // tmp
+                NULLPTR, // beforeinst
+                irfunc^.LirTail, // afterinst
+                lirinst, // lirinst
+                offset, // off
+                FALSE, // insert
+            )
+
+            LirInsertInstructionAfter (
+                irfunc^.LirTail, // afterinst
+                lirinst, // inst
+            )
+        END
+    END
+
+    //  ADDI SP, SP, { frame size }
+
+    IF framesize THEN
+        inst := LirCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_INST_NULL, // machtype
+        )
+
+        inst^.Defines = &XrSp
+        inst^.Source2 = &XrSp
+        
+        inst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+        inst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+        IF framesize < 65536 THEN
+            inst^.MachineInstruction = XR_ADDI
+
+            inst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+            inst^.Body.Machine.Xr.Op3.Constant = framesize
+
+        ELSE
+            inst^.MachineInstruction = XR_ADD
+
+            XrGenerateConstant (
+                &XrTmps[0], // tmp
+                framesize, // const
+                irfunc^.LirTail, // afterinst
+                NULLPTR, // beforeinst
+            )
+
+            inst^.Source3 = &XrTmps[0]
+
+            inst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+        END
+
+        LirInsertInstructionAfter (
+            irfunc^.LirTail, // afterinst
+            inst, // inst
+        )
+    END
+
+    // RET
+
+    inst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_RET, // machtype
+    )
+
+    LirInsertInstructionAfter (
+        irfunc^.LirTail, // afterinst
+        inst, // inst
+    )
 END
 
 FN XrEmitRegister (
@@ -2608,7 +3153,7 @@ FN (JklTargetF) XrCompile ()
 
         // Generate the prologue and epilogue.
 
-        // XrGenerateAbiStuff ( funcsym, irfunc )
+        XrGenerateAbiStuff ( funcsym, irfunc )
 
         funcsym = funcsym^.NextFunction
     END

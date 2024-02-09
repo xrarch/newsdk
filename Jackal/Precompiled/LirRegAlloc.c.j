@@ -1090,7 +1090,7 @@ void LirResetRegPool() {
     _mng_statmap526 = __twr_v525;
     __twr_v527 = (uint64_t)(&LirCurrentFunction);
     __twr_v528 = *(uint64_t*)(__twr_v527);
-    __twr_v529 = 56ULL;
+    __twr_v529 = 60ULL;
     __twr_v530 = __twr_v528 + __twr_v529;
     _mng_everalloced531 = __twr_v530;
     __twr_v532 = 424ULL;
@@ -1180,7 +1180,7 @@ uint64_t LirAllocateRegister(uint64_t _mng_calleesavedonly545, uint64_t _mng_hin
     _mng_abimap558 = __twr_v557;
     __twr_v559 = (uint64_t)(&LirCurrentFunction);
     __twr_v560 = *(uint64_t*)(__twr_v559);
-    __twr_v561 = 56ULL;
+    __twr_v561 = 60ULL;
     __twr_v562 = __twr_v560 + __twr_v561;
     _mng_everalloced563 = __twr_v562;
     if (!(_mng_hint546)) { goto __twr_l88; } else { goto __twr_l91; }

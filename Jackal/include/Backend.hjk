@@ -216,6 +216,8 @@ STRUCT IrFunction
 
     StackFrameSize : UWORD,
 
+    CallCount : ULONG,
+
     MaximumInCount : ULONG,
     MaximumOutCount : ULONG,
 
