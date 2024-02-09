@@ -403,6 +403,11 @@ XrBranchFlags : UBYTE[IR_MAX] = {
     [IR_COMPARE_GTEQ_SIGNED] = XR_BRANCH_NEG,
 }
 
+XrPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
+    [PRIM_TYPE_INT] = 16,
+    [PRIM_TYPE_BYTE] = 24,
+}
+
 XrTmps : LirRegister[2]
 XrSp : LirRegister
 XrLr : LirRegister
@@ -601,6 +606,50 @@ FN (LirSelectF) XrSelectLoad (
     )
 
     LirInsertInstructionTail ( lirinst )
+
+    // If this was a signed type, less than 32 bits, make sure to sign extend.
+
+    IF inst^.Body.LoadStore.Type == PRIM_TYPE_BYTE OR
+        inst^.Body.LoadStore.Type == PRIM_TYPE_INT THEN
+
+        // Generate a left shift and then an arithmetic right shift.
+
+        lirinst = XrCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_LSHI, // machtype
+        )
+
+        lirinst^.Defines = defreg
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Source2 = defreg
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+
+        lirinst^.Body.Machine.Xr.Op3.Constant =
+            XrPrimTypeToSignShift[inst^.Body.LoadStore.Type]
+
+        LirInsertInstructionTail ( lirinst )
+
+        lirinst = XrCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_ASHI, // machtype
+        )
+
+        lirinst^.Defines = defreg
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Source2 = defreg
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+
+        lirinst^.Body.Machine.Xr.Op3.Constant =
+            XrPrimTypeToSignShift[inst^.Body.LoadStore.Type]
+
+        LirInsertInstructionTail ( lirinst )
+    END
 
     RETURN defreg
 END

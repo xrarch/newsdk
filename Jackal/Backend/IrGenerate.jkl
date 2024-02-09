@@ -118,6 +118,21 @@ FN IrCreateLabel () : ^IrInstruction
     RETURN label
 END
 
+FN IrEvaluateTypeForAccess (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Skip any casts.
+
+    WHILE node^.Type == AST_OPERATOR AND
+        node^.Token.Subtype == TOKEN_CAST DO
+
+        node = node^.Body.Operator.Left
+    END
+
+    RETURN PrsEvaluateType ( node )
+END
+
 FN IrCreateVariable (
     IN definedby : ^IrInstruction,
 ) : ^IrVariable
@@ -340,14 +355,14 @@ FN IrGenerateBranch (
     IF var1^.Annotation == IR_VAR_ADDRESS_CALC THEN
         var1 = IrGenerateLoad (
             var1, // var
-            PrsEvaluateType ( node ), // type
+            IrEvaluateTypeForAccess ( node ), // type
         )
     END
 
     IF var2 AND var2^.Annotation == IR_VAR_ADDRESS_CALC THEN
         var2 = IrGenerateLoad (
             var2, // var
-            PrsEvaluateType ( node ), // type
+            IrEvaluateTypeForAccess ( node ), // type
         )
     END
 
@@ -1771,7 +1786,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
             IrGenerateStore (
                 outvar, // destvar
                 outarg^.Variable, // srcvar
-                PrsEvaluateType ( argnode ), // type
+                IrEvaluateTypeForAccess ( argnode ), // type
             )
 
         ELSE
@@ -1858,7 +1873,7 @@ FN (IrExpressionGenerationF) IrGenerateEqualsAssign (
     IrGenerateAssignment (
         dest, // destvar
         var, // srcvar
-        PrsEvaluateType ( node^.Body.Assign.Left ), // type
+        IrEvaluateTypeForAccess ( node^.Body.Assign.Left ), // type
     )
 
     RETURN NULLPTR
@@ -1871,7 +1886,7 @@ FN IrGenerateModificationAssign (
 
     // Generic code for generating IR for a modification assignment.
 
-    desttype := PrsEvaluateType ( node^.Body.Assign.Left )
+    desttype := IrEvaluateTypeForAccess ( node^.Body.Assign.Left )
 
     valvar := IrGenerateRvalue (
         node^.Body.Assign.Right, // node
@@ -1906,7 +1921,7 @@ FN IrGenerateModificationAssign (
     IrGenerateAssignment (
         destvar, // destvar
         newvar, // srcvar
-        PrsEvaluateType ( node^.Body.Assign.Left ), // type
+        IrEvaluateTypeForAccess ( node^.Body.Assign.Left ), // type
     )
 END
 
@@ -2237,7 +2252,7 @@ FN IrGenerateRvalue (
     IF var^.Annotation == IR_VAR_ADDRESS_CALC THEN
         var = IrGenerateLoad (
             var, // var
-            PrsEvaluateType ( node ), // type
+            IrEvaluateTypeForAccess ( node ), // type
         )
     END
 

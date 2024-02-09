@@ -36,3 +36,5 @@
    other conditionals is not guaranteed to be 1 in the true case, just
    non-zero.
 
+9. "In-flight" expressions are of UWORD or WORD type until the result is
+   assigned to something; i.e., there is no intermediate wrapping.
