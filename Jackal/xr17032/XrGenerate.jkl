@@ -1031,10 +1031,12 @@ FN XrGenerateArithmetic (
     lirinst^.Source2 = LirSelectOrGetRegister ( src1 )
     lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
 
+    defby := src2^.DefinedBy
+
     IF immop AND
-        src2^.DefinedBy AND
-        src2^.DefinedBy^.Type == IR_CONSTANT AND
-        src2^.DefinedBy^.Body.Constant.Constant < 65536 THEN
+        defby AND
+        defby^.Type == IR_CONSTANT AND
+        defby^.Body.Constant.Constant < 65536 THEN
 
         lirinst^.MachineInstruction = immop
 
@@ -1042,6 +1044,27 @@ FN XrGenerateArithmetic (
 
         lirinst^.Body.Machine.Xr.Op3.Constant =
             src2^.DefinedBy^.Body.Constant.Constant
+
+    ELSEIF defby AND
+        (defby^.Type == IR_LEFT_SHIFT OR
+        defby^.Type == IR_RIGHT_SHIFT OR
+        defby^.Type == IR_RIGHT_SHIFT_SIGNED) AND
+        defby^.Source2^.DefinedBy AND
+        defby^.Source2^.DefinedBy^.Type == IR_CONSTANT AND
+        defby^.Source2^.DefinedBy^.Body.Constant.Constant < 32 THEN
+
+        lirinst^.MachineInstruction = regop
+
+        lirinst^.Source3 =
+            LirSelectOrGetRegister ( defby^.Source1 )
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Body.Machine.Xr.ShiftType =
+            XrInstToShiftType[defby^.Type]
+
+        lirinst^.Body.Machine.Xr.ShiftAmount =
+            defby^.Source2^.DefinedBy^.Body.Constant.Constant
 
     ELSE
         lirinst^.MachineInstruction = regop
@@ -1922,6 +1945,18 @@ FN XrEmitInstruction (
                     &lirinst^.Body.Machine.Xr.Op3, // operand
                     reg3, // reg
                 )
+
+                IF lirinst^.Body.Machine.Xr.ShiftAmount THEN
+                    XrAsmInsertString ( " " )
+
+                    XrAsmInsertString (
+                    XrShiftTypeNames[lirinst^.Body.Machine.Xr.ShiftType] )
+
+                    XrAsmInsertString ( " " )
+
+                    XrAsmInsertNumber (
+                        lirinst^.Body.Machine.Xr.ShiftAmount )
+                END
             END
         END
 
