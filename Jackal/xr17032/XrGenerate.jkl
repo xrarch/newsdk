@@ -307,7 +307,13 @@ XrShiftTypeNames : ^UBYTE[XR_SHIFT_MAX] = {
     [XR_SHIFT_ASH] = "ASH",
 }
 
-XrTmps : LirRegister[3]
+XrInstToShiftType : XrShiftTypes[IR_MAX] = {
+    [IR_LEFT_SHIFT] = XR_SHIFT_LSH,
+    [IR_RIGHT_SHIFT] = XR_SHIFT_RSH,
+    [IR_RIGHT_SHIFT_SIGNED] = XR_SHIFT_ASH,
+}
+
+XrTmps : LirRegister[2]
 XrSp : LirRegister
 XrLr : LirRegister
 XrCalleeSaved : LirRegister[XR_S17 - XR_S0 + 1]
@@ -423,8 +429,6 @@ FN XrFillAccess (
 
         lirinst^.Source2 = LirSelectOrGetRegister ( srcinst^.Source1 )
 
-        // TODO NEXT: `add` cases; shifts; etc
-
         inst2 := srcinst^.Source2^.DefinedBy
 
         IF inst2 THEN
@@ -432,7 +436,7 @@ FN XrFillAccess (
                 inst2^.Body.Constant.Constant < XrBitsToMaximumOffset[bits] AND
                 inst2^.Body.Constant.Constant & XrBitsOffsetMask[bits] == 0 THEN
 
-                // Great! We can do this directly.
+                // Great! We can do this constant offset directly.
 
                 lirinst^.Body.Machine.Xr.Op3.Constant =
                     inst2^.Body.Constant.Constant
@@ -440,6 +444,31 @@ FN XrFillAccess (
                 lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
 
                 LEAVE
+
+            ELSEIF inst2^.Type == IR_LEFT_SHIFT OR
+                inst2^.Type == IR_RIGHT_SHIFT OR
+                inst2^.Type == IR_RIGHT_SHIFT_SIGNED THEN
+
+                // If the right side of the shift is a constant less than 32,
+                // we can perform it directly in the instruction.
+
+                IF inst2^.Source2^.DefinedBy AND
+                    inst2^.Source2^.DefinedBy^.Type == IR_CONSTANT AND
+                    inst2^.Source2^.DefinedBy^.Body.Constant.Constant < 32 THEN
+
+                    lirinst^.Source3 =
+                        LirSelectOrGetRegister ( inst2^.Source1 )
+
+                    lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+
+                    lirinst^.Body.Machine.Xr.ShiftType =
+                        XrInstToShiftType[inst2^.Type]
+
+                    lirinst^.Body.Machine.Xr.ShiftAmount =
+                        inst2^.Source2^.DefinedBy^.Body.Constant.Constant
+
+                    LEAVE
+                END
             END
         END
 
@@ -484,14 +513,398 @@ FN (LirSelectF) XrSelectLoad (
     RETURN defreg
 END
 
+FN (LirSelectF) XrSelectStore (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Generate a reg-to-mem MOV instruction.
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_STORE, // machtype
+    )
+
+    // If the source is an imm between -16 and 15, we can do it in the
+    // instruction.
+
+    defby := inst^.Source2^.DefinedBy
+
+    IF defby AND
+        defby^.Type == IR_CONSTANT AND
+        (defby^.Body.Constant.Constant & 0xFFFFFFFF >= 0xFFFFFFF0 OR
+        defby^.Body.Constant.Constant < 16) THEN
+
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_IMM
+
+        lirinst^.Body.Machine.Xr.Op1.Constant =
+            defby^.Body.Constant.Constant & 0xFFFFFFFF
+
+    ELSE
+        lirinst^.Source1 = LirSelectOrGetRegister ( inst^.Source2 )
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+    END
+
+    XrFillAccess (
+        inst, // inst
+        lirinst, // lirinst
+    )
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN NULLPTR
+END
+
+FN XrFillConstant (
+    IN lirinst : ^LirInstruction,
+    IN const : UWORD,
+)
+
+    // Make the given LIR instruction load the given constant.
+
+    const &= 0xFFFFFFFF
+
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM
+
+    IF const < 65536 THEN
+        lirinst^.MachineInstruction = XR_LI
+        lirinst^.Body.Machine.Xr.Op2.Constant = const
+
+    ELSEIF const >= 0xFFFF0001 THEN
+        lirinst^.MachineInstruction = XR_SUBI
+        lirinst^.Body.Machine.Xr.Op2.Constant = (~const + 1) & 0xFFFFFFFF
+
+    ELSEIF const & 0xFFFF == 0 THEN
+        lirinst^.MachineInstruction = XR_LUI
+        lirinst^.Body.Machine.Xr.Op2.Constant = const
+
+    ELSE
+        lirinst^.MachineInstruction = XR_LA
+        lirinst^.Body.Machine.Xr.Op2.Constant = const
+    END
+END
+
+FN XrGenerateConstant (
+    IN const : UWORD,
+    IN afterinst : ^LirInstruction,
+    IN beforeinst : ^LirInstruction,
+) : ^LirRegister
+
+    // Create an instruction to load the given constant.
+
+    constreg := LirCreateRegister ()
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_INST_NULL, // machtype
+    )
+
+    XrFillConstant (
+        lirinst, // lirinst
+        const, // const
+    )
+
+    IF afterinst THEN
+        LirInsertInstructionAfter (
+            afterinst, // afterinst
+            lirinst, // inst
+        )
+
+    ELSEIF beforeinst THEN
+        LirInsertInstructionBefore (
+            beforeinst, // beforeinst
+            lirinst, // inst
+        )
+
+    ELSE
+        LirInsertInstructionTail ( lirinst )
+    END
+
+    RETURN constreg
+END
+
+FN (LirSelectF) XrSelectAddr (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Generate an imm-to-reg MOV instruction.
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_INST_NULL, // machtype
+    )
+
+    lirinst^.Defines = defreg
+
+    IF inst^.Type == IR_ADDR THEN
+        lirinst^.MachineInstruction = XR_LA
+
+        lirinst^.Body.Machine.Xr.Op2.Constant =
+            CAST inst^.Body.Addr.Symbol TO UWORD
+    
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM_NAME
+
+    ELSEIF inst^.Type == IR_STRING_ADDR THEN
+        // This will get resolved to a label pointing to a string during
+        // code emission.
+
+        lirinst^.MachineInstruction = XR_LA
+
+        lirinst^.Body.Machine.Xr.Op2.Constant =
+            CAST inst^.Body.String.String TO UWORD
+
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM_STRING
+    
+    ELSEIF inst^.Type == IR_CONSTANT THEN
+        const := inst^.Body.Constant.Constant
+
+        XrFillConstant (
+            lirinst, // lirinst
+            const, // const
+        )
+    END
+
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
+END
+
+FN (LirSelectF) XrSelectStackAddr (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Generate an ADDI DEST, SP, OFF instruction.
+
+    symbol := inst^.Body.Addr.Symbol
+
+    off := IrGetStackOffset (
+        LirCurrentFunction, // func
+        symbol, // symbol
+    ) + inst^.Body.Addr.Offset + LirCurrentFunction^.ScratchAreaSize
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_INST_NULL, // machtype
+    )
+
+    lirinst^.Defines = defreg
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Source2 = LirCreatePreallocatedRegister ( XR_SP )
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+    IF off < 65536 THEN
+        lirinst^.MachineInstruction = XR_ADDI
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+        lirinst^.Body.Machine.Xr.Op3.Constant = off
+
+    ELSE
+        lirinst^.MachineInstruction = XR_ADD
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Source3 = XrGenerateConstant (
+            off, // const
+            NULLPTR, // afterinst
+            NULLPTR, // beforeinst
+        )
+    END
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
+END
+
+FN (LirSelectF) XrSelectMove (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Select the most appropriate instruction.
+
+    def := inst^.Defines
+    src := inst^.Source1
+    srcreg : ^LirRegister
+
+    IF src^.DefinedBy THEN
+        // The source is a temporary.
+
+        IF src^.Opt.Dve.References == 1 THEN
+            // This is the only reference to the temporary, so don't bother
+            // sharing; twiddle its defining instruction to define us and then
+            // generate that instead.
+
+            src^.DefinedBy^.Defines = def
+
+            RETURN LirSelect ( src^.DefinedBy )
+        END
+
+        srcreg = LirSelect ( src^.DefinedBy )
+
+    ELSE
+        srcreg = LirGetRegister ( src )
+    END
+
+    // Generate an XR/17032 reg-to-reg MOV instruction.
+
+    defreg := LirGetRegister ( def )
+
+    lirinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_REG, // machtype
+    )
+
+    lirinst^.Defines = defreg
+    lirinst^.Source2 = srcreg
+
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
+END
+
+FN XrGeneratePreallocatedMov (
+    IN srcreg : ^LirRegister,
+    IN machreg : UBYTE,
+    IN from : UBYTE,
+) : ^LirRegister
+
+    // Hint.
+
+    srcreg^.Hint = machreg
+
+    // Generate MOV to preallocated reg.
+
+    movinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_REG, // machtype
+    )
+
+    retval := LirCreatePreallocatedRegister ( machreg )
+
+    IF from THEN
+        movinst^.Source2 = retval
+        movinst^.Defines = srcreg
+
+    ELSE
+        movinst^.Defines = retval
+        movinst^.Source2 = srcreg
+    END
+
+    movinst^.Body.Machine.Fox.Op1.AccessType = XR_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Op2.AccessType = XR_ACCESS_REGISTER
+
+    LirInsertInstructionTail ( movinst )
+
+    IF from THEN
+        RETURN srcreg
+
+    ELSE
+        RETURN retval
+    END
+END
+
+FN (LirSelectF) XrSelectReturn (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    retval : ^LirRegister = NULLPTR
+
+    IF inst^.Source1 THEN
+        srcreg := LirSelectOrGetRegister ( inst^.Source1 )
+
+        retval = XrGeneratePreallocatedMov (
+            srcreg, // srcreg
+            XR_A3, // machreg
+            FALSE, // from
+        )
+    END
+
+    // Add an unconditional branch to the epilogue.
+
+    lirinst := LirCreateInstruction (
+        LIR_BRANCH, // type
+        XR_B, // machtype
+    )
+
+    lirinst^.TypeBody.Branch.Label =
+        LirGetLabel ( LirCurrentFunction^.EpilogueLabel )
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN NULLPTR
+END
+
+FN XrGenerateFalseBranch (
+    IN inst : ^IrInstruction,
+)
+
+    IF inst^.Body.Branch.FalseLabel == inst^.Next THEN
+        // The false label is the fall-through, don't generate the false branch.
+
+        LEAVE
+    END
+
+    // Generate the false branch.
+
+    jmpinst := LirCreateInstruction (
+        LIR_BRANCH, // type
+        XR_B, // machtype
+    )
+
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.FalseLabel )
+
+    LirInsertInstructionTail ( jmpinst )
+END
+
+FN (LirSelectF) XrSelectZeroBranch (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    IF IrIsUselessBranch ( inst ) THEN
+        RETURN NULLPTR
+    END
+
+    jmpinst := LirCreateInstruction (
+        LIR_BRANCH, // type
+        XR_INST_NULL, // machtype
+    )
+
+    IF inst^.Type == IR_BRANCH_NONZERO THEN
+        jmpinst^.MachineInstruction = XR_BNE
+
+    ELSE
+        jmpinst^.MachineInstruction = XR_BEQ
+    END
+
+    jmpinst^.Source1 = LirSelectOrGetRegister ( inst^.Source1 )
+
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.TrueLabel )
+
+    LirInsertInstructionTail ( jmpinst )
+
+    // Generate an unconditional branch to the false label if required.
+
+    XrGenerateFalseBranch ( inst )
+
+    RETURN NULLPTR
+END
+
 XrLirInfo : LirTargetInfoRecord = {
     [SelectionTable] = {
         [IR_LOAD] = &XrSelectLoad,
-#IF 0
         [IR_ADDR] = &XrSelectAddr,
         [IR_STRING_ADDR] = &XrSelectAddr,
-        [IR_STACK_ADDR] = &XrSelectStackAddr,
         [IR_CONSTANT] = &XrSelectAddr,
+        [IR_STACK_ADDR] = &XrSelectStackAddr,
+
         [IR_MOVE] = &XrSelectMove,
 
         [IR_RETURN] = &XrSelectReturn,
@@ -499,6 +912,7 @@ XrLirInfo : LirTargetInfoRecord = {
         [IR_BRANCH_NONZERO] = &XrSelectZeroBranch,
         [IR_BRANCH_ZERO] = &XrSelectZeroBranch,
 
+#IF 0
         [IR_BRANCH_EQUALS] = &XrSelectBranch,
         [IR_BRANCH_NOT_EQUALS] = &XrSelectBranch,
         [IR_BRANCH_LESS_THAN] = &XrSelectBranch,
@@ -512,7 +926,9 @@ XrLirInfo : LirTargetInfoRecord = {
         [IR_JUMP] = &XrSelectJump,
 
         [IR_CALL] = &XrSelectCall,
+#END
         [IR_STORE] = &XrSelectStore,
+#IF 0
 
         [IR_COMPARE_EQUALS] = &XrSelectCompare,
         [IR_COMPARE_NOT_EQUALS] = &XrSelectCompare,
@@ -547,6 +963,7 @@ XrLirInfo : LirTargetInfoRecord = {
         [XR_T0] = LIR_REG_CALLER_SAVED,
         [XR_T1] = LIR_REG_CALLER_SAVED,
         [XR_T2] = LIR_REG_CALLER_SAVED,
+        [XR_T3] = LIR_REG_CALLER_SAVED,
         [XR_A0] = LIR_REG_CALLER_SAVED,
         [XR_A1] = LIR_REG_CALLER_SAVED,
         [XR_A2] = LIR_REG_CALLER_SAVED,
@@ -753,25 +1170,8 @@ FN (JklValueNumberF) XrValueNumber (
     // constant is live over a function call. Doing it too little will
     // recompute large constants too much.
 
-    IF constant < 65536 THEN
-        // It probably fits in an instruction, don't bother.
-
-        RETURN FALSE
-    END
-
-    IF constant >= 0xFFFF0001 THEN
-        // It can be loaded with a single SUBI instruction, don't bother.
-
-        RETURN FALSE
-    END
-
-    IF constant & 0xFFFF == 0 THEN
-        // It can be loaded with a single LUI instruction, don't bother.
-
-        RETURN FALSE
-    END
-
-    // Takes two instructions to load. Bother.
+    // We rarely have to generate constants on XR/17032, and when we do, we'd
+    // better reuse them. Always TRUE.
 
     RETURN TRUE
 END
@@ -781,13 +1181,10 @@ FN (JklTargetF) XrCompile ()
     // Compile the program for the XR/17032 architecture.
 
     XrTmps[0].Type = LIR_PREALLOCATED_REG
-    XrTmps[0].MachineRegister = XR_T3
+    XrTmps[0].MachineRegister = XR_T4
 
     XrTmps[1].Type = LIR_PREALLOCATED_REG
-    XrTmps[1].MachineRegister = XR_T4
-
-    XrTmps[2].Type = LIR_PREALLOCATED_REG
-    XrTmps[2].MachineRegister = XR_T5
+    XrTmps[1].MachineRegister = XR_T5
 
     XrSp.Type = LIR_PREALLOCATED_REG
     XrSp.MachineRegister = XR_SP

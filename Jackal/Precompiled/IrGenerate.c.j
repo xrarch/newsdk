@@ -62,6 +62,7 @@ extern uint64_t FeOutputFileHandle;
 extern uint64_t FeOutputHeaders;
 extern uint64_t JklTargetInfo;
 extern uint64_t JklPrimitiveTypeMasks[14];
+extern uint64_t JklSignExtendedTypeMasks[14];
 extern uint64_t FeIsMacroArgument(uint64_t _mng_arg98);
 extern uint64_t FeCreateFileBlock(uint64_t _mng_includename99, uint64_t _mng_o_created);
 extern void FeCopyPathFileBlock(uint64_t _mng_fileblock100, uint64_t _mng_filepath101);

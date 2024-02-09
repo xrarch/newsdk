@@ -57,6 +57,7 @@ ENUM JklPrimitiveType : UBYTE
 END
 
 EXTERN JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
+EXTERN JklSignExtendedTypeMasks : UWORD[PRIM_TYPE_MAX]
 
 STRUCT JklTargetInfoRecord
     Name : ^UBYTE,

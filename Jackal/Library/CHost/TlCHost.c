@@ -6,8 +6,8 @@ void TlPrintString (uint8_t* str) {
     fprintf(stderr, "%s", str);
 }
 
-void TlPrintNumber (uint32_t num) {
-    fprintf(stderr, "%d", num);
+void TlPrintNumber (uint64_t num) {
+    fprintf(stderr, "%lld", num);
 }
 
 void TlPrintCharacter (uint8_t byte) {

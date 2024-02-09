@@ -936,9 +936,17 @@ FN PrsCheckConstant (
         LEAVE
     END
 
+    primtype := type^.Body.Primitive.Type
+
+    signbits := JklSignExtendedTypeMasks[primtype] & value
+
+    IF signbits == JklSignExtendedTypeMasks[primtype] THEN
+        LEAVE
+    END
+
     value &= JklTargetInfo^.ConstantMask
 
-    masked := value & JklPrimitiveTypeMasks[type^.Body.Primitive.Type]
+    masked := value & JklPrimitiveTypeMasks[primtype]
 
     IF masked != value THEN
         LexTokenError ( errtoken, "Constant doesn't fit in type", 0, 0, 0 )
