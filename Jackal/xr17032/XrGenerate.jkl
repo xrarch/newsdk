@@ -408,7 +408,7 @@ XrPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_BYTE] = 24,
 }
 
-XrTmps : LirRegister[2]
+XrTmps : LirRegister[3]
 XrSp : LirRegister
 XrLr : LirRegister
 XrCalleeSaved : LirRegister[XR_S17 - XR_S0 + 1]
@@ -511,7 +511,22 @@ FN XrFillAccess (
 
                 // Inlined stores require a temp register to trash.
 
-                lirinst^.Defines = LirCreateRegister ()
+                lirinst^.Source3 = LirCreateRegister ()
+
+                // The temp register must be live-in to the inlined store so
+                // that it isn't assigned to the same one as any of the inlined
+                // store's operands. We do this by creating a LIR_JUNK
+                // instruction who defines this temporary, and inserting it
+                // before us.
+
+                junkinst := XrCreateInstruction (
+                    LIR_JUNK, // type
+                    0, // machtype
+                )
+
+                junkinst^.Defines = lirinst^.Source3
+
+                LirInsertInstructionTail ( junkinst )
 
             ELSE
                 lirinst^.MachineInstruction = XR_MOV_LOAD_INLINED
@@ -1332,6 +1347,7 @@ FN XrFillForStackAccess (
     IN afterinst : ^LirInstruction,
     IN lirinst : ^LirInstruction,
     IN off : ULONG,
+    IN insert : UBYTE,
 )
 
     IF beforeinst OR afterinst THEN
@@ -1358,7 +1374,18 @@ FN XrFillForStackAccess (
             beforeinst, // beforeinst
         )
 
+        IF afterinst THEN
+            afterinst = afterinst^.Next
+        END
+
         lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+    END
+
+    IF insert THEN
+        LirInsertInstructionAfter (
+            afterinst, // afterinst
+            lirinst, // lirinst
+        )
     END
 END
 
@@ -1403,6 +1430,7 @@ FN XrGenerateStoreToStack (
         NULLPTR, // afterinst
         lirinst, // lirinst
         off, // off
+        FALSE, // insert
     )
 
     LirInsertInstructionTail ( lirinst )
@@ -1424,6 +1452,7 @@ FN XrGenerateLoadFromStack (
         NULLPTR, // afterinst
         lirinst, // lirinst
         off, // off
+        FALSE, // insert
     )
 
     lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
@@ -1786,11 +1815,395 @@ FN XrHintFunction (
     END
 END
 
+XrTmpsContain : ^LirRegister[3]
+XrTmpsModified : UBYTE[3]
+XrTmpsRef : UBYTE[3]
+XrTmpReplacementIndex := 0
+XrTmpsModifiedCount := 0
+
+FN XrLoadIntoTmp (
+    IN tmp : ^LirRegister,
+    IN spilledreg : ^LirRegister,
+    IN beforeinst : ^LirInstruction,
+)
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_LOAD, // machtype
+    )
+
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Defines = tmp
+
+    spilloff := LirGetSpillOffset (
+        beforeinst^.Block, // irfunc
+        spilledreg, // spilledreg
+    )
+
+    XrFillForStackAccess (
+        tmp, // tmp
+        beforeinst, // beforeinst
+        NULLPTR, // afterinst
+        lirinst, // lirinst
+        spilloff, // off
+        FALSE, // insert
+    )
+
+    LirInsertInstructionBefore (
+        beforeinst, // beforeinst
+        lirinst, // inst
+    )
+END
+
+FN XrFlushTmp (
+    IN beforeinst : ^LirInstruction,
+    IN tmp : ^LirRegister,
+    IN tmptmp : ^LirRegister,
+    IN spilledreg : ^LirRegister,
+)
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_STORE, // machtype
+    )
+
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Source1 = tmp
+
+    spilloff := LirGetSpillOffset (
+        beforeinst^.Block, // irfunc
+        spilledreg, // spilledreg
+    )
+
+    XrFillForStackAccess (
+        tmptmp, // tmp
+        beforeinst, // beforeinst
+        NULLPTR, // afterinst
+        lirinst, // lirinst
+        spilloff, // off
+        FALSE, // insert
+    )
+
+    LirInsertInstructionBefore (
+        beforeinst, // beforeinst
+        lirinst, // inst
+    )
+END
+
+FN XrGetTmp (
+    IN spilledreg : ^LirRegister,
+    IN beforeinst : ^LirInstruction,
+    IN load : UBYTE,
+) : UBYTE
+
+    i := 0
+
+    WHILE i < 3 DO
+        IF XrTmpsContain[i] == spilledreg THEN
+            IF load THEN
+                XrTmpsRef[i] = 1
+            END
+
+            RETURN i
+        END
+
+        i += 1
+    END
+
+    i = 0
+
+    WHILE i < 3 DO
+        IF NOT XrTmpsContain[i] THEN
+            XrTmpsContain[i] = spilledreg
+
+            IF load THEN
+                XrLoadIntoTmp (
+                    &XrTmps[i], // tmp
+                    spilledreg, // spilledreg
+                    beforeinst, // beforeinst
+                )
+
+                XrTmpsRef[i] = 1
+            END
+
+            RETURN i
+        END
+
+        i += 1
+    END
+
+    // "Randomly" replace a tmp, potentially causing a writeback.
+    // There must be at least one free tmp since we free them all at instruction
+    // boundaries and only two can currently be used if we're allocating
+    // another.
+
+    replace := XrTmpReplacementIndex
+
+    IF replace == 2 THEN
+        XrTmpReplacementIndex = 0
+
+    ELSE
+        XrTmpReplacementIndex += 1
+    END
+
+    WHILE TRUE DO
+        IF replace == 3 THEN
+            replace = 0
+        END
+
+        IF NOT XrTmpsRef[replace] THEN
+            BREAK
+        END
+
+        replace += 1
+    END
+
+    IF XrTmpsModified[replace] THEN
+        tmptmp := replace + 1
+
+        WHILE TRUE DO
+            // Find a temp to serve as the temp for this guy, in case he needs
+            // to use one to calculate the stack address. We're guaranteed to
+            // have at least one unmodified temp at all times for this purpose.
+
+            IF tmptmp == 3 THEN
+                tmptmp = 0
+            END
+
+            IF NOT XrTmpsModified[tmptmp] AND NOT XrTmpsRef[tmptmp] THEN
+                XrTmpsContain[tmptmp] = NULLPTR
+
+                BREAK
+            END
+
+            tmptmp += 1
+        END
+
+        XrFlushTmp (
+            beforeinst, // beforeinst
+            &XrTmps[replace], // tmp
+            &XrTmps[tmptmp], // tmptmp
+            XrTmpsContain[replace], // tmp
+        )
+
+        XrTmpsModified[replace] = FALSE
+        XrTmpsModifiedCount = 0
+    END
+
+    IF load THEN
+        XrLoadIntoTmp (
+            &XrTmps[replace], // tmp
+            spilledreg, // spilledreg
+            beforeinst, // beforeinst
+        )
+
+        XrTmpsRef[replace] = 1
+    END
+
+    XrTmpsContain[replace] = spilledreg
+
+    RETURN replace
+END
+
+FN XrModifyTmp (
+    IN beforeinst : ^LirInstruction,
+    IN tmp : UBYTE,
+)
+
+    IF XrTmpsModified[tmp] THEN
+        LEAVE
+    END
+
+    IF XrTmpsModifiedCount == 1 THEN
+        // Flush the other, using myself as the tmptmp.
+
+        i := 0
+
+        WHILE i < 3 DO
+            IF XrTmpsModified[i] THEN
+                XrFlushTmp (
+                    beforeinst, // beforeinst
+                    &XrTmps[i], // tmp
+                    &XrTmps[tmp], // tmptmp
+                    XrTmpsContain[i], // spilledreg
+                )
+
+                XrTmpsModified[i] = FALSE
+
+                BREAK
+            END
+
+            i += 1
+        END
+    END
+
+    XrTmpsModified[tmp] = TRUE
+    XrTmpsModifiedCount = 1
+END
+
 FN XrGenerateSpills (
     IN irfunc : ^IrFunction,
 )
 
-    TlInternalError ( "TODO XrGenerateSpills", 0, 0, 0 )
+    // Generate spill code using the two temporaries that were permanently
+    // reserved, T4 and T5.
+    //
+    // The spill cases are as follows, excluding cases where the SP offset is
+    // out of range:
+    //
+    //  A, B, SPILLED                ->  MOV T5, LONG [SP + OFF]
+    //                                   A, B, T5
+    //
+    //  A, SPILLED, C                ->  MOV T4, LONG [SP + OFF]
+    //                                   A, T4, C
+    //
+    //  SPILLED, A, B                 -> T4, A, B
+    //                                   MOV LONG [SP + OFF], T4
+
+    inst := irfunc^.LirHead
+
+    WHILE inst DO
+        def := inst^.Defines
+        src1 := inst^.Source1
+        src2 := inst^.Source2
+        src3 := inst^.Source3
+
+        type := inst^.Type
+        machinst := inst^.MachineInstruction
+        access1 := inst^.Body.Machine.Xr.Op1.AccessType
+        access2 := inst^.Body.Machine.Xr.Op2.AccessType
+        access3 := inst^.Body.Machine.Xr.Op3.AccessType
+
+        IF type == LIR_JUNK THEN
+            LirRemoveInstruction ( inst )
+
+            inst = inst^.Next
+
+            CONTINUE
+        END
+
+        IF type == LIR_LABEL AND
+            inst^.Body.Label.References == 0 THEN
+
+            LirRemoveInstruction ( inst )
+
+            inst = inst^.Next
+
+            CONTINUE
+        END
+
+        // First check if this is a useless move. Despite the massive bundle of
+        // conditions below, this is a pretty common occurrence after regalloc,
+        // since we didn't know if register hinting would be successful until
+        // after we generated lots of MOVs into function argument registers and
+        // so on.
+
+        IF type == LIR_MACH_INST AND machinst == XR_MOV_REG THEN
+            IF def == src2 OR
+                (def^.Type == LIR_PREALLOCATED_REG OR
+                def^.Type == LIR_MACHINE_REG) AND
+                (src2^.Type == LIR_PREALLOCATED_REG OR
+                src2^.Type == LIR_MACHINE_REG) AND
+                (def^.MachineRegister == src2^.MachineRegister) THEN
+
+                // Elide this useless move.
+
+                LirRemoveInstruction ( inst )
+
+                inst = inst^.Next
+
+                CONTINUE
+            END
+        END
+
+        src1tmp := -1
+        src2tmp := -1
+
+        IF NOT def AND src1 AND src1^.Type == LIR_SPILLED_REG THEN
+            src1tmp = XrGetTmp (
+                src1, // spilledreg
+                inst, // beforeinst
+                TRUE, // load
+            )
+
+            inst^.Source1 = &XrTmps[src1tmp]
+        END
+
+        IF src2 AND src2^.Type == LIR_SPILLED_REG THEN
+            src2tmp = XrGetTmp (
+                src2, // spilledreg
+                inst, // beforeinst
+                TRUE, // load
+            )
+
+            inst^.Source2 = &XrTmps[src2tmp]
+        END
+
+        IF src3 AND src3^.Type == LIR_SPILLED_REG THEN
+            tmp := XrGetTmp (
+                src3, // spilledreg
+                inst, // beforeinst
+                TRUE, // load
+            )
+
+            inst^.Source3 = &XrTmps[tmp]
+
+            XrTmpsRef[tmp] = 0
+        END
+
+        IF src1tmp != -1 THEN
+            XrTmpsRef[src1tmp] = 0
+        END
+
+        IF src2tmp != -1 THEN
+            XrTmpsRef[src2tmp] = 0
+        END
+
+        IF def AND def^.Type == LIR_SPILLED_REG THEN
+            tmp := XrGetTmp (
+                def, // spilledreg
+                inst, // beforeinst
+                FALSE, // load
+            )
+
+            inst^.Defines = &XrTmps[tmp]
+
+            XrModifyTmp (
+                inst, // beforeinst
+                tmp, // tmp
+            )
+        END
+
+        IF type == LIR_BRANCH OR
+            type == LIR_CALL OR
+            type == LIR_LABEL THEN
+
+            i := 0
+
+            WHILE i < 3 DO
+                IF XrTmpsModified[i] THEN
+                    XrFlushTmp (
+                        inst, // beforeinst
+                        &XrTmps[i], // tmp
+                        &XrTmps[(i + 1) % 3], // tmptmp
+                        XrTmpsContain[i], // spilledreg
+                    )
+
+                    XrTmpsModified[i] = FALSE
+                END
+
+                XrTmpsContain[i] = NULLPTR
+
+                i += 1
+            END
+
+            XrTmpsModifiedCount = 0
+        END
+
+        inst = inst^.Next
+    END
 END
 
 FN XrGenerateAbiStuff (
@@ -1956,7 +2369,7 @@ FN XrEmitInstruction (
 
                 IF lirinst^.MachineInstruction == XR_MOV_STORE_INLINED THEN
                     XrAsmInsertString ( ", tmp=" )
-                    XrEmitRegister ( lirinst^.Defines )
+                    XrEmitRegister ( lirinst^.Source3 )
                 END
             END
 
@@ -2024,6 +2437,9 @@ FN XrEmitInstruction (
         XrAsmInsertString ( ".L" )
         XrAsmInsertNumber ( num )
         XrAsmInsertString ( ":\n" )
+
+    ELSEIF lirinst^.Type == LIR_JUNK THEN
+        // Do nothing
 
     ELSE
         TlInternalError ( "Xr: Weird LIR type", lirinst^.Type, 0, 0 )
@@ -2106,10 +2522,13 @@ FN (JklTargetF) XrCompile ()
     // Compile the program for the XR/17032 architecture.
 
     XrTmps[0].Type = LIR_PREALLOCATED_REG
-    XrTmps[0].MachineRegister = XR_T4
+    XrTmps[0].MachineRegister = XR_T3
 
     XrTmps[1].Type = LIR_PREALLOCATED_REG
-    XrTmps[1].MachineRegister = XR_T5
+    XrTmps[1].MachineRegister = XR_T4
+
+    XrTmps[2].Type = LIR_PREALLOCATED_REG
+    XrTmps[2].MachineRegister = XR_T5
 
     XrSp.Type = LIR_PREALLOCATED_REG
     XrSp.MachineRegister = XR_SP
@@ -2185,7 +2604,7 @@ FN (JklTargetF) XrCompile ()
 
         irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
-        // XrGenerateSpills ( irfunc )
+        XrGenerateSpills ( irfunc )
 
         // Generate the prologue and epilogue.
 
