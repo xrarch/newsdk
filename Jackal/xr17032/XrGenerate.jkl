@@ -313,6 +313,90 @@ XrInstToShiftType : XrShiftTypes[IR_MAX] = {
     [IR_RIGHT_SHIFT_SIGNED] = XR_SHIFT_ASH,
 }
 
+XrIrToImmOp : UBYTE[IR_MAX] = {
+    [IR_BIT_AND] = XR_ANDI,
+    [IR_BIT_OR] = XR_ORI,
+    [IR_ADD] = XR_ADDI,
+    [IR_SUBTRACT] = XR_SUBI,
+    [IR_DIVIDE] = XR_INST_NULL,
+    [IR_DIVIDE_SIGNED] = XR_INST_NULL,
+    [IR_MODULO] = XR_INST_NULL,
+    [IR_BIT_XOR] = XR_XORI,
+    [IR_LEFT_SHIFT] = XR_LSHI,
+    [IR_RIGHT_SHIFT] = XR_RSHI,
+    [IR_RIGHT_SHIFT_SIGNED] = XR_ASHI,
+    [IR_MULTIPLY] = XR_INST_NULL,
+
+    [IR_BRANCH_EQUALS] = XR_SUBI,
+    [IR_BRANCH_NOT_EQUALS] = XR_SUBI,
+    [IR_BRANCH_LESS_THAN] = XR_SLTI,
+    [IR_BRANCH_GREATER_THAN] = XR_SLTI,
+    [IR_BRANCH_LTEQ] = XR_SLTI,
+    [IR_BRANCH_GTEQ] = XR_SLTI,
+    [IR_BRANCH_LESS_THAN_SIGNED] = XR_SLTI_SIGNED,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = XR_SLTI_SIGNED,
+    [IR_BRANCH_LTEQ_SIGNED] = XR_SLTI_SIGNED,
+    [IR_BRANCH_GTEQ_SIGNED] = XR_SLTI_SIGNED,
+}
+
+XrIrToRegOp : UBYTE[IR_MAX] = {
+    [IR_BIT_AND] = XR_AND,
+    [IR_BIT_OR] = XR_OR,
+    [IR_ADD] = XR_ADD,
+    [IR_SUBTRACT] = XR_SUB,
+    [IR_DIVIDE] = XR_DIV,
+    [IR_DIVIDE_SIGNED] = XR_DIV_SIGNED,
+    [IR_MODULO] = XR_MOD,
+    [IR_BIT_XOR] = XR_XOR,
+    [IR_LEFT_SHIFT] = XR_LSH,
+    [IR_RIGHT_SHIFT] = XR_RSH,
+    [IR_RIGHT_SHIFT_SIGNED] = XR_ASH,
+    [IR_MULTIPLY] = XR_MUL,
+
+    [IR_BRANCH_EQUALS] = XR_SUB,
+    [IR_BRANCH_NOT_EQUALS] = XR_SUB,
+    [IR_BRANCH_LESS_THAN] = XR_SLT,
+    [IR_BRANCH_GREATER_THAN] = XR_SLT,
+    [IR_BRANCH_LTEQ] = XR_SLT,
+    [IR_BRANCH_GTEQ] = XR_SLT,
+    [IR_BRANCH_LESS_THAN_SIGNED] = XR_SLT_SIGNED,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = XR_SLT_SIGNED,
+    [IR_BRANCH_LTEQ_SIGNED] = XR_SLT_SIGNED,
+    [IR_BRANCH_GTEQ_SIGNED] = XR_SLT_SIGNED,
+
+    [IR_COMPARE_EQUALS] = XR_SUB,
+    [IR_COMPARE_NOT_EQUALS] = XR_SUB,
+    [IR_COMPARE_LESS_THAN] = XR_SLT,
+    [IR_COMPARE_GREATER_THAN] = XR_SLT,
+    [IR_COMPARE_LTEQ] = XR_SLT,
+    [IR_COMPARE_GTEQ] = XR_SLT,
+    [IR_COMPARE_LESS_THAN_SIGNED] = XR_SLT_SIGNED,
+    [IR_COMPARE_GREATER_THAN_SIGNED] = XR_SLT_SIGNED,
+    [IR_COMPARE_LTEQ_SIGNED] = XR_SLT_SIGNED,
+    [IR_COMPARE_GTEQ_SIGNED] = XR_SLT_SIGNED,
+}
+
+#DEFINE XR_BRANCH_FLIP 1
+#DEFINE XR_BRANCH_NEG 2
+
+XrBranchFlags : UBYTE[IR_MAX] = {
+    [IR_BRANCH_EQUALS] = XR_BRANCH_NEG,
+    [IR_BRANCH_GREATER_THAN] = XR_BRANCH_FLIP,
+    [IR_BRANCH_LTEQ] = XR_BRANCH_FLIP | XR_BRANCH_NEG,
+    [IR_BRANCH_GTEQ] = XR_BRANCH_NEG,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = XR_BRANCH_FLIP,
+    [IR_BRANCH_LTEQ_SIGNED] = XR_BRANCH_FLIP | XR_BRANCH_NEG,
+    [IR_BRANCH_GTEQ_SIGNED] = XR_BRANCH_NEG,
+
+    [IR_COMPARE_EQUALS] = XR_BRANCH_NEG,
+    [IR_COMPARE_GREATER_THAN] = XR_BRANCH_FLIP,
+    [IR_COMPARE_LTEQ] = XR_BRANCH_FLIP | XR_BRANCH_NEG,
+    [IR_COMPARE_GTEQ] = XR_BRANCH_NEG,
+    [IR_COMPARE_GREATER_THAN_SIGNED] = XR_BRANCH_FLIP,
+    [IR_COMPARE_LTEQ_SIGNED] = XR_BRANCH_FLIP | XR_BRANCH_NEG,
+    [IR_COMPARE_GTEQ_SIGNED] = XR_BRANCH_NEG,
+}
+
 XrTmps : LirRegister[2]
 XrSp : LirRegister
 XrLr : LirRegister
@@ -584,6 +668,7 @@ FN XrFillConstant (
 END
 
 FN XrGenerateConstant (
+    IN tmp : ^LirRegister,
     IN const : UWORD,
     IN afterinst : ^LirInstruction,
     IN beforeinst : ^LirInstruction,
@@ -591,12 +676,17 @@ FN XrGenerateConstant (
 
     // Create an instruction to load the given constant.
 
-    constreg := LirCreateRegister ()
+    IF NOT tmp THEN
+        tmp = LirCreateRegister ()
+    END
 
-    lirinst := LirCreateInstruction (
+    lirinst := XrCreateInstruction (
         LIR_MACH_INST, // type
         XR_INST_NULL, // machtype
     )
+
+    lirinst^.Defines = tmp
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
 
     XrFillConstant (
         lirinst, // lirinst
@@ -619,7 +709,7 @@ FN XrGenerateConstant (
         LirInsertInstructionTail ( lirinst )
     END
 
-    RETURN constreg
+    RETURN tmp
 END
 
 FN (LirSelectF) XrSelectAddr (
@@ -630,7 +720,7 @@ FN (LirSelectF) XrSelectAddr (
 
     defreg := LirGetRegister ( inst^.Defines )
 
-    lirinst := LirCreateInstruction (
+    lirinst := XrCreateInstruction (
         LIR_MACH_INST, // type
         XR_INST_NULL, // machtype
     )
@@ -657,11 +747,9 @@ FN (LirSelectF) XrSelectAddr (
         lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_IMM_STRING
     
     ELSEIF inst^.Type == IR_CONSTANT THEN
-        const := inst^.Body.Constant.Constant
-
         XrFillConstant (
             lirinst, // lirinst
-            const, // const
+            inst^.Body.Constant.Constant, // const
         )
     END
 
@@ -687,7 +775,7 @@ FN (LirSelectF) XrSelectStackAddr (
 
     defreg := LirGetRegister ( inst^.Defines )
 
-    lirinst := LirCreateInstruction (
+    lirinst := XrCreateInstruction (
         LIR_MACH_INST, // type
         XR_INST_NULL, // machtype
     )
@@ -710,6 +798,7 @@ FN (LirSelectF) XrSelectStackAddr (
         lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
 
         lirinst^.Source3 = XrGenerateConstant (
+            NULLPTR, // tmp
             off, // const
             NULLPTR, // afterinst
             NULLPTR, // beforeinst
@@ -754,7 +843,7 @@ FN (LirSelectF) XrSelectMove (
 
     defreg := LirGetRegister ( def )
 
-    lirinst := LirCreateInstruction (
+    lirinst := XrCreateInstruction (
         LIR_MACH_INST, // type
         XR_MOV_REG, // machtype
     )
@@ -782,7 +871,7 @@ FN XrGeneratePreallocatedMov (
 
     // Generate MOV to preallocated reg.
 
-    movinst := LirCreateInstruction (
+    movinst := XrCreateInstruction (
         LIR_MACH_INST, // type
         XR_MOV_REG, // machtype
     )
@@ -829,7 +918,7 @@ FN (LirSelectF) XrSelectReturn (
 
     // Add an unconditional branch to the epilogue.
 
-    lirinst := LirCreateInstruction (
+    lirinst := XrCreateInstruction (
         LIR_BRANCH, // type
         XR_B, // machtype
     )
@@ -854,7 +943,7 @@ FN XrGenerateFalseBranch (
 
     // Generate the false branch.
 
-    jmpinst := LirCreateInstruction (
+    jmpinst := XrCreateInstruction (
         LIR_BRANCH, // type
         XR_B, // machtype
     )
@@ -872,7 +961,7 @@ FN (LirSelectF) XrSelectZeroBranch (
         RETURN NULLPTR
     END
 
-    jmpinst := LirCreateInstruction (
+    jmpinst := XrCreateInstruction (
         LIR_BRANCH, // type
         XR_INST_NULL, // machtype
     )
@@ -885,6 +974,7 @@ FN (LirSelectF) XrSelectZeroBranch (
     END
 
     jmpinst^.Source1 = LirSelectOrGetRegister ( inst^.Source1 )
+    jmpinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
 
     jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.TrueLabel )
 
@@ -895,6 +985,553 @@ FN (LirSelectF) XrSelectZeroBranch (
     XrGenerateFalseBranch ( inst )
 
     RETURN NULLPTR
+END
+
+FN XrGenerateArithmetic (
+    IN defreg : ^LirRegister,
+    IN src1 : ^IrVariable,
+    IN src2 : ^IrVariable,
+    IN immop : XrInstructionTypes,
+    IN regop : XrInstructionTypes,
+)
+
+    // Creates a LIR instruction that performs the given arithmetic operation.
+    // Tries to fit a right-side constant in, if immop is non-null.
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_INST_NULL, // machtype
+    )
+
+    lirinst^.Defines = defreg
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Source2 = LirSelectOrGetRegister ( src1 )
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+    IF immop AND
+        src2^.DefinedBy AND
+        src2^.DefinedBy^.Type == IR_CONSTANT AND
+        src2^.DefinedBy^.Body.Constant.Constant < 65536 THEN
+
+        lirinst^.MachineInstruction = immop
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+
+        lirinst^.Body.Machine.Xr.Op3.Constant =
+            src2^.DefinedBy^.Body.Constant.Constant
+
+    ELSE
+        lirinst^.MachineInstruction = regop
+
+        lirinst^.Source3 = LirSelectOrGetRegister ( src2 )
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+    END
+
+    LirInsertInstructionTail ( lirinst )
+END
+
+FN (LirSelectF) XrSelectArithmetic (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    XrGenerateArithmetic (
+        defreg, // defreg
+        inst^.Source1, // src1
+        inst^.Source2, // src2
+        XrIrToImmOp[inst^.Type], // immop
+        XrIrToRegOp[inst^.Type], // regop
+    )
+
+    RETURN defreg
+END
+
+FN (LirSelectF) XrSelectNot (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Output:
+    //
+    //  SLTI RD, RA, 1
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_SLTI, // machtype
+    )
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    lirinst^.Defines = defreg
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Source2 = LirSelectOrGetRegister ( inst^.Source1 )
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+    lirinst^.Body.Machine.Xr.Op3.Constant = 1
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
+END
+
+FN (LirSelectF) XrSelectBitNot (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // Output:
+    //
+    //  NOR RD, RA, RA
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_NOR, // machtype
+    )
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    lirinst^.Defines = defreg
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Source2 = LirSelectOrGetRegister ( inst^.Source1 )
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+    lirinst^.Source3 = lirinst^.Source2
+    lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+
+    LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
+END
+
+FN (LirSelectF) XrSelectBranch (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    IF IrIsUselessBranch ( inst ) THEN
+        RETURN NULLPTR
+    END
+
+    tmp := LirCreateRegister ()
+
+    flags := XrBranchFlags[inst^.Type]
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF flags & XR_BRANCH_FLIP THEN
+        tmpsrc := src1
+
+        src1 = src2
+        src2 = tmpsrc
+    END
+
+    XrGenerateArithmetic (
+        tmp, // defreg
+        src1, // src1
+        src2, // src2
+        XrIrToImmOp[inst^.Type], // immop
+        XrIrToRegOp[inst^.Type], // regop
+    )
+
+    jmpinst := XrCreateInstruction (
+        LIR_BRANCH, // type
+        XR_INST_NULL, // machtype
+    )
+
+    IF flags & XR_BRANCH_NEG THEN
+        jmpinst^.MachineInstruction = XR_BEQ
+
+    ELSE
+        jmpinst^.MachineInstruction = XR_BNE
+    END
+
+    jmpinst^.Source1 = tmp
+    jmpinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.TrueLabel )
+
+    LirInsertInstructionTail ( jmpinst )
+
+    // Generate an unconditional branch to the false label if required.
+
+    XrGenerateFalseBranch ( inst )
+
+    RETURN NULLPTR
+END
+
+FN (LirSelectF) XrSelectCompare (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    defreg := LirGetRegister ( inst^.Defines )
+
+    flags := XrBranchFlags[inst^.Type]
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF flags & XR_BRANCH_FLIP THEN
+        tmpsrc := src1
+
+        src1 = src2
+        src2 = tmpsrc
+    END
+
+    XrGenerateArithmetic (
+        defreg, // defreg
+        src1, // src1
+        src2, // src2
+        XrIrToImmOp[inst^.Type], // immop
+        XrIrToRegOp[inst^.Type], // regop
+    )
+
+    IF flags & XR_BRANCH_NEG THEN
+        lirinst := XrCreateInstruction (
+            LIR_MACH_INST, // type
+            XR_SLTI, // machtype
+        )
+
+        lirinst^.Defines = defreg
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Source2 = defreg
+        lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+        lirinst^.Body.Machine.Xr.Op3.Constant = 1
+
+        LirInsertInstructionTail ( lirinst )
+    END
+
+    RETURN defreg
+END
+
+FN (LirSelectF) XrSelectJump (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    IF inst^.Body.Jump.Label == inst^.Next THEN
+        // Don't generate the jump; allow fall-through.
+
+        RETURN NULLPTR
+    END
+
+    jmpinst := XrCreateInstruction (
+        LIR_BRANCH, // type
+        XR_B, // machtype
+    )
+
+    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Jump.Label )
+
+    LirInsertInstructionTail ( jmpinst )
+
+    RETURN NULLPTR
+END
+
+FN XrFillForStackAccess (
+    IN tmp : ^LirRegister,
+    IN beforeinst : ^LirInstruction,
+    IN afterinst : ^LirInstruction,
+    IN lirinst : ^LirInstruction,
+    IN off : ULONG,
+)
+
+    IF beforeinst OR afterinst THEN
+        lirinst^.Source2 = &XrSp
+
+    ELSE
+        lirinst^.Source2 = LirCreatePreallocatedRegister ( XR_SP )
+    END
+
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
+    IF off < 262144 AND off & 3 == 0 THEN
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+        lirinst^.Body.Machine.Xr.Op3.Constant = off
+    
+    ELSE
+        // The offset is GINORMOUS (or unaligned for some reason).
+        // Load it into a constant.
+
+        lirinst^.Source3 = XrGenerateConstant (
+            tmp, // tmp
+            off, // const
+            afterinst, // afterinst
+            beforeinst, // beforeinst
+        )
+
+        lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
+    END
+END
+
+FN XrGenerateStoreToStack (
+    IN srcreg : ^LirRegister,
+    IN srcvar : ^IrVariable,
+    IN off : ULONG,
+)
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_STORE, // machtype
+    )
+
+    IF NOT srcreg THEN
+        defby := srcvar^.DefinedBy
+
+        IF defby AND
+            defby^.Type == IR_CONSTANT AND
+            (defby^.Body.Constant.Constant & 0xFFFFFFFF >= 0xFFFFFFF0 OR
+            defby^.Body.Constant.Constant < 16) THEN
+
+            lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_IMM
+
+            lirinst^.Body.Machine.Xr.Op1.Constant =
+                defby^.Body.Constant.Constant & 0xFFFFFFFF
+
+        ELSE
+            srcreg = LirSelectOrGetRegister ( srcvar )
+        END
+    END
+
+    IF srcreg THEN
+        lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+
+        lirinst^.Source1 = srcreg
+    END
+
+    XrFillForStackAccess (
+        NULLPTR, // tmp
+        NULLPTR, // beforeinst
+        NULLPTR, // afterinst
+        lirinst, // lirinst
+        off, // off
+    )
+
+    LirInsertInstructionTail ( lirinst )
+END
+
+FN XrGenerateLoadFromStack (
+    IN defreg : ^LirRegister,
+    IN off : ULONG,
+)
+
+    lirinst := XrCreateInstruction (
+        LIR_MACH_INST, // type
+        XR_MOV_LOAD, // machtype
+    )
+
+    XrFillForStackAccess (
+        NULLPTR, // tmp
+        NULLPTR, // beforeinst
+        NULLPTR, // afterinst
+        lirinst, // lirinst
+        off, // off
+    )
+
+    lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+    lirinst^.Defines = defreg
+
+    LirInsertInstructionTail ( lirinst )
+END
+
+FN (LirSelectF) XrSelectCall (
+    IN inst : ^IrInstruction,
+) : ^LirRegister
+
+    // We generate the call instruction and all of its arguments.
+
+    callinst := XrCreateInstruction (
+        LIR_CALL, // type
+        XR_INST_NULL, // machtype
+    )
+
+    defreg : ^LirRegister = NULLPTR
+
+    IF inst^.Defines THEN
+        defreg = LirGetRegister ( inst^.Defines )
+
+        // Hint the return value to machine reg a3 since that is what it is
+        // passed back in.
+
+        defreg^.Hint = XR_A3
+    END
+
+    // Now fill the call.
+
+    IF inst^.Source1^.DefinedBy AND
+        inst^.Source1^.DefinedBy^.Type == IR_ADDR THEN
+
+        callinst^.MachineInstruction = XR_JAL
+
+        callinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_IMM_NAME
+
+        callinst^.Body.Machine.Xr.Op1.Constant =
+            CAST inst^.Source1^.DefinedBy^.Body.Addr.Symbol TO UWORD
+
+    ELSE
+        callinst^.MachineInstruction = XR_JALR
+
+        callinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
+        callinst^.Source1 = LirCreatePreallocatedRegister ( XR_LR )
+
+        callinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+        callinst^.Source2 = LirSelectOrGetRegister ( inst^.Source1 )
+
+        callinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
+        callinst^.Body.Machine.Xr.Op3.Constant = 0
+    END
+
+    // First generate all of the arguments.
+
+    arglisttail : ^LirArgument = NULLPTR
+    callinst^.TypeBody.Call.ArgListHead = NULLPTR
+
+    arg := inst^.Body.Call.ArgListHead
+    count := 0
+    stackoff := 0
+
+    WHILE arg DO
+        lirarg : ^LirArgument
+
+        status := TlBumpAlloc (
+            SIZEOF LirArgument, // bytes
+            OUT lirarg, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate LIR argument", 0, 0, 0 )
+        END
+
+        IF count < 4 THEN
+            lirarg^.Register = LirSelectOrGetRegister ( arg^.Variable )
+
+        ELSE
+            XrGenerateStoreToStack (
+                NULLPTR, // srcreg
+                arg^.Variable, // srcvar
+                stackoff, // off
+            )
+
+            stackoff += 4
+        END
+
+        lirarg^.Next = NULLPTR
+
+        IF arglisttail THEN
+            arglisttail^.Next = lirarg
+
+        ELSE
+            callinst^.TypeBody.Call.ArgListHead = lirarg
+        END
+
+        arglisttail = lirarg
+
+        count += 1
+
+        arg = arg^.Next
+    END
+
+    // Finally, generate MOVs to A0-A3.
+
+    lirarg := callinst^.TypeBody.Call.ArgListHead
+    count = 0
+
+    WHILE lirarg DO
+        IF count >= 4 THEN
+            BREAK
+        END
+
+        XrGeneratePreallocatedMov (
+            lirarg^.Register, // reg
+            XR_A0 + count, // machreg
+            FALSE, // from
+        )
+
+        count += 1
+        lirarg = lirarg^.Next
+    END
+
+    // Now insert the CALL instruction.
+
+    LirInsertInstructionTail ( callinst )
+
+    // Now generate a mov from A3 to the destination.
+
+    IF defreg THEN
+        XrGeneratePreallocatedMov (
+            defreg, // reg
+            XR_A3, // machreg
+            TRUE, // from
+        )
+    END
+
+    outlisttail : ^LirArgument = NULLPTR
+    callinst^.TypeBody.Call.OutListHead = NULLPTR
+
+    arg = inst^.Body.Call.OutListHead
+    count = 0
+
+    stackoff = 0
+
+    WHILE arg DO
+        status := TlBumpAlloc (
+            SIZEOF LirArgument, // bytes
+            OUT lirarg, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate LIR argument", 0, 0, 0 )
+        END
+
+        IF arg^.Variable^.Opt.Dve.References != 0 THEN
+            lirarg^.Register = LirGetRegister ( arg^.Variable )
+
+            IF count < 3 THEN
+                // First three OUT values are hinted to a0-a2 since they're
+                // passed to the caller in those registers. a3 is the primary
+                // return value. We allocate them "backwards" in the hope that
+                // leaving the lower ones free will help keep the IN arguments
+                // in the other regs.
+
+                XrGeneratePreallocatedMov (
+                    lirarg^.Register, // reg
+                    XR_A2 - count, // machreg
+                    TRUE, // from
+                )
+            
+            ELSE
+                XrGenerateLoadFromStack (
+                    lirarg^.Register, // defreg
+                    stackoff, // off
+                )
+            END
+        END
+
+        IF count >= 3 THEN
+            stackoff += 4
+        END
+
+        lirarg^.Next = NULLPTR
+
+        IF outlisttail THEN
+            outlisttail^.Next = lirarg
+
+        ELSE
+            callinst^.TypeBody.Call.OutListHead = lirarg
+        END
+
+        outlisttail = lirarg
+
+        count += 1
+
+        arg = arg^.Next
+    END
+
+    RETURN defreg
 END
 
 XrLirInfo : LirTargetInfoRecord = {
@@ -912,37 +1549,6 @@ XrLirInfo : LirTargetInfoRecord = {
         [IR_BRANCH_NONZERO] = &XrSelectZeroBranch,
         [IR_BRANCH_ZERO] = &XrSelectZeroBranch,
 
-#IF 0
-        [IR_BRANCH_EQUALS] = &XrSelectBranch,
-        [IR_BRANCH_NOT_EQUALS] = &XrSelectBranch,
-        [IR_BRANCH_LESS_THAN] = &XrSelectBranch,
-        [IR_BRANCH_GREATER_THAN] = &XrSelectBranch,
-        [IR_BRANCH_LTEQ] = &XrSelectBranch,
-        [IR_BRANCH_GTEQ] = &XrSelectBranch,
-        [IR_BRANCH_LESS_THAN_SIGNED] = &XrSelectBranch,
-        [IR_BRANCH_GREATER_THAN_SIGNED] = &XrSelectBranch,
-        [IR_BRANCH_LTEQ_SIGNED] = &XrSelectBranch,
-        [IR_BRANCH_GTEQ_SIGNED] = &XrSelectBranch,
-        [IR_JUMP] = &XrSelectJump,
-
-        [IR_CALL] = &XrSelectCall,
-#END
-        [IR_STORE] = &XrSelectStore,
-#IF 0
-
-        [IR_COMPARE_EQUALS] = &XrSelectCompare,
-        [IR_COMPARE_NOT_EQUALS] = &XrSelectCompare,
-        [IR_COMPARE_LESS_THAN] = &XrSelectCompare,
-        [IR_COMPARE_GREATER_THAN] = &XrSelectCompare,
-        [IR_COMPARE_LTEQ] = &XrSelectCompare,
-        [IR_COMPARE_GTEQ] = &XrSelectCompare,
-        [IR_COMPARE_LESS_THAN_SIGNED] = &XrSelectCompare,
-        [IR_COMPARE_GREATER_THAN_SIGNED] = &XrSelectCompare,
-        [IR_COMPARE_LTEQ_SIGNED] = &XrSelectCompare,
-        [IR_COMPARE_GTEQ_SIGNED] = &XrSelectCompare,
-
-        [IR_NOT] = &XrSelectNot,
-
         [IR_BIT_AND] = &XrSelectArithmetic,
         [IR_BIT_OR] = &XrSelectArithmetic,
         [IR_ADD] = &XrSelectArithmetic,
@@ -956,8 +1562,36 @@ XrLirInfo : LirTargetInfoRecord = {
         [IR_RIGHT_SHIFT_SIGNED] = &XrSelectArithmetic,
         [IR_MULTIPLY] = &XrSelectArithmetic,
 
+        [IR_NOT] = &XrSelectNot,
         [IR_BIT_NOT] = &XrSelectBitNot,
-#END
+
+        [IR_BRANCH_EQUALS] = &XrSelectBranch,
+        [IR_BRANCH_NOT_EQUALS] = &XrSelectBranch,
+        [IR_BRANCH_LESS_THAN] = &XrSelectBranch,
+        [IR_BRANCH_GREATER_THAN] = &XrSelectBranch,
+        [IR_BRANCH_LTEQ] = &XrSelectBranch,
+        [IR_BRANCH_GTEQ] = &XrSelectBranch,
+        [IR_BRANCH_LESS_THAN_SIGNED] = &XrSelectBranch,
+        [IR_BRANCH_GREATER_THAN_SIGNED] = &XrSelectBranch,
+        [IR_BRANCH_LTEQ_SIGNED] = &XrSelectBranch,
+        [IR_BRANCH_GTEQ_SIGNED] = &XrSelectBranch,
+
+        [IR_JUMP] = &XrSelectJump,
+
+        [IR_CALL] = &XrSelectCall,
+
+        [IR_STORE] = &XrSelectStore,
+
+        [IR_COMPARE_EQUALS] = &XrSelectCompare,
+        [IR_COMPARE_NOT_EQUALS] = &XrSelectCompare,
+        [IR_COMPARE_LESS_THAN] = &XrSelectCompare,
+        [IR_COMPARE_GREATER_THAN] = &XrSelectCompare,
+        [IR_COMPARE_LTEQ] = &XrSelectCompare,
+        [IR_COMPARE_GTEQ] = &XrSelectCompare,
+        [IR_COMPARE_LESS_THAN_SIGNED] = &XrSelectCompare,
+        [IR_COMPARE_GREATER_THAN_SIGNED] = &XrSelectCompare,
+        [IR_COMPARE_LTEQ_SIGNED] = &XrSelectCompare,
+        [IR_COMPARE_GTEQ_SIGNED] = &XrSelectCompare,
     },
     [RegisterAbiUsage] = {
         [XR_T0] = LIR_REG_CALLER_SAVED,

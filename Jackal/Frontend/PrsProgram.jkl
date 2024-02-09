@@ -944,7 +944,10 @@ FN PrsCheckConstant (
         LEAVE
     END
 
-    value &= JklTargetInfo^.ConstantMask
+    IF primtype > PRIM_TYPE_SIGNED AND primtype < PRIM_TYPE_SIGNED_MAX THEN
+        LexTokenError ( errtoken,
+            "Constant doesn't fit in signed type", 0, 0, 0 )
+    END
 
     masked := value & JklPrimitiveTypeMasks[primtype]
 

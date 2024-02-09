@@ -29,8 +29,12 @@ STRUCT LirXrSpecific
 END
 
 UNION LirMachineSpecific
+#IF TRG_FOX32
     Fox : LirFoxSpecific,
+#END
+#IF TRG_XR17032
     Xr : LirXrSpecific,
+#END
 END
 
 ENUM LirInstructionType : UBYTE
