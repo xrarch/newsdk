@@ -15,7 +15,7 @@ Note that compiling the compiler itself will create `./build/jkl` and leave the 
 - [x] Jackal -> C bootstrap transpiler.
 - [x] Self-hosted Jackal compiler w/ C backend.
 - [x] Fox32 backend.
-- [ ] XR/17032 backend.
+- [x] XR/17032 backend.
 - [ ] Self-hosted build tool ("xrbt") to replace `make`.
 - [ ] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [ ] New linker written in Jackal with XR/17032 and Fox32 support.
