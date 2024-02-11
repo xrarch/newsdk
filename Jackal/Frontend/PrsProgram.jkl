@@ -2705,7 +2705,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     END
 
     IF varargcount THEN
-        vartable := lefttype^.Body.Function.VarTable
+        vartable := PrsCurrentFunction^.Body.Function.VarTable
         vartabletype : ^LexSemanticType
 
         IF NOT vartable THEN
@@ -2730,7 +2730,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
             vartable^.Name = "VARTABLE"
 
-            lefttype^.Body.Function.VarTable = vartable
+            PrsCurrentFunction^.Body.Function.VarTable = vartable
 
             // Create the type.
 

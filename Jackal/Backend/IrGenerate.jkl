@@ -19,6 +19,8 @@ IrCurrentFunction : ^IrFunction
 IrWhileEndLabel : ^IrInstruction = NULLPTR
 IrWhileBeginLabel : ^IrInstruction = NULLPTR
 
+IrCurrentFunctionType : ^LexSemanticType
+
 PUBLIC IrCommutativity : UBYTE[IR_MAX] = {
     [IR_COMPARE_EQUALS] = TRUE,
     [IR_COMPARE_NOT_EQUALS] = TRUE,
@@ -1647,7 +1649,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 
         offset := 0
 
-        vartable := type^.Body.Function.VarTable
+        vartable := IrCurrentFunctionType^.Body.Function.VarTable
 
         vartablevar = IrFindConstant (
             CAST vartable TO UWORD, // constant
@@ -2610,6 +2612,8 @@ FN IrGenerateForFunction (
     // Make sure all the OUT parameters have an IR variable.
 
     type := funcsym^.SemanticType
+
+    IrCurrentFunctionType = type
 
     outarg := type^.Body.Function.ArgListHead
 
