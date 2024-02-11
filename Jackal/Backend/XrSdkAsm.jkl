@@ -449,6 +449,12 @@ FN XrAsmEmit (
                 entry = entry^.Next
             END
 
+            XrAsmInsertString ( ".define " )
+            XrAsmInsertString ( sym^.Name )
+            XrAsmInsertString ( "__SIZEOF " )
+            XrAsmInsertNumber ( type^.Size )
+            XrAsmInsertString ( "\n" )
+
             sym = sym^.Next
         END
     END
