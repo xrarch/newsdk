@@ -2103,6 +2103,12 @@ FN PrsVariableDeclaration (
             asgnnode^.Body.Assign.Left = idnode
             asgnnode^.Body.Assign.Right = initialnode
 
+            IF PrsCurrentBlock^.Probe THEN
+                PrsCurrentBlock^.Probe = FALSE
+
+                asgnnode^.Body.Assign.Probe = TRUE
+            END
+
             // We can place it directly in the statement list for the current
             // block because the existence of a block is implied by the fact
             // this is a local declaration.
@@ -2228,6 +2234,7 @@ FN PrsParseBlock (
     block^.StatementListTail = NULLPTR
     block^.StatementCount = 0
     block^.LabelCount = 0
+    block^.Probe = FALSE
 
     // Save the old block and set the new.
 
@@ -2401,6 +2408,12 @@ FN PrsParseBlock (
                             rightexpr^.Body.Constant.Value, // body
                         )
                     END
+                END
+
+                IF PrsCurrentBlock^.Probe THEN
+                    PrsCurrentBlock^.Probe = FALSE
+
+                    asgnnode^.Body.Assign.Probe = TRUE
                 END
 
                 PrsInsertNodeIntoBlock (
@@ -5340,6 +5353,18 @@ FN (PrsStatementF) PrsParseBarrier (
     )
 END
 
+FN (PrsStatementF) PrsParseProbe (
+    IN token : ^LexToken,
+)
+
+    // Parse a PROBE statement.
+
+    // Just set a flag indicating that the next assignment statement is a probe;
+    // i.e., it can't be optimized out.
+
+    PrsCurrentBlock^.Probe = TRUE
+END
+
 FN (PrsStatementF) PrsParseLabel (
     IN token : ^LexToken,
 )
@@ -5743,6 +5768,7 @@ PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_RETURN] = &PrsParseReturn,
     [TOKEN_WHILE] = &PrsParseWhile,
     [TOKEN_BARRIER] = &PrsParseBarrier,
+    [TOKEN_PROBE] = &PrsParseProbe,
     [TOKEN_LABEL] = &PrsParseLabel,
 }
 

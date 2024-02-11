@@ -131,6 +131,7 @@ STRUCT IrVariable
     Known : UBYTE,
     KnownConstant : UBYTE,
     ConsideredForDve : UBYTE,
+    Probe : UBYTE,
 END
 
 STRUCT IrLabelBody

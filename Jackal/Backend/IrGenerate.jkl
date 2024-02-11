@@ -159,6 +159,7 @@ FN IrCreateVariable (
 
     var^.Known = FALSE
     var^.ConsideredForDve = FALSE
+    var^.Probe = FALSE
 
     RETURN var
 END
@@ -1824,6 +1825,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
 END
 
 FN IrGenerateAssignment (
+    IN node : ^PrsAstNode,
     IN destvar : ^IrVariable,
     IN srcvar : ^IrVariable,
     IN type : ^LexSemanticType,
@@ -1843,6 +1845,10 @@ FN IrGenerateAssignment (
     ELSEIF destvar^.Annotation == IR_VAR_LOCAL THEN
         // Generate a move.
         // XXX Remember that code generation should notice a cast here.
+
+        IF node^.Body.Assign.Probe THEN
+            destvar^.Probe = TRUE
+        END
 
         IrGenerateMove (
             destvar, // destvar
@@ -1873,6 +1879,7 @@ FN (IrExpressionGenerationF) IrGenerateEqualsAssign (
     )
 
     IrGenerateAssignment (
+        node, // node
         dest, // destvar
         var, // srcvar
         IrEvaluateTypeForAccess ( node^.Body.Assign.Left ), // type
@@ -1921,6 +1928,7 @@ FN IrGenerateModificationAssign (
     )
 
     IrGenerateAssignment (
+        node, // node
         destvar, // destvar
         newvar, // srcvar
         IrEvaluateTypeForAccess ( node^.Body.Assign.Left ), // type

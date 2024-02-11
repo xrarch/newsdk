@@ -2910,7 +2910,7 @@ void CtGenerateInitializer(uint64_t _mng_value1093, uint64_t _mng_primtype1094, 
     __twr_v1151 = 25ULL;
     __twr_v1152 = _mng_value1093 + __twr_v1151;
     __twr_v1153 = *(uint8_t*)(__twr_v1152);
-    __twr_v1154 = 82ULL;
+    __twr_v1154 = 83ULL;
     if (__twr_v1153 != __twr_v1154) { goto __twr_l202; } else { goto __twr_l203; }
     __twr_l203:;
     __twr_v1155 = (uint64_t)(&CtInsertByte);
