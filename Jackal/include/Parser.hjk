@@ -8,6 +8,8 @@ EXTERN PrsGlobalListHead : ^LexSymbol
 
 EXTERN PrsFunctionListHead : ^LexSymbol
 
+EXTERN PrsCompoundTypeListHead : ^LexSymbol
+
 #DEFINE VAR_FLAG_EXTERN 1
 #DEFINE VAR_FLAG_PUBLIC 2
 #DEFINE VAR_FLAG_EXPORT 4

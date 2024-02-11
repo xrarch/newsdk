@@ -179,8 +179,8 @@ void TlInsertHashTableByHash(uint64_t _mng_hashtable133, uint64_t _mng_entry134,
     uint64_t __twr_v154;
     uint64_t _mng_listentry155;
     uint64_t __twr_v156;
-    uint64_t _mng_first157;
-    uint64_t __twr_v158;
+    uint64_t __twr_v157;
+    uint64_t _mng_last158;
     uint64_t __twr_v159;
     __twr_v137 = 32ULL;
     __twr_v138 = _mng_entry134 + __twr_v137;
@@ -207,14 +207,14 @@ void TlInsertHashTableByHash(uint64_t _mng_hashtable133, uint64_t _mng_entry134,
     _mng_listhead153 = _mng_hashtable133;
     __twr_v154 = _mng_entry134 + __twr_v141;
     _mng_listentry155 = __twr_v154;
-    __twr_v156 = *(uint64_t*)(_mng_listhead153);
-    _mng_first157 = __twr_v156;
-    *(uint64_t*)(_mng_listentry155) = _mng_first157;
-    __twr_v158 = _mng_listentry155 + __twr_v150;
-    *(uint64_t*)(__twr_v158) = _mng_listhead153;
-    __twr_v159 = _mng_first157 + __twr_v150;
-    *(uint64_t*)(__twr_v159) = __twr_v154;
-    *(uint64_t*)(_mng_listhead153) = __twr_v154;
+    __twr_v156 = _mng_listhead153 + __twr_v150;
+    __twr_v157 = *(uint64_t*)(__twr_v156);
+    _mng_last158 = __twr_v157;
+    __twr_v159 = _mng_listentry155 + __twr_v150;
+    *(uint64_t*)(__twr_v159) = _mng_last158;
+    *(uint64_t*)(_mng_listentry155) = _mng_listhead153;
+    *(uint64_t*)(_mng_last158) = _mng_listentry155;
+    *(uint64_t*)(__twr_v156) = _mng_listentry155;
     __twr_l14:;
     _jkl_epilogue:;
 }

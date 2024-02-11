@@ -68,9 +68,9 @@ FN TlInsertHashTableByHash (
         &entry^.HashEntry,
     )
 
-    // Insert entry into ordered list, at the head.
+    // Insert entry into ordered list, at the tail.
 
-    TlInsertAtHeadList (
+    TlInsertAtTailList (
         &hashtable^.OrderedListHead, // head
         &entry^.OrderedEntry, // entry
     )

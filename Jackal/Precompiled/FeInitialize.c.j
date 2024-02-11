@@ -119,6 +119,7 @@ extern void PrsProgram();
 extern void PrsInitialize();
 extern uint64_t PrsGlobalListHead;
 extern uint64_t PrsFunctionListHead;
+extern uint64_t PrsCompoundTypeListHead;
 extern uint64_t PrsEvaluateType(uint64_t _mng_node139);
 uint64_t FeLibraryDirectory[32];
 uint64_t FeIncludeDirectory[32];

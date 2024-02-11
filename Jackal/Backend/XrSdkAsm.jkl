@@ -420,6 +420,39 @@ FN XrAsmEmit (
 
     asm := LexAsmBlockListHead
 
+    IF asm THEN
+        // There's at least one, so dump all the struct offsets as constants.
+
+        XrCurrentSection = &LexDefaultSection
+
+        sym := PrsCompoundTypeListHead
+
+        WHILE sym DO
+            type := sym^.SemanticType
+
+            hashtable := &type^.Body.Compound.FieldScope^.HashTable
+
+            head := &hashtable^.OrderedListHead
+            entry := head^.Next
+
+            WHILE head != entry DO
+                fieldsym := CONTAINEROF entry TO LexSymbol.Entry.OrderedEntry
+
+                XrAsmInsertString ( ".define " )
+                XrAsmInsertString ( sym^.Name )
+                XrAsmInsertString ( "_" )
+                XrAsmInsertString ( fieldsym^.Name )
+                XrAsmInsertString ( " " )
+                XrAsmInsertNumber ( fieldsym^.Value )
+                XrAsmInsertString ( "\n" )
+
+                entry = entry^.Next
+            END
+
+            sym = sym^.Next
+        END
+    END
+
     WHILE asm DO
         XrCurrentSection = asm^.Section
 

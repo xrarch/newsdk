@@ -119,6 +119,7 @@ extern void PrsProgram();
 extern void PrsInitialize();
 extern uint64_t PrsGlobalListHead;
 extern uint64_t PrsFunctionListHead;
+extern uint64_t PrsCompoundTypeListHead;
 extern uint64_t PrsEvaluateType(uint64_t _mng_node139);
 extern uint64_t IrAllocateStack(uint64_t _mng_func140, uint64_t _mng_bytes141);
 extern uint64_t IrGetStackOffset(uint64_t _mng_func142, uint64_t _mng_symbol143);

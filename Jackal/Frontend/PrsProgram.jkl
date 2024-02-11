@@ -13,6 +13,9 @@ PrsFunctionListTail : ^LexSymbol = NULLPTR
 PrsCurrentBlock : ^PrsBlock = NULLPTR
 PrsCurrentFunction : ^LexSemanticType = NULLPTR
 
+PUBLIC PrsCompoundTypeListHead : ^LexSymbol = NULLPTR
+PrsCompoundTypeListTail : ^LexSymbol = NULLPTR
+
 PrsBlockStack : TlDynamicBuffer
 
 PrsStringType : ^LexSemanticType = NULLPTR
@@ -4687,6 +4690,19 @@ FN PrsParseCompoundType (
 
     type^.MinimumAlignment = minalignment
     type^.Size = offset
+
+    // Add to the head of the compound type list.
+
+    symbol^.Next = NULLPTR
+
+    IF PrsCompoundTypeListTail THEN
+        PrsCompoundTypeListTail^.Next = symbol
+
+    ELSE
+        PrsCompoundTypeListHead = symbol
+    END
+
+    PrsCompoundTypeListTail = symbol
 
     RETURN symbol
 END
