@@ -366,7 +366,7 @@ FN FoxFillOperandForAccess (
             operand^.AccessType = FOX_ACCESS_REG_PTR
             operand^.Constant = off
 
-            spreg := LirCreatePreallocatedRegister ( FOX_SP )
+            spreg := &FoxSp
 
             RETURN spreg
         END
@@ -600,7 +600,7 @@ FN (LirSelectF) FoxSelectStackAddr (
     )
 
     movinst^.Defines = defreg
-    movinst^.Source2 = LirCreatePreallocatedRegister ( FOX_SP )
+    movinst^.Source2 = &FoxSp
 
     movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -691,13 +691,13 @@ END
 
 FN FoxGeneratePreallocatedMov (
     IN srcreg : ^LirRegister,
-    IN machreg : UBYTE,
+    IN machreg : ^LirRegister,
     IN from : UBYTE,
 ) : ^LirRegister
 
     // Hint.
 
-    srcreg^.Hint = machreg
+    srcreg^.Hint = machreg^.MachineRegister
 
     // Generate MOV to preallocated reg.
 
@@ -706,14 +706,12 @@ FN FoxGeneratePreallocatedMov (
         FOX_MOV, // machtype
     )
 
-    retval := LirCreatePreallocatedRegister ( machreg )
-
     IF from THEN
-        movinst^.Source2 = retval
+        movinst^.Source2 = machreg
         movinst^.Defines = srcreg
 
     ELSE
-        movinst^.Defines = retval
+        movinst^.Defines = machreg
         movinst^.Source2 = srcreg
     END
 
@@ -728,7 +726,7 @@ FN FoxGeneratePreallocatedMov (
         RETURN srcreg
 
     ELSE
-        RETURN retval
+        RETURN machreg
     END
 END
 
@@ -761,12 +759,7 @@ FN FoxGenerateStackAddress (
 
         movinst^.Defines = destreg
 
-        IF beforeinst OR afterinst THEN
-            movinst^.Source2 = &FoxSp
-
-        ELSE
-            movinst^.Source2 = LirCreatePreallocatedRegister ( FOX_SP )
-        END
+        movinst^.Source2 = &FoxSp
 
         movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
         movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -823,11 +816,8 @@ FN FoxGenerateStackAddress (
 
         RETURN destreg
 
-    ELSEIF afterinst OR beforeinst THEN
-        RETURN &FoxSp
-
     ELSE
-        RETURN LirCreatePreallocatedRegister ( FOX_SP )
+        RETURN &FoxSp
     END
 END
 
@@ -915,7 +905,7 @@ FN (LirSelectF) FoxSelectReturn (
 
         retval = FoxGeneratePreallocatedMov (
             srcreg, // srcreg
-            FOX_A3, // machreg
+            &FoxArg[FOX_A3 - FOX_A0], // machreg
             FALSE, // from
         )
     END
@@ -1193,7 +1183,7 @@ FN (LirSelectF) FoxSelectCall (
 
         FoxGeneratePreallocatedMov (
             lirarg^.Register, // reg
-            FOX_A0 + count, // machreg
+            &FoxArg[count], // machreg
             FALSE, // from
         )
 
@@ -1210,7 +1200,7 @@ FN (LirSelectF) FoxSelectCall (
     IF defreg THEN
         FoxGeneratePreallocatedMov (
             defreg, // reg
-            FOX_A3, // machreg
+            &FoxArg[FOX_A3 - FOX_A0], // machreg
             TRUE, // from
         )
     END
@@ -1245,7 +1235,7 @@ FN (LirSelectF) FoxSelectCall (
 
                 FoxGeneratePreallocatedMov (
                     lirarg^.Register, // reg
-                    FOX_A2 - count, // machreg
+                    &FoxArg[2 - count], // machreg
                     TRUE, // from
                 )
             
@@ -1594,8 +1584,7 @@ FN FoxHintFunction (
 
                 junkinst^.Defines = irreg
 
-                junkinst^.Source1 =
-                    LirCreatePreallocatedRegister ( FOX_A0 + incount )
+                junkinst^.Source1 = &FoxArg[incount]
 
                 LirInsertInstructionBefore (
                     head, // beforeinst
@@ -1613,8 +1602,7 @@ FN FoxHintFunction (
                     0, // machtype
                 )
 
-                junkinst^.Defines =
-                    LirCreatePreallocatedRegister ( FOX_A2 - outcount )
+                junkinst^.Defines = &FoxArg[2 - outcount]
 
                 junkinst^.Source1 = irreg
 
@@ -1664,8 +1652,7 @@ FN FoxHintFunction (
 
                 junkinst^.Defines = irreg
 
-                junkinst^.Source1 =
-                    LirCreatePreallocatedRegister ( FOX_A0 + incount )
+                junkinst^.Source1 = &FoxArg[incount]
 
                 LirInsertInstructionBefore (
                     head, // beforeinst

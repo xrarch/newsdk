@@ -11,6 +11,14 @@ LirSortedIntervalListHead : TlListEntry
 
 LirFirstBlock := FALSE
 
+#MACRO LirSetMachineRegisterBitmap ( reg, bit ) [
+    reg^.MachineRegisterBitmap[bit / 8] |= (1 << (bit & 7))
+]
+
+#MACRO LirGetMachineRegisterBit ( reg, bit ) [
+    (reg^.MachineRegisterBitmap[bit / 8] & (1 << (bit & 7)))
+]
+
 FN LirInsertionSortInterval (
     IN reg : ^LirRegister,
 )
@@ -142,6 +150,10 @@ FN LirUseRegister (
     IN instnum : ULONG,
 )
 
+    IF reg^.Type == LIR_PREALLOCATED_REG THEN
+        LEAVE
+    END
+
     IF NOT reg^.LivenessStart THEN
         LirRegFirstSighting (
             reg, // reg
@@ -152,21 +164,11 @@ FN LirUseRegister (
     END
 
     IF NOT reg^.DefinedYet THEN
-        IF reg^.Type == LIR_PREALLOCATED_REG THEN
-            reg^.DefinedYet = TRUE
+        // Use before def. Cover entire function.
 
-            TlInsertAtHeadList (
-                &LirDefinedYetListHead, // head
-                &reg^.DefinedYetListEntry, // entry
-            )
-        
-        ELSE
-            // Use before def. Cover entire function.
-
-            reg^.LivenessFirst = firstinst
-            reg^.LivenessStart = 1
-            reg^.LivenessEnd = CAST -1 TO ULONG
-        END
+        reg^.LivenessFirst = firstinst
+        reg^.LivenessStart = 1
+        reg^.LivenessEnd = CAST -1 TO ULONG
 
     ELSEIF instnum > reg^.LivenessEnd THEN
         // Extend liveness range.
@@ -181,6 +183,10 @@ FN LirDefRegister (
     IN inst : ^LirInstruction,
     IN instnum : ULONG,
 )
+
+    IF reg^.Type == LIR_PREALLOCATED_REG THEN
+        LEAVE
+    END
 
     IF NOT reg^.LivenessStart THEN
         LirRegFirstSighting (
@@ -302,6 +308,42 @@ FN LirLivenessForFunction (
         i := 0
 
         WHILE liveinst AND count DO
+            IF liveinst^.Source1 AND
+                liveinst^.Source1^.Type == LIR_PREALLOCATED_REG THEN
+
+                LirSetMachineRegisterBitmap (
+                    reg, // reg
+                    liveinst^.Source1^.MachineRegister, // bit
+                )
+            END
+
+            IF liveinst^.Source2 AND
+                liveinst^.Source2^.Type == LIR_PREALLOCATED_REG THEN
+
+                LirSetMachineRegisterBitmap (
+                    reg, // reg
+                    liveinst^.Source2^.MachineRegister, // bit
+                )
+            END
+
+            IF liveinst^.Source3 AND
+                liveinst^.Source3^.Type == LIR_PREALLOCATED_REG THEN
+
+                LirSetMachineRegisterBitmap (
+                    reg, // reg
+                    liveinst^.Source3^.MachineRegister, // bit
+                )
+            END
+
+            IF liveinst^.Defines AND
+                liveinst^.Defines^.Type == LIR_PREALLOCATED_REG THEN
+
+                LirSetMachineRegisterBitmap (
+                    reg, // reg
+                    liveinst^.Defines^.MachineRegister, // bit
+                )
+            END
+
             IF liveinst^.Type == LIR_CALL THEN
                 reg^.LiveAcrossCall = TRUE
 
@@ -350,8 +392,7 @@ FN LirResetRegPool ()
 END
 
 FN LirAllocateRegister (
-    IN calleesavedonly : UBYTE,
-    IN hint : UBYTE,
+    IN reg : ^LirRegister,
 ) : UWORD
 
     // Allocate a machine register. Returns -1 on failure.
@@ -361,10 +402,14 @@ FN LirAllocateRegister (
     statmap := &lirinfo^.RegisterAllocationStatus[0]
     abimap := &lirinfo^.RegisterAbiUsage[0]
     everalloced := &LirCurrentFunction^.RegisterAllocationStatus[0]
+    hint := reg^.Hint
+    calleesavedonly := reg^.LiveAcrossCall
 
     IF hint AND
         NOT statmap[hint] AND
-        (NOT calleesavedonly OR abimap[hint] == LIR_REG_CALLEE_SAVED) THEN
+        (NOT calleesavedonly OR
+        abimap[hint] == LIR_REG_CALLEE_SAVED) AND
+        NOT LirGetMachineRegisterBit ( reg, hint ) THEN
 
         // Take the hint.
 
@@ -379,7 +424,10 @@ FN LirAllocateRegister (
 
     WHILE i < max DO
         IF NOT statmap[i] THEN
-            IF NOT calleesavedonly OR abimap[i] == LIR_REG_CALLEE_SAVED THEN
+            IF (NOT calleesavedonly OR
+                abimap[i] == LIR_REG_CALLEE_SAVED) AND
+                NOT LirGetMachineRegisterBit ( reg, i ) THEN
+
                 statmap[i] = TRUE
                 everalloced[i] = TRUE
 
@@ -521,111 +569,6 @@ FN LirSpillAtInterval (
         "LirSpillAtInterval: Too many preallocated registers", 0, 0, 0 )
 END
 
-FN LirReallocateRegister (
-    IN reg : ^LirRegister,
-)
-
-    // Re-allocate a register for the given LIR register. We have to scan all
-    // intervals and recursively re-allocate any that it interferes with.
-
-    newreg := LirAllocateRegister (
-        reg^.LiveAcrossCall, // calleesavedonly
-        0, // hint
-    )
-
-    IF newreg == -1 THEN
-        // Spill :(
-
-        IF reg^.Active THEN
-            reg^.Active = FALSE
-
-            TlRemoveEntryList ( &reg^.DefinedYetListEntry )
-        END
-
-        reg^.Type = LIR_SPILLED_REG
-
-        LEAVE
-    END
-
-    reg^.MachineRegister = newreg
-
-    head := &LirSortedIntervalListHead
-    entry := head^.Next
-
-    WHILE head != entry DO
-        otherreg := CONTAINEROF entry TO LirRegister.IntervalListEntry
-
-        IF otherreg == reg THEN
-            entry = entry^.Next
-
-            CONTINUE
-        END
-
-        IF otherreg^.LivenessStart > reg^.LivenessEnd THEN
-            LEAVE
-        END
-
-        IF otherreg^.LivenessEnd >= reg^.LivenessStart AND
-            otherreg^.Type == LIR_MACHINE_REG AND
-            otherreg^.MachineRegister == newreg THEN
-
-            LirReallocateRegister ( otherreg )
-        END
-
-        entry = entry^.Next
-    END
-END
-
-FN LirPreallocateRegister (
-    IN reg : UBYTE,
-)
-
-    // Pre-allocate a machine reg.
-
-    lirinfo := JklTargetInfo^.LirInfo
-
-    statmap := &lirinfo^.RegisterAllocationStatus[0]
-    abimap := &lirinfo^.RegisterAbiUsage[0]
-
-    IF abimap[reg] == LIR_REG_UNUSABLE THEN
-        // Don't care. Nobody else can be using it.
-
-        LEAVE
-    END
-
-    IF NOT statmap[reg] THEN
-        // Nobody was using it; good.
-
-        statmap[reg] = TRUE
-
-        LEAVE
-    END
-
-    // Scan the active list.
-
-    head := &LirActiveIntervalList
-    entry := head^.Next
-
-    WHILE head != entry DO
-        otherreg := CONTAINEROF entry TO LirRegister.DefinedYetListEntry
-
-        IF otherreg^.MachineRegister == reg THEN
-            // Found the sucker.
-
-            IF otherreg^.Type == LIR_PREALLOCATED_REG THEN
-                TlInternalError ( "Can't steal from preallocated reg",
-                    otherreg^.MachineRegister, 0, 0 )
-            END
-
-            LirReallocateRegister ( otherreg )
-
-            LEAVE
-        END
-
-        entry = entry^.Next
-    END
-END
-
 FN LirLinearScan ()
 
     // Linear scan register allocation.
@@ -647,10 +590,7 @@ FN LirLinearScan ()
         LirExpireOldIntervals ( reg )
 
         IF reg^.Type == LIR_VIRTUAL_REG THEN
-            machinereg := LirAllocateRegister (
-                reg^.LiveAcrossCall, // calleesavedonly
-                reg^.Hint, // hint
-            )
+            machinereg := LirAllocateRegister ( reg )
 
             IF machinereg == -1 THEN
                 LirSpillAtInterval ( reg )
@@ -662,15 +602,6 @@ FN LirLinearScan ()
                 LirAddToActiveList ( reg )
             END
 
-        ELSEIF reg^.Type == LIR_PREALLOCATED_REG THEN
-            // Must be a pre-allocated machine reg. If someone else is using it
-            // we have to kick their ass and make them grab another one, or
-            // spill them.
-
-            LirPreallocateRegister ( reg^.MachineRegister )
-
-            LirAddToActiveList ( reg )
-        
         ELSE
             TlInternalError ( "LirLinearScan: Incorrect reg type", 0, 0, 0 )
         END

@@ -54,17 +54,11 @@ FN LirCreateRegister () : ^LirRegister
     reg^.Hint = 0
     reg^.SpilledOffset = 0xFFFFFFFF
 
-    RETURN reg
-END
-
-FN LirCreatePreallocatedRegister (
-    IN machreg : UBYTE,
-) : ^LirRegister
-
-    reg := LirCreateRegister ()
-
-    reg^.Type = LIR_PREALLOCATED_REG
-    reg^.MachineRegister = machreg
+    TlFillMemoryWithByte (
+        &reg^.MachineRegisterBitmap[0], // ptr
+        SIZEOFVALUE reg^.MachineRegisterBitmap, // sz
+        0, // byte
+    )
 
     RETURN reg
 END

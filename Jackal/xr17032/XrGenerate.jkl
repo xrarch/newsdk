@@ -408,6 +408,8 @@ XrPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_BYTE] = 24,
 }
 
+
+
 XrTmps : LirRegister[3]
 XrSp : LirRegister
 XrLr : LirRegister
@@ -488,7 +490,7 @@ FN XrFillAccess (
             lirinst^.Body.Machine.Xr.Op3.Constant = off
             lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_IMM
 
-            lirinst^.Source2 = LirCreatePreallocatedRegister ( XR_SP )
+            lirinst^.Source2 = &XrSp
 
             LEAVE
         END
@@ -869,7 +871,7 @@ FN (LirSelectF) XrSelectStackAddr (
     lirinst^.Defines = defreg
     lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
 
-    lirinst^.Source2 = LirCreatePreallocatedRegister ( XR_SP )
+    lirinst^.Source2 = &XrSp
     lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
 
     IF off < 65536 THEN
@@ -947,13 +949,13 @@ END
 
 FN XrGeneratePreallocatedMov (
     IN srcreg : ^LirRegister,
-    IN machreg : UBYTE,
+    IN machreg : ^LirRegister,
     IN from : UBYTE,
 ) : ^LirRegister
 
     // Hint.
 
-    srcreg^.Hint = machreg
+    srcreg^.Hint = machreg^.MachineRegister
 
     // Generate MOV to preallocated reg.
 
@@ -962,14 +964,12 @@ FN XrGeneratePreallocatedMov (
         XR_MOV_REG, // machtype
     )
 
-    retval := LirCreatePreallocatedRegister ( machreg )
-
     IF from THEN
-        movinst^.Source2 = retval
+        movinst^.Source2 = machreg
         movinst^.Defines = srcreg
 
     ELSE
-        movinst^.Defines = retval
+        movinst^.Defines = machreg
         movinst^.Source2 = srcreg
     END
 
@@ -982,7 +982,7 @@ FN XrGeneratePreallocatedMov (
         RETURN srcreg
 
     ELSE
-        RETURN retval
+        RETURN machreg
     END
 END
 
@@ -997,7 +997,7 @@ FN (LirSelectF) XrSelectReturn (
 
         retval = XrGeneratePreallocatedMov (
             srcreg, // srcreg
-            XR_A3, // machreg
+            &XrArg[XR_A3 - XR_A0], // machreg
             FALSE, // from
         )
     END
@@ -1350,12 +1350,7 @@ FN XrFillForStackAccess (
     IN insert : UBYTE,
 )
 
-    IF beforeinst OR afterinst THEN
-        lirinst^.Source2 = &XrSp
-
-    ELSE
-        lirinst^.Source2 = LirCreatePreallocatedRegister ( XR_SP )
-    END
+    lirinst^.Source2 = &XrSp
 
     lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
 
@@ -1499,7 +1494,7 @@ FN (LirSelectF) XrSelectCall (
         callinst^.MachineInstruction = XR_JALR
 
         callinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
-        callinst^.Source1 = LirCreatePreallocatedRegister ( XR_LR )
+        callinst^.Source1 = &XrLr
 
         callinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
         callinst^.Source2 = LirSelectOrGetRegister ( inst^.Source1 )
@@ -1570,7 +1565,7 @@ FN (LirSelectF) XrSelectCall (
 
         XrGeneratePreallocatedMov (
             lirarg^.Register, // reg
-            XR_A0 + count, // machreg
+            &XrArg[count], // machreg
             FALSE, // from
         )
 
@@ -1587,7 +1582,7 @@ FN (LirSelectF) XrSelectCall (
     IF defreg THEN
         XrGeneratePreallocatedMov (
             defreg, // reg
-            XR_A3, // machreg
+            &XrArg[XR_A3 - XR_A0], // machreg
             TRUE, // from
         )
     END
@@ -1622,7 +1617,7 @@ FN (LirSelectF) XrSelectCall (
 
                 XrGeneratePreallocatedMov (
                     lirarg^.Register, // reg
-                    XR_A2 - count, // machreg
+                    &XrArg[2 - count], // machreg
                     TRUE, // from
                 )
             
@@ -1784,8 +1779,7 @@ FN XrHintFunction (
 
                 junkinst^.Defines = irreg
 
-                junkinst^.Source1 =
-                    LirCreatePreallocatedRegister ( XR_A0 + incount )
+                junkinst^.Source1 = &XrArg[incount]
 
                 LirInsertInstructionBefore (
                     head, // beforeinst
@@ -1803,8 +1797,7 @@ FN XrHintFunction (
                     0, // machtype
                 )
 
-                junkinst^.Defines =
-                    LirCreatePreallocatedRegister ( XR_A2 - outcount )
+                junkinst^.Defines = &XrArg[2 - outcount]
 
                 junkinst^.Source1 = irreg
 
@@ -1854,8 +1847,7 @@ FN XrHintFunction (
 
                 junkinst^.Defines = irreg
 
-                junkinst^.Source1 =
-                    LirCreatePreallocatedRegister ( XR_A0 + incount )
+                junkinst^.Source1 = &XrArg[incount]
 
                 LirInsertInstructionBefore (
                     head, // beforeinst

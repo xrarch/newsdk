@@ -77,6 +77,7 @@ STRUCT LirRegister
     MachineRegister : UBYTE,
     Hint : UBYTE,
     Type : LirRegisterType,
+    MachineRegisterBitmap : UBYTE[(IR_MACHINE_REG_MAX + 7) / 8],
 END
 
 STRUCT LirLabelBody
@@ -151,10 +152,6 @@ EXTERN FN LirCreateRegister () : ^LirRegister
 
 EXTERN FN LirGetRegister (
     IN oldvariable : ^IrVariable,
-) : ^LirRegister
-
-EXTERN FN LirCreatePreallocatedRegister (
-    IN machreg : UBYTE,
 ) : ^LirRegister
 
 EXTERN FN LirSelect (
