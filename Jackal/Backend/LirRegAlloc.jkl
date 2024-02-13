@@ -308,40 +308,47 @@ FN LirLivenessForFunction (
         i := 0
 
         WHILE liveinst AND count DO
-            IF liveinst^.Source1 AND
-                liveinst^.Source1^.Type == LIR_PREALLOCATED_REG THEN
+            IF liveinst^.Defines != reg THEN
+                // If this register isn't being defined by this instruction,
+                // then we need to exclude any machine register used or defined
+                // by this instruction from being allocated to this virtual
+                // register.
 
-                LirSetMachineRegisterBitmap (
-                    reg, // reg
-                    liveinst^.Source1^.MachineRegister, // bit
-                )
-            END
+                IF liveinst^.Source1 AND
+                    liveinst^.Source1^.Type == LIR_PREALLOCATED_REG THEN
 
-            IF liveinst^.Source2 AND
-                liveinst^.Source2^.Type == LIR_PREALLOCATED_REG THEN
+                    LirSetMachineRegisterBitmap (
+                        reg, // reg
+                        liveinst^.Source1^.MachineRegister, // bit
+                    )
+                END
 
-                LirSetMachineRegisterBitmap (
-                    reg, // reg
-                    liveinst^.Source2^.MachineRegister, // bit
-                )
-            END
+                IF liveinst^.Source2 AND
+                    liveinst^.Source2^.Type == LIR_PREALLOCATED_REG THEN
 
-            IF liveinst^.Source3 AND
-                liveinst^.Source3^.Type == LIR_PREALLOCATED_REG THEN
+                    LirSetMachineRegisterBitmap (
+                        reg, // reg
+                        liveinst^.Source2^.MachineRegister, // bit
+                    )
+                END
 
-                LirSetMachineRegisterBitmap (
-                    reg, // reg
-                    liveinst^.Source3^.MachineRegister, // bit
-                )
-            END
+                IF liveinst^.Source3 AND
+                    liveinst^.Source3^.Type == LIR_PREALLOCATED_REG THEN
 
-            IF liveinst^.Defines AND
-                liveinst^.Defines^.Type == LIR_PREALLOCATED_REG THEN
+                    LirSetMachineRegisterBitmap (
+                        reg, // reg
+                        liveinst^.Source3^.MachineRegister, // bit
+                    )
+                END
 
-                LirSetMachineRegisterBitmap (
-                    reg, // reg
-                    liveinst^.Defines^.MachineRegister, // bit
-                )
+                IF liveinst^.Defines AND
+                    liveinst^.Defines^.Type == LIR_PREALLOCATED_REG THEN
+
+                    LirSetMachineRegisterBitmap (
+                        reg, // reg
+                        liveinst^.Defines^.MachineRegister, // bit
+                    )
+                END
             END
 
             IF liveinst^.Type == LIR_CALL THEN
