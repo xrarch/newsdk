@@ -9,20 +9,22 @@ FN TlIsPowerOfTwo (
 ) : UWORD
 
     // Check if the constant is a power of two. If it is, return which Nth power
-    // of two it is.
+    // of two it is. If it's not, return -1.
 
     IF constant == 0 THEN
         RETURN -1
     END
 
+    IF constant & (constant - 1) THEN
+        RETURN -1
+    END
+
+    // Must be a power of two, figure out which one it is.
+
     bitpos := 0
 
     WHILE TRUE DO
         IF constant & 1 THEN
-            IF constant != 1 THEN
-                RETURN -1
-            END
-
             RETURN bitpos
         END
 
