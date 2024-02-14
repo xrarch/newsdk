@@ -263,8 +263,6 @@ FN XrAsmEmitCompoundInitializer (
     END
 
     IF i < size THEN
-        TlPrintNumber ( size - i )
-        TlPrintString ( "\n" )
         XrAsmInsertString ( "    .bytes " )
         XrAsmInsertNumber ( size - i )
         XrAsmInsertString ( ", 0\n" )
