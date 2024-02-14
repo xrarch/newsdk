@@ -159,8 +159,14 @@ FN PrsParseArrayInitializer (
             offset = index * elementsize
         END
 
-        IF hasbound AND index >= bound THEN
-            LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
+        IF index >= bound THEN
+            IF hasbound THEN
+                LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
+
+            ELSE
+                bound = index + 1
+                type^.Body.Array.Bound = bound
+            END
         END
 
         // Parse the initializer for this element.
@@ -425,6 +431,7 @@ FN PrsParseInitializer (
 
         IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
             type^.Size = 0
+            type^.Body.Array.Bound = 0
         END
     
     ELSEIF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN

@@ -328,12 +328,11 @@ FN IrGenerateStore (
 
     definedby := destvar^.DefinedBy
 
-    IF definedby THEN
-        IF definedby^.Type == IR_STACK_ADDR OR
-            definedby^.Type == IR_ADDR THEN
+    IF definedby AND
+        (definedby^.Type == IR_STACK_ADDR OR
+        definedby^.Type == IR_ADDR) THEN
 
-            symbol = definedby^.Body.Addr.Symbol
-        END
+        symbol = definedby^.Body.Addr.Symbol
     END
 
     IrInsertInstructionTail ( inst )
@@ -2230,6 +2229,7 @@ IrExpressionGenerationTable : IrExpressionGenerationF[AST_MAX] = {
     [AST_OPERATOR] = &IrGenerateOperatorExpression,
     [AST_CONSTANT] = &IrGenerateConstant,
     [AST_STRING] = &IrGenerateString,
+    [AST_INITIALIZER] = &IrGenerateInitializer,
 }
 
 FN IrGenerateExpression (
