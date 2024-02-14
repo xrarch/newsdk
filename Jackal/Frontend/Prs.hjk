@@ -1,0 +1,26 @@
+EXTERN FN PrsParseInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN contentsarray : ^PrsGrowableArray,
+    IN backpatcharray : ^PrsGrowableArray,
+    IN contentsoffset : UWORD,
+) : ^PrsAstNode
+
+EXTERN FN PrsExpression (
+    IN minprecedence : UWORD,
+) : ^PrsAstNode
+
+EXTERN FN PrsCheckConstant (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN value : UWORD,
+)
+
+EXTERN FN PrsIsCompileTime (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+EXTERN FN PrsCreateAstNode (
+    IN type : PrsAstType,
+    IN token : ^LexToken,
+) : ^PrsAstNode

@@ -184,8 +184,9 @@ FN XrAsmEmitCompoundInitializer (
 
     // Emit a compound data type initializer.
 
-    bytearray := node^.Body.Initializer.ByteArray
-    bparray := node^.Body.Initializer.BpArray
+    contentsarray := &node^.Body.Initializer.ContentsArray
+    backpatcharray := &node^.Body.Initializer.BackpatchArray
+    bparray := CAST backpatcharray^.Array TO ^^PrsAstNode
     size := node^.Body.Initializer.Size
 
     i := 0
@@ -194,7 +195,7 @@ FN XrAsmEmitCompoundInitializer (
     consecutivebyte := 0
 
     WHILE i < size DO
-        IF bparray[i] THEN
+        IF i < backpatcharray^.LengthInUnits AND bparray[i] THEN
             IF consecutivebytes THEN
                 XrAsmInsertString ( "    .bytes " )
                 XrAsmInsertNumber ( consecutivebytes )
@@ -212,8 +213,8 @@ FN XrAsmEmitCompoundInitializer (
 
             i += JklTargetInfo^.PointerSize
 
-        ELSE
-            byte := bytearray[i]
+        ELSEIF i < contentsarray^.LengthInUnits THEN
+            byte := contentsarray^.Array[i]
 
             IF consecutivebytes AND byte != consecutivebyte THEN
                 XrAsmInsertString ( "    .bytes " )
@@ -229,6 +230,27 @@ FN XrAsmEmitCompoundInitializer (
             consecutivebytes += 1
 
             i += 1
+
+        ELSEIF i >= contentsarray^.LengthInUnits AND
+            i >= backpatcharray^.LengthInUnits THEN
+
+            BREAK
+        
+        ELSE
+            IF consecutivebytes AND consecutivebyte != 0 THEN
+                XrAsmInsertString ( "    .bytes " )
+                XrAsmInsertNumber ( consecutivebytes )
+                XrAsmInsertString ( ", " )
+                XrAsmInsertNumber ( consecutivebyte )
+                XrAsmInsertString ( "\n" )
+
+                consecutivebytes = 0
+            END
+
+            consecutivebyte = 0
+            consecutivebytes += 1
+
+            i += 1
         END
     END
 
@@ -238,6 +260,14 @@ FN XrAsmEmitCompoundInitializer (
         XrAsmInsertString ( ", " )
         XrAsmInsertNumber ( consecutivebyte )
         XrAsmInsertString ( "\n" )
+    END
+
+    IF i < size THEN
+        TlPrintNumber ( size - i )
+        TlPrintString ( "\n" )
+        XrAsmInsertString ( "    .bytes " )
+        XrAsmInsertNumber ( size - i )
+        XrAsmInsertString ( ", 0\n" )
     END
 END
 

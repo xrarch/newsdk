@@ -1320,8 +1320,9 @@ FN CtGenerateCompoundInitializer (
 
     // Generate a compound data type initializer.
 
-    bytearray := node^.Body.Initializer.ByteArray
-    bparray := node^.Body.Initializer.BpArray
+    contentsarray := &node^.Body.Initializer.ContentsArray
+    backpatcharray := &node^.Body.Initializer.BackpatchArray
+    bparray := CAST backpatcharray^.Array TO ^^PrsAstNode
 
     i := 0
 
@@ -1332,7 +1333,7 @@ FN CtGenerateCompoundInitializer (
         // Note that the parser rounds up the byte array and bp array to the
         // next multiple of 8.
 
-        IF bparray[i] THEN
+        IF i < backpatcharray^.LengthInUnits AND bparray[i] THEN
             CtInsertString ( "    " )
 
             CtGenerateInitializer (
@@ -1340,7 +1341,8 @@ FN CtGenerateCompoundInitializer (
                 PRIM_TYPE_POINTER, // primtype
                 0, // count
             )
-        ELSE
+
+        ELSEIF i < contentsarray^.LengthInUnits THEN
             CtInsertString ( "    0x" )
 
             j := 8
@@ -1348,7 +1350,7 @@ FN CtGenerateCompoundInitializer (
             WHILE j DO
                 j -= 1
 
-                byte : UBYTE = bytearray[i + j]
+                byte : UBYTE = contentsarray^.Array[i + j]
 
                 lonibble := byte & 0xF
                 hinibble := byte >> 4
@@ -1365,6 +1367,9 @@ FN CtGenerateCompoundInitializer (
                     CtInsertByte ( 'A' + lonibble - 10 )
                 END
             END
+
+        ELSE
+            CtInsertString ( "    0x0000000000000000" )
         END
 
         CtInsertString ( ",\n" )

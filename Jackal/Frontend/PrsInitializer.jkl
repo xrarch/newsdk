@@ -1,0 +1,463 @@
+//
+// Implements parsing for array and struct initializers.
+//
+
+#INCLUDE "<inc>/Parser.hjk"
+#INCLUDE "Prs.hjk"
+
+FN PrsInitializeGrowableArray (
+    IN array : ^PrsGrowableArray,
+    IN maxlength : UWORD,
+)
+
+    // Initialize a growable array. These are used for parsing initializers.
+
+    array^.Array = NULLPTR
+    array^.LengthInUnits = 0
+    array^.MaxLength = maxlength
+END
+
+FN PrsIndexGrowableArray (
+    IN array : ^PrsGrowableArray,
+    IN index : UWORD,
+    IN length : UWORD,
+    IN unitlog : UWORD,
+) : ^VOID
+
+    lengthunits := array^.LengthInUnits
+
+    IF index + length <= lengthunits THEN
+        RETURN &array^.Array[index << unitlog]
+    END
+
+    // Grow the array.
+
+    IF NOT lengthunits THEN
+        lengthunits = 1
+    END
+
+    WHILE index + length > lengthunits DO
+        lengthunits *= 2
+    END
+
+    IF array^.MaxLength AND lengthunits > array^.MaxLength THEN
+        lengthunits = array^.MaxLength
+    END
+
+    lengthunits += 7
+    lengthunits &= ~7
+
+    newbuffer : ^UBYTE
+
+    status := TlAlloc (
+        lengthunits << unitlog, // bytes
+        OUT newbuffer, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to grow array", 0, 0, 0 )
+    END
+
+    // Copy the contents of the old array into the new.
+
+    IF array^.LengthInUnits THEN
+        TlCopyMemory (
+            newbuffer, // dest
+            array^.Array, // src
+            array^.LengthInUnits << unitlog, // sz
+        )
+
+        TlFree ( array^.Array )
+    END
+
+    // Zero the rest.
+
+    TlFillMemoryWithByte (
+        &newbuffer[array^.LengthInUnits << unitlog], // ptr
+        (lengthunits - array^.LengthInUnits) << unitlog, // sz
+        0, // byte
+    )
+
+    array^.Array = newbuffer
+    array^.LengthInUnits = lengthunits
+
+    RETURN &array^.Array[index << unitlog]
+END
+
+FN PrsParseArrayInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN contentsarray : ^PrsGrowableArray,
+    IN backpatcharray : ^PrsGrowableArray,
+    IN contentsoffset : UWORD,
+)
+
+    // Parse the array initializer into the byte array.
+    //
+    // An array initializer's fields are of one of the following forms:
+    //
+    // INITIALIZER,
+    // [INDEX] = INITIALIZER,
+
+    basetype := type^.Body.Array.Base
+
+    // First strip away any type names.
+
+    WHILE basetype^.Subtype == TYPE_NAMED DO
+        basetype = basetype^.Body.Named.Symbol^.SemanticType
+    END
+
+    elementsize := type^.Body.Array.ElementSize
+    bound := type^.Body.Array.Bound
+    hasbound := type^.Body.Array.HasBound
+    index := 0
+    offset := 0
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            // Set new index.
+
+            expr := PrsExpression ( 0 )
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_RBRACKET, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+            END
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_ASSIGN, // type
+                TOKEN_EQUALS, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+            END
+
+            IF expr^.Type != AST_CONSTANT THEN
+                LexTokenError ( &expr^.Token,
+                    "Expected a constant value", 0, 0, 0 )
+            END
+
+            index = expr^.Body.Constant.Value
+
+            offset = index * elementsize
+        END
+
+        IF hasbound AND index >= bound THEN
+            LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
+        END
+
+        // Parse the initializer for this element.
+
+        PrsParseInitializer (
+            &token, // errtoken
+            basetype, // type
+            contentsarray, // contentsarray
+            backpatcharray, // backpatcharray
+            contentsoffset + offset, // contentsoffset
+        )
+
+        IF offset + basetype^.Size > type^.Size THEN
+            type^.Size = offset + basetype^.Size
+        END
+
+        index += 1
+        offset += elementsize
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+        END
+    END
+END
+
+FN PrsParseStructInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN contentsarray : ^PrsGrowableArray,
+    IN backpatcharray : ^PrsGrowableArray,
+    IN contentsoffset : UWORD,
+)
+
+    // Parse the struct initializer into the byte array.
+    //
+    // A struct initializer's fields are of the following form:
+    //
+    // [FIELD_NAME] = INITIALIZER,
+
+    fieldscope := type^.Body.Compound.FieldScope
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a left bracket", 0, 0, 0 )
+        END
+
+        LexEnterOverlayScope ( fieldscope )
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &token, "Non-existent field name", 0, 0, 0 )
+        END
+
+        fieldsymbol := CAST token.Payload TO ^LexSymbol
+
+        LexExitOverlayScope ()
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RBRACKET, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+        END
+
+        offset := fieldsymbol^.Value
+
+        striptype := fieldsymbol^.SemanticType
+
+        // First strip away any type names.
+
+        WHILE striptype^.Subtype == TYPE_NAMED DO
+            striptype = striptype^.Body.Named.Symbol^.SemanticType
+        END
+
+        PrsParseInitializer (
+            &token, // errtoken
+            striptype, // type
+            contentsarray, // contentsarray
+            backpatcharray, // backpatcharray
+            contentsoffset + offset, // contentsoffset
+        )
+
+        IF offset + striptype^.Size > type^.Size THEN
+            type^.Size = offset + striptype^.Size
+        END
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+        END
+    END
+END
+
+FN PrsParseInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN contentsarray : ^PrsGrowableArray,
+    IN backpatcharray : ^PrsGrowableArray,
+    IN contentsoffset : UWORD,
+) : ^PrsAstNode
+
+    // Parse an initializer. This is either of the form { ... } or it's an
+    // expression, depending on the type of value we're initializing.
+
+    bracetoken : LexToken
+
+    IF type^.Subtype != TYPE_ARRAY AND type^.Subtype != TYPE_COMPOUND THEN
+        // Gotta be an expression initializer. Make sure there's not a brace.
+
+        IF LexMatchToken (
+            &bracetoken, // token
+            TOKEN_LBRACE, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &bracetoken,
+                "Illegal initializer, expected expression", 0, 0, 0 )
+        END
+
+        expr := PrsExpression ( 0 )
+
+        IF expr^.Type == AST_CONSTANT THEN
+            // Check that the constant fits in the type.
+
+            PrsCheckConstant (
+                &expr^.Token, // errtoken
+                type, // type
+                expr^.Body.Constant.Value, // value
+            )
+        END
+
+        IF NOT contentsarray THEN
+            RETURN expr
+        END
+
+        IF NOT PrsIsCompileTime ( expr ) THEN
+            LexTokenError ( &expr^.Token,
+                "Expected a compile time value", 0, 0, 0 )
+        END
+
+        IF expr^.Type == AST_CONSTANT THEN
+            // Punch the constant into the byte array.
+
+            byteptr := CAST PrsIndexGrowableArray (
+                contentsarray, // array
+                contentsoffset, // index
+                type^.Size, // length
+                0, // unitlog
+            ) TO ^UBYTE
+
+            TlPunchValue (
+                byteptr, // ptr
+                expr^.Body.Constant.Value, // value
+                type^.Size, // bytes
+            )
+
+        ELSE
+            IF type^.Size < JklTargetInfo^.PointerSize THEN
+                LexTokenError ( &expr^.Token,
+                    "This field is smaller than a pointer", 0, 0, 0 )
+            END
+
+            // Add to the backpatch array.
+
+            bpptr := CAST PrsIndexGrowableArray (
+                backpatcharray, // array
+                contentsoffset, // index
+                1, // length
+                TL_MACHINE_WORD_LOG, // unitlog
+            ) TO ^^PrsAstNode
+
+            bpptr^ = expr
+        END
+
+        RETURN NULLPTR
+    END
+
+    // Gotta be a fancy array or struct initializer.
+
+    IF NOT LexMatchToken (
+        &bracetoken, // token
+        TOKEN_LBRACE, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &bracetoken, "Expected initializer", 0, 0, 0 )
+    END
+
+    node : ^PrsAstNode = NULLPTR
+
+    IF NOT contentsarray THEN
+        node = PrsCreateAstNode (
+            AST_INITIALIZER, // type
+            errtoken, // token
+        )
+
+        contentsarray = &node^.Body.Initializer.ContentsArray
+        backpatcharray = &node^.Body.Initializer.BackpatchArray
+
+        PrsInitializeGrowableArray (
+            contentsarray, // array
+            type^.Size, // maxlength
+        )
+
+        PrsInitializeGrowableArray (
+            backpatcharray, // array
+            type^.Size, // maxlength
+        )
+
+        contentsoffset = 0
+
+        IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+            type^.Size = 0
+        END
+    
+    ELSEIF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+        LexTokenError ( &bracetoken,
+            "Can't initialize a boundless array", 0, 0, 0 )
+    END
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        PrsParseArrayInitializer (
+            errtoken, // errtoken
+            type, // type
+            contentsarray, // contentsarray
+            backpatcharray, // backpatcharray
+            contentsoffset, // contentsoffset
+        )
+
+    ELSE
+        PrsParseStructInitializer (
+            errtoken, // errtoken
+            type, // type
+            contentsarray, // contentsarray
+            backpatcharray, // backpatcharray
+            contentsoffset, // contentsoffset
+        )
+    END
+
+    IF node THEN
+        IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+            type^.Body.Array.HasBound = TRUE
+        END
+
+        node^.Body.Initializer.Size = type^.Size
+    END
+
+    RETURN node
+END

@@ -82,9 +82,16 @@ STRUCT PrsAstIf
     ElseBlock : ^PrsBlock,
 END
 
+STRUCT PrsGrowableArray
+    Array : ^UBYTE,
+    LengthInUnits : UWORD,
+    MaxLength : UWORD,
+END
+
 STRUCT PrsAstInitializer
-    ByteArray : ^UBYTE,
-    BpArray : ^^PrsAstNode,
+    ContentsArray : PrsGrowableArray,
+    BackpatchArray : PrsGrowableArray,
+
     Size : UWORD,
 END
 
