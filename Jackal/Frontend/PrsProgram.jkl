@@ -1542,19 +1542,6 @@ FN PrsFoundSymbol (
     symbol^.Flags = flags
 
     symbol^.SemanticType = newtype
-
-    // We should see if there's a pending section override from the lexer, and
-    // do it now if so.
-
-    IF LexNextSymbolSection THEN
-        // There was a single-symbol section override via SECTION directive.
-
-        symbol^.Section = LexNextSymbolSection
-        LexNextSymbolSection = NULLPTR
-
-    ELSE
-        symbol^.Section = LexCurrentSection
-    END
 END
 
 FN PrsVariableDeclaration (
@@ -1580,6 +1567,19 @@ FN PrsVariableDeclaration (
     // initial value AST node is interpreted in the next phase of the compiler.
 
     symbol := CAST token^.Payload TO ^LexSymbol
+
+    // We should see if there's a pending section override from the lexer, and
+    // do it now if so.
+
+    IF LexNextSymbolSection THEN
+        // There was a single-symbol section override via SECTION directive.
+
+        symbol^.Section = LexNextSymbolSection
+        LexNextSymbolSection = NULLPTR
+
+    ELSE
+        symbol^.Section = LexCurrentSection
+    END
 
     // Now we have to check if the next token is an equals sign. If so, the type
     // is inferred. Otherwise, we have to put the token back and parse the type.
@@ -3703,6 +3703,19 @@ FN PrsParseFnSignature (
     END
 
     symbol := CAST nametoken.Payload TO ^LexSymbol
+
+    // We should see if there's a pending section override from the lexer, and
+    // do it now if so.
+
+    IF LexNextSymbolSection THEN
+        // There was a single-symbol section override via SECTION directive.
+
+        symbol^.Section = LexNextSymbolSection
+        LexNextSymbolSection = NULLPTR
+
+    ELSE
+        symbol^.Section = LexCurrentSection
+    END
 
     IF fnptr THEN
         PrsCreateNamedType (
