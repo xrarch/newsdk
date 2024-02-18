@@ -1,0 +1,467 @@
+//
+// Implements printing and formatting routines for the Jackal RTL.
+//
+
+#INCLUDE "<inc>/Rtl.hjk"
+
+FNPTR RtlpFormatF (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+#DEFINE RTL_PRINT_ARG_NEG  1
+#DEFINE RTL_PRINT_ARG_ZERO 2
+#DEFINE RTL_PRINT_ARG      4
+
+#MACRO RtlpPad ( char, callback, context, count ) [
+    i := count
+
+    WHILE i DO
+        callback ( char, context )
+
+        i -= 1
+    END
+]
+
+FN (RtlpFormatF) RtlpFormatS (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+    len : UWORD
+
+    IF flag & RTL_PRINT_ARG THEN
+        len = RtlMeasureString ( value )
+
+        IF NOT (flag & RTL_PRINT_ARG_NEG) AND arg > len THEN
+            // Align to the right.
+
+            RtlpPad ( ' ', callback, context, arg - len )
+        END
+    END
+
+    WHILE (CAST value TO ^UBYTE)^ DO
+        callback ( (CAST value TO ^UBYTE)^, context )
+
+        value += 1
+    END
+
+    IF flag & RTL_PRINT_ARG_NEG AND arg > len THEN
+        // Align to the left.
+
+        RtlpPad ( ' ', callback, context, arg - len )
+    END
+END
+
+FN RtlpFormatInteger (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN number : UWORD,
+    IN signed : UWORD,
+    IN base : UBYTE,
+)
+
+    log10 := 0
+    divisor := 1
+    signedbias := 0
+
+    padchar := ' '
+
+    IF flag & RTL_PRINT_ARG_ZERO THEN
+        padchar = '0'
+    END
+
+    IF signed AND number & 0x80000000 THEN
+        number = -number
+
+        signedbias = 1
+    END
+
+    IF number == 0 THEN
+        log10 = 1
+
+    ELSE
+        n := number
+
+        WHILE n >= base DO
+            divisor *= base
+            n /= base
+            log10 += 1
+        END
+
+        log10 += 1
+    END
+
+    IF flag & RTL_PRINT_ARG THEN
+        IF NOT (flag & RTL_PRINT_ARG_NEG) AND arg > log10 + signedbias THEN
+            // Align to the right.
+
+            RtlpPad ( padchar, callback, context, arg - (log10 + signedbias) )
+        END
+    END
+
+    IF signedbias THEN
+        callback ( '-', context )
+    END
+
+    WHILE log10 DO
+        digit := (number / divisor) % base
+
+        IF digit > 9 THEN
+            digit = digit - 10 + 'A'
+
+        ELSE
+            digit += '0'
+        END
+
+        callback ( digit, context )
+
+        log10 -= 1
+        divisor /= base
+    END
+
+    IF flag & RTL_PRINT_ARG_NEG AND arg > log10 + signedbias THEN
+        // Align to the left.
+
+        RtlpPad ( ' ', callback, context, arg - (log10 + signedbias) )
+    END
+END
+
+FN (RtlpFormatF) RtlpFormatD (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+    RtlpFormatInteger (
+        callback, // callback
+        context, // context
+        flag, // flag
+        arg, // arg
+        CAST value TO UWORD, // number
+        TRUE, // signed
+        10, // base
+    )
+END
+
+FN (RtlpFormatF) RtlpFormatU (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+    RtlpFormatInteger (
+        callback, // callback
+        context, // context
+        flag, // flag
+        arg, // arg
+        CAST value TO UWORD, // number
+        FALSE, // signed
+        10, // base
+    )
+END
+
+FN (RtlpFormatF) RtlpFormatX (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+    RtlpFormatInteger (
+        callback, // callback
+        context, // context
+        flag, // flag
+        arg, // arg
+        CAST value TO UWORD, // number
+        FALSE, // signed
+        16, // base
+    )
+END
+
+FN (RtlpFormatF) RtlpFormatP (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+    IF flag == 0 THEN
+        arg = 8
+    END
+
+    RtlpFormatInteger (
+        callback, // callback
+        context, // context
+        RTL_PRINT_ARG_ZERO | RTL_PRINT_ARG, // flag
+        arg, // arg
+        CAST value TO UWORD, // number
+        FALSE, // signed
+        16, // base
+    )
+END
+
+FN (RtlpFormatF) RtlpFormatC (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN flag : UWORD,
+    IN arg : UWORD,
+    IN value : ^VOID,
+)
+
+    IF flag & RTL_PRINT_ARG THEN
+        IF NOT (flag & RTL_PRINT_ARG_NEG) AND arg > 1 THEN
+            // Align to the right.
+
+            RtlpPad ( ' ', callback, context, arg - 1 )
+        END
+    END
+
+    callback ( CAST value TO UBYTE, context )
+
+    IF flag & RTL_PRINT_ARG_NEG AND arg > 1 THEN
+        // Align to the left.
+
+        RtlpPad ( ' ', callback, context, arg - 1 )
+    END
+END
+
+#SECTION "text"
+RtlpFormatters : RtlpFormatF['z' - 'a' + 1] = {
+    ['s' - 'a'] = &RtlpFormatS,
+    ['d' - 'a'] = &RtlpFormatD,
+    ['u' - 'a'] = &RtlpFormatU,
+    ['x' - 'a'] = &RtlpFormatX,
+    ['p' - 'a'] = &RtlpFormatP,
+    ['c' - 'a'] = &RtlpFormatC,
+}
+
+FN RtlPrintByCallbackByVarTable (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+    // This is the one that actually does stuff!
+
+    i := 0
+
+    WHILE fmt^ DO
+        byte := fmt^
+
+        IF byte != '%' THEN
+            callback ( byte, context )
+
+        ELSE
+            fmt += 1
+
+            byte = fmt^
+
+            IF NOT byte THEN
+                callback ( '?', context )
+
+                LEAVE
+            END
+
+            IF byte == '%' THEN
+                callback ( '%', context )
+
+                fmt += 1
+
+                CONTINUE
+            END
+
+            arg := 0
+            flag := 0
+
+            IF byte == '-' THEN
+                flag |= RTL_PRINT_ARG_NEG
+
+                fmt += 1
+                byte = fmt^
+            END
+
+            IF byte == '0' THEN
+                flag |= RTL_PRINT_ARG_ZERO
+
+                fmt += 1
+                byte = fmt^
+            END
+
+            WHILE byte >= '0' AND byte <= '9' DO
+                flag |= RTL_PRINT_ARG
+
+                arg *= 10
+                arg += byte - '0'
+
+                fmt += 1
+                byte = fmt^
+            END
+
+            IF byte >= 'a' AND
+                byte <= 'z' AND
+                i < argc AND
+                RtlpFormatters[byte - 'a'] THEN
+
+                RtlpFormatters[byte - 'a'] (
+                    callback, // callback
+                    context, // context
+                    flag, // flag
+                    arg, // arg
+                    argv[i], // value
+                )
+
+                i += 1
+
+            ELSE
+                callback ( '?', context )
+            END
+        END
+
+        fmt += 1
+    END
+END
+
+FN RtlPrintByCallback (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+    RtlPrintByCallbackByVarTable (
+        callback, // callback
+        context, // context
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+END
+
+FN RtlPrintByVarTable (
+    IN handle : ^VOID,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+    RtlPrintByCallbackByVarTable (
+        &RtljPrintCallback, // callback
+        handle, // context
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+END
+
+FN RtlPrintByHandle (
+    IN handle : ^VOID,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+    RtlPrintByVarTable (
+        handle, // handle
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+END
+
+FN RtlPrint (
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+    RtlPrintByVarTable (
+        NULLPTR, // handle
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+END
+
+STRUCT RtlpFormatContext
+    BufferLeft : UWORD,
+    Buffer : ^UBYTE,
+END
+
+FN (RtlPrintCallbackF) RtlFormatCallback (
+    IN byte : UBYTE,
+    IN context : ^VOID,
+)
+
+    formatcontext := CAST context TO ^RtlpFormatContext
+
+    IF NOT formatcontext^.BufferLeft THEN
+        LEAVE
+    END
+
+    formatcontext^.Buffer^ = byte
+    formatcontext^.Buffer += 1
+    formatcontext^.BufferLeft -= 1
+END
+
+FN RtlFormatByVarTable (
+    IN dest : ^UBYTE,
+    IN bufsize : UWORD,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+    // Format into the provided buffer.
+
+    IF NOT bufsize THEN
+        LEAVE
+    END
+
+    context : RtlpFormatContext
+
+    context.Buffer = dest
+    context.BufferLeft = bufsize - 1
+
+    RtlPrintByCallbackByVarTable (
+        &RtlFormatCallback, // callback
+        &context, // context
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+
+    // Insert null terminator.
+
+    context.Buffer^ = 0
+END
+
+FN RtlFormat (
+    IN dest : ^UBYTE,
+    IN bufsize : UWORD,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+    RtlFormatByVarTable (
+        dest, // dest
+        bufsize, // bufsize
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+END

@@ -1,0 +1,103 @@
+FNPTR RtlPrintCallbackF (
+    IN byte : UBYTE,
+    IN context : ^VOID,
+)
+
+EXTERN FN RtlFillMemoryWithUlong (
+    IN dest : ^VOID,
+    IN size : UWORD,
+    IN ulong : ULONG,
+)
+
+EXTERN FN RtlCopyBytes (
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN size : UWORD,
+)
+
+EXTERN FN RtlPrintByCallbackByVarTable (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+EXTERN FN RtlPrintByCallback (
+    IN callback : RtlPrintCallbackF,
+    IN context : ^VOID,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN RtlPrintByVarTable (
+    IN handle : ^VOID,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+EXTERN FN RtlPrintByHandle (
+    IN handle : ^VOID,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN RtlPrint (
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN RtlFormatByVarTable (
+    IN dest : ^UBYTE,
+    IN bufsize : UWORD,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+EXTERN FN RtlFormat (
+    IN dest : ^UBYTE,
+    IN bufsize : UWORD,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN RtlStringToNumber (
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+    OUT num : UWORD,
+) : UWORD
+
+EXTERN FN RtlCompareString (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+) : UWORD
+
+EXTERN FN RtlCompareStringWithMax (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : UWORD,
+) : UWORD
+
+EXTERN FN RtlMeasureString (
+    IN str : ^UBYTE,
+) : UWORD
+
+EXTERN FN RtlCopyString (
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+)
+
+EXTERN FN RtlTokenize (
+    IN buffer : ^UBYTE,
+    IN tokenbuffer : ^UBYTE,
+    IN bufsize : UWORD,
+    IN delimiter : UBYTE,
+) : ^UBYTE
+
+EXTERN FN (RtlPrintCallbackF) RtljPrintCallback (
+    IN byte : UBYTE,
+    IN context : ^VOID,
+)

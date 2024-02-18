@@ -1,0 +1,199 @@
+//
+// Implements string and memory manipulation routines for the Jackal RTL.
+//
+
+#INCLUDE "<inc>/Rtl.hjk"
+
+FN RtlCompareString (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+) : UWORD
+
+    i := 0
+
+    WHILE TRUE DO
+        IF NOT str1[i] AND NOT str2[i] THEN
+            RETURN 0
+        END
+
+        IF str1[i] != str2[i] THEN
+            RETURN str1[i] - str2[i]
+        END
+
+        i += 1
+    END
+END
+
+FN RtlCompareStringWithMax (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : UWORD,
+) : UWORD
+
+    i := 0
+
+    WHILE i < count DO
+        IF NOT str1[i] AND NOT str2[i] THEN
+            RETURN 0
+        END
+
+        IF str1[i] != str2[i] THEN
+            RETURN str1[i] - str2[i]
+        END
+
+        i += 1
+    END
+
+    RETURN 0
+END
+
+FN RtlMeasureString (
+    IN str : ^UBYTE,
+) : UWORD
+
+    cnt := 0
+
+    WHILE str[cnt] DO
+        cnt += 1
+    END
+
+    RETURN cnt
+END
+
+FN RtlCopyString (
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+)
+
+    IF NOT bufsize THEN
+        LEAVE
+    END
+
+    WHILE bufsize - 1 DO
+        dest^ = src^
+
+        dest += 1
+        src += 1
+        bufsize -= 1
+
+        IF src^ == 0 THEN
+            BREAK
+        END
+    END
+
+    dest^ = 0
+END
+
+FN RtlStringToNumber (
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+    OUT num : UWORD,
+) : UWORD
+
+    IF bufsize < 1 THEN
+        RETURN FALSE
+    END
+
+    IF src^ == 0 THEN
+        RETURN FALSE
+    END
+
+    base := 10
+
+    IF src^ == '0' THEN
+        // Octal or hex.
+
+        base = 8
+        bufsize -= 1
+        src += 1
+
+        IF bufsize < 1 THEN
+            num = 0
+
+            RETURN TRUE
+        END
+
+        IF src^ == 'x' THEN
+            // Hex.
+
+            base = 16
+
+            bufsize -= 1
+            src += 1
+
+            IF bufsize < 1 OR src^ == 0 THEN
+                RETURN FALSE
+            END
+        END
+    END
+
+    num = 0
+
+    WHILE bufsize DO
+        byte := src^
+
+        IF byte == 0 THEN
+            RETURN TRUE
+        END
+
+        num *= base
+
+        IF base == 16 THEN
+            IF byte >= '0' AND byte <= '9' THEN
+                num += src^ - '0'
+            
+            ELSEIF byte >= 'A' AND byte <= 'F' THEN
+                num += src^ - 'A'
+
+            ELSE
+                RETURN FALSE
+            END
+
+        ELSEIF byte >= '0' AND byte <= '9' THEN
+            num += src^ - '0'
+        
+        ELSE
+            RETURN FALSE
+        END
+
+        src += 1
+        bufsize -= 1
+    END
+
+    RETURN TRUE
+END
+
+FN RtlTokenize (
+    IN buffer : ^UBYTE,
+    IN tokenbuffer : ^UBYTE,
+    IN bufsize : UWORD,
+    IN delimiter : UBYTE,
+) : ^UBYTE
+
+    // Return the next token from the buffer.
+
+    WHILE buffer^ == delimiter DO
+        buffer += 1
+    END
+
+    IF NOT buffer^ THEN
+        RETURN NULLPTR
+    END
+
+    WHILE bufsize - 1 DO
+        IF buffer^ == delimiter OR NOT buffer^ THEN
+            BREAK
+        END
+
+        tokenbuffer^ = buffer^
+
+        tokenbuffer += 1
+        buffer += 1
+        bufsize -= 1
+    END
+
+    tokenbuffer^ = 0
+
+    RETURN buffer
+END
