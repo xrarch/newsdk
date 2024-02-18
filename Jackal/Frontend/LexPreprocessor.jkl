@@ -987,7 +987,18 @@ FN (LexDirectiveParseF) LexParseInclude ()
             &filepath, // destpath
         )
 
-        IF filepath.Buffer[filepath.Count - 1] != '/' THEN
+        IF NOT filepath.Count THEN
+            TlInsertDynamicBuffer (
+                &filepath, // array
+                '.', // byte
+            )
+
+            TlInsertDynamicBuffer (
+                &filepath, // array
+                '/', // byte
+            )
+
+        ELSEIF filepath.Buffer[filepath.Count - 1] != '/' THEN
             TlInsertDynamicBuffer (
                 &filepath, // array
                 '/', // byte
