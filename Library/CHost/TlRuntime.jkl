@@ -272,8 +272,6 @@ FN TlReadFile (
     // XXX make sure to check for errors on hosts where that is more
     // applicable.
 
-
-
     RETURN fread ( buffer, 1, bytes, handle )
 END
 

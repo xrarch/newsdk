@@ -38,7 +38,7 @@ export JC := $(REPO)/build/bsjkl target=CHost \
 export JCC := $(CC) -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c
 export CC := $(CC) -Ofast
 
-PROJECTS := Jackal
+PROJECTS := XrBuildTool Jackal
 
 ifndef PROJECT
 	PROJECT := $(PROJECTS)
@@ -73,3 +73,4 @@ ifneq ("$(wildcard $(REPO)/build/bsjkl)","")
 	cp $(REPO)/build/bsjkl $(REPO)/build/bsjkl.bak
 endif
 	$(JCC) Jackal/Precompiled/*.c.j -o $(REPO)/build/bsjkl
+	$(JCC) XrBuildTool/Precompiled/*.c.j -o $(REPO)/build/xrbt

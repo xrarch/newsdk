@@ -1,4 +1,4 @@
-COMPONENTS := Library \
+COMPONENTS := ../Library \
 			  Frontend \
 			  Backend
 
@@ -18,6 +18,6 @@ OUTPUTFILE := jkl
 
 KEEPPRECOMPILED := 1
 
-INCDIR := ./include/
+INCDIR := ./include/:$(REPO)/Library/include/
 
 include $(REPO)/Project.mk

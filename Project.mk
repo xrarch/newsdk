@@ -21,6 +21,7 @@ define COMPONENT_TEMPLATE
 $(1)/%.c.j: $(1)/%.jkl $$(INCLUDEFILES) $$(wildcard $(1)/*.hjk)
 	$$(JC) $$< $$@ incdir=$$(INCDIR) libdir=$$(LIBDIR)
 ifeq ($$(KEEPPRECOMPILED), 1)
+	mkdir -p ./Precompiled
 	cp $$@ ./Precompiled/$$(notdir $$@)
 endif
 
@@ -30,6 +31,7 @@ $(1)/%.o: $(1)/%.c.j
 $(1)/%.o: $(1)/%.c
 	$$(CC) $$< -c -o $$@
 ifeq ($$(KEEPPRECOMPILED), 1)
+	mkdir -p ./Precompiled
 	cp $$< ./Precompiled/$$(notdir $$<).j
 endif
 

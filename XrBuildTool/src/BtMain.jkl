@@ -1,0 +1,10 @@
+//
+// Main routine for the build tool.
+//
+
+FN BtBuild (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+END
