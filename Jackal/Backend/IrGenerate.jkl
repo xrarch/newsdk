@@ -31,6 +31,19 @@ PUBLIC IrCommutativity : UBYTE[IR_MAX] = {
     [IR_MULTIPLY] = TRUE,
 }
 
+IrTokenToInstructionType : IrInstructionType[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_PLUSEQUALS] = IR_ADD,
+    [TOKEN_MINUSEQUALS] = IR_SUBTRACT,
+    [TOKEN_MULEQUALS] = IR_MULTIPLY,
+    [TOKEN_DIVEQUALS] = IR_DIVIDE,
+    [TOKEN_MODEQUALS] = IR_MODULO,
+    [TOKEN_ANDEQUALS] = IR_BIT_AND,
+    [TOKEN_OREQUALS] = IR_BIT_OR,
+    [TOKEN_XOREQUALS] = IR_BIT_XOR,
+    [TOKEN_LSHEQUALS] = IR_LEFT_SHIFT,
+    [TOKEN_RSHEQUALS] = IR_RIGHT_SHIFT,
+}
+
 FN IrAllocateStack (
     IN func : ^IrFunction,
     IN bytes : UWORD,
@@ -1889,10 +1902,11 @@ FN (IrExpressionGenerationF) IrGenerateEqualsAssign (
     RETURN NULLPTR
 END
 
-FN IrGenerateModificationAssign (
+FN (IrExpressionGenerationF) IrGenerateModificationAssign (
     IN node : ^PrsAstNode,
-    IN type : IrInstructionType,
-)
+    IN truelabel : ^IrInstruction,
+    IN falselabel : ^IrInstruction,
+) : ^IrVariable
 
     // Generic code for generating IR for a modification assignment.
 
@@ -1922,8 +1936,24 @@ FN IrGenerateModificationAssign (
 
     // Generate the modification instruction.
 
+    type := IrTokenToInstructionType[node^.Token.Subtype]
+
+    IF (type == IR_DIVIDE OR type == IR_RIGHT_SHIFT) AND
+        IrIsSignedType ( node^.Body.Assign.Left ) THEN
+
+        // Flip to signed variant. Note that the conditional above is crafted to
+        // only cause a function call if the type is one of those two options.
+
+        IF type == IR_DIVIDE THEN
+            type = IR_DIVIDE_SIGNED
+
+        ELSE
+            type = IR_RIGHT_SHIFT_SIGNED
+        END
+    END
+
     newvar := IrGenerateOperatorInst (
-        type, // type
+        IrTokenToInstructionType[node^.Token.Subtype], // type
         contentsvar, // src1
         valvar, // src2
     )
@@ -1934,166 +1964,6 @@ FN IrGenerateModificationAssign (
         newvar, // srcvar
         IrEvaluateTypeForAccess ( node^.Body.Assign.Left ), // type
     )
-END
-
-FN (IrExpressionGenerationF) IrGeneratePlusAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a plus-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_ADD, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateMinusAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a minus-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_SUBTRACT, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateMulAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a mul-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_MULTIPLY, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateDivAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a div-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_DIVIDE, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateModAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a mod-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_MODULO, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateAndAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for an and-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_BIT_AND, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateOrAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for an or-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_BIT_OR, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateXorAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for an xor-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_BIT_XOR, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateLshAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a left-shift-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_LEFT_SHIFT, // type
-    )
-
-    RETURN NULLPTR
-END
-
-FN (IrExpressionGenerationF) IrGenerateRshAssign (
-    IN node : ^PrsAstNode,
-    IN truelabel : ^IrInstruction,
-    IN falselabel : ^IrInstruction,
-) : ^IrVariable
-
-    // Generate IR for a right-shift-equals assignment.
-
-    IrGenerateModificationAssign (
-        node, // node
-        IR_RIGHT_SHIFT, // type
-    )
-
-    RETURN NULLPTR
 END
 
 IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
@@ -2127,16 +1997,16 @@ IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
     // Use the same table to squirrel away the assignment operators.
 
     [TOKEN_EQUALS] = &IrGenerateEqualsAssign,
-    [TOKEN_PLUSEQUALS] = &IrGeneratePlusAssign,
-    [TOKEN_MINUSEQUALS] = &IrGenerateMinusAssign,
-    [TOKEN_MULEQUALS] = &IrGenerateMulAssign,
-    [TOKEN_DIVEQUALS] = &IrGenerateDivAssign,
-    [TOKEN_MODEQUALS] = &IrGenerateModAssign,
-    [TOKEN_ANDEQUALS] = &IrGenerateAndAssign,
-    [TOKEN_OREQUALS] = &IrGenerateOrAssign,
-    [TOKEN_XOREQUALS] = &IrGenerateXorAssign,
-    [TOKEN_LSHEQUALS] = &IrGenerateLshAssign,
-    [TOKEN_RSHEQUALS] = &IrGenerateRshAssign,
+    [TOKEN_PLUSEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_MINUSEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_MULEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_DIVEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_MODEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_ANDEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_OREQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_XOREQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_LSHEQUALS] = &IrGenerateModificationAssign,
+    [TOKEN_RSHEQUALS] = &IrGenerateModificationAssign,
 }
 
 FN (IrExpressionGenerationF) IrGenerateOperatorExpression (
