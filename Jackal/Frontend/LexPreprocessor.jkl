@@ -1099,7 +1099,12 @@ FN (LexDirectiveParseF) LexParseDefine ()
         &macro^.Name[0], // name
     ) TO ^LexMacro
 
-    IF oldmacro THEN
+    // Allow the macro to be defined over the top of an old macro, if the older
+    // one was in an outer scope.
+
+    IF oldmacro AND
+        oldmacro^.Entry.HashTable == &LexCurrentMacroScope^.HashTable THEN
+
         LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
     END
 
