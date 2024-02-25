@@ -1,0 +1,195 @@
+//
+// Stuff corresponding to "Frontend" code yoinked from Jackal compiler for this
+// build tool.
+//
+
+#INCLUDE "Bt.hjk"
+
+PUBLIC FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
+
+PUBLIC FeInputFileHandle : ^VOID
+
+BtBinaryName : ^UBYTE = NULLPTR
+
+FN BtUsage ()
+    TlPrintString ( "Usage: " )
+    TlPrintString ( BtBinaryName )
+    TlPrintString ( " [configname] target=[CHost/xr17032/fox32]\n" )
+
+    TlErrorExit ()
+END
+
+FeFileBlockHashTable : TlHashTable
+
+FN FeIsMacroArgument (
+    IN arg : ^UBYTE,
+) : ^UBYTE
+
+    i := 0
+
+    WHILE arg[i] DO
+        IF arg[i] == '=' THEN
+            RETURN &arg[i]
+        END
+
+        i += 1
+    END
+
+    RETURN NULLPTR
+END
+
+FN FeParseArguments (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Find the value of these arguments, if they exist:
+    //  target=
+    //
+    // Identify the source filename.
+
+    foundinput := FALSE
+    foundtarget := FALSE
+
+    i := 1
+
+    WHILE i < argc DO
+        IF TlCompareStringWithMax ( argv[i], "target=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeTargetString[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+            foundtarget = TRUE
+
+        ELSEIF FeIsMacroArgument ( argv[i] ) THEN
+            LexDefineMacroFromArgumentString ( argv[i] )
+
+        ELSEIF foundinput THEN
+            TlPrintString ( "Too many arguments specified!\n" )
+            BtUsage ()
+
+        ELSE
+            foundinput = TRUE
+
+            TlCopyString (
+                &FeInputFile[0], // dest
+                argv[i], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+        END
+
+        i += 1
+    END
+
+    IF NOT foundinput THEN
+        TlPrintString ( "Error: No config file specified.\n" )
+        BtUsage ()
+    END
+
+    IF NOT foundtarget THEN
+        TlPrintString ( "Error: No target specified.\n" )
+        BtUsage ()
+    END
+END
+
+FN FeCreateFileBlock (
+    IN includename : ^UBYTE,
+    OUT created : UBYTE,
+) : ^FeFileBlock
+
+    fileblock := CAST TlLookupOrAllocateEntryHashTable (
+        &FeFileBlockHashTable, // hashtable
+        SIZEOF FeFileBlock, // entrysize
+        includename, // key
+        OUT created, // created
+    ) TO ^FeFileBlock
+
+    IF created THEN
+        // Initialize the file block, since it didn't already exist.
+
+        TlCopyString (
+            &fileblock^.IncludeName[0], // dest
+            includename, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+
+        // Manually set the key on the hash table entry, because the one we
+        // passed in isn't permanent. If we left it like that, it'd try to use
+        // random memory as the key for comparison later, which is bad.
+
+        fileblock^.Entry.Key = &fileblock^.IncludeName[0]
+    END
+
+    RETURN fileblock
+END
+
+FN FeCopyPathFileBlock (
+    IN fileblock : ^FeFileBlock,
+    IN filepath : ^UBYTE,
+)
+
+    TlCopyString (
+        &fileblock^.FilePath[0], // dest
+        filepath, // src
+        FE_PATH_BUFFER_SIZE, // bufsize
+    )
+END
+
+FN FeInitialize (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Initialize the file block hash table.
+
+    TlInitializeHashTable ( &FeFileBlockHashTable )
+
+    // Initialize the preprocessor.
+
+    LexInitializePreprocessor ()
+
+    // Parse the arguments.
+
+    FeParseArguments ( argc, argv )
+
+    // Open the input file.
+
+    status := TlOpenSource (
+        &FeInputFile[0], // filename
+        OUT FeInputFileHandle, // handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open the config file.", 0, 0, 0 )
+    END
+
+    // Initialize the lexer.
+
+    LexInitialize ()
+
+    // Initialize the parser.
+
+    // PrsInitialize ()
+END
+
+FN BtBuild (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Build the entire program.
+
+    BtBinaryName = &argv[0][0]
+
+    // Initialize the front-end components.
+
+    FeInitialize (
+        argc, // argc
+        argv, // argv
+    )
+
+    
+END

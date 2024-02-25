@@ -1,0 +1,2343 @@
+//
+// Inline preprocessor for the lexer. Invoked when the tokenizer stumbles on a
+// '#' character inbetween tokens.
+//
+// STOLEN from Jackal compiler and hacked to bits for the build tool.
+//
+
+#INCLUDE "Bt.hjk"
+
+PUBLIC LexRootMacroScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexCurrentMacroScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexMacroDepth : ULONG = 0
+
+LexDirectiveHashTable : TlHashTable
+LexOperatorHashTable : TlHashTable
+LexIfStack : TlDynamicBuffer
+
+LexMacroZone : TlZone
+
+LexDirectiveToken : LexToken
+
+// More than this deep in macros and we assume you messed up.
+
+#DEFINE LEX_MACRO_DEPTH_MAX 64
+
+FNPTR LexDirectiveParseF ()
+
+FNPTR LexOperatorParseF (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+STRUCT LexDirective
+    Entry : TlHashTableEntry, // MUST be at the start
+    ParseRoutine : LexDirectiveParseF,
+END
+
+STRUCT LexOperator
+    Entry : TlHashTableEntry, // MUST be at the start
+    ParseRoutine : LexOperatorParseF,
+END
+
+LexDirectiveBumpArray : LexDirective[16]
+LexDirectiveBumpIndex := 0
+
+FN LexInsertDirective (
+    IN name : ^UBYTE,
+    IN parsefunc : LexDirectiveParseF,
+)
+
+    // Insert the directive into the directive hash table.
+    // This is done every time the compiler is invoked so it should be VERY
+    // fast. To this end we completely avoid dynamic allocation with this silly
+    // directive structure bump allocator. The hash table package does no
+    // dynamic allocation, nor does it do any string copies (though it does
+    // iterate the string to calculate the hash), so this should all be quite
+    // speedy.
+
+    directive := &LexDirectiveBumpArray[LexDirectiveBumpIndex]
+    LexDirectiveBumpIndex += 1
+
+    directive^.ParseRoutine = parsefunc
+
+    TlInsertHashTable (
+        &LexDirectiveHashTable, // hashtable
+        &directive^.Entry, // entry
+        name, // key
+    )
+END
+
+LexOperatorBumpArray : LexOperator[32]
+LexOperatorBumpIndex := 0
+
+FN LexInsertOperator (
+    IN name : ^UBYTE,
+    IN parsefunc : LexOperatorParseF,
+)
+
+    operator := &LexOperatorBumpArray[LexOperatorBumpIndex]
+    LexOperatorBumpIndex += 1
+
+    operator^.ParseRoutine = parsefunc
+
+    TlInsertHashTable (
+        &LexOperatorHashTable, // hashtable
+        &operator^.Entry, // entry
+        name, // key
+    )
+END
+
+FN (TlHashTableEnumeratorF) LexMacroDelete (
+    IN entry : ^TlHashTableEntry,
+)
+
+    macro := CAST entry TO ^LexMacro
+
+    TlUninitializeDynamicBuffer ( &macro^.Contents )
+
+    TlFreeToZone (
+        &LexMacroZone, // zone
+        entry, // block
+    )
+END
+
+FN LexCreateMacroTable (
+    IN outerscope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    RETURN TlCreateSymbolTable (
+        outerscope, // outerscope
+        &LexMacroDelete, // deletefunc
+    )
+END
+
+FN LexNextNonWhitespaceCharacter (
+    IN token : ^LexToken,
+) : UBYTE
+
+    // Capture the stream position information in the stub token, for error
+    // reporting.
+
+    stream := LexCurrentStream
+
+    IF stream THEN
+        token^.FileBlock = stream^.FileBlock
+        token^.LineNumber = stream^.LineNumber
+        token^.LinePosition = stream^.LinePosition
+    END
+
+    byte := LexStreamNextCharacter ()
+
+    // Skip any leading whitespace.
+
+    WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
+        stream = LexCurrentStream
+
+        IF stream THEN
+            token^.FileBlock = stream^.FileBlock
+            token^.LineNumber = stream^.LineNumber
+            token^.LinePosition = stream^.LinePosition
+        END
+
+        byte = LexStreamNextCharacter ()
+    END
+
+    IF byte == 0 THEN
+        LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
+    END
+
+    RETURN byte
+END
+
+FN LexCollectDirectiveToken (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+)
+
+    // Collect a simple token, terminated by whitespace.
+
+    byte := LexNextNonWhitespaceCharacter ( token )
+    len := 0
+
+    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+        IF LexCharTreatment[byte] != CHAR_NORMAL AND
+            LexCharTreatment[byte] != CHAR_SPLIT AND
+            LexCharTreatment[byte] != CHAR_COALESCE THEN
+
+            LexTokenError ( token, "Illegal character in token", 0, 0, 0 )
+        END
+
+        IF len == LEX_DIRECTIVE_MAX - 1 THEN
+            LexTokenError ( token, "Token length too great", 0, 0, 0 )
+        END
+
+        buffer^ = byte
+        buffer += 1
+        len += 1
+
+        byte = LexStreamNextCharacter ()
+    END
+
+    buffer^ = 0
+END
+
+FN LexGetPreprocessorString (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Collect a simple string. All we do is read the contents of the string,
+    // as-is, directly into the dynamic buffer. The only thing we care about is
+    // to ignore double-quotes that are directly preceded by a backslash, but we
+    // still pass the backslash up. The first double-quote not preceded by a
+    // backslash terminates the string.
+
+    backslash := FALSE
+
+    WHILE TRUE DO
+        byte := LexStreamNextCharacter ()
+
+        IF byte == 0 THEN
+            LexTokenError ( token,
+                "Unexpected EOF while parsing string", 0, 0, 0 )
+        END
+
+        IF byte == '\"' AND NOT backslash THEN
+            LEAVE
+        END
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            byte, // byte
+        )
+
+        IF backslash THEN
+            backslash = FALSE
+
+            CONTINUE
+        END
+
+        backslash = byte == '\\'
+    END
+END
+
+FN LexCollectString (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Collect a string token for internal preprocessor usage, such as for the
+    // INCLUDE directive.
+
+    byte := LexNextNonWhitespaceCharacter ( token )
+
+    IF byte != '\"' THEN
+        LexTokenError ( token, "Expected a string", 0, 0, 0 )
+    END
+
+    LexGetPreprocessorString (
+        token, // token
+        buffer, // buffer
+    )
+
+    // Insert null terminator, since that wasn't done already.
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN LexGetComplexString (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Collect a complex string into the provided dynamic buffer, which will be
+    // terminated by a close bracket. Our job is complicated by the following
+    // factors:
+    //
+    //  o We have to make sure that we count the number of open brackets that we
+    //    encounter, otherwise we will mistakenly terminate this complex string
+    //    if we come across, for instance, an array index.
+    //
+    //  o We have to track whether we're in a string, or a character literal,
+    //    so that a close bracket character within the string doesn't cause us
+    //    to mistakenly exit.
+    //
+    //  o We have to track whether we're in a comment, for the same reason.
+    //
+    // This function also works to collect macro call arguments, due to similar
+    // requirements.
+
+    bracketdepth := 1
+    comment := FALSE
+    backslash := FALSE
+    instring := FALSE
+    inliteral := FALSE
+    sawforwardslash := FALSE
+
+    WHILE TRUE DO
+        byte := LexStreamNextCharacter ()
+
+        IF byte == 0 THEN
+            LexTokenError ( token, "Unexpected EOF while parsing string", 0, 0, 0 )
+        END
+
+        IF comment THEN
+            IF byte == '\n' THEN
+                comment = FALSE
+            ELSE
+                byte = 0
+
+                CONTINUE
+            END
+
+        ELSEIF byte != '/' THEN
+            sawforwardslash = FALSE
+        END
+
+        IF backslash THEN
+            backslash = FALSE
+
+        ELSEIF byte == '\\' THEN
+            backslash = TRUE
+
+        ELSEIF instring THEN
+            instring = NOT (byte == '\"')
+
+        ELSEIF inliteral THEN
+            inliteral = NOT (byte == 0x27) // single-quote
+
+        ELSEIF byte == '/' THEN
+            IF sawforwardslash THEN
+                sawforwardslash = FALSE
+                comment = TRUE
+            ELSE
+                sawforwardslash = TRUE
+            END
+
+        ELSEIF byte == '\"' THEN
+            instring = TRUE
+
+        ELSEIF byte == 0x27 THEN // single-quote
+            inliteral = TRUE
+
+        ELSEIF byte == '[' THEN
+            bracketdepth += 1
+
+        ELSEIF byte == ']' THEN
+            bracketdepth -= 1
+
+            IF bracketdepth == 0 THEN
+                // Break out now so that we don't include the close bracket
+                // in the string buffer.
+
+                BREAK
+            END
+        END
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            byte, // byte
+        )
+
+        byte = 0
+    END
+END
+
+#DEFINE ARG_NAME_NONZERO 1
+#DEFINE ARG_NAME_DONE 2
+
+FN LexCollectMacroArgumentContents (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+) : UBYTE
+
+    // Very much alike collecting a complex string, but for macro argument
+    // contents. These vary just enough for them to be too annoying/slow to put
+    // in a common function. Returns flags indicating properties of the returned
+    // contents.
+
+    // XXX This entire business is so freaking janky.
+
+    bracketdepth := 1
+    comment := FALSE
+    backslash := FALSE
+    instring := FALSE
+    inliteral := FALSE
+    sawforwardslash := FALSE
+
+    byte : UBYTE
+
+    WHILE TRUE DO
+        byte = LexNextNonWhitespaceCharacter ( token )
+
+        IF byte == ')' THEN
+            RETURN ARG_NAME_DONE
+        END
+
+        IF byte == ',' THEN
+            CONTINUE
+        END
+
+        BREAK
+    END
+
+    WHILE TRUE DO
+        IF comment AND byte == '\n' THEN
+            comment = FALSE
+
+        ELSEIF byte != '/' THEN
+            sawforwardslash = FALSE
+        END
+
+        IF comment THEN
+            // nothing
+
+        ELSEIF backslash THEN
+            backslash = FALSE
+
+        ELSEIF byte == '\\' THEN
+            backslash = TRUE
+
+        ELSEIF instring THEN
+            instring = NOT (byte == '\"')
+
+        ELSEIF inliteral THEN
+            inliteral = NOT (byte == 0x27) // single-quote
+
+        ELSEIF byte == '/' THEN
+            IF sawforwardslash THEN
+                // Remove the first forward slash from the buffer by
+                // decrementing the count by one.
+
+                buffer^.Count -= 1
+
+                sawforwardslash = FALSE
+                comment = TRUE
+            ELSE
+                sawforwardslash = TRUE
+            END
+
+        ELSEIF byte == '\"' THEN
+            instring = TRUE
+
+        ELSEIF byte == 0x27 THEN // single-quote
+            inliteral = TRUE
+
+        ELSEIF byte == '(' THEN
+            bracketdepth += 1
+
+        ELSEIF byte == ')' THEN
+            bracketdepth -= 1
+
+            IF bracketdepth == 0 THEN
+                // Break out now so that we don't include the close bracket
+                // in the string buffer.
+
+                RETURN ARG_NAME_DONE | ARG_NAME_NONZERO
+            END
+
+        ELSEIF bracketdepth == 1 AND byte == ',' THEN
+            BREAK
+
+        ELSEIF byte == '\n' THEN
+            byte = ' '
+        END
+
+        IF NOT comment AND NOT backslash THEN
+            TlInsertDynamicBuffer (
+                buffer, // array
+                byte, // byte
+            )
+        END
+
+        byte = LexStreamNextCharacter ()
+
+        IF byte == 0 THEN
+            LexTokenError ( token,
+                "Unexpected EOF while parsing string", 0, 0, 0 )
+        END
+    END
+
+    RETURN ARG_NAME_NONZERO
+END
+
+FN LexCollectValue (
+    IN token : ^LexToken,
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Collect a preprocessor value. This will be one of the following forms in
+    // the source text; all of these cases will be presented to the caller as a
+    // string in a dynamic buffer:
+    //
+    //  MACRO               The name of a macro. It will be expanded in-place.
+    //
+    //  "STRING"            The contents of a literal string.
+    //
+    //  [CMPLX STRING]      The contents of a complex string, which may be any
+    //                      un-escaped section of Jackal code, including
+    //                      preprocessor expressions, etc.
+    //
+    //  (OP val1 val2 ...)  An expression yielding some kind of value.
+    //
+    //  1234                Decimal, hex, or octal number. Returned as the
+    //  0x1234              literal string.
+    //  01234
+
+    byte := LexNextNonWhitespaceCharacter ( token )
+
+    IF byte == '\"' THEN
+        LexGetPreprocessorString (
+            token, // token
+            buffer, // buffer
+        )
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            0, // byte
+        )
+
+        LEAVE
+
+    ELSEIF byte == '[' THEN
+        LexGetComplexString (
+            token, // token
+            buffer, // buffer
+        )
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            0, // byte
+        )
+
+        LEAVE
+
+    ELSEIF byte == '(' THEN
+        // This is an expression. Collect the operator, look it up in the hash
+        // table, and call the correct parse function for the operator. It will
+        // consume the close parenthesis.
+
+        opbuffer : UBYTE[LEX_DIRECTIVE_MAX]
+        optoken : LexToken
+
+        LexCollectDirectiveToken (
+            &optoken, // token
+            &opbuffer[0], // buffer
+        )
+
+        operator := CAST TlLookupHashTable (
+            &LexOperatorHashTable, // hashtable
+            &opbuffer[0], // key
+        ) TO ^LexOperator
+
+        IF NOT operator THEN
+            LexTokenError ( &optoken, "Unknown operator", 0, 0, 0 )
+        END
+
+        operator^.ParseRoutine (
+            buffer, // buffer
+            ignore, // ignore
+        )
+
+        LEAVE
+    END
+
+    // Collect this as a simple token, terminated by whitespace.
+
+    simpletokbuf : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &simpletokbuf )
+
+    TlInsertDynamicBuffer (
+        &simpletokbuf, // array
+        byte, // byte
+    )
+
+    byte = LexStreamNextCharacter ()
+
+    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+        IF byte == 0 THEN
+            LexTokenError ( token, "Unexpected EOF", 0, 0, 0 )
+        END
+
+        TlInsertDynamicBuffer (
+            &simpletokbuf, // array
+            byte, // byte
+        )
+
+        byte = LexStreamNextCharacter ()
+    END
+
+    TlInsertDynamicBuffer (
+        &simpletokbuf, // array
+        0, // byte
+    )
+
+    IF simpletokbuf.Buffer[0] >= '0' AND simpletokbuf.Buffer[0] <= '9' THEN
+        // This is a number. Blast it directly into the caller's buffer and
+        // return.
+
+        TlCopyIntoDynamicBuffer (
+            buffer, // array
+            &simpletokbuf.Buffer[0], // srcbuf
+            simpletokbuf.Count, // length
+        )
+
+        TlUninitializeDynamicBuffer ( &simpletokbuf )
+
+        LEAVE
+    END
+
+    IF ignore THEN
+        // Being compiled out. Just insert a null terminator and return. If
+        // we try to look up the macro, we may erroneously spit out an
+        // error diagnostic.
+
+        TlUninitializeDynamicBuffer ( &simpletokbuf )
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            0, // byte
+        )
+
+        LEAVE
+    END
+
+    // This either matches with a macro name, or doesn't. Only non-function
+    // macros are permitted. If it matches, we expand in place by adding it to
+    // the top of the stream stack and looping.
+
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &simpletokbuf.Buffer[0], // name
+    ) TO ^LexMacro
+
+    TlUninitializeDynamicBuffer ( &simpletokbuf )
+
+    IF NOT macro THEN
+        LexTokenError ( token, "Not a defined macro name", 0, 0, 0 )
+    END
+
+    IF macro^.IsFunctionMacro THEN
+        LexTokenError ( token, "Function macros not permitted here", 0, 0, 0 )
+    END
+
+    // Directly copy the contents of the macro into the caller's buffer.
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // array
+        &macro^.Contents.Buffer[0], // srcbuf
+        macro^.Contents.Count, // length
+    )
+END
+
+FN LexCollectValueNumeric (
+    IN token : ^LexToken,
+    IN ignore : UWORD,
+) : UWORD
+
+    buffer : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &buffer )
+
+    LexCollectValue (
+        token, // token
+        &buffer, // buffer
+        ignore, // ignore
+    )
+
+    IF ignore THEN
+        // Being compiled out.
+
+        TlUninitializeDynamicBuffer ( &buffer )
+
+        RETURN 0
+    END
+
+    IF buffer.Buffer[0] < '0' OR buffer.Buffer[0] > '9' THEN
+        LexTokenError ( token, "Expected numeric value", 0, 0, 0 )
+    END
+
+    num := LexCrunchNumber (
+        token, // token
+        &buffer.Buffer[0], // buffer
+    )
+
+    TlUninitializeDynamicBuffer ( &buffer )
+
+    RETURN num
+END
+
+FN LexConsumeCloseParenthesis ()
+
+    token : LexToken
+
+    byte := LexNextNonWhitespaceCharacter ( &token )
+
+    IF byte != ')' THEN
+        LexTokenError ( &token, "Expected close parenthesis", 0, 0, 0 )
+    END
+END
+
+FN LexDefineMacroFromArgumentString (
+    IN arg : ^UBYTE,
+)
+
+    // Allocate a macro structure.
+
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+    TlInitializeDynamicBuffer ( &macro^.Contents )
+
+    equalsptr := FeIsMacroArgument ( arg )
+    j := 0
+
+    // Copy the name into the macro structure.
+
+    WHILE arg < equalsptr DO
+        macro^.Name[j] = arg^
+
+        j += 1
+        arg += 1
+    END
+
+    macro^.Name[j] = 0
+
+    // Skip the equals character and copy the contents into the macro structure.
+
+    j = 0
+    equalsptr += 1
+
+    WHILE equalsptr^ DO
+        TlInsertDynamicBuffer (
+            &macro^.Contents, // array
+            equalsptr^, // byte
+        )
+
+        equalsptr += 1
+    END
+
+    TlInsertDynamicBuffer (
+        &macro^.Contents, // array
+        0
+    )
+
+    macro^.IsFunctionMacro = FALSE
+    macro^.IsArgumentMacro = FALSE
+
+    // Insert the macro into the macro scope.
+
+    TlInsertSymbolTable (
+        LexRootMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
+END
+
+FN LexExpandMacro (
+    IN macro : ^LexMacro,
+    IN token : ^LexToken,
+)
+
+    LexMacroDepth += 1
+
+    IF LexMacroDepth >= LEX_MACRO_DEPTH_MAX THEN
+        LexTokenError ( token, "Too many macros deep!", 0, 0, 0 )
+    END
+
+    // Create new scopes.
+
+    oldmacroscope := LexCurrentMacroScope
+
+    IF macro^.IsArgumentMacro THEN
+        // The macro resumes the scope of the "caller".
+
+        LexCurrentMacroScope = macro^.ResumeMacroScope
+    ELSE
+        // The macro gets all new scopes, unless we're already in the global
+        // scope, then it stays there.
+
+        LexCurrentMacroScope = LexCreateMacroTable ( LexRootMacroScope )
+    END
+
+    // Create the stream.
+
+    stream := LexAllocateStream ()
+
+    // Initialize the stream.
+
+    LexInitializeStream (
+        stream, // stream
+        macro, // macro
+    )
+
+    // TODO better error messages within macros
+
+    stream^.FileBlock = LexCurrentStream^.FileBlock
+    stream^.LineNumber = 1000000
+    stream^.Buffer = macro^.Contents.Buffer
+    stream^.ValidLength = macro^.Contents.Count - 1
+    stream^.LastMacroScope = oldmacroscope
+
+    IF macro^.IsFunctionMacro THEN
+        // This is a function macro.
+        // Consume each argument and make it into an argument macro.
+
+        trashtoken : LexToken
+
+        byte := LexNextNonWhitespaceCharacter ( &trashtoken )
+
+        IF byte != '(' THEN
+            LexTokenError ( &trashtoken,
+                "Expected open parenthesis after function macro name", 0, 0, 0 )
+        END
+
+        arg := macro^.ArgListHead
+
+        WHILE arg DO
+            argmacro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+            argmacro^.ResumeMacroScope = oldmacroscope
+
+            TlCopyString (
+                &argmacro^.Name[0], // dest
+                &arg^.Name[0], // src
+                LEX_DIRECTIVE_MAX, // bufsize
+            )
+
+            argmacro^.IsFunctionMacro = FALSE
+            argmacro^.IsArgumentMacro = TRUE
+
+            // Collect the macro contents from the argument list.
+
+            TlInitializeDynamicBuffer ( &argmacro^.Contents )
+
+            foundclose : UBYTE = 0
+
+            WHILE NOT (foundclose & ARG_NAME_NONZERO) DO
+                IF foundclose & ARG_NAME_DONE THEN
+                    LexTokenError ( &trashtoken,
+                        "Too few arguments to function macro", 0, 0, 0 )
+                END
+
+                foundclose = LexCollectMacroArgumentContents (
+                    &argmacro^.NameToken, // token
+                    &argmacro^.Contents, // buffer
+                )
+            END
+
+            TlInsertDynamicBuffer (
+                &argmacro^.Contents, // array
+                0, // byte
+            )
+
+            // Insert the macro into the new macro scope.
+
+            TlInsertSymbolTable (
+                LexCurrentMacroScope, // symboltable
+                &argmacro^.Entry, // entry
+                &argmacro^.Name[0], // name
+            )
+
+            arg = arg^.Next
+
+            IF foundclose & ARG_NAME_DONE THEN
+                IF arg THEN
+                    LexTokenError ( &trashtoken,
+                        "Too few arguments to function macro", 0, 0, 0 )
+                END
+
+            ELSEIF NOT arg THEN
+                // Blindly eat up until the next close parenthesis.
+
+                WHILE TRUE DO
+                    byte = LexNextNonWhitespaceCharacter ( &trashtoken )
+
+                    IF byte == ')' THEN
+                        BREAK
+                    END
+                END
+            END
+        END
+    END
+
+    // Push the stream on the stream stack, causing the contents of the macro to
+    // be consumed.
+
+    LexPushStream ( stream )
+END
+
+//
+// Parsing for all of the preprocessor directives follows...
+//
+
+FN (LexDirectiveParseF) LexParseInclude ()
+
+    // Parse the include statement. We just have to consume a string. Then we
+    // construct a path depending on what the prefix is, if any. Prefixes are:
+    //
+    //  [none]  Relative to the directory containing the source file.
+    //  <inc>/  Relative to the set of incdirs provided in the command line.
+    //  <ll>/   Relative to the set of libdirs provided, which may include
+    //          a system library as appended by the host specific part of the
+    //          compiler.
+    //
+    // If we find the exact include path string in the hash set of included
+    // files, then ignore this directive.
+    //
+    // After we find and open a matching file, we bump-allocate a file block,
+    // and initialize it to contain the path string, and the opened handle.
+    // Then we create a file stream based on this file block, and add it to the
+    // top of the stream stack, causing the rest of the lexer to consume tokens
+    // from that file until it reaches EOF.
+
+    str : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &str )
+
+    LexCollectString (
+        &token, // token
+        &str, // buffer
+    )
+
+    IF LexFalseCount THEN
+        // We're in a region that is being conditionally compiled out, so
+        // do nothing except collect that string from the source stream.
+
+        TlUninitializeDynamicBuffer ( &str )
+
+        LEAVE
+    END
+
+    // Get a file block for the include string. We'll fill it in with the file
+    // path in a second.
+
+    created : UBYTE
+
+    fileblock := FeCreateFileBlock (
+        str.Buffer, // includename
+        OUT created, // created
+    )
+
+    IF NOT created THEN
+        // This file has already been included!
+
+        TlUninitializeDynamicBuffer ( &str )
+
+        LEAVE
+    END
+
+    // Figure out the file path.
+
+    filepath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &filepath )
+
+    handle : ^VOID
+
+    // Relative to the current source file's parent directory.
+
+    TlCopyParentPath (
+        &LexCurrentStream^.FileBlock^.FilePath[0], // srcpath
+        &filepath, // destpath
+    )
+
+    IF NOT filepath.Count THEN
+        TlInsertDynamicBuffer (
+            &filepath, // array
+            '.', // byte
+        )
+
+        TlInsertDynamicBuffer (
+            &filepath, // array
+            '/', // byte
+        )
+
+    ELSEIF filepath.Buffer[filepath.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            &filepath, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        &filepath, // array
+        str.Buffer, // srcbuf
+        str.Count, // length
+    )
+
+    TlInsertDynamicBuffer (
+        &filepath, // array
+        0, // byte
+    )
+
+    status := TlOpenSource (
+        filepath.Buffer, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        LexTokenError ( &token, "Failed to include the file.", 0, 0, 0 )
+    END
+
+    // Copy the file path into the fileblock.
+
+    FeCopyPathFileBlock (
+        fileblock, // fileblock
+        filepath.Buffer, // filepath
+    )
+
+    TlUninitializeDynamicBuffer ( &filepath )
+    TlUninitializeDynamicBuffer ( &str )
+
+    // Create a new file stream.
+
+    stream := LexCreateFileStream (
+        fileblock, // fileblock
+        handle, // handle
+    )
+
+    // Add it to the stream stack to cause further characters to be consumed
+    // from this file. It will be popped back off, resuming the previous file,
+    // when EOF is reached.
+
+    LexPushStream ( stream )
+END
+
+FN (LexDirectiveParseF) LexParseDefine ()
+
+    // This directive defines a simple macro (as opposed to a function macro).
+    // First we consume the name token, then we consume the contents.
+
+    IF LexFalseCount THEN
+        // Nevermind, we are being compiled out! Just eat the name and contents
+        // and return.
+
+        namebuffer : UBYTE[LEX_DIRECTIVE_MAX]
+        contentsbuffer : TlDynamicBuffer
+        trashtoken : LexToken
+
+        TlInitializeDynamicBuffer ( &contentsbuffer )
+
+        LexCollectDirectiveToken (
+            &trashtoken, // token
+            &namebuffer[0], // buffer
+        )
+
+        LexCollectValue (
+            &trashtoken, // token
+            &contentsbuffer, // buffer
+            TRUE, // ignore
+        )
+
+        TlUninitializeDynamicBuffer ( &contentsbuffer )
+
+        LEAVE
+    END
+
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+    TlInitializeDynamicBuffer ( &macro^.Contents )
+
+    LexCollectDirectiveToken (
+        &macro^.NameToken, // token
+        &macro^.Name[0], // buffer
+    )
+
+    oldmacro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Name[0], // name
+    ) TO ^LexMacro
+
+    // Allow the macro to be defined over the top of an old macro, if the older
+    // one was in an outer scope.
+
+    IF oldmacro AND
+        oldmacro^.Entry.HashTable == &LexCurrentMacroScope^.HashTable THEN
+
+        LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
+    END
+
+    macro^.IsFunctionMacro = FALSE
+    macro^.IsArgumentMacro = FALSE
+
+    LexCollectValue (
+        &macro^.NameToken, // token
+        &macro^.Contents, // buffer
+        FALSE, // ignore
+    )
+
+    TlInsertSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
+END
+
+FN (LexDirectiveParseF) LexParseUndefine ()
+
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+    token : LexToken
+
+    LexCollectDirectiveToken (
+        &token, // token
+        &buffer[0], // buffer
+    )
+
+    IF LexFalseCount THEN
+        // We're being compiled out, just return.
+
+        LEAVE
+    END
+
+    oldmacro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &buffer[0], // name
+    ) TO ^LexMacro
+
+    IF NOT oldmacro THEN
+        // Wasn't defined anyway.
+
+        LEAVE
+    END
+
+    // Remove the macro from the symbol table.
+
+    TlRemoveSymbolTable (
+        CAST oldmacro TO ^TlHashTableEntry, // entry
+    )
+
+    // Free the macro.
+
+    LexMacroDelete (
+        CAST oldmacro TO ^TlHashTableEntry, // entry
+    )
+END
+
+FN LexCollectMacroArgumentName (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+) : UBYTE
+
+    // Collect a token, terminated by comma, whitespace, or close parenthesis.
+    // Return whether or not it was terminated by a close parenthesis.
+
+    byte : UBYTE
+    len := 0
+
+    WHILE TRUE DO
+        byte = LexNextNonWhitespaceCharacter ( token )
+
+        IF byte == ')' THEN
+            RETURN ARG_NAME_DONE
+
+        ELSEIF byte == ',' THEN
+            CONTINUE
+        END
+
+        BREAK
+    END
+
+    WHILE TRUE DO
+        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+            buffer^ = 0
+
+            RETURN ARG_NAME_NONZERO
+        END
+
+        IF byte == ')' THEN
+            buffer^ = 0
+
+            RETURN ARG_NAME_NONZERO | ARG_NAME_DONE
+        END
+
+        IF byte == ',' THEN
+            buffer^ = 0
+
+            RETURN ARG_NAME_NONZERO
+        END
+
+        IF LexCharTreatment[byte] != CHAR_NORMAL THEN
+            LexTokenError ( token, "Illegal character in token", 0, 0, 0 )
+        END
+
+        IF len == LEX_DIRECTIVE_MAX - 1 THEN
+            LexTokenError ( token, "Token length too great", 0, 0, 0 )
+        END
+
+        buffer^ = byte
+        buffer += 1
+        len += 1
+
+        byte = LexStreamNextCharacter ()
+    END
+END
+
+FN LexCollectMacroArgumentList (
+    IN ignore : UBYTE,
+    OUT arglisthead : ^LexMacroArgument,
+    OUT length : ULONG,
+)
+
+    token : LexToken
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+    hashtable : TlHashTable
+    arglisttail : ^LexMacroArgument = NULLPTR
+
+    // Use a hash set to determine if the user illegally uses an argument name
+    // twice.
+
+    TlInitializeHashTable ( &hashtable )
+
+    arglisthead = NULLPTR
+    length = 0
+
+    WHILE TRUE DO
+        state := LexCollectMacroArgumentName (
+            &token, // token
+            &buffer[0], // buffer
+        )
+
+        IF state & ARG_NAME_NONZERO AND NOT ignore THEN
+            created : UBYTE
+
+            arg := CAST TlLookupOrAllocateEntryHashTable (
+                &hashtable, // hashtable
+                SIZEOF LexMacroArgument, // entrysize
+                &buffer[0], // key
+                OUT created, // created
+            ) TO ^LexMacroArgument
+
+            IF NOT created THEN
+                LexTokenError ( &token,
+                    "Macro argument name already used", 0, 0, 0 )
+            END
+
+            // Copy the name into the argument structure.
+
+            TlCopyString (
+                &arg^.Name[0], // dest
+                &buffer[0], // src
+                LEX_DIRECTIVE_MAX, // bufsize
+            )
+
+            // Increment the length of the argument list by one.
+
+            length += 1
+
+            // Add to the caller's list of arguments.
+
+            arg^.Next = NULLPTR
+
+            IF arglisttail THEN
+                arglisttail^.Next = arg
+            ELSE
+                arglisthead = arg
+            END
+
+            arglisttail = arg
+        END
+
+        IF state & ARG_NAME_DONE THEN
+            LEAVE
+        END
+    END
+END
+
+FN (LexDirectiveParseF) LexParseMacro ()
+
+    // This directive defines a function macro.
+    // First we consume the name token, then we consume the argument list, then
+    // consume the contents.
+
+    arglisthead : ^LexMacroArgument
+    trashtoken : LexToken
+    length : ULONG
+
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+    TlInitializeDynamicBuffer ( &macro^.Contents )
+
+    LexCollectDirectiveToken (
+        &macro^.NameToken, // token
+        &macro^.Name[0], // buffer
+    )
+
+    byte := LexNextNonWhitespaceCharacter ( &trashtoken )
+
+    IF byte != '(' THEN
+        LexTokenError ( &trashtoken, "Expected an open parenthesis", 0, 0, 0 )
+    END
+
+    IF LexFalseCount THEN
+        // This macro definition is compiled out, so just collect the argument
+        // list and contents and return. Allow the bump-allocated macro
+        // structure to leak, this routine gets unruly if we try to avoid that.
+
+        LexCollectMacroArgumentList (
+            TRUE, // ignore
+            OUT macro^.ArgListHead, // arglisthead
+            OUT length, // length
+        )
+
+        contentsbuffer : TlDynamicBuffer
+
+        TlInitializeDynamicBuffer ( &contentsbuffer )
+
+        LexCollectValue (
+            &trashtoken, // token
+            &contentsbuffer, // buffer
+            TRUE, // ignore
+        )
+
+        TlUninitializeDynamicBuffer ( &contentsbuffer )
+
+        LEAVE
+    END
+
+    LexCollectMacroArgumentList (
+        FALSE, // ignore
+        OUT macro^.ArgListHead, // arglisthead
+        OUT length, // length
+    )
+
+    IF length == 0 THEN
+        LexTokenError ( &macro^.NameToken,
+            "Must have at least 1 argument", 0, 0, 0 )
+    END
+
+    oldmacro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Name[0], // name
+    ) TO ^LexMacro
+
+    IF oldmacro THEN
+        LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
+    END
+
+    macro^.IsFunctionMacro = TRUE
+    macro^.IsArgumentMacro = FALSE
+
+    LexCollectValue (
+        &macro^.NameToken, // token
+        &macro^.Contents, // buffer
+        FALSE, // ignore
+    )
+
+    TlInsertSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
+END
+
+ENUM LexIfStatus : UBYTE
+    IF_TAKEN,
+    IF_NOT_YET_TAKEN,
+    IF_BEING_TAKEN,
+END
+
+FN (LexDirectiveParseF) LexParseIf ()
+
+    token : LexToken
+
+    truthy := LexCollectValueNumeric (
+        &token, // token
+        LexFalseCount != 0, // ignore
+    )
+
+    IF LexFalseCount THEN
+        // We are inside a region that is already being compiled out, so push a
+        // IF_TAKEN to indicate that this IF-END pair already had a taken
+        // condition, which isn't true, but will prevent any ELSEIFs and ELSEs
+        // from deciding to do anything.
+
+        TlInsertDynamicBuffer ( &LexIfStack, IF_TAKEN )
+
+        LexFalseCount += 1
+
+        LEAVE
+    END
+
+    IF truthy THEN
+        TlInsertDynamicBuffer ( &LexIfStack, IF_BEING_TAKEN )
+    ELSE
+        TlInsertDynamicBuffer ( &LexIfStack, IF_NOT_YET_TAKEN )
+
+        // Increment the false count to cause the subsequent regions of source
+        // text to be ignored.
+
+        LexFalseCount += 1
+    END
+END
+
+FN (LexDirectiveParseF) LexParseElse ()
+
+    IF NOT LexIfStack.Count THEN
+        LexStreamError ( "ELSE with no matching IF", 0, 0, 0 )
+    END
+
+    status := LexIfStack.Buffer[LexIfStack.Count - 1]
+
+    IF status == IF_TAKEN THEN
+        // A condition was already satisfied and the false count is biased.
+
+        LEAVE
+    END
+
+    IF status == IF_BEING_TAKEN THEN
+        // A true block was consumed and the following should be compiled out.
+
+        LexIfStack.Buffer[LexIfStack.Count - 1] = IF_TAKEN
+        LexFalseCount += 1
+
+        LEAVE
+    END
+
+    // No conditions were taken yet, which means our block should be consumed.
+
+    LexIfStack.Buffer[LexIfStack.Count - 1] = IF_BEING_TAKEN
+    LexFalseCount -= 1
+END
+
+FN (LexDirectiveParseF) LexParseElseif ()
+
+    IF NOT LexIfStack.Count THEN
+        LexStreamError ( "ELSEIF with no matching IF", 0, 0, 0 )
+    END
+
+    token : LexToken
+
+    status := LexIfStack.Buffer[LexIfStack.Count - 1]
+
+    IF status == IF_TAKEN THEN
+        // A condition was already satisfied and the false count is biased.
+
+        LexCollectValueNumeric (
+            &token, // token
+            TRUE, // ignore
+        )
+
+        LEAVE
+    END
+
+    IF status == IF_BEING_TAKEN THEN
+        // A true block was consumed and the following should be compiled out.
+
+        LexIfStack.Buffer[LexIfStack.Count - 1] = IF_TAKEN
+        LexFalseCount += 1
+
+        LexCollectValueNumeric (
+            &token, // token
+            TRUE, // ignore
+        )
+
+        LEAVE
+    END
+
+    truthy := LexCollectValueNumeric (
+        &token, // token
+        FALSE, // ignore
+    )
+
+    IF truthy THEN
+        // No conditions were taken yet, and our condition was truthy, so our
+        // block should be consumed.
+
+        LexIfStack.Buffer[LexIfStack.Count - 1] = IF_BEING_TAKEN
+        LexFalseCount -= 1
+    END
+END
+
+FN (LexDirectiveParseF) LexParseEnd ()
+
+    IF NOT LexIfStack.Count THEN
+        LexStreamError ( "END with no matching IF", 0, 0, 0 )
+    END
+
+    status := TlPopDynamicBuffer ( &LexIfStack )
+
+    IF status == IF_TAKEN OR status == IF_NOT_YET_TAKEN THEN
+        // Un-bias the false count.
+
+        LexFalseCount -= 1
+
+        LEAVE
+    END
+END
+
+FN (LexDirectiveParseF) LexParseError ()
+
+    buffer : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &buffer )
+
+    LexCollectValue (
+        &token, // token
+        &buffer, // buffer
+        LexFalseCount != 0, // ignore
+    )
+
+    IF LexFalseCount THEN
+        TlUninitializeDynamicBuffer ( &buffer )
+
+        LEAVE
+    END
+
+    LexTokenError ( &token, buffer.Buffer, 0, 0, 0 )
+END
+
+FN (LexDirectiveParseF) LexParsePrint ()
+
+    buffer : TlDynamicBuffer
+    token : LexToken
+
+    TlInitializeDynamicBuffer ( &buffer )
+
+    LexCollectValue (
+        &token, // token
+        &buffer, // buffer
+        LexFalseCount != 0, // ignore
+    )
+
+    IF LexFalseCount THEN
+        TlUninitializeDynamicBuffer ( &buffer )
+
+        LEAVE
+    END
+
+    TlPrintString ( buffer.Buffer )
+    TlPrintString ( "\n" )
+
+    TlUninitializeDynamicBuffer ( &buffer )
+END
+
+//
+// Parsing for all of the preprocessor operators follows...
+//
+
+FN (LexOperatorParseF) LexOperatorEquals (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 == num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorLteq (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 <= num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorGteq (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 >= num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorNeq (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 != num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorLt (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 < num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorGt (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and compare them. Return 0 if false, 1 if
+    // true.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 > num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorAdd (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 + num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorSub (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 - num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorMul (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 * num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorDiv (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 / num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorLsh (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 << num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorRsh (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 >> num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorStrcat (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Append two strings.
+
+    token : LexToken
+
+    // Consume the first value into the buffer.
+
+    LexCollectValue (
+        &token, // token
+        buffer, // buffer
+        ignore, // ignore
+    )
+
+    // Strip the null terminator.
+
+    TlPopDynamicBuffer ( buffer )
+
+    // Consume the second value into the buffer.
+
+    LexCollectValue (
+        &token, // token
+        buffer, // buffer
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+END
+
+FN (LexOperatorParseF) LexOperatorStrcmp (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Compare two strings. Return 1 if equal, otherwise 0.
+
+    token : LexToken
+    str1 : TlDynamicBuffer
+    str2 : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &str1 )
+    TlInitializeDynamicBuffer ( &str2 )
+
+    // Consume the first value into the buffer.
+
+    LexCollectValue (
+        &token, // token
+        &str1, // buffer
+        ignore, // ignore
+    )
+
+    // Consume the second value.
+
+    LexCollectValue (
+        &token, // token
+        &str2, // buffer
+        ignore, // ignore
+    )
+
+    TlUninitializeDynamicBuffer ( &str1 )
+    TlUninitializeDynamicBuffer ( &str2 )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        TlCompareString ( str1.Buffer, str2.Buffer ) == 0, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorNot (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Return the logical inverse of the value.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        NOT num1, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorOr (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 OR num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorAnd (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 AND num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorDefined (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Return whether the token is a defined macro.
+
+    token : LexToken
+    tokbuffer : UBYTE[LEX_DIRECTIVE_MAX]
+
+    LexCollectDirectiveToken (
+        &token, // token
+        &tokbuffer[0], // buffer
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &tokbuffer[0], // name
+    ) TO ^LexMacro
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        macro != NULLPTR, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitNot (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Return the bitwise inverse of the value.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        ~num1, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitOr (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 | num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitXor (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 $ num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN (LexOperatorParseF) LexOperatorBitAnd (
+    IN buffer : ^TlDynamicBuffer,
+    IN ignore : UBYTE,
+)
+
+    // Consume two numeric values and operate on them.
+
+    token : LexToken
+
+    num1 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    num2 := LexCollectValueNumeric (
+        &token, // token
+        ignore, // ignore
+    )
+
+    LexConsumeCloseParenthesis ()
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // array
+        num1 & num2, // number
+        10, // base
+    )
+
+    TlInsertDynamicBuffer (
+        buffer, // array
+        0, // byte
+    )
+END
+
+FN LexParseDirective ()
+
+    // The lexer found a preprocessor directive and called us to handle it.
+    // Until we return, we are in full control of the source stream, and can
+    // consume it, tokenize it, etc to our hearts content. Thanks to the
+    // layered nature of the lexer, we don't have to worry about maintaining
+    // line numbers and so on.
+
+    // Declare a token stub for error reporting purposes.
+
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+
+    LexCollectDirectiveToken (
+        &LexDirectiveToken, // token
+        &buffer[0], // buffer
+    )
+
+    directive := CAST TlLookupHashTable (
+        &LexDirectiveHashTable, // hashtable
+        &buffer[0], // key
+    ) TO ^LexDirective
+
+    IF NOT directive THEN
+        LexTokenError ( &LexDirectiveToken, "Unknown directive", 0, 0, 0 )
+    END
+
+    directive^.ParseRoutine ()
+END
+
+FN LexInitializePreprocessor ()
+
+    TlInitializeHashTable ( &LexDirectiveHashTable )
+    TlInitializeHashTable ( &LexOperatorHashTable )
+    TlInitializeDynamicBuffer ( &LexIfStack )
+
+    // Create the root macro scope.
+
+    LexRootMacroScope = LexCreateMacroTable ( NULLPTR )
+
+    LexCurrentMacroScope = LexRootMacroScope
+
+    // Initialize the macro zone.
+
+    TlInitializeZone (
+        &LexMacroZone, // zone
+        SIZEOF LexMacro, // blocksize
+    )
+
+    // Insert the directives and operators into their hash tables.
+
+    LexInsertDirective ( "INCLUDE", &LexParseInclude )
+    LexInsertDirective ( "DEFINE", &LexParseDefine )
+    LexInsertDirective ( "MACRO", &LexParseMacro )
+    LexInsertDirective ( "IF", &LexParseIf )
+    LexInsertDirective ( "ELSE", &LexParseElse )
+    LexInsertDirective ( "ELSEIF", &LexParseElseif )
+    LexInsertDirective ( "END", &LexParseEnd )
+    LexInsertDirective ( "UNDEFINE", &LexParseUndefine )
+    LexInsertDirective ( "ERROR", &LexParseError )
+    LexInsertDirective ( "PRINT", &LexParsePrint )
+
+    LexInsertOperator ( "==", &LexOperatorEquals )
+    LexInsertOperator ( "<=", &LexOperatorLteq )
+    LexInsertOperator ( ">=", &LexOperatorGteq )
+    LexInsertOperator ( "!=", &LexOperatorNeq )
+    LexInsertOperator ( "+", &LexOperatorAdd )
+    LexInsertOperator ( "-", &LexOperatorSub )
+    LexInsertOperator ( "*", &LexOperatorMul )
+    LexInsertOperator ( "/", &LexOperatorDiv )
+    LexInsertOperator ( "<<", &LexOperatorLsh )
+    LexInsertOperator ( ">>", &LexOperatorRsh )
+    LexInsertOperator ( "STRCAT", &LexOperatorStrcat )
+    LexInsertOperator ( "STRCMP", &LexOperatorStrcmp )
+    LexInsertOperator ( "NOT", &LexOperatorNot )
+    LexInsertOperator ( "OR", &LexOperatorOr )
+    LexInsertOperator ( "AND", &LexOperatorAnd )
+    LexInsertOperator ( "DEFINED", &LexOperatorDefined )
+    LexInsertOperator ( "~", &LexOperatorBitNot )
+    LexInsertOperator ( "|", &LexOperatorBitOr )
+    LexInsertOperator ( "$", &LexOperatorBitXor )
+    LexInsertOperator ( "&", &LexOperatorBitAnd )
+END
