@@ -814,7 +814,7 @@ void XrAsmEmitInitializer(uint64_t _mng_value355, uint64_t _mng_primtype356) {
     __twr_v409 = 25ULL;
     __twr_v410 = _mng_value355 + __twr_v409;
     __twr_v411 = *(uint8_t*)(__twr_v410);
-    __twr_v412 = 83ULL;
+    __twr_v412 = 84ULL;
     if (__twr_v411 != __twr_v412) { goto __twr_l52; } else { goto __twr_l53; }
     __twr_l53:;
     __twr_v413 = 48ULL;

@@ -455,7 +455,7 @@ void PrsParseArrayInitializer(uint64_t _mng_errtoken219, uint64_t _mng_type220, 
     __twr_v258 = (uint64_t)(&LexMatchToken);
     __twr_v259 = 0ULL;
     __twr_v260 = 3ULL;
-    __twr_v261 = 69ULL;
+    __twr_v261 = 70ULL;
     __twr_v262 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v258)(__twr_v259, __twr_v260, __twr_v261);
     if (!(__twr_v262)) { goto __twr_l25; } else { goto __twr_l26; }
     __twr_l26:;
@@ -478,7 +478,7 @@ void PrsParseArrayInitializer(uint64_t _mng_errtoken219, uint64_t _mng_type220, 
     __twr_v275 = (uint64_t)(&LexMatchToken);
     __twr_v276 = (uint64_t)(&_mng_token254);
     __twr_v277 = 8ULL;
-    __twr_v278 = 72ULL;
+    __twr_v278 = 73ULL;
     __twr_v279 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v275)(__twr_v276, __twr_v277, __twr_v278);
     if (__twr_v279) { goto __twr_l29; } else { goto __twr_l30; }
     __twr_l30:;
@@ -694,7 +694,7 @@ void PrsParseStructInitializer(uint64_t _mng_errtoken334, uint64_t _mng_type335,
     __twr_v345 = (uint64_t)(&LexMatchToken);
     __twr_v346 = (uint64_t)(&_mng_token347);
     __twr_v348 = 3ULL;
-    __twr_v349 = 69ULL;
+    __twr_v349 = 70ULL;
     __twr_v350 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v345)(__twr_v346, __twr_v348, __twr_v349);
     if (__twr_v350) { goto __twr_l49; } else { goto __twr_l50; }
     __twr_l50:;
@@ -723,7 +723,7 @@ void PrsParseStructInitializer(uint64_t _mng_errtoken334, uint64_t _mng_type335,
     __twr_v366 = 25ULL;
     __twr_v367 = __twr_v365 + __twr_v366;
     __twr_v368 = *(uint8_t*)(__twr_v367);
-    __twr_v369 = 85ULL;
+    __twr_v369 = 86ULL;
     if (__twr_v368 == __twr_v369) { goto __twr_l53; } else { goto __twr_l54; }
     __twr_l54:;
     __twr_v370 = (uint64_t)(&LexTokenError);
@@ -752,7 +752,7 @@ void PrsParseStructInitializer(uint64_t _mng_errtoken334, uint64_t _mng_type335,
     __twr_v386 = (uint64_t)(&LexMatchToken);
     __twr_v387 = (uint64_t)(&_mng_token347);
     __twr_v388 = 8ULL;
-    __twr_v389 = 72ULL;
+    __twr_v389 = 73ULL;
     __twr_v390 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v386)(__twr_v387, __twr_v388, __twr_v389);
     if (__twr_v390) { goto __twr_l57; } else { goto __twr_l58; }
     __twr_l58:;

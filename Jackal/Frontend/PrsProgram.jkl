@@ -4991,6 +4991,15 @@ FN (PrsStatementF) PrsParseBarrier (
     )
 END
 
+FN (PrsStatementF) PrsParseNothing (
+    IN token : ^LexToken,
+)
+
+    // Parse a NOTHING statement.
+
+    // Do absolutely nothing.
+END
+
 FN (PrsStatementF) PrsParseProbe (
     IN token : ^LexToken,
 )
@@ -5406,6 +5415,7 @@ PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_RETURN] = &PrsParseReturn,
     [TOKEN_WHILE] = &PrsParseWhile,
     [TOKEN_BARRIER] = &PrsParseBarrier,
+    [TOKEN_NOTHING] = &PrsParseNothing,
     [TOKEN_PROBE] = &PrsParseProbe,
     [TOKEN_LABEL] = &PrsParseLabel,
 }

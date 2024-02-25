@@ -157,8 +157,8 @@ uint64_t IrTokenToInstructionType[11] = {
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
-    0x29282E2C342B2A00,
-    0x000000000031302F,
+    0x282E2C342B2A0000,
+    0x0000000031302F29,
 };
 uint64_t IrAllocateStack(uint64_t _mng_func163, uint64_t _mng_bytes164) {
     uint64_t _jkl_retv;
@@ -3652,7 +3652,7 @@ uint64_t IrGenerateModificationAssign(uint64_t _mng_node1498, uint64_t _mng_true
     _jkl_epilogue:;
     return _jkl_retv;
 }
-uint64_t IrOperatorGenerationTable[86] = {
+uint64_t IrOperatorGenerationTable[87] = {
     0x0000000000000000,
     (uint64_t)(&IrGenerateAnd),
     0x0000000000000000,
@@ -3678,6 +3678,7 @@ uint64_t IrOperatorGenerationTable[86] = {
     (uint64_t)(&IrGenerateNot),
     0x0000000000000000,
     (uint64_t)(&IrGenerateOr),
+    0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
