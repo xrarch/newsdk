@@ -837,7 +837,7 @@ FN FoxGenerateStoreToStack (
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
-        FOX_MOVZ, // machtype
+        FOX_MOV, // machtype
     )
 
     lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR
@@ -1276,7 +1276,7 @@ FN (LirSelectF) FoxSelectStore (
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
-        FOX_MOVZ, // machtype
+        FOX_MOV, // machtype
     )
 
     lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
@@ -1748,7 +1748,7 @@ FN FoxGenerateSpillForOperand (
 
             lirinst := LirCreateInstruction (
                 LIR_MACH_INST, // type
-                FOX_MOVZ, // machtype
+                FOX_MOV, // machtype
             )
 
             lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REG_PTR

@@ -1479,7 +1479,7 @@ void FoxGenerateStoreToStack(uint64_t _mng_srcreg625, uint64_t _mng_srcvar626, u
     _mng_destreg631 = __twr_v630;
     __twr_v632 = (uint64_t)(&LirCreateInstruction);
     __twr_v633 = 3ULL;
-    __twr_v634 = 26ULL;
+    __twr_v634 = 15ULL;
     __twr_v635 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v632)(__twr_v633, __twr_v634);
     _mng_lirinst636 = __twr_v635;
     __twr_v637 = 2ULL;
@@ -2599,7 +2599,7 @@ uint64_t FoxSelectStore(uint64_t _mng_inst1077) {
     uint64_t __twr_v1107;
     __twr_v1078 = (uint64_t)(&LirCreateInstruction);
     __twr_v1079 = 3ULL;
-    __twr_v1080 = 26ULL;
+    __twr_v1080 = 15ULL;
     __twr_v1081 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v1078)(__twr_v1079, __twr_v1080);
     _mng_lirinst1082 = __twr_v1081;
     __twr_v1083 = 1ULL;
@@ -3751,7 +3751,7 @@ uint64_t FoxGenerateSpillForOperand(uint64_t _mng_inst1466, uint64_t _mng_spille
     __twr_l193:;
     __twr_v1538 = (uint64_t)(&LirCreateInstruction);
     __twr_v1539 = 3ULL;
-    __twr_v1540 = 26ULL;
+    __twr_v1540 = 15ULL;
     __twr_v1541 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v1538)(__twr_v1539, __twr_v1540);
     _mng_lirinst1542 = __twr_v1541;
     __twr_v1543 = 2ULL;
