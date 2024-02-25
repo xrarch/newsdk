@@ -275,11 +275,15 @@ FN IrFindValue (
             IF var^.Opt.Vn.KeySrc1 == valuesrc1 AND
                 var^.Opt.Vn.KeySrc2 == valuesrc2 THEN
 
+                var^.Annotation = IR_VAR_UNINITIALIZED
+
                 RETURN var
 
             ELSEIF IrCommutativity[op] AND
                 var^.Opt.Vn.KeySrc1 == valuesrc2 AND
                 var^.Opt.Vn.KeySrc2 == valuesrc1 THEN
+
+                var^.Annotation = IR_VAR_UNINITIALIZED
 
                 RETURN var
             END
@@ -313,6 +317,8 @@ FN IrFindConstant (
 
         IF var^.Opt.Vn.KeyOp == op AND
             var^.Opt.Vn.ConstantValue == constant THEN
+
+            var^.Annotation = IR_VAR_UNINITIALIZED
 
             RETURN var
         END
