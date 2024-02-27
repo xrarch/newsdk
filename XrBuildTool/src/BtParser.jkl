@@ -1,0 +1,204 @@
+//
+// Parser for build tool configuration files. The result of the parse is a DAG
+// of all dependencies that require action to bring them up to date.
+//
+
+#INCLUDE "Bt.hjk"
+
+BtTargetHashTable : TlHashTable
+BtCurrentTarget : ^BtTarget
+
+FNPTR BtTargetInfoF ()
+
+FN (BtTargetInfoF) BtTargetInfoFile ()
+
+    // Parse a FILE info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    BtCurrentTarget^.FileName = string^.DynamicBuffer.Buffer
+END
+
+FN (BtTargetInfoF) BtTargetInfoDepend ()
+
+    // Parse a DEPEND info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    // Look up the target target.
+
+    target := CAST TlLookupHashTable (
+        &BtTargetHashTable, // hashtable
+        string^.DynamicBuffer.Buffer, // key
+    ) TO ^BtTarget
+
+    IF NOT target THEN
+        LexTokenError ( &token, "Target not defined", 0, 0, 0 )
+    END
+
+    // Check if we already depend on this target.
+
+    head := &BtCurrentTarget^.DependsOnListHead
+    listentry := head^.Next
+
+    WHILE head != listentry DO
+        entry := CONTAINEROF listentry TO BtDependsListEntry.Entry
+
+        IF entry^.Target == target THEN
+            LEAVE
+        END
+
+        listentry = listentry^.Next
+    END
+
+    // Create a depends list entry.
+
+    entry : ^BtDependsListEntry
+
+    status := TlBumpAlloc (
+        SIZEOF BtDependsListEntry, // bytes
+        OUT entry, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate depends list entry", 0, 0, 0 )
+    END
+
+    entry^.Target = target
+
+    // Insert into the current target's depends list.
+
+    TlInsertAtTailList (
+        &BtCurrentTarget^.DependsOnListHead, // head
+        &entry^.Entry, // entry
+    )
+END
+
+BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_FILE] = &BtTargetInfoFile,
+    [TOKEN_DEPEND] = &BtTargetInfoDepend,
+}
+
+FN BtParseTarget () : UBYTE
+
+    // Parse the next target. Return FALSE on EOF.
+
+    token : LexToken
+
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_EOF THEN
+        RETURN FALSE
+    END
+
+    IF token.Type != TOKEN_TARGET THEN
+        LexTokenError ( &token, "Expected TARGET", 0, 0, 0 )
+    END
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected a string", 0, 0, 0 )
+    END
+
+    // Make sure the target doesn't exist.
+
+    namestring := CAST nametoken.Payload TO ^LexInternedString
+
+    IF TlLookupHashTable (
+        &BtTargetHashTable, // hashtable
+        namestring^.DynamicBuffer.Buffer, // key
+    ) THEN
+        LexTokenError ( &nametoken, "Target already defined", 0, 0, 0 )
+    END
+
+    // Allocate the target.
+
+    target : ^BtTarget
+
+    status := TlBumpAlloc (
+        SIZEOF BtTarget, // bytes
+        OUT target, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate target", 0, 0, 0 )
+    END
+
+    // Initialize the target structure.
+
+    target^.FileName = NULLPTR
+
+    TlInitializeList ( &target^.DependsOnListHead )
+
+    // Set as the current target.
+
+    BtCurrentTarget = target
+
+    // Consume target information specifiers til we hit an END.
+
+    WHILE NOT LexMatchToken (
+        &token, // token
+        TOKEN_END, // type
+        0, // subtype
+    ) DO
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_TARGET_INFO, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token,
+                "Expected a target info specifier", 0, 0, 0 )
+        END
+
+        // Dispatch based on the type.
+
+        BtTargetInfoSpecifiers[token.Subtype] ()
+    END
+
+    // Insert the target into the hash table.
+    // We wait until now to do this so that it can't try to depend on itself.
+
+    TlInsertHashTable (
+        &BtTargetHashTable, // hashtable
+        CAST target TO ^TlHashTableEntry, // entry
+        namestring^.DynamicBuffer.Buffer, // key
+    )
+
+    RETURN TRUE
+END
+
+FN BtParse ()
+
+    // Initialize the target hash table.
+
+    TlInitializeHashTable ( &BtTargetHashTable )
+
+    WHILE BtParseTarget () DO
+        // Keep going...
+    END
+END

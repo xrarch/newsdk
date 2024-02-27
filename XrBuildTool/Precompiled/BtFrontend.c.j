@@ -379,15 +379,19 @@ void FeInitialize(uint64_t _mng_argc220, uint64_t _mng_argv221) {
     __twr_l27:;
     _jkl_epilogue:;
 }
+extern void BtParse();
 void BtBuild(uint64_t _mng_argc236, uint64_t _mng_argv237) {
     uint64_t __twr_v238;
     uint64_t __twr_v239;
     uint64_t __twr_v240;
+    uint64_t __twr_v241;
     __twr_v238 = *(uint64_t*)(_mng_argv237);
     __twr_v239 = (uint64_t)(&BtBinaryName);
     *(uint64_t*)(__twr_v239) = __twr_v238;
     __twr_v240 = (uint64_t)(&FeInitialize);
     ((void (*)(uint64_t, uint64_t))__twr_v240)(_mng_argc236, _mng_argv237);
+    __twr_v241 = (uint64_t)(&BtParse);
+    ((void (*)())__twr_v241)();
     __twr_l30:;
     _jkl_epilogue:;
 }

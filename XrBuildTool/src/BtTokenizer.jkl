@@ -138,7 +138,11 @@ FN LexInitialize ()
 
     TlInitializeHashTable ( &LexKeywordHashTable )
 
-    // LexInsertKeyword ( "AND", TOKEN_OPER, TOKEN_AND, 0 )
+    LexInsertKeyword ( "END", TOKEN_END, 0, 0 )
+    LexInsertKeyword ( "TARGET", TOKEN_TARGET, 0, 0 )
+
+    LexInsertKeyword ( "FILE", TOKEN_TARGET_INFO, TOKEN_FILE, 0 )
+    LexInsertKeyword ( "DEPEND", TOKEN_TARGET_INFO, TOKEN_DEPEND, 0 )
 END
 
 FN (LexGetCharacterF) LexGetCharacter () : UBYTE

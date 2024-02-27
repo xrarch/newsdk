@@ -249,6 +249,12 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
                     RETURN 0x0A
                 END
 
+                IF stream^.LastMacroScope THEN
+                    TlDeleteSymbolTable ( LexCurrentMacroScope )
+
+                    LexCurrentMacroScope = stream^.LastMacroScope
+                END
+
                 LexFreeStream ( LexPopStream () )
 
                 CONTINUE

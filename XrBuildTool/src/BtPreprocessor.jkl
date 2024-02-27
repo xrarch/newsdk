@@ -1010,6 +1010,31 @@ FN (LexDirectiveParseF) LexParseInclude ()
     LexPushStream ( stream )
 END
 
+FN (LexDirectiveParseF) LexParseDepend ()
+
+    // Same as include, but we create a new macro scope for the duration of the
+    // included file. This allows it to overlay the macros created in the outer
+    // scope if it wants to override them.
+    //
+    // Note: Added for Build Tool support.
+
+    oldstream := LexCurrentStream
+
+    LexParseInclude ()
+
+    stream := LexCurrentStream
+
+    IF stream == oldstream THEN
+        // The include directive didn't bother to actually include the file.
+
+        LEAVE
+    END
+
+    stream^.LastMacroScope = LexCurrentMacroScope
+
+    LexCurrentMacroScope = LexCreateMacroTable ( LexCurrentMacroScope )
+END
+
 FN (LexDirectiveParseF) LexParseDefine ()
 
     // This directive defines a simple macro (as opposed to a function macro).
@@ -2310,6 +2335,7 @@ FN LexInitializePreprocessor ()
     // Insert the directives and operators into their hash tables.
 
     LexInsertDirective ( "INCLUDE", &LexParseInclude )
+    LexInsertDirective ( "DEPEND", &LexParseDepend )
     LexInsertDirective ( "DEFINE", &LexParseDefine )
     LexInsertDirective ( "MACRO", &LexParseMacro )
     LexInsertDirective ( "IF", &LexParseIf )

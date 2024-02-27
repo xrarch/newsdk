@@ -175,6 +175,8 @@ FN FeInitialize (
     // PrsInitialize ()
 END
 
+EXTERN FN BtParse ()
+
 FN BtBuild (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -191,5 +193,7 @@ FN BtBuild (
         argv, // argv
     )
 
-    
+    // Parse the build configuration.
+
+    BtParse ()
 END

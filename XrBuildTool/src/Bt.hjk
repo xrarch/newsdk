@@ -34,7 +34,9 @@ EXTERN FN FeCopyPathFileBlock (
 ENUM LexTokenType : UBYTE
     TOKEN_ANY,
 
-    TOKEN_STATEMENT, // subtype is a statement type
+    TOKEN_TARGET,
+    TOKEN_TARGET_INFO,
+    TOKEN_END,
 
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
     TOKEN_NUMBER, // payload is the number value
@@ -44,7 +46,10 @@ ENUM LexTokenType : UBYTE
 END
 
 ENUM LexTokenSubtype : UBYTE
+    TOKEN_FILE,
+    TOKEN_DEPEND,
 
+    TOKEN_SUBTYPE_MAX, // MUST be at the end
 END
 
 ENUM LexCharBehavior : UBYTE
@@ -230,3 +235,17 @@ EXTERN FN LexCrunchNumber (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
 ) : UWORD
+
+STRUCT BtDependsListEntry
+    Entry : TlListEntry,
+
+    Target : ^BtTarget,
+END
+
+STRUCT BtTarget
+    Entry : TlHashTableEntry, // MUST be at the beginning
+
+    DependsOnListHead : TlListEntry,
+
+    FileName : ^UBYTE,
+END
