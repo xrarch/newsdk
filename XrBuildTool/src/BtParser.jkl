@@ -94,9 +94,100 @@ FN (BtTargetInfoF) BtTargetInfoDepend ()
     )
 END
 
+FN (BtTargetInfoF) BtTargetInfoSources ()
+
+    // Parse a SOURCES info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    str := &string^.DynamicBuffer
+
+    // A SOURCES path is relative to the current build config file path.
+
+    IF str^.Buffer[0] == '/' THEN
+        LexTokenError ( &token,
+            "Expected a relative path, found an absolute one", 0, 0, 0 )
+    END
+
+    // Allocates a sources record.
+
+    entry : ^BtSourcesRecord
+
+    status := TlBumpAlloc (
+        SIZEOF BtSourcesRecord, // bytes
+        OUT entry, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate sources record", 0, 0, 0 )
+    END
+
+    filepath := &entry^.FilePathBuffer
+
+    TlInitializeDynamicBuffer ( filepath )
+
+    TlCopyParentPath (
+        &LexCurrentStream^.FileBlock^.FilePath[0], // srcpath
+        filepath, // destpath
+    )
+
+    IF NOT filepath^.Count THEN
+        TlInsertDynamicBuffer (
+            filepath, // array
+            '.', // byte
+        )
+
+        TlInsertDynamicBuffer (
+            filepath, // array
+            '/', // byte
+        )
+
+    ELSEIF filepath^.Buffer[filepath^.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            filepath, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        filepath, // array
+        str^.Buffer, // srcbuf
+        str^.Count, // length
+    )
+
+    TlInsertDynamicBuffer (
+        filepath, // array
+        0, // byte
+    )
+
+    // Check if this is actually a directory and that it exists.
+
+    IF NOT TlIsPathDirectory ( filepath^.Buffer ) THEN
+        LexTokenError ( &token, "Doesn't exist or not a directory", 0, 0, 0 )
+    END
+
+    // Add to the sources list.
+
+    TlInsertAtTailList (
+        &BtCurrentTarget^.SourcesListHead, // head
+        &entry^.Entry, // entry
+    )
+END
+
 BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_FILE] = &BtTargetInfoFile,
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
+    [TOKEN_SOURCES] = &BtTargetInfoSources,
 }
 
 FN BtParseTarget () : UBYTE
@@ -154,6 +245,7 @@ FN BtParseTarget () : UBYTE
     target^.FileName = NULLPTR
 
     TlInitializeList ( &target^.DependsOnListHead )
+    TlInitializeList ( &target^.SourcesListHead )
 
     // Set as the current target.
 

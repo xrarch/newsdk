@@ -48,6 +48,7 @@ END
 ENUM LexTokenSubtype : UBYTE
     TOKEN_FILE,
     TOKEN_DEPEND,
+    TOKEN_SOURCES,
 
     TOKEN_SUBTYPE_MAX, // MUST be at the end
 END
@@ -242,10 +243,16 @@ STRUCT BtDependsListEntry
     Target : ^BtTarget,
 END
 
+STRUCT BtSourcesRecord
+    Entry : TlListEntry,
+
+    FilePathBuffer : TlDynamicBuffer,
+END
+
 STRUCT BtTarget
     Entry : TlHashTableEntry, // MUST be at the beginning
 
     DependsOnListHead : TlListEntry,
-
+    SourcesListHead : TlListEntry,
     FileName : ^UBYTE,
 END

@@ -47,20 +47,21 @@ extern void TlInsertNumberDynamicBuffer(uint64_t _mng_array78, uint64_t _mng_num
 extern uint64_t TlPopDynamicBuffer(uint64_t _mng_array81);
 extern uint64_t TlMatchPath(uint64_t _mng_path82, uint64_t _mng_pathset83, uint64_t _mng_resultingpath84, uint64_t _mng_o_handle);
 extern void TlCopyParentPath(uint64_t _mng_srcpath85, uint64_t _mng_destpath86);
-extern void TlInitializeZone(uint64_t _mng_zone87, uint64_t _mng_blocksize88);
-extern uint64_t TlAllocateFromZone(uint64_t _mng_zone89);
-extern void TlFreeToZone(uint64_t _mng_zone90, uint64_t _mng_block91);
-extern uint64_t TlIsPowerOfTwo(uint64_t _mng_constant92);
-extern void TlPunchValue(uint64_t _mng_ptr93, uint64_t _mng_value94, uint64_t _mng_bytes95);
+extern uint64_t TlIsPathDirectory(uint64_t _mng_path87);
+extern void TlInitializeZone(uint64_t _mng_zone88, uint64_t _mng_blocksize89);
+extern uint64_t TlAllocateFromZone(uint64_t _mng_zone90);
+extern void TlFreeToZone(uint64_t _mng_zone91, uint64_t _mng_block92);
+extern uint64_t TlIsPowerOfTwo(uint64_t _mng_constant93);
+extern void TlPunchValue(uint64_t _mng_ptr94, uint64_t _mng_value95, uint64_t _mng_bytes96);
 extern uint64_t TlSymbolTableZone[2];
 void TlInitialize() {
-    uint64_t __twr_v96;
     uint64_t __twr_v97;
     uint64_t __twr_v98;
-    __twr_v96 = (uint64_t)(&TlInitializeZone);
-    __twr_v97 = (uint64_t)(&TlSymbolTableZone);
-    __twr_v98 = 1584ULL;
-    ((void (*)(uint64_t, uint64_t))__twr_v96)(__twr_v97, __twr_v98);
+    uint64_t __twr_v99;
+    __twr_v97 = (uint64_t)(&TlInitializeZone);
+    __twr_v98 = (uint64_t)(&TlSymbolTableZone);
+    __twr_v99 = 1584ULL;
+    ((void (*)(uint64_t, uint64_t))__twr_v97)(__twr_v98, __twr_v99);
     __twr_l1:;
     _jkl_epilogue:;
 }
