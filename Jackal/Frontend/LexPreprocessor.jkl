@@ -1011,11 +1011,6 @@ FN (LexDirectiveParseF) LexParseInclude ()
             str.Count, // length
         )
 
-        TlInsertDynamicBuffer (
-            &filepath, // array
-            0, // byte
-        )
-
         status := TlOpenSource (
             filepath.Buffer, // filename
             OUT handle, // handle
