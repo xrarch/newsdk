@@ -8,6 +8,114 @@
 BtTargetHashTable : TlHashTable
 BtCurrentTarget : ^BtTarget
 
+FN BtParseStandardPath (
+    IN stdpath : ^TlDynamicBuffer,
+    IN fullpath : ^TlDynamicBuffer,
+    IN errtoken : ^LexToken,
+)
+
+    // Parse a standard path string into the dynamic buffer.
+    // A standard path string has one of the following prefixes:
+    //
+    //   NONE    Relative to the current config file.
+    //   <sdk>/  Relative to the SDK base.
+    //   <bld>/  Relative to the build base.
+
+    stdpathstr := stdpath^.Buffer
+
+    IF stdpathstr[0] == 0 THEN
+        LexTokenError ( errtoken, "Empty path string", 0, 0, 0 )
+    END
+
+    IF stdpathstr[0] == '/' THEN
+        LexTokenError ( errtoken,
+            "Expected a relative path, found an absolute path", 0, 0, 0 )
+    END
+
+    IF stdpathstr[0] != '<' THEN
+        // Must be a relative path.
+
+        TlCopyParentPath (
+            &LexCurrentStream^.FileBlock^.FilePath[0], // srcpath
+            fullpath, // destpath
+        )
+
+    ELSEIF TlCompareStringWithMax ( stdpathstr, "<sdk>/", 5 ) == 0 THEN
+        // Relative to the SDK base.
+
+        macro := CAST TlLookupSymbolTable (
+            LexCurrentMacroScope, // symboltable
+            "SDK_BASE", // name
+        ) TO ^LexMacro
+
+        IF NOT macro THEN
+            LexTokenError ( errtoken, "SDK_BASE isn't defined", 0, 0, 0 )
+        END
+
+        IF macro^.IsFunctionMacro THEN
+            LexTokenError ( errtoken,
+                "SDK_BASE is a function macro for some reason", 0, 0, 0 )
+        END
+
+        TlCopyIntoDynamicBuffer (
+            fullpath, // array
+            &macro^.Contents.Buffer[0], // srcbuf
+            macro^.Contents.Count - 1, // length
+        )
+
+        stdpathstr += 5
+
+    ELSEIF TlCompareStringWithMax ( stdpathstr, "<bld>/", 5 ) == 0 THEN
+        // Relative to the build base.
+
+        macro := CAST TlLookupSymbolTable (
+            LexCurrentMacroScope, // symboltable
+            "BUILD_BASE", // name
+        ) TO ^LexMacro
+
+        IF NOT macro THEN
+            LexTokenError ( errtoken, "BUILD_BASE isn't defined", 0, 0, 0 )
+        END
+
+        IF macro^.IsFunctionMacro THEN
+            LexTokenError ( errtoken,
+                "BUILD_BASE is a function macro for some reason", 0, 0, 0 )
+        END
+
+        TlCopyIntoDynamicBuffer (
+            fullpath, // array
+            &macro^.Contents.Buffer[0], // srcbuf
+            macro^.Contents.Count - 1, // length
+        )
+
+        stdpathstr += 5
+    END
+
+    IF NOT fullpath^.Count THEN
+        TlInsertDynamicBuffer (
+            fullpath, // array
+            '.', // byte
+        )
+
+        TlInsertDynamicBuffer (
+            fullpath, // array
+            '/', // byte
+        )
+
+    ELSEIF fullpath^.Buffer[fullpath^.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            fullpath, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        fullpath, // array
+        stdpathstr, // srcbuf
+        stdpath^.Count, // length
+    )
+END
+
 FNPTR BtTargetInfoF ()
 
 FN (BtTargetInfoF) BtTargetInfoFile ()
@@ -26,7 +134,14 @@ FN (BtTargetInfoF) BtTargetInfoFile ()
 
     string := CAST token.Payload TO ^LexInternedString
 
-    BtCurrentTarget^.FileName = string^.DynamicBuffer.Buffer
+    TlUninitializeDynamicBuffer ( &BtCurrentTarget^.FileName )
+    TlInitializeDynamicBuffer ( &BtCurrentTarget^.FileName )
+
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        &BtCurrentTarget^.FileName, // fullpath
+        &token, // errtoken
+    )
 END
 
 FN (BtTargetInfoF) BtTargetInfoDepend ()
@@ -110,15 +225,6 @@ FN (BtTargetInfoF) BtTargetInfoSources ()
 
     string := CAST token.Payload TO ^LexInternedString
 
-    str := &string^.DynamicBuffer
-
-    // A SOURCES path is relative to the current build config file path.
-
-    IF str^.Buffer[0] == '/' THEN
-        LexTokenError ( &token,
-            "Expected a relative path, found an absolute one", 0, 0, 0 )
-    END
-
     // Allocate a sources record.
 
     entry : ^BtSourcesRecord
@@ -136,33 +242,10 @@ FN (BtTargetInfoF) BtTargetInfoSources ()
 
     TlInitializeDynamicBuffer ( filepath )
 
-    TlCopyParentPath (
-        &LexCurrentStream^.FileBlock^.FilePath[0], // srcpath
-        filepath, // destpath
-    )
-
-    IF NOT filepath^.Count THEN
-        TlInsertDynamicBuffer (
-            filepath, // array
-            '.', // byte
-        )
-
-        TlInsertDynamicBuffer (
-            filepath, // array
-            '/', // byte
-        )
-
-    ELSEIF filepath^.Buffer[filepath^.Count - 1] != '/' THEN
-        TlInsertDynamicBuffer (
-            filepath, // array
-            '/', // byte
-        )
-    END
-
-    TlCopyIntoDynamicBuffer (
-        filepath, // array
-        str^.Buffer, // srcbuf
-        str^.Count, // length
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        filepath, // fullpath
+        &token, // errtoken
     )
 
     // Check if this is actually a directory and that it exists.
@@ -195,46 +278,14 @@ FN (BtTargetInfoF) BtTargetInfoJklInclude ()
 
     string := CAST token.Payload TO ^LexInternedString
 
-    str := &string^.DynamicBuffer
-
-    // A JKLINCLUDE path is relative to the current build config file path.
-
-    IF str^.Buffer[0] == '/' THEN
-        LexTokenError ( &token,
-            "Expected a relative path, found an absolute one", 0, 0, 0 )
-    END
-
     filepath : TlDynamicBuffer
 
     TlInitializeDynamicBuffer ( &filepath )
 
-    TlCopyParentPath (
-        &LexCurrentStream^.FileBlock^.FilePath[0], // srcpath
-        &filepath, // destpath
-    )
-
-    IF NOT filepath.Count THEN
-        TlInsertDynamicBuffer (
-            &filepath, // array
-            '.', // byte
-        )
-
-        TlInsertDynamicBuffer (
-            &filepath, // array
-            '/', // byte
-        )
-
-    ELSEIF filepath.Buffer[filepath.Count - 1] != '/' THEN
-        TlInsertDynamicBuffer (
-            &filepath, // array
-            '/', // byte
-        )
-    END
-
-    TlCopyIntoDynamicBuffer (
-        &filepath, // array
-        str^.Buffer, // srcbuf
-        str^.Count, // length
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        &filepath, // fullpath
+        &token, // errtoken
     )
 
     // Check if this is actually a directory and that it exists.
@@ -261,6 +312,8 @@ FN (BtTargetInfoF) BtTargetInfoJklInclude ()
         filepath.Buffer, // srcbuf
         filepath.Count - 1, // length
     )
+
+    TlUninitializeDynamicBuffer ( &filepath )
 END
 
 FN (BtTargetInfoF) BtTargetInfoLinkOpt ()
@@ -284,8 +337,6 @@ FN (BtTargetInfoF) BtTargetInfoLinkOpt ()
     // If there's already stuff in the link options, add a space separator.
 
     IF BtCurrentTarget^.LinkOptions.Count THEN
-        // There's already stuff in the include paths, so add a colon separator.
-
         TlInsertDynamicBuffer (
             &BtCurrentTarget^.LinkOptions, // array
             ' ', // byte
@@ -363,8 +414,7 @@ FN BtParseTarget () : UBYTE
 
     TlInitializeDynamicBuffer ( &target^.LinkOptions )
     TlInitializeDynamicBuffer ( &target^.IncludePaths )
-
-    target^.FileName = NULLPTR
+    TlInitializeDynamicBuffer ( &target^.FileName )
 
     TlInitializeList ( &target^.DependsOnListHead )
     TlInitializeList ( &target^.SourcesListHead )
@@ -411,6 +461,8 @@ FN BtParse ()
     // Initialize the target hash table.
 
     TlInitializeHashTable ( &BtTargetHashTable )
+
+    // Now parse target definitions til we hit EOF.
 
     WHILE BtParseTarget () DO
         // Keep going...

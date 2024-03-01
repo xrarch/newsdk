@@ -258,5 +258,5 @@ STRUCT BtTarget
     IncludePaths : TlDynamicBuffer,
     DependsOnListHead : TlListEntry,
     SourcesListHead : TlListEntry,
-    FileName : ^UBYTE,
+    FileName : TlDynamicBuffer,
 END
