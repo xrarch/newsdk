@@ -352,12 +352,178 @@ FN (BtTargetInfoF) BtTargetInfoLinkOpt ()
     )
 END
 
+FN (BtTargetInfoF) BtTargetInfoJklOpt ()
+
+    // Parse a JKLOPT info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    str := &string^.DynamicBuffer
+
+    // If there's already stuff in the compiler options, add a space separator.
+
+    IF BtCurrentTarget^.JklOptions.Count THEN
+        TlInsertDynamicBuffer (
+            &BtCurrentTarget^.JklOptions, // array
+            ' ', // byte
+        )
+    END
+
+    // Copy the compiler options, except the null terminator.
+
+    TlCopyIntoDynamicBuffer (
+        &BtCurrentTarget^.JklOptions, // array
+        str^.Buffer, // srcbuf
+        str^.Count - 1, // length
+    )
+END
+
+FN (BtTargetInfoF) BtTargetInfoLink ()
+
+    // Parse a LINK info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    filepath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &filepath )
+
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        &filepath, // fullpath
+        &token, // errtoken
+    )
+
+    // Append to the statically linked objects.
+
+    IF BtCurrentTarget^.LinkPaths.Count THEN
+        // There's already stuff in the link paths, so add a space separator.
+
+        TlInsertDynamicBuffer (
+            &BtCurrentTarget^.LinkPaths, // array
+            ' ', // byte
+        )
+    END
+
+    // Copy the full path (except the null terminator).
+
+    TlCopyIntoDynamicBuffer (
+        &BtCurrentTarget^.LinkPaths, // array
+        filepath.Buffer, // srcbuf
+        filepath.Count - 1, // length
+    )
+
+    TlUninitializeDynamicBuffer ( &filepath )
+END
+
+FN (BtTargetInfoF) BtTargetInfoDyLink ()
+
+    // Parse a DYLINK info specifier.
+
+    // Consume a run-time path and then a compile-time path.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    rtstring := CAST token.Payload TO ^LexInternedString
+
+    // Now consume the compile-time path.
+
+    ctpathtoken : LexToken
+
+    IF NOT LexMatchToken (
+        &ctpathtoken, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &ctpathtoken, "Expected a string", 0, 0, 0 )
+    END
+
+    ctstring := CAST ctpathtoken.Payload TO ^LexInternedString
+
+    filepath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &filepath )
+
+    BtParseStandardPath (
+        &ctstring^.DynamicBuffer, // stdpath
+        &filepath, // fullpath
+        &ctpathtoken, // errtoken
+    )
+
+    // Append to the dynamically linked objects.
+
+    IF BtCurrentTarget^.DyLinkPaths.Count THEN
+        // There's already stuff in the link paths, so add a space separator.
+
+        TlInsertDynamicBuffer (
+            &BtCurrentTarget^.DyLinkPaths, // array
+            ' ', // byte
+        )
+    END
+
+    // Copy the runtime path (except the null terminator.)
+
+    TlCopyIntoDynamicBuffer (
+        &BtCurrentTarget^.DyLinkPaths, // array
+        rtstring^.DynamicBuffer.Buffer, // srcbuf
+        rtstring^.DynamicBuffer.Count - 1, // length
+    )
+
+    // Append a colon.
+
+    TlInsertDynamicBuffer (
+        &BtCurrentTarget^.DyLinkPaths, // array
+        ':', // byte
+    )
+
+    // Copy the compile time path (except the null terminator).
+
+    TlCopyIntoDynamicBuffer (
+        &BtCurrentTarget^.DyLinkPaths, // array
+        filepath.Buffer, // srcbuf
+        filepath.Count - 1, // length
+    )
+
+    TlUninitializeDynamicBuffer ( &filepath )
+END
+
 BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_FILE] = &BtTargetInfoFile,
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
     [TOKEN_SOURCES] = &BtTargetInfoSources,
     [TOKEN_JKLINCLUDE] = &BtTargetInfoJklInclude,
     [TOKEN_LINKOPT] = &BtTargetInfoLinkOpt,
+    [TOKEN_JKLOPT] = &BtTargetInfoJklOpt,
+    [TOKEN_LINK] = &BtTargetInfoLink,
+    [TOKEN_DYLINK] = &BtTargetInfoDyLink,
 }
 
 FN BtParseTarget () : UBYTE
@@ -413,7 +579,10 @@ FN BtParseTarget () : UBYTE
     // Initialize the target structure.
 
     TlInitializeDynamicBuffer ( &target^.LinkOptions )
+    TlInitializeDynamicBuffer ( &target^.JklOptions )
     TlInitializeDynamicBuffer ( &target^.IncludePaths )
+    TlInitializeDynamicBuffer ( &target^.LinkPaths )
+    TlInitializeDynamicBuffer ( &target^.DyLinkPaths )
     TlInitializeDynamicBuffer ( &target^.FileName )
 
     TlInitializeList ( &target^.DependsOnListHead )
