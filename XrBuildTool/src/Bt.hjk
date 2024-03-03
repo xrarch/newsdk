@@ -265,4 +265,33 @@ STRUCT BtTarget
     DependsOnListHead : TlListEntry,
     SourcesListHead : TlListEntry,
     FileName : TlDynamicBuffer,
+
+    DagNode : ^BtDagNode,
+
+    CheckedForUpdate : UBYTE,
+    HasFileName : UBYTE,
+END
+
+ENUM BtDagNodeType : UBYTE
+    DAG_NULL,
+
+    DAG_OBJECT_CODE,
+    DAG_EXECUTABLE,
+
+    DAG_MAX,
+END
+
+STRUCT BtDagEdge
+    InEdgeListEntry : TlListEntry,
+    OutEdgeListEntry : TlListEntry,
+
+    From : ^BtDagNode,
+    To : ^BtDagNode,
+END
+
+STRUCT BtDagNode
+    InEdgeListHead : TlListEntry,
+    OutEdgeListHead : TlListEntry,
+
+    Type : BtDagNodeType,
 END

@@ -89,30 +89,74 @@ extern uint64_t LexCrunchNumber(uint64_t _mng_token131, uint64_t _mng_buffer132)
 extern uint64_t BtSelectedTarget;
 uint64_t BtBuildDagForTarget(uint64_t _mng_target133) {
     uint64_t _jkl_retv;
+    uint64_t __twr_v134;
+    uint64_t __twr_v135;
+    uint64_t __twr_v136;
+    uint64_t __twr_v137;
+    uint64_t __twr_v138;
+    uint64_t __twr_v139;
+    uint64_t _mng_dagnode140;
+    uint64_t __twr_v141;
+    uint64_t __twr_v142;
+    uint64_t __twr_v143;
+    uint64_t __twr_v144;
+    uint64_t __twr_v145;
+    uint64_t __twr_v146;
+    uint64_t __twr_v147;
+    uint64_t __twr_v148;
+    __twr_v134 = 616ULL;
+    __twr_v135 = _mng_target133 + __twr_v134;
+    __twr_v136 = *(uint8_t*)(__twr_v135);
+    if (!(__twr_v136)) { goto __twr_l2; } else { goto __twr_l3; }
+    __twr_l3:;
+    __twr_v137 = 608ULL;
+    __twr_v138 = _mng_target133 + __twr_v137;
+    __twr_v139 = *(uint64_t*)(__twr_v138);
+    _jkl_retv = __twr_v139;
+    goto _jkl_epilogue;
+    __twr_l2:;
+    _mng_dagnode140 = 0ULL;
+    __twr_v141 = 617ULL;
+    __twr_v142 = _mng_target133 + __twr_v141;
+    __twr_v143 = *(uint8_t*)(__twr_v142);
+    if (!(__twr_v143)) { goto __twr_l4; } else { goto __twr_l5; }
+    __twr_l5:;
+    __twr_l7:;
+    __twr_l6:;
+    __twr_l4:;
+    __twr_v144 = 608ULL;
+    __twr_v145 = _mng_target133 + __twr_v144;
+    *(uint64_t*)(__twr_v145) = _mng_dagnode140;
+    __twr_v146 = 1ULL;
+    __twr_v147 = 616ULL;
+    __twr_v148 = _mng_target133 + __twr_v147;
+    *(uint8_t*)(__twr_v148) = __twr_v146;
+    _jkl_retv = _mng_dagnode140;
+    goto _jkl_epilogue;
     __twr_l1:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
 void BtBuildDag() {
-    uint64_t __twr_v134;
-    uint64_t __twr_v135;
-    uint64_t __twr_v136;
-    uint64_t __twr_v137;
-    uint64_t _mng_dagroot138;
-    uint64_t __twr_v139;
-    uint64_t __twr_v140;
-    __twr_v134 = (uint64_t)(&BtBuildDagForTarget);
-    __twr_v135 = (uint64_t)(&BtSelectedTarget);
-    __twr_v136 = *(uint64_t*)(__twr_v135);
-    __twr_v137 = ((uint64_t (*)(uint64_t))__twr_v134)(__twr_v136);
-    _mng_dagroot138 = __twr_v137;
-    if (_mng_dagroot138) { goto __twr_l3; } else { goto __twr_l4; }
-    __twr_l4:;
-    __twr_v139 = (uint64_t)(&TlPrintString);
-    __twr_v140 = (uint64_t)(&"The target is already up to date.\n");
-    ((void (*)(uint64_t))__twr_v139)(__twr_v140);
+    uint64_t __twr_v149;
+    uint64_t __twr_v150;
+    uint64_t __twr_v151;
+    uint64_t __twr_v152;
+    uint64_t _mng_dagroot153;
+    uint64_t __twr_v154;
+    uint64_t __twr_v155;
+    __twr_v149 = (uint64_t)(&BtBuildDagForTarget);
+    __twr_v150 = (uint64_t)(&BtSelectedTarget);
+    __twr_v151 = *(uint64_t*)(__twr_v150);
+    __twr_v152 = ((uint64_t (*)(uint64_t))__twr_v149)(__twr_v151);
+    _mng_dagroot153 = __twr_v152;
+    if (_mng_dagroot153) { goto __twr_l9; } else { goto __twr_l10; }
+    __twr_l10:;
+    __twr_v154 = (uint64_t)(&TlPrintString);
+    __twr_v155 = (uint64_t)(&"The target is already up to date.\n");
+    ((void (*)(uint64_t))__twr_v154)(__twr_v155);
     goto _jkl_epilogue;
-    __twr_l3:;
-    __twr_l2:;
+    __twr_l9:;
+    __twr_l8:;
     _jkl_epilogue:;
 }

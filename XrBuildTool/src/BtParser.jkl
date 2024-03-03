@@ -151,6 +151,8 @@ FN (BtTargetInfoF) BtTargetInfoFile ()
         &BtCurrentTarget^.FileName, // fullpath
         &token, // errtoken
     )
+
+    BtCurrentTarget^.HasFileName = TRUE
 END
 
 FN (BtTargetInfoF) BtTargetInfoDepend ()
@@ -233,6 +235,10 @@ FN (BtTargetInfoF) BtTargetInfoSources ()
     END
 
     string := CAST token.Payload TO ^LexInternedString
+
+    IF NOT BtCurrentTarget^.HasFileName THEN
+        LexTokenError ( &token, "Sourceful target needs FILE name", 0, 0, 0 )
+    END
 
     // Allocate a sources record.
 
@@ -593,6 +599,9 @@ FN BtParseTarget () : UBYTE
     TlInitializeDynamicBuffer ( &target^.LinkPaths )
     TlInitializeDynamicBuffer ( &target^.DyLinkPaths )
     TlInitializeDynamicBuffer ( &target^.FileName )
+
+    target^.CheckedForUpdate = FALSE
+    target^.HasFileName = FALSE
 
     TlInitializeList ( &target^.DependsOnListHead )
     TlInitializeList ( &target^.SourcesListHead )

@@ -1,0 +1,110 @@
+//
+// Build the update DAG for the project.
+//
+
+#INCLUDE "Bt.hjk"
+
+EXTERN BtSelectedTarget : ^BtTarget
+
+FN BtBuildDagForTarget (
+    IN target : ^BtTarget,
+) : ^BtDagNode
+
+    // Build the update sub-DAG for a target. If the target is up to date, we
+    // return a NULLPTR.
+
+    IF target^.CheckedForUpdate THEN
+        RETURN target^.DagNode
+    END
+
+    dagnode : ^BtDagNode = NULLPTR
+
+    // We have to recursively build DAG nodes for all of the targets depended
+    // upon by this target. Any that return non-NULLPTR need to be added as out-
+    // edges to this node (plus, we need to create the node if it hasn't been
+    // created yet).
+
+    // TODO
+
+    IF target^.HasFileName THEN
+        // For all SOURCES subdirectories specified, we need to iterate their
+        // contents. Each *.jkl and *.s file represent an object file in the
+        // build cache that must exist and have a modification date later than
+        // the source file, and later than that of all header files upon which
+        // the source file depends (which are themselves cached). If this
+        // invariant is violated, we have to create a node in the DAG and add an
+        // out-edge from ourselves to it.
+
+        // N.B. Also check for *.c files when building for the C transpilation
+        //      host.
+
+        // TODO
+
+        // If there still isn't a DAG node, check to make sure that the
+        // executable actually does exist. If it doesn't, we need to create a
+        // node for relinking.
+
+        IF NOT dagnode THEN
+            // TODO
+        END
+    END
+
+    // Now cache the DAG node and return.
+
+    target^.DagNode = dagnode
+    target^.CheckedForUpdate = TRUE
+
+    RETURN dagnode
+END
+
+FN BtBuildDag ()
+    
+    // The update DAG represents all of the 'objects' that need to be updated to
+    // bring the selected target up to date. A node represents one of these
+    // objects, and a directed edge leads FROM an object TO an object that must
+    // be updated first.
+    //
+    // If an object is added to the DAG, all objects that depend upon it will
+    // also be added to the DAG.
+    //
+    // An exhaustive list of objects and their associated actions are:
+    //
+    //   o An object code file is added to the DAG if:
+    //      1. The object code file does not exist OR
+    //      2. The associated source file was modified more recently than the
+    //         object code file OR
+    //      3. One of the source file's headers was modified more recently OR
+    //      4. The header cache file for the source file does not exist.
+    //
+    //     The action to be taken is to recompile the source file, regenerating
+    //     the header cache file in the process.
+    //
+    //   o An executable file is added to the DAG if one of its object files
+    //     are, or if a target upon which it depends is added to the DAG.
+    //
+    //     The action to be taken is to relink the executable file.
+    //
+    //   o A null node is added to the DAG if a target without an output file
+    //     must be updated. There is no action taken.
+
+    dagroot := BtBuildDagForTarget ( BtSelectedTarget )
+
+    IF NOT dagroot THEN
+        TlPrintString ( "The target is already up to date.\n" )
+
+        LEAVE
+    END
+
+    // Now we have a dependency DAG, and a list of leaf nodes (i.e., nodes that
+    // have zero out-edges). In order to process this DAG, we need to spawn the
+    // maximum number of worker threads specified by the -j argument. These
+    // worker threads will spin a loop popping items from the leaf list and
+    // processing them. After processing, the leaf node will be removed from the
+    // DAG, thereby creating more leaf nodes. This is repeated until the DAG is
+    // emptied.
+
+    // N.B. If the maximum number of threads is one, directly call the worker
+    //      thread entrypoint in the context of this thread.
+
+    // TODO
+END
