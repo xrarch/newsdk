@@ -1,0 +1,35 @@
+//
+// Build the update DAG for the project.
+//
+
+#INCLUDE "Bt.hjk"
+
+EXTERN BtSelectedTarget : ^BtTarget
+
+FN BtBuildDag ()
+    
+    // The update DAG represents all of the 'objects' that need to be updated to
+    // bring the selected target up to date. A node represents one of these
+    // objects, and a directed edge leads FROM an object TO an object that must
+    // be updated first.
+    //
+    // If an object is added to the DAG, all objects that depend upon it will
+    // also be added to the DAG.
+    //
+    // An exhaustive list of objects and their associated actions are:
+    //
+    //   o An object code file is added to the DAG if:
+    //      1. The object code file does not exist OR
+    //      2. The associated source file was modified more recently than the
+    //         object code file OR
+    //      3. One of the source file's headers was modified more recently OR
+    //      4. The header cache file for the source file does not exist.
+    //
+    //     The action to be taken is to recompile the source file, regenerating
+    //     the header cache file in the process.
+    //
+    //   o An executable file is added to the DAG if one of its object files
+    //     are, or if a target upon which it depends is added to the DAG.
+    //
+    //     The action to be taken is to relink the executable file.
+END

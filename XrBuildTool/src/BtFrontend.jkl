@@ -6,7 +6,7 @@
 #INCLUDE "Bt.hjk"
 
 PUBLIC FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
-PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
 
 PUBLIC FeInputFileHandle : ^VOID
 
@@ -15,7 +15,7 @@ BtBinaryName : ^UBYTE = NULLPTR
 FN BtUsage ()
     TlPrintString ( "Usage: " )
     TlPrintString ( BtBinaryName )
-    TlPrintString ( " [configname] target=[CHost/xr17032/fox32]\n" )
+    TlPrintString ( " [configname] [targetname]\n" )
 
     TlErrorExit ()
 END
@@ -55,21 +55,22 @@ FN FeParseArguments (
     i := 1
 
     WHILE i < argc DO
-        IF TlCompareStringWithMax ( argv[i], "target=", 7 ) == 0 THEN
+        IF FeIsMacroArgument ( argv[i] ) THEN
+            LexDefineMacroFromArgumentString ( argv[i] )
+
+        ELSEIF foundinput THEN
+            IF foundtarget THEN
+                TlPrintString ( "Too many arguments specified!\n" )
+                BtUsage ()
+            END
+
             TlCopyString (
-                &FeTargetString[0], // dest
-                &argv[i][7], // src
+                &FeTargetName[0], // dest
+                argv[i], // src
                 FE_PATH_BUFFER_SIZE, // bufsize
             )
 
             foundtarget = TRUE
-
-        ELSEIF FeIsMacroArgument ( argv[i] ) THEN
-            LexDefineMacroFromArgumentString ( argv[i] )
-
-        ELSEIF foundinput THEN
-            TlPrintString ( "Too many arguments specified!\n" )
-            BtUsage ()
 
         ELSE
             foundinput = TRUE
@@ -90,7 +91,7 @@ FN FeParseArguments (
     END
 
     IF NOT foundtarget THEN
-        TlPrintString ( "Error: No target specified.\n" )
+        TlPrintString ( "Error: No target name specified.\n" )
         BtUsage ()
     END
 END
@@ -176,6 +177,7 @@ FN FeInitialize (
 END
 
 EXTERN FN BtParse ()
+EXTERN FN BtBuildDag ()
 
 FN BtBuild (
     IN argc : ULONG,
@@ -196,4 +198,8 @@ FN BtBuild (
     // Parse the build configuration.
 
     BtParse ()
+
+    // Build the DAG.
+
+    BtBuildDag ()
 END

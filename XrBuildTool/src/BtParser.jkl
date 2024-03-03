@@ -8,6 +8,10 @@
 BtTargetHashTable : TlHashTable
 BtCurrentTarget : ^BtTarget
 
+EXTERN FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
+
+PUBLIC BtSelectedTarget : ^BtTarget
+
 FN BtParseStandardPath (
     IN stdpath : ^TlDynamicBuffer,
     IN fullpath : ^TlDynamicBuffer,
@@ -89,6 +93,11 @@ FN BtParseStandardPath (
         )
 
         stdpathstr += 5
+
+    ELSE
+        // Dunno what this is.
+
+        LexTokenError ( errtoken, "Unknown path prefix", 0, 0, 0 )
     END
 
     IF NOT fullpath^.Count THEN
@@ -636,4 +645,17 @@ FN BtParse ()
     WHILE BtParseTarget () DO
         // Keep going...
     END
+
+    // Look up the specified target.
+
+    target := CAST TlLookupHashTable (
+        &BtTargetHashTable, // hashtable
+        &FeTargetName[0], // key
+    ) TO ^BtTarget
+
+    IF NOT target THEN
+        TlUserError ( "Target not defined", 0, 0, 0 )
+    END
+
+    BtSelectedTarget = target
 END
