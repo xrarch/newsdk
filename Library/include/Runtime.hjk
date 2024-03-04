@@ -356,6 +356,18 @@ EXTERN FN TlIsPathDirectory (
     IN path : ^UBYTE,
 ) : UWORD
 
+FNPTR TlIterateDirectoryCallbackF (
+    IN fullpath : ^UBYTE,
+    IN filename : ^UBYTE,
+    IN context : ^VOID,
+)
+
+EXTERN FN TlIterateDirectory (
+    IN path : ^UBYTE,
+    IN callback : TlIterateDirectoryCallbackF,
+    IN context : ^VOID,
+) : UWORD
+
 
 // zone stuff
 

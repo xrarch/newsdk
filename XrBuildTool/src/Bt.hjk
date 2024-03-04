@@ -293,5 +293,7 @@ STRUCT BtDagNode
     InEdgeListHead : TlListEntry,
     OutEdgeListHead : TlListEntry,
 
+    Target : ^BtTarget,
+
     Type : BtDagNodeType,
 END

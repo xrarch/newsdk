@@ -1,4 +1,6 @@
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -31,9 +33,42 @@ void TlUserError (uint8_t* str, uint64_t err1, uint64_t err2, uint64_t err3) {
 uint64_t TlIsPathDirectory (uint8_t* path) {
     struct stat sb;
 
-    if (stat(path, &sb) != 0) {
+    if (stat((char*)path, &sb) != 0) {
         return 0;
     }
 
     return S_ISDIR(sb.st_mode);
+}
+
+uint64_t TlIterateDirectory (uint8_t* path, void (*callback)(uint64_t, uint64_t, uint64_t), uint64_t context) {
+    struct dirent *dp;
+    DIR *dfd;
+
+    dfd = opendir((char*)path);
+
+    if (!dfd) {
+        return -1;
+    }
+
+    while (1) {
+        dp = readdir(dfd);
+
+        if (!dp) {
+            break;
+        }
+
+        if (dp->d_name[0] == '.') {
+            continue;
+        }
+
+        char fullpath[256];
+
+        sprintf (&fullpath[0], "%s/%s", path, dp->d_name);
+
+        callback((uint64_t)(&fullpath[0]), (uint64_t)(dp->d_name), context);
+    }
+
+    closedir(dfd);
+
+    return 0;
 }

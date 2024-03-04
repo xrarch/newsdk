@@ -6,6 +6,86 @@
 
 EXTERN BtSelectedTarget : ^BtTarget
 
+FN BtConnectDagNodes (
+    IN fromnode : ^BtDagNode,
+    IN tonode : ^BtDagNode,
+)
+
+    // Allocate a DAG edge and connect the nodes.
+
+    dagedge : ^BtDagEdge
+
+    status := TlBumpAlloc (
+        SIZEOF BtDagEdge, // bytes
+        OUT dagedge, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate DAG edge", 0, 0, 0 )
+    END
+
+    dagedge^.From = fromnode
+    dagedge^.To = tonode
+
+    // Add to the in-edge list of the TO node, and the out-edge list of the
+    // FROM node.
+
+    TlInsertAtTailList (
+        &tonode^.InEdgeListHead, // head
+        &dagedge^.InEdgeListEntry, // entry
+    )
+
+    TlInsertAtTailList (
+        &fromnode^.OutEdgeListHead, // head
+        &dagedge^.OutEdgeListEntry, // entry
+    )
+END
+
+FN BtCreateDagNode (
+    IN target : ^BtTarget,
+    IN type : BtDagNodeType,
+) : ^BtDagNode
+
+    // Build a DAG node.
+
+    dagnode : ^BtDagNode
+
+    status := TlBumpAlloc (
+        SIZEOF BtDagNode, // bytes
+        OUT dagnode, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate DAG node", 0, 0, 0 )
+    END
+
+    TlInitializeList ( &dagnode^.InEdgeListHead )
+    TlInitializeList ( &dagnode^.OutEdgeListHead )
+
+    dagnode^.Target = target
+    dagnode^.Type = type
+
+    RETURN dagnode
+END
+
+STRUCT BtProcessDirectoryContext
+    Target : ^BtTarget,
+    DagNode : ^BtDagNode,
+    SourceDirPath : ^UBYTE,
+END
+
+FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
+    IN fullpath : ^UBYTE,
+    IN filename : ^UBYTE,
+    IN context : ^VOID,
+)
+
+    TlPrintString ( fullpath )
+    TlPrintString ( "\n" )
+    TlPrintString ( filename )
+    TlPrintString ( "\n" )
+END
+
 FN BtBuildDagForTarget (
     IN target : ^BtTarget,
 ) : ^BtDagNode
@@ -19,12 +99,43 @@ FN BtBuildDagForTarget (
 
     dagnode : ^BtDagNode = NULLPTR
 
+    dagtype : BtDagNodeType
+
+    IF target^.HasFileName THEN
+        dagtype = DAG_EXECUTABLE
+    ELSE
+        dagtype = DAG_NULL
+    END
+
     // We have to recursively build DAG nodes for all of the targets depended
     // upon by this target. Any that return non-NULLPTR need to be added as out-
     // edges to this node (plus, we need to create the node if it hasn't been
     // created yet).
 
-    // TODO
+    dependhead := &target^.DependsOnListHead
+    dependentry := dependhead^.Next
+
+    WHILE dependentry != dependhead DO
+        dependnode := BtBuildDagForTarget (
+            (CONTAINEROF dependentry TO BtDependsListEntry.Entry)^.Target
+        )
+
+        IF dependnode THEN
+            IF NOT dagnode THEN
+                dagnode = BtCreateDagNode (
+                    target, // target
+                    dagtype, // type
+                )
+            END
+
+            BtConnectDagNodes (
+                dagnode, // fromnode
+                dependnode, // tonode
+            )
+        END
+
+        dependentry = dependentry^.Next
+    END
 
     IF target^.HasFileName THEN
         // For all SOURCES subdirectories specified, we need to iterate their
@@ -35,10 +146,36 @@ FN BtBuildDagForTarget (
         // invariant is violated, we have to create a node in the DAG and add an
         // out-edge from ourselves to it.
 
-        // N.B. Also check for *.c files when building for the C transpilation
-        //      host.
+        // Note: Also check for *.c files when building for the C transpilation
+        //       host.
 
-        // TODO
+        sourceshead := &target^.SourcesListHead
+        sourcesentry := sourceshead^.Next
+
+        context : BtProcessDirectoryContext
+
+        context.Target = target
+        context.DagNode = dagnode
+
+        WHILE sourcesentry != sourceshead DO
+            sourcesrcrd := CONTAINEROF sourcesentry TO BtSourcesRecord.Entry
+
+            context.SourceDirPath = sourcesrcrd^.FilePathBuffer.Buffer
+
+            status := TlIterateDirectory (
+                sourcesrcrd^.FilePathBuffer.Buffer, // path
+                &BtProcessDirectoryEntry, // callback
+                &context, // context
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to iterate directory", 0, 0, 0 )
+            END
+
+            sourcesentry = sourcesentry^.Next
+        END
+
+        dagnode = context.DagNode
 
         // If there still isn't a DAG node, check to make sure that the
         // executable actually does exist. If it doesn't, we need to create a
@@ -103,8 +240,8 @@ FN BtBuildDag ()
     // DAG, thereby creating more leaf nodes. This is repeated until the DAG is
     // emptied.
 
-    // N.B. If the maximum number of threads is one, directly call the worker
-    //      thread entrypoint in the context of this thread.
+    // Note: If the maximum number of threads is one, directly call the worker
+    //       thread entrypoint in the context of this thread.
 
     // TODO
 END
