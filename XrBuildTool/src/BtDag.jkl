@@ -139,6 +139,8 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         LEAVE
     END
 
+    // TODO the other stuff
+
     TlPrintString ( fullpath )
     TlPrintString ( "\n" )
     TlPrintString ( filename )
