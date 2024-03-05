@@ -112,3 +112,30 @@ FN TlMatchPath (
 
     RETURN FALSE
 END
+
+FN TlGetPathExtension (
+    IN path : ^UBYTE,
+) : ^UBYTE
+
+    // Return the extension of the file pointed to by the path. Note that the
+    // pointer returned is just a pointer within the path string. If there is no
+    // extension, a zero length string is returned.
+
+    len := TlMeasureString ( path )
+
+    IF len == 0 THEN
+        RETURN ""
+    END
+
+    len -= 1
+
+    WHILE len AND path[len] != '/' DO
+        IF path[len] == '.' AND path[len - 1] != '/' THEN
+            RETURN &path[len + 1]
+        END
+
+        len -= 1
+    END
+
+    RETURN ""
+END

@@ -368,6 +368,29 @@ EXTERN FN TlIterateDirectory (
     IN context : ^VOID,
 ) : UWORD
 
+EXTERN FN TlGetPathExtension (
+    IN path : ^UBYTE,
+) : ^UBYTE
+
+ENUM TlFileType : UBYTE
+    TL_FT_DIRECTORY,
+    TL_FT_FILE,
+END
+
+STRUCT TlStatRecord
+    // This struct may seem alarmingly small.
+    // Only the fields that are actually needed by a consumer are implemented
+    // here (this is the Toolchain Library, not the RTL!).
+
+    FileType : TlFileType,
+    ModificationTime : ULONG,
+END
+
+EXTERN FN TlStatFile (
+    IN path : ^UBYTE,
+    IN statrecord : ^TlStatRecord,
+) : UWORD
+
 
 // zone stuff
 

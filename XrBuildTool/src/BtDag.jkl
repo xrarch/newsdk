@@ -80,6 +80,65 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
     IN context : ^VOID,
 )
 
+    // This callback is provided the full path from the current directory to
+    // the file in the directory, along with just its name; the context
+    // structure also provides the path for the source directory.
+    //
+    // What we really need to do here is:
+    //
+    //   1. Check that the file name ends with .jkl, .s, or .c. If it doesn't,
+    //      we don't care about this file.
+    //
+    //   2. Look up the file in our stat cache. Check that it's a file (not a
+    //      directory). If it's not, we don't care.
+    //
+    // Now we know that we care about it, that it's a file, and we have access
+    // to the status information, we need to figure out if it needs to be
+    // updated. Any of the following situations mean it does:
+    //
+    //   1. If the corresponding object file doesn't exist OR
+    //   2. If the corresponding header dep file doesn't exist OR
+    //   3. If the source file was modified more recently than the object OR
+    //   4. If any of the header files were modified more recently than the
+    //      source file.
+    //
+    // The object file is located at [srcdir]/obj/[arch]/[filename].o
+    // The header dep file is located at [srcdir]/obj/[filename].dep
+    //
+    // Note: We should also create the obj/ and obj/[arch]/ directories if they
+    //       don't exist yet; this is the most convenient place to do that.
+
+    ext := TlGetPathExtension ( filename )
+
+    nodetype : BtDagNodeType
+
+    IF TlCompareString ( ext, "jkl" ) == 0 THEN
+        nodetype = DAG_JKL_OBJECT
+
+    ELSEIF TlCompareString ( ext, "s" ) == 0 THEN
+        nodetype = DAG_S_OBJECT
+
+    ELSEIF TlCompareString ( ext, "c" ) == 0 THEN
+        nodetype = DAG_C_OBJECT
+
+    ELSE
+        // Don't care.
+
+        LEAVE
+    END
+
+    stat := BtStatFile ( fullpath )
+
+    IF NOT stat THEN
+        TlInternalError ( "Failed to stat file", 0, 0, 0 )
+    END
+
+    IF stat^.FileType != TL_FT_FILE THEN
+        // Don't care.
+
+        LEAVE
+    END
+
     TlPrintString ( fullpath )
     TlPrintString ( "\n" )
     TlPrintString ( filename )
@@ -117,7 +176,7 @@ FN BtBuildDagForTarget (
 
     WHILE dependentry != dependhead DO
         dependnode := BtBuildDagForTarget (
-            (CONTAINEROF dependentry TO BtDependsListEntry.Entry)^.Target
+            (CONTAINEROF dependentry TO BtDependsListEntry.Entry)^.Target,
         )
 
         IF dependnode THEN

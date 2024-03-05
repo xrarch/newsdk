@@ -242,6 +242,10 @@ EXTERN FN LexCrunchNumber (
     IN buffer : ^UBYTE,
 ) : UWORD
 
+EXTERN FN BtStatFile (
+    IN fullpath : ^UBYTE,
+) : ^TlStatRecord
+
 STRUCT BtDependsListEntry
     Entry : TlListEntry,
 
@@ -275,7 +279,9 @@ END
 ENUM BtDagNodeType : UBYTE
     DAG_NULL,
 
-    DAG_OBJECT_CODE,
+    DAG_JKL_OBJECT,
+    DAG_C_OBJECT,
+    DAG_S_OBJECT,
     DAG_EXECUTABLE,
 
     DAG_MAX,

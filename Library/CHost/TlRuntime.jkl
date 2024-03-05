@@ -286,3 +286,18 @@ FN TlWriteFile (
 
     RETURN fwrite ( buffer, 1, bytes, handle )
 END
+
+FN TlpStatFileHelper (
+    IN statrecord : ^TlStatRecord,
+    IN isdir : UWORD,
+    IN mtime : UWORD,
+)
+
+    IF isdir THEN
+        statrecord^.FileType = TL_FT_DIRECTORY
+    ELSE
+        statrecord^.FileType = TL_FT_FILE
+    END
+
+    statrecord^.ModificationTime = mtime
+END

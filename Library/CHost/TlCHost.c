@@ -72,3 +72,23 @@ uint64_t TlIterateDirectory (uint8_t* path, void (*callback)(uint64_t, uint64_t,
 
     return 0;
 }
+
+void TlpStatFileHelper (uint64_t statrecord, uint64_t isdir, uint64_t mtime);
+
+uint64_t TlStatFile (uint8_t* path, uint64_t statrecord) {
+    struct stat sb;
+
+    if (stat((char*)path, &sb) != 0) {
+        return -1;
+    }
+
+    // Call Jackal helper to fill the stat record.
+
+    TlpStatFileHelper (
+        statrecord, // statrecord
+        (uint64_t)(S_ISDIR(sb.st_mode)), // isdir
+        (uint64_t)(sb.st_mtimespec.tv_sec) // mtime
+    );
+
+    return 0;
+}

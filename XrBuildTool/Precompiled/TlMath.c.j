@@ -49,78 +49,80 @@ extern uint64_t TlMatchPath(uint64_t _mng_path82, uint64_t _mng_pathset83, uint6
 extern void TlCopyParentPath(uint64_t _mng_srcpath85, uint64_t _mng_destpath86);
 extern uint64_t TlIsPathDirectory(uint64_t _mng_path87);
 extern uint64_t TlIterateDirectory(uint64_t _mng_path88, uint64_t _mng_callback89, uint64_t _mng_context90);
-extern void TlInitializeZone(uint64_t _mng_zone91, uint64_t _mng_blocksize92);
-extern uint64_t TlAllocateFromZone(uint64_t _mng_zone93);
-extern void TlFreeToZone(uint64_t _mng_zone94, uint64_t _mng_block95);
-extern uint64_t TlIsPowerOfTwo(uint64_t _mng_constant96);
-extern void TlPunchValue(uint64_t _mng_ptr97, uint64_t _mng_value98, uint64_t _mng_bytes99);
-uint64_t TlIsPowerOfTwo(uint64_t _mng_constant100) {
+extern uint64_t TlGetPathExtension(uint64_t _mng_path91);
+extern uint64_t TlStatFile(uint64_t _mng_path92, uint64_t _mng_statrecord93);
+extern void TlInitializeZone(uint64_t _mng_zone94, uint64_t _mng_blocksize95);
+extern uint64_t TlAllocateFromZone(uint64_t _mng_zone96);
+extern void TlFreeToZone(uint64_t _mng_zone97, uint64_t _mng_block98);
+extern uint64_t TlIsPowerOfTwo(uint64_t _mng_constant99);
+extern void TlPunchValue(uint64_t _mng_ptr100, uint64_t _mng_value101, uint64_t _mng_bytes102);
+uint64_t TlIsPowerOfTwo(uint64_t _mng_constant103) {
     uint64_t _jkl_retv;
-    uint64_t __twr_v101;
-    uint64_t __twr_v102;
-    uint64_t __twr_v103;
     uint64_t __twr_v104;
     uint64_t __twr_v105;
-    uint64_t _mng_bitpos106;
+    uint64_t __twr_v106;
     uint64_t __twr_v107;
     uint64_t __twr_v108;
-    uint64_t __twr_v109;
+    uint64_t _mng_bitpos109;
     uint64_t __twr_v110;
     uint64_t __twr_v111;
-    if (_mng_constant100) { goto __twr_l2; } else { goto __twr_l3; }
+    uint64_t __twr_v112;
+    uint64_t __twr_v113;
+    uint64_t __twr_v114;
+    if (_mng_constant103) { goto __twr_l2; } else { goto __twr_l3; }
     __twr_l3:;
-    __twr_v101 = 18446744073709551615ULL;
-    _jkl_retv = __twr_v101;
+    __twr_v104 = 18446744073709551615ULL;
+    _jkl_retv = __twr_v104;
     goto _jkl_epilogue;
     __twr_l2:;
-    __twr_v102 = 1ULL;
-    __twr_v103 = _mng_constant100 - __twr_v102;
-    __twr_v104 = _mng_constant100 & __twr_v103;
-    if (!(__twr_v104)) { goto __twr_l4; } else { goto __twr_l5; }
+    __twr_v105 = 1ULL;
+    __twr_v106 = _mng_constant103 - __twr_v105;
+    __twr_v107 = _mng_constant103 & __twr_v106;
+    if (!(__twr_v107)) { goto __twr_l4; } else { goto __twr_l5; }
     __twr_l5:;
-    __twr_v105 = 18446744073709551615ULL;
-    _jkl_retv = __twr_v105;
+    __twr_v108 = 18446744073709551615ULL;
+    _jkl_retv = __twr_v108;
     goto _jkl_epilogue;
     __twr_l4:;
-    _mng_bitpos106 = 0ULL;
+    _mng_bitpos109 = 0ULL;
     __twr_l6:;
-    __twr_v107 = 1ULL;
-    __twr_v108 = _mng_constant100 & __twr_v107;
-    if (!(__twr_v108)) { goto __twr_l8; } else { goto __twr_l9; }
+    __twr_v110 = 1ULL;
+    __twr_v111 = _mng_constant103 & __twr_v110;
+    if (!(__twr_v111)) { goto __twr_l8; } else { goto __twr_l9; }
     __twr_l9:;
-    _jkl_retv = _mng_bitpos106;
+    _jkl_retv = _mng_bitpos109;
     goto _jkl_epilogue;
     __twr_l8:;
-    __twr_v109 = 1ULL;
-    __twr_v110 = _mng_constant100 >> __twr_v109;
-    _mng_constant100 = __twr_v110;
-    __twr_v111 = _mng_bitpos106 + __twr_v109;
-    _mng_bitpos106 = __twr_v111;
+    __twr_v112 = 1ULL;
+    __twr_v113 = _mng_constant103 >> __twr_v112;
+    _mng_constant103 = __twr_v113;
+    __twr_v114 = _mng_bitpos109 + __twr_v112;
+    _mng_bitpos109 = __twr_v114;
     goto __twr_l6;
     __twr_l7:;
     __twr_l1:;
     _jkl_epilogue:;
     return _jkl_retv;
 }
-void TlPunchValue(uint64_t _mng_ptr112, uint64_t _mng_value113, uint64_t _mng_bytes114) {
-    uint64_t __twr_v115;
-    uint64_t __twr_v116;
-    uint64_t __twr_v117;
+void TlPunchValue(uint64_t _mng_ptr115, uint64_t _mng_value116, uint64_t _mng_bytes117) {
     uint64_t __twr_v118;
     uint64_t __twr_v119;
-    if (!(_mng_bytes114)) { goto __twr_l12; } else { goto __twr_l11; }
+    uint64_t __twr_v120;
+    uint64_t __twr_v121;
+    uint64_t __twr_v122;
+    if (!(_mng_bytes117)) { goto __twr_l12; } else { goto __twr_l11; }
     __twr_l11:;
-    *(uint8_t*)(_mng_ptr112) = _mng_value113;
-    __twr_v115 = 1ULL;
-    __twr_v116 = _mng_ptr112 + __twr_v115;
-    _mng_ptr112 = __twr_v116;
-    __twr_v117 = 8ULL;
-    __twr_v118 = _mng_value113 >> __twr_v117;
-    _mng_value113 = __twr_v118;
-    __twr_v119 = _mng_bytes114 - __twr_v115;
-    _mng_bytes114 = __twr_v119;
+    *(uint8_t*)(_mng_ptr115) = _mng_value116;
+    __twr_v118 = 1ULL;
+    __twr_v119 = _mng_ptr115 + __twr_v118;
+    _mng_ptr115 = __twr_v119;
+    __twr_v120 = 8ULL;
+    __twr_v121 = _mng_value116 >> __twr_v120;
+    _mng_value116 = __twr_v121;
+    __twr_v122 = _mng_bytes117 - __twr_v118;
+    _mng_bytes117 = __twr_v122;
     __twr_l13:;
-    if (_mng_bytes114) { goto __twr_l11; } else { goto __twr_l12; }
+    if (_mng_bytes117) { goto __twr_l11; } else { goto __twr_l12; }
     __twr_l12:;
     __twr_l10:;
     _jkl_epilogue:;

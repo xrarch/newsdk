@@ -139,6 +139,8 @@ FN FeCopyPathFileBlock (
     )
 END
 
+EXTERN FN BtInitializeStatCache ()
+
 FN FeInitialize (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -174,6 +176,10 @@ FN FeInitialize (
     // Initialize the parser.
 
     // PrsInitialize ()
+
+    // Initialize the stat cache.
+
+    BtInitializeStatCache ()
 END
 
 EXTERN FN BtParse ()

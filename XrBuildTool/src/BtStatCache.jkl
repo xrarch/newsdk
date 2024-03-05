@@ -1,0 +1,55 @@
+//
+// Implements a simple cache for stat().
+//
+
+#INCLUDE "Bt.hjk"
+
+BtStatHashTable : TlHashTable
+
+STRUCT BtStatCacheEntry
+    Entry : TlHashTableEntry,
+    Stat : TlStatRecord,
+END
+
+FN BtInitializeStatCache ()
+
+    // Initialize the stat cache hash table.
+
+    TlInitializeHashTable ( &BtStatHashTable )
+END
+
+FN BtStatFile (
+    IN fullpath : ^UBYTE,
+) : ^TlStatRecord
+
+    // First look up the path in the stat cache.
+
+    created : UWORD
+
+    statentry := CAST TlLookupOrAllocateEntryHashTable (
+        &BtStatHashTable, // hashtable
+        SIZEOF BtStatCacheEntry, // entrysize
+        fullpath, // key
+        OUT created, // created
+    ) TO ^BtStatCacheEntry
+
+    IF created THEN
+        // We have to initialize the stat cache entry by actually doing the
+        // stat call.
+
+        status := TlStatFile (
+            fullpath, // path
+            &statentry^.Stat, // statrecord
+        )
+
+        IF status THEN
+            // Note the cache is inconsistent now. Assumption is caller will
+            // just print an error diagnostic and terminate. Otherwise further
+            // lookups of this file will produce an uninitialized stat record.
+
+            RETURN NULLPTR
+        END
+    END
+
+    RETURN &statentry^.Stat
+END
