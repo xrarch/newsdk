@@ -116,7 +116,7 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
     //      source file.
     //
     // The object file is located at [srcdir]/obj/[arch]/[filename].o
-    // The header dep file is located at [srcdir]/obj/[filename].dep
+    // The header dep file is located at [srcdir]/obj/[arch]/[filename].dep
     //
     // Note: We should also create the obj/ and obj/[arch]/ directories if they
     //       don't exist yet; this is the most convenient place to do that.
