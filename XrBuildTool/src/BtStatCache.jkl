@@ -43,9 +43,7 @@ FN BtStatFile (
         )
 
         IF status THEN
-            // Note the cache is inconsistent now. Assumption is caller will
-            // just print an error diagnostic and terminate. Otherwise further
-            // lookups of this file will produce an uninitialized stat record.
+            TlRemoveHashTable ( &statentry^.Entry )
 
             RETURN NULLPTR
         END

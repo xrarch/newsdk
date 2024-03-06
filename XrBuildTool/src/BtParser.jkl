@@ -8,6 +8,8 @@
 BtTargetHashTable : TlHashTable
 BtCurrentTarget : ^BtTarget
 
+PUBLIC BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
+
 EXTERN FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
 
 PUBLIC BtSelectedTarget : ^BtTarget
@@ -667,4 +669,29 @@ FN BtParse ()
     END
 
     BtSelectedTarget = target
+END
+
+FN BtLookupConfigMacros ()
+
+    // Looks up important configuration macros after a parse.
+
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "ARCHITECTURE", // name
+    ) TO ^LexMacro
+
+    IF NOT macro THEN
+        TlUserError ( "ARCHITECTURE wasn't defined in the config", 0, 0, 0 )
+    END
+
+    IF macro^.IsFunctionMacro THEN
+        TlUserError (
+            "ARCHITECTURE is a function macro for some reason", 0, 0, 0 )
+    END
+
+    TlCopyString (
+        &BtTargetArchitectureName[0], // dest
+        macro^.Contents.Buffer, // src
+        BT_ARCH_BUFFER_SIZE, // bufsize
+    )
 END

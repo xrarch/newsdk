@@ -242,6 +242,10 @@ EXTERN FN LexCrunchNumber (
     IN buffer : ^UBYTE,
 ) : UWORD
 
+#DEFINE BT_ARCH_BUFFER_SIZE 64
+
+EXTERN BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
+
 EXTERN FN BtStatFile (
     IN fullpath : ^UBYTE,
 ) : ^TlStatRecord
@@ -300,6 +304,11 @@ STRUCT BtDagNode
     OutEdgeListHead : TlListEntry,
 
     Target : ^BtTarget,
+
+    SrcPath : TlDynamicBuffer,
+    ObjectPath : TlDynamicBuffer,
+    DepsPath : TlDynamicBuffer,
+    TmpPath : TlDynamicBuffer,
 
     Type : BtDagNodeType,
 END

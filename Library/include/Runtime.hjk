@@ -356,6 +356,10 @@ EXTERN FN TlIsPathDirectory (
     IN path : ^UBYTE,
 ) : UWORD
 
+EXTERN FN TlPathExists (
+    IN path : ^UBYTE,
+) : UWORD
+
 FNPTR TlIterateDirectoryCallbackF (
     IN fullpath : ^UBYTE,
     IN filename : ^UBYTE,
@@ -389,6 +393,10 @@ END
 EXTERN FN TlStatFile (
     IN path : ^UBYTE,
     IN statrecord : ^TlStatRecord,
+) : UWORD
+
+EXTERN FN TlCreateDirectory (
+    IN path : ^UBYTE,
 ) : UWORD
 
 

@@ -68,10 +68,23 @@ FN BtCreateDagNode (
     RETURN dagnode
 END
 
+FN BtAnyDepsLater (
+    IN srctime : ULONG,
+    IN depspath : ^UBYTE,
+) : UWORD
+
+    // Open the deps cache file. It's delineated by lines.
+    // For each line, stat the header file and compare it with the srctime.
+    // If it was modified later, return TRUE. If none were modified later, then
+    // return FALSE.
+
+    // TODO
+END
+
 STRUCT BtProcessDirectoryContext
     Target : ^BtTarget,
     DagNode : ^BtDagNode,
-    SourceDirPath : ^UBYTE,
+    SourceDirPath : ^TlDynamicBuffer,
 END
 
 FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
@@ -108,6 +121,8 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
     // Note: We should also create the obj/ and obj/[arch]/ directories if they
     //       don't exist yet; this is the most convenient place to do that.
 
+    pdc := CAST context TO ^BtProcessDirectoryContext
+
     ext := TlGetPathExtension ( filename )
 
     nodetype : BtDagNodeType
@@ -139,12 +154,183 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         LEAVE
     END
 
-    // TODO the other stuff
+    // Allocate a DAG node. We might not need it but we need the dynamic buffers
+    // within.
 
-    TlPrintString ( fullpath )
-    TlPrintString ( "\n" )
-    TlPrintString ( filename )
-    TlPrintString ( "\n" )
+    dagnode := BtCreateDagNode (
+        pdc^.Target, // target
+        nodetype, // type
+    )
+
+    TlInitializeDynamicBuffer ( &dagnode^.SrcPath )
+
+    TlCopyIntoDynamicBuffer (
+        &dagnode^.SrcPath, // array
+        fullpath, // srcbuf
+        TlMeasureString ( fullpath ) + 1, // length
+    )
+
+    objectpath := &dagnode^.ObjectPath
+    depspath := &dagnode^.DepsPath
+    tmppath := &dagnode^.TmpPath
+
+    TlInitializeDynamicBuffer ( objectpath )
+    TlInitializeDynamicBuffer ( depspath )
+    TlInitializeDynamicBuffer ( tmppath )
+
+    TlCopyIntoDynamicBuffer (
+        objectpath, // array
+        pdc^.SourceDirPath^.Buffer, // srcbuf
+        pdc^.SourceDirPath^.Count - 1, // length
+    )
+
+    IF objectpath^.Buffer[objectpath^.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            objectpath, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        objectpath, // array
+        "obj/", // srcbuf
+        5, // length
+    )
+
+    // Create the object directory if it doesn't exist.
+
+    TlCreateDirectory ( objectpath^.Buffer )
+
+    // Pop the null terminator.
+
+    TlPopDynamicBuffer ( objectpath )
+
+    // Now add the architecture part.
+
+    TlCopyIntoDynamicBuffer (
+        objectpath, // array
+        &BtTargetArchitectureName[0], // srcbuf
+        TlMeasureString ( &BtTargetArchitectureName[0] ) + 1, // length
+    )
+
+    // Create the architecture directory if it doesn't exist.
+
+    TlCreateDirectory ( objectpath^.Buffer )
+
+    // Pop the null terminator.
+
+    TlPopDynamicBuffer ( objectpath )
+
+    // Now add the object name.
+
+    TlInsertDynamicBuffer (
+        objectpath, // array
+        '/', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        objectpath, // array
+        filename, // srcbuf
+        TlMeasureString ( filename ), // length
+    )
+
+    // Copy what we have into the tmp path.
+
+    TlCopyIntoDynamicBuffer (
+        tmppath, // array
+        objectpath^.Buffer, // srcbuf
+        objectpath^.Count, // length
+    )
+
+    // And into the deps path.
+
+    TlCopyIntoDynamicBuffer (
+        depspath, // array
+        objectpath^.Buffer, // srcbuf
+        objectpath^.Count, // length
+    )
+
+    // Now add the .o extension and null terminator to the object path.
+
+    TlCopyIntoDynamicBuffer (
+        objectpath, // array
+        ".o", // srcbuf
+        3, // length
+    )
+
+    // Add the deps extension to the deps path.
+
+    TlCopyIntoDynamicBuffer (
+        depspath, // array
+        ".dep", // srcbuf
+        5, // length
+    )
+
+    // Add the tmp extension to the tmp path.
+
+    TlCopyIntoDynamicBuffer (
+        tmppath, // array
+        ".tmp", // srcbuf
+        5, // length
+    )
+
+    // Now we have these paths, check the existence of the dep file.
+
+    IF nodetype == DAG_JKL_OBJECT AND
+        NOT TlPathExists ( depspath^.Buffer ) THEN
+
+        GOTO AddToDag 
+    END
+
+    // Stat the object file and check the modification times.
+
+    objstat := BtStatFile ( objectpath^.Buffer )
+
+    IF NOT objstat THEN
+        // Doesn't exist.
+
+        GOTO AddToDag
+    END
+
+    IF stat^.ModificationTime >= objstat^.ModificationTime THEN
+        // Source file modified later than object file.
+
+        GOTO AddToDag
+    END
+
+    // Now we have to open and read the deps file.
+
+    IF BtAnyDepsLater (
+        stat^.ModificationTime, // srctime
+        depspath^.Buffer, // depspath
+    ) THEN
+        GOTO AddToDag
+    END
+
+    // We didn't need to add it to the DAG, so uninitialize all we can.
+
+    TlUninitializeDynamicBuffer ( objectpath )
+    TlUninitializeDynamicBuffer ( depspath )
+    TlUninitializeDynamicBuffer ( tmppath )
+    TlUninitializeDynamicBuffer ( &dagnode^.SrcPath )
+
+    LEAVE
+
+    @AddToDag
+
+    IF NOT pdc^.DagNode THEN
+        // Gotta make it.
+
+        pdc^.DagNode = BtCreateDagNode (
+            pdc^.Target, // target
+            DAG_EXECUTABLE, // type
+        )
+    END
+
+    BtConnectDagNodes (
+        pdc^.DagNode, // fromnode
+        dagnode, // tonode
+    )
 END
 
 FN BtBuildDagForTarget (
@@ -221,7 +407,7 @@ FN BtBuildDagForTarget (
         WHILE sourcesentry != sourceshead DO
             sourcesrcrd := CONTAINEROF sourcesentry TO BtSourcesRecord.Entry
 
-            context.SourceDirPath = sourcesrcrd^.FilePathBuffer.Buffer
+            context.SourceDirPath = &sourcesrcrd^.FilePathBuffer
 
             status := TlIterateDirectory (
                 sourcesrcrd^.FilePathBuffer.Buffer, // path

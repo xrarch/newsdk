@@ -184,6 +184,7 @@ END
 
 EXTERN FN BtParse ()
 EXTERN FN BtBuildDag ()
+EXTERN FN BtLookupConfigMacros ()
 
 FN BtBuild (
     IN argc : ULONG,
@@ -204,6 +205,10 @@ FN BtBuild (
     // Parse the build configuration.
 
     BtParse ()
+
+    // Pull out the important macros.
+
+    BtLookupConfigMacros ()
 
     // Build the DAG.
 

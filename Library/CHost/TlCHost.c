@@ -40,6 +40,16 @@ uint64_t TlIsPathDirectory (uint8_t* path) {
     return S_ISDIR(sb.st_mode);
 }
 
+uint64_t TlPathExists (uint8_t* path) {
+    struct stat sb;
+
+    if (stat((char*)path, &sb) != 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
 uint64_t TlIterateDirectory (uint8_t* path, void (*callback)(uint64_t, uint64_t, uint64_t), uint64_t context) {
     struct dirent *dp;
     DIR *dfd;
@@ -89,6 +99,14 @@ uint64_t TlStatFile (uint8_t* path, uint64_t statrecord) {
         (uint64_t)(S_ISDIR(sb.st_mode)), // isdir
         (uint64_t)(sb.st_mtimespec.tv_sec) // mtime
     );
+
+    return 0;
+}
+
+uint64_t TlCreateDirectory (uint8_t* path) {
+    if (mkdir((char*)path, 0777)) {
+        return -1;
+    }
 
     return 0;
 }
