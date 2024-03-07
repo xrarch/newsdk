@@ -1,0 +1,39 @@
+//
+// String helper routines.
+//
+
+#INCLUDE "<inc>/Runtime.hjk"
+
+FN TlTokenize (
+    IN buffer : ^UBYTE,
+    IN tokenbuffer : ^UBYTE,
+    IN bufsize : UWORD,
+    IN delimiter : UBYTE,
+) : ^UBYTE
+
+    // Return the next token from the buffer.
+
+    WHILE buffer^ == delimiter DO
+        buffer += 1
+    END
+
+    IF NOT buffer^ THEN
+        RETURN NULLPTR
+    END
+
+    WHILE bufsize - 1 DO
+        IF buffer^ == delimiter OR NOT buffer^ THEN
+            BREAK
+        END
+
+        tokenbuffer^ = buffer^
+
+        tokenbuffer += 1
+        buffer += 1
+        bufsize -= 1
+    END
+
+    tokenbuffer^ = 0
+
+    RETURN buffer
+END

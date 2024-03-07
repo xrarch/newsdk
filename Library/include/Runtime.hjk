@@ -388,6 +388,7 @@ STRUCT TlStatRecord
 
     FileType : TlFileType,
     ModificationTime : ULONG,
+    SizeInBytes : ULONG,
 END
 
 EXTERN FN TlStatFile (
@@ -396,6 +397,10 @@ EXTERN FN TlStatFile (
 ) : UWORD
 
 EXTERN FN TlCreateDirectory (
+    IN path : ^UBYTE,
+) : UWORD
+
+EXTERN FN TlSwitchDirectory (
     IN path : ^UBYTE,
 ) : UWORD
 
@@ -441,3 +446,14 @@ EXTERN FN TlPunchValue (
     IN value : UWORD,
     IN bytes : UWORD,
 )
+
+
+// string stuff
+
+
+EXTERN FN TlTokenize (
+    IN buffer : ^UBYTE,
+    IN tokenbuffer : ^UBYTE,
+    IN bufsize : UWORD,
+    IN delimiter : UBYTE,
+) : ^UBYTE

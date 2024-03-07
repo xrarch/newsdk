@@ -68,6 +68,8 @@ FN BtCreateDagNode (
     RETURN dagnode
 END
 
+BtDepsLineBuffer : UBYTE[FE_PATH_BUFFER_SIZE]
+
 FN BtAnyDepsLater (
     IN srctime : ULONG,
     IN depspath : ^UBYTE,
@@ -78,7 +80,74 @@ FN BtAnyDepsLater (
     // If it was modified later, return TRUE. If none were modified later, then
     // return FALSE.
 
-    // TODO
+    handle : ^VOID
+
+    status := TlOpenSource (
+        depspath, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to open deps file", 0, 0, 0 )
+    END
+
+    stat := BtStatFile ( depspath )
+
+    IF NOT stat THEN
+        TlInternalError ( "Failed to stat deps file", 0, 0, 0 )
+    END
+
+    ptr : ^UBYTE
+
+    status = TlAlloc (
+        stat^.SizeInBytes, // bytes
+        OUT ptr, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate deps buffer", 0, 0, 0 )
+    END
+
+    TlReadFile (
+        handle, // handle
+        stat^.SizeInBytes, // bytes
+        ptr, // buffer
+    )
+
+    tokptr := ptr
+
+    WHILE TRUE DO
+        tokptr = TlTokenize (
+            tokptr, // buffer
+            &BtDepsLineBuffer[0], // tokenbuffer
+            FE_PATH_BUFFER_SIZE, // bufsize
+            '\n', // delimiter
+        )
+
+        IF NOT tokptr THEN
+            BREAK
+        END
+
+        // Stat the dependent header file.
+
+        depstat := BtStatFile ( &BtDepsLineBuffer[0] )
+
+        IF NOT depstat THEN
+            TlInternalError ( "Failed to stat dependent header", 0, 0, 0 )
+        END
+
+        IF depstat^.ModificationTime >= srctime THEN
+            // Modified more recently than the source file. We have to rebuild.
+
+            TlFree ( ptr )
+
+            RETURN TRUE
+        END
+    END
+
+    TlFree ( ptr )
+
+    RETURN FALSE
 END
 
 STRUCT BtProcessDirectoryContext

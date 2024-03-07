@@ -169,6 +169,53 @@ FN FeInitialize (
         TlUserError ( "Failed to open the config file.", 0, 0, 0 )
     END
 
+    // Switch to the parent directory of the input file.
+    // Only purpose for this is to make sure that cached relative paths within
+    // the "dep" files remain valid.
+
+    parentpath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &parentpath )
+
+    TlCopyParentPath (
+        &FeInputFile[0], // srcpath
+        &parentpath, // destpath
+    )
+
+    parentlen := parentpath.Count
+
+    IF NOT parentpath.Count THEN
+        TlInsertDynamicBuffer (
+            &parentpath, // array
+            '.'
+        )
+
+        TlInsertDynamicBuffer (
+            &parentpath, // array
+            '/'
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        &parentpath, // array
+        0, // byte
+    )
+
+    IF NOT TlSwitchDirectory ( parentpath.Buffer ) THEN
+        TlUserError ( "Failed to switch to config file directory", 0, 0, 0 )
+    END
+
+    TlUninitializeDynamicBuffer ( &parentpath )
+
+    // Use the parent path length to copy the final component of the path to the
+    // beginning.
+
+    TlCopyString (
+        &FeInputFile[0], // dest
+        &FeInputFile[parentlen], // src
+        -1, // bufsize
+    )
+
     // Initialize the lexer.
 
     LexInitialize ()

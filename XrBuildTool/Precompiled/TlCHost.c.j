@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -83,7 +84,7 @@ uint64_t TlIterateDirectory (uint8_t* path, void (*callback)(uint64_t, uint64_t,
     return 0;
 }
 
-void TlpStatFileHelper (uint64_t statrecord, uint64_t isdir, uint64_t mtime);
+void TlpStatFileHelper (uint64_t statrecord, uint64_t isdir, uint64_t mtime, uint64_t sizebytes);
 
 uint64_t TlStatFile (uint8_t* path, uint64_t statrecord) {
     struct stat sb;
@@ -97,7 +98,8 @@ uint64_t TlStatFile (uint8_t* path, uint64_t statrecord) {
     TlpStatFileHelper (
         statrecord, // statrecord
         (uint64_t)(S_ISDIR(sb.st_mode)), // isdir
-        (uint64_t)(sb.st_mtimespec.tv_sec) // mtime
+        (uint64_t)(sb.st_mtimespec.tv_sec), // mtime
+        (uint64_t)(sb.st_size) // sizebytes
     );
 
     return 0;
@@ -109,4 +111,12 @@ uint64_t TlCreateDirectory (uint8_t* path) {
     }
 
     return 0;
+}
+
+uint64_t TlSwitchDirectory (uint8_t* path) {
+    if (chdir((char*)path)) {
+        return 0;
+    }
+
+    return 1;
 }

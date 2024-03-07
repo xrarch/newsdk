@@ -291,6 +291,7 @@ FN TlpStatFileHelper (
     IN statrecord : ^TlStatRecord,
     IN isdir : UWORD,
     IN mtime : UWORD,
+    IN sizebytes : UWORD,
 )
 
     IF isdir THEN
@@ -300,4 +301,6 @@ FN TlpStatFileHelper (
     END
 
     statrecord^.ModificationTime = mtime
+
+    statrecord^.SizeInBytes = sizebytes
 END

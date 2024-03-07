@@ -53,20 +53,22 @@ extern uint64_t TlIterateDirectory(uint64_t _mng_path89, uint64_t _mng_callback9
 extern uint64_t TlGetPathExtension(uint64_t _mng_path92);
 extern uint64_t TlStatFile(uint64_t _mng_path93, uint64_t _mng_statrecord94);
 extern uint64_t TlCreateDirectory(uint64_t _mng_path95);
-extern void TlInitializeZone(uint64_t _mng_zone96, uint64_t _mng_blocksize97);
-extern uint64_t TlAllocateFromZone(uint64_t _mng_zone98);
-extern void TlFreeToZone(uint64_t _mng_zone99, uint64_t _mng_block100);
-extern uint64_t TlIsPowerOfTwo(uint64_t _mng_constant101);
-extern void TlPunchValue(uint64_t _mng_ptr102, uint64_t _mng_value103, uint64_t _mng_bytes104);
+extern uint64_t TlSwitchDirectory(uint64_t _mng_path96);
+extern void TlInitializeZone(uint64_t _mng_zone97, uint64_t _mng_blocksize98);
+extern uint64_t TlAllocateFromZone(uint64_t _mng_zone99);
+extern void TlFreeToZone(uint64_t _mng_zone100, uint64_t _mng_block101);
+extern uint64_t TlIsPowerOfTwo(uint64_t _mng_constant102);
+extern void TlPunchValue(uint64_t _mng_ptr103, uint64_t _mng_value104, uint64_t _mng_bytes105);
+extern uint64_t TlTokenize(uint64_t _mng_buffer106, uint64_t _mng_tokenbuffer107, uint64_t _mng_bufsize108, uint64_t _mng_delimiter109);
 extern uint64_t TlSymbolTableZone[2];
 void TlInitialize() {
-    uint64_t __twr_v105;
-    uint64_t __twr_v106;
-    uint64_t __twr_v107;
-    __twr_v105 = (uint64_t)(&TlInitializeZone);
-    __twr_v106 = (uint64_t)(&TlSymbolTableZone);
-    __twr_v107 = 1584ULL;
-    ((void (*)(uint64_t, uint64_t))__twr_v105)(__twr_v106, __twr_v107);
+    uint64_t __twr_v110;
+    uint64_t __twr_v111;
+    uint64_t __twr_v112;
+    __twr_v110 = (uint64_t)(&TlInitializeZone);
+    __twr_v111 = (uint64_t)(&TlSymbolTableZone);
+    __twr_v112 = 1584ULL;
+    ((void (*)(uint64_t, uint64_t))__twr_v110)(__twr_v111, __twr_v112);
     __twr_l1:;
     _jkl_epilogue:;
 }
