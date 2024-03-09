@@ -457,3 +457,43 @@ EXTERN FN TlTokenize (
     IN bufsize : UWORD,
     IN delimiter : UBYTE,
 ) : ^UBYTE
+
+
+// multithread stuff
+
+
+FNPTR TlThreadStartRoutineF (
+    IN arg : ^VOID,
+)
+
+EXTERN FN TlCreateThread (
+    IN startroutine : TlThreadStartRoutineF,
+    IN arg : ^VOID,
+    OUT thread : ^VOID,
+) : TlStatus
+
+EXTERN FN TlJoinThread (
+    IN thread : UWORD,
+) : TlStatus
+
+EXTERN FN TlCreateMutex () : ^VOID
+
+EXTERN FN TlAcquireMutex (
+    IN mutex : ^VOID,
+)
+
+EXTERN FN TlReleaseMutex (
+    IN mutex : ^VOID,
+)
+
+EXTERN FN TlCreateSemaphore (
+    IN initialvalue : UWORD,
+) : ^VOID
+
+EXTERN FN TlAcquireSemaphore (
+    IN semaphore : ^VOID,
+)
+
+EXTERN FN TlReleaseSemaphore (
+    IN semaphore : ^VOID,
+)
