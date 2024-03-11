@@ -10,10 +10,13 @@ BtCurrentTarget : ^BtTarget
 
 PUBLIC BtCHost := FALSE
 PUBLIC BtPrebuiltCopies := FALSE
+PUBLIC BtArchHasSuffix := FALSE
+PUBLIC BtCleanUp := FALSE
 
 PUBLIC BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 PUBLIC BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC BtPrebuiltCopiesPath : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC BtArchNameSuffix : UBYTE[FE_PATH_BUFFER_SIZE]
 
 EXTERN FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
 
@@ -771,5 +774,43 @@ FN BtLookupConfigMacros ()
         )
 
         BtPrebuiltCopies = TRUE
+    END
+
+    // Now ARCH_NAME_SUFFIX.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "ARCH_NAME_SUFFIX", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlUserError (
+            "ARCH_NAME_SUFFIX is a function macro for some reason", 0, 0, 0 )
+        END
+
+        TlCopyString (
+            &BtArchNameSuffix[0], // dest
+            macro^.Contents.Buffer, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+
+        BtArchHasSuffix = TRUE
+    END
+
+    // Now CLEANUP.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "CLEANUP", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlUserError (
+            "CLEANUP is a function macro for some reason", 0, 0, 0 )
+        END
+
+        BtCleanUp = TRUE
     END
 END

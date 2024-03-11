@@ -7,9 +7,12 @@
 EXTERN BtSelectedTarget : ^BtTarget
 EXTERN BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN BtCHost : UWORD
+EXTERN BtArchHasSuffix : UWORD
+EXTERN BtCleanUp : UWORD
 
 EXTERN BtPrebuiltCopies : UWORD
 EXTERN BtPrebuiltCopiesPath : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN BtArchNameSuffix : UBYTE[FE_PATH_BUFFER_SIZE]
 
 BtPathToJklCompiler : TlDynamicBuffer
 BtPathToAssembler : TlDynamicBuffer
@@ -236,6 +239,31 @@ FN BtAnyDepsLater (
     RETURN FALSE
 END
 
+FN BtCleanUpFile (
+    IN path : ^UBYTE,
+)
+
+    // Delete the given file if it exists.
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        "rm -f ", // srcbuf
+        6, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        path, // srcbuf
+        TlMeasureString ( path ) + 1, // length
+    )
+
+    TlSystem ( cmdline.Buffer )
+END
+
 STRUCT BtProcessDirectoryContext
     Target : ^BtTarget,
     DagNode : ^BtDagNode,
@@ -365,7 +393,22 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
     TlCopyIntoDynamicBuffer (
         objectpath, // array
         &BtTargetArchitectureName[0], // srcbuf
-        TlMeasureString ( &BtTargetArchitectureName[0] ) + 1, // length
+        TlMeasureString ( &BtTargetArchitectureName[0] ), // length
+    )
+
+    IF BtArchHasSuffix THEN
+        // Add user-specified suffix to architecture name.
+
+        TlCopyIntoDynamicBuffer (
+            objectpath, // array
+            &BtArchNameSuffix[0], // srcbuf
+            TlMeasureString ( &BtArchNameSuffix[0] ), // length
+        )
+    END
+
+    TlInsertDynamicBuffer (
+        objectpath, // array
+        0, // byte
     )
 
     // Create the architecture directory if it doesn't exist.
@@ -428,6 +471,17 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         ".tmp", // srcbuf
         5, // length
     )
+
+    IF BtCleanUp THEN
+        // This is actually just a clean-up operation.
+        // Delete those 3 files if they exist.
+
+        BtCleanUpFile ( objectpath^.Buffer )
+        BtCleanUpFile ( depspath^.Buffer )
+        BtCleanUpFile ( tmppath^.Buffer )
+
+        LEAVE
+    END
 
     // Add this to the target's object list.
 
@@ -595,7 +649,8 @@ FN BtBuildDagForTarget (
         // node for relinking.
 
         IF NOT dagnode AND
-            NOT TlPathExists ( target^.FileName.Buffer ) THEN
+            NOT TlPathExists ( target^.FileName.Buffer ) AND
+            NOT BtCleanUp THEN
 
             dagnode = BtCreateDagNode (
                 target, // target
@@ -1355,6 +1410,12 @@ FN BtBuildDag ()
     TlInitializeList ( &BtLeafListHead )
 
     dagroot := BtBuildDagForTarget ( BtSelectedTarget )
+
+    IF BtCleanUp THEN
+        // Just cleaning up. We're done already.
+
+        LEAVE
+    END
 
     IF NOT dagroot THEN
         TlPrintString ( "The target is already up to date.\n" )
