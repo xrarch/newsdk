@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 
 void TlPrintString (uint8_t *str) {
     fprintf(stderr, "%s", str);
@@ -169,4 +170,8 @@ void TlAcquireSemaphore (uint64_t semaphore) {
 
 void TlReleaseSemaphore (uint64_t semaphore) {
     sem_post((sem_t *)semaphore);
+}
+
+void TlSetTerminationHandler (uint64_t handler) {
+    signal(SIGINT, (sig_t)(handler));
 }

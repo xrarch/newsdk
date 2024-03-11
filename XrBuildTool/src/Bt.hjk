@@ -246,6 +246,8 @@ EXTERN FN LexCrunchNumber (
 
 EXTERN BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 
+EXTERN BtJobCount : UWORD
+
 EXTERN FN BtStatFile (
     IN fullpath : ^UBYTE,
 ) : ^TlStatRecord
@@ -302,6 +304,7 @@ END
 STRUCT BtDagNode
     InEdgeListHead : TlListEntry,
     OutEdgeListHead : TlListEntry,
+    LeafListEntry : TlListEntry,
 
     Target : ^BtTarget,
 

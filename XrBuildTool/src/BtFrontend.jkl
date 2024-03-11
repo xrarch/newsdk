@@ -12,6 +12,8 @@ PUBLIC FeInputFileHandle : ^VOID
 
 BtBinaryName : ^UBYTE = NULLPTR
 
+BtJobCount : UWORD = 1
+
 FN BtUsage ()
     TlPrintString ( "Usage: " )
     TlPrintString ( BtBinaryName )

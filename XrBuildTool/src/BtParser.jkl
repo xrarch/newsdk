@@ -675,6 +675,8 @@ FN BtLookupConfigMacros ()
 
     // Looks up important configuration macros after a parse.
 
+    // First look up ARCHITECTURE.
+
     macro := CAST TlLookupSymbolTable (
         LexCurrentMacroScope, // symboltable
         "ARCHITECTURE", // name
@@ -694,4 +696,32 @@ FN BtLookupConfigMacros ()
         macro^.Contents.Buffer, // src
         BT_ARCH_BUFFER_SIZE, // bufsize
     )
+
+    // Now look up JOBS.
+
+    BtJobCount = 1
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "JOBS", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlUserError (
+                "JOBS is a function macro for some reason", 0, 0, 0 )
+        END
+
+        IF NOT TlStringToNumber (
+            macro^.Contents.Buffer, // src
+            -1, // bufsize
+            OUT BtJobCount, // num
+        ) THEN
+            TlUserError ( "JOBS wasn't a numeric value", 0, 0, 0 )
+        END
+
+        IF BtJobCount == 0 THEN
+            TlUserError ( "Zero JOBS specified", 0, 0, 0 )
+        END
+    END
 END

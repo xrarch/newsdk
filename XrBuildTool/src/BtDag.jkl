@@ -6,6 +6,15 @@
 
 EXTERN BtSelectedTarget : ^BtTarget
 
+BtLeafListHead : TlListEntry
+
+BtLeafListMutex := NULLPTR
+BtLeafSemaphore := NULLPTR
+BtLeafCount := 0
+BtNodeCount := 0
+
+BtTerminateWorkers := FALSE
+
 FN BtConnectDagNodes (
     IN fromnode : ^BtDagNode,
     IN tonode : ^BtDagNode,
@@ -26,6 +35,15 @@ FN BtConnectDagNodes (
 
     dagedge^.From = fromnode
     dagedge^.To = tonode
+
+    IF fromnode^.OutEdgeListHead.Next == &fromnode^.OutEdgeListHead THEN
+        // If the out-edge list was empty, it was a leaf node.
+        // Decrement the leaf count and remove it from the list.
+
+        BtLeafCount -= 1
+
+        TlRemoveEntryList ( &fromnode^.LeafListEntry )
+    END
 
     // Add to the in-edge list of the TO node, and the out-edge list of the
     // FROM node.
@@ -65,7 +83,66 @@ FN BtCreateDagNode (
     dagnode^.Target = target
     dagnode^.Type = type
 
+    // Optimistically place on the leaf list.
+
+    TlInsertAtTailList (
+        &BtLeafListHead, // head
+        &dagnode^.LeafListEntry, // entry
+    )
+
+    BtLeafCount += 1
+    BtNodeCount += 1
+
     RETURN dagnode
+END
+
+FN BtRemoveDagNode (
+    IN node : ^BtDagNode,
+) : UWORD
+
+    // Remove the DAG node from the DAG.
+    // Assumes this is a leaf node. Also assumes it has been removed from the
+    // leaf list.
+    // Assumes the leaf list mutex is held if called from worker threads.
+
+    // Every in-edge must be removed.
+
+    head := &node^.InEdgeListHead
+    listentry := head^.Next
+
+    WHILE head != listentry DO
+        edge := CONTAINEROF listentry TO BtDagEdge.InEdgeListEntry
+        fromnode := edge^.From
+
+        // Remove this node from the in-node's out-edge list.
+
+        TlRemoveEntryList ( &edge^.OutEdgeListEntry )
+
+        // Check if the in-node just became a leaf.
+
+        IF fromnode^.OutEdgeListHead.Next == &fromnode^.OutEdgeListHead THEN
+            // Out-edge list just became empty. It's a leaf now.
+
+            BtLeafCount += 1
+
+            IF BtLeafCount == 1 THEN
+                // Leaf list just became non-empty. Signal the semaphore.
+
+                TlReleaseSemaphore ( BtLeafSemaphore )
+            END
+
+            TlInsertAtTailList (
+                &BtLeafListHead, // head
+                &fromnode^.LeafListEntry, // entry
+            )
+        END
+
+        listentry = listentry^.Next
+    END
+
+    // Decrement DAG node count.
+
+    BtNodeCount -= 1
 END
 
 BtDepsLineBuffer : UBYTE[FE_PATH_BUFFER_SIZE]
@@ -497,8 +574,13 @@ FN BtBuildDagForTarget (
         // executable actually does exist. If it doesn't, we need to create a
         // node for relinking.
 
-        IF NOT dagnode THEN
-            // TODO
+        IF NOT dagnode AND
+            NOT TlPathExists ( target^.FileName.Buffer ) THEN
+
+            dagnode = BtCreateDagNode (
+                target, // target
+                dagtype, // type
+            )
         END
     END
 
@@ -508,6 +590,129 @@ FN BtBuildDagForTarget (
     target^.CheckedForUpdate = TRUE
 
     RETURN dagnode
+END
+
+FNPTR BtDagActionF (
+    IN dagnode : ^BtDagNode,
+)
+
+FN (BtDagActionF) BtBuildJkl (
+    IN dagnode : ^BtDagNode,
+)
+
+    // Build the JKL file.
+
+    TlPrintString ( "Building " )
+    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( "\n" )
+END
+
+FN (BtDagActionF) BtBuildC (
+    IN dagnode : ^BtDagNode,
+)
+
+    // Build the C file.
+
+    TlPrintString ( "Building " )
+    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( "\n" )
+END
+
+FN (BtDagActionF) BtBuildS (
+    IN dagnode : ^BtDagNode,
+)
+
+    // Build the S file.
+
+    TlPrintString ( "Building " )
+    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( "\n" )
+END
+
+FN (BtDagActionF) BtLinkExecutable (
+    IN dagnode : ^BtDagNode,
+)
+
+    // Link the executable.
+
+    TlPrintString ( "Linking " )
+    TlPrintString ( dagnode^.Target^.FileName.Buffer )
+    TlPrintString ( "\n" )
+END
+
+BtDagAction : BtDagActionF[DAG_MAX] = {
+    [DAG_JKL_OBJECT] = &BtBuildJkl,
+    [DAG_C_OBJECT] = &BtBuildC,
+    [DAG_S_OBJECT] = &BtBuildS,
+    [DAG_EXECUTABLE] = &BtLinkExecutable,
+}
+
+FN (TlThreadStartRoutineF) BtWorkerThread (
+    IN arg : ^VOID,
+)
+
+    WHILE BtNodeCount AND NOT BtTerminateWorkers DO
+        TlAcquireMutex ( BtLeafListMutex )
+
+        IF NOT BtNodeCount THEN
+            TlReleaseMutex ( BtLeafListMutex )
+
+            BREAK
+        END
+
+        IF NOT BtLeafCount THEN
+            // Release the list mutex and wait for a leaf node.
+
+            TlReleaseMutex ( BtLeafListMutex )
+
+            TlAcquireSemaphore ( BtLeafSemaphore )
+            TlReleaseSemaphore ( BtLeafSemaphore )
+
+            // Continue to try again.
+
+            CONTINUE
+        END
+
+        // Remove a leaf node from the head of the list.
+
+        leafnode := CONTAINEROF BtLeafListHead.Next TO BtDagNode.LeafListEntry
+
+        TlRemoveEntryList ( &leafnode^.LeafListEntry )
+
+        BtLeafCount -= 1
+
+        IF NOT BtLeafCount THEN
+            // The list is now empty. Consume the semaphore count.
+
+            TlAcquireSemaphore ( BtLeafSemaphore )
+        END
+
+        TlReleaseMutex ( BtLeafListMutex )
+
+        // We now have this leaf node in our custody. Do whatever type-specific
+        // action is warranted to bring it up to date.
+
+        BtDagAction[leafnode^.Type] ( leafnode )
+
+        // Now remove the leaf node from the DAG.
+
+        TlAcquireMutex ( BtLeafListMutex )
+
+        BtRemoveDagNode ( leafnode )
+
+        TlReleaseMutex ( BtLeafListMutex )
+    END
+END
+
+FN (TlTerminationHandlerF) BtTerminationHandler ()
+
+    // Some host-specific user action occurred to terminate the build process
+    // (such as ctrl-C on *nix hosts). All we do is set a flag which will cause
+    // the worker threads to break out of their loops.
+
+    TlPrintString ( "BREAK. Waiting for jobs to complete." )
+
+    BtTerminateWorkers = TRUE
 END
 
 FN BtBuildDag ()
@@ -540,6 +745,10 @@ FN BtBuildDag ()
     //   o A null node is added to the DAG if a target without an output file
     //     must be updated. There is no action taken.
 
+    // Initialize the leaf list first.
+
+    TlInitializeList ( &BtLeafListHead )
+
     dagroot := BtBuildDagForTarget ( BtSelectedTarget )
 
     IF NOT dagroot THEN
@@ -550,14 +759,68 @@ FN BtBuildDag ()
 
     // Now we have a dependency DAG, and a list of leaf nodes (i.e., nodes that
     // have zero out-edges). In order to process this DAG, we need to spawn the
-    // maximum number of worker threads specified by the -j argument. These
+    // maximum number of worker threads specified by the jobs= argument. These
     // worker threads will spin a loop popping items from the leaf list and
     // processing them. After processing, the leaf node will be removed from the
     // DAG, thereby creating more leaf nodes. This is repeated until the DAG is
     // emptied.
 
-    // Note: If the maximum number of threads is one, directly call the worker
-    //       thread entrypoint in the context of this thread.
+    // Set the termination handler.
 
-    // TODO
+    TlSetTerminationHandler ( &BtTerminationHandler )
+
+    // Set up the leaf list mutex.
+
+    BtLeafListMutex = TlCreateMutex ()
+
+    // Set up the leaf count semaphore.
+
+    BtLeafSemaphore = TlCreateSemaphore ( 1 )
+
+    IF BtJobCount == 1 THEN
+        // Directly call the worker thread entrypoint in the context of this
+        // thread.
+
+        BtWorkerThread ( NULLPTR )
+    
+    ELSE
+        // Create each worker thread and then wait for termination for each.
+
+        table : ^^VOID
+
+        status := TlBumpAlloc (
+            SIZEOF ^VOID * BtJobCount, // bytes
+            OUT table, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate job table", 0, 0, 0 )
+        END
+
+        i := 0
+
+        WHILE i < BtJobCount DO
+            status = TlCreateThread (
+                &BtWorkerThread, // startroutine
+                NULLPTR, // arg
+                OUT table[i], // thread
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to create worker thread", 0, 0, 0 )
+            END
+
+            i += 1
+        END
+
+        // Now wait for termination.
+
+        i = 0
+
+        WHILE i < BtJobCount DO
+            TlJoinThread ( table[i] )
+
+            i += 1
+        END
+    END
 END

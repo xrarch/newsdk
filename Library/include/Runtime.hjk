@@ -458,12 +458,24 @@ EXTERN FN TlTokenize (
     IN delimiter : UBYTE,
 ) : ^UBYTE
 
+EXTERN FN TlStringToNumber (
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+    OUT num : UWORD,
+) : UWORD
 
-// multithread stuff
+
+// multithread and process control stuff
 
 
 FNPTR TlThreadStartRoutineF (
     IN arg : ^VOID,
+)
+
+FNPTR TlTerminationHandlerF ()
+
+EXTERN FN TlSetTerminationHandler (
+    IN handler : TlTerminationHandlerF,
 )
 
 EXTERN FN TlCreateThread (
@@ -473,7 +485,7 @@ EXTERN FN TlCreateThread (
 ) : TlStatus
 
 EXTERN FN TlJoinThread (
-    IN thread : UWORD,
+    IN thread : ^VOID,
 ) : TlStatus
 
 EXTERN FN TlCreateMutex () : ^VOID
