@@ -70,15 +70,16 @@ extern void TlReleaseMutex(uint64_t _mng_mutex117);
 extern uint64_t TlCreateSemaphore(uint64_t _mng_initialvalue118);
 extern void TlAcquireSemaphore(uint64_t _mng_semaphore119);
 extern void TlReleaseSemaphore(uint64_t _mng_semaphore120);
+extern uint64_t TlSystem(uint64_t _mng_cmdline121);
 extern uint64_t TlSymbolTableZone[2];
 void TlInitialize() {
-    uint64_t __twr_v121;
     uint64_t __twr_v122;
     uint64_t __twr_v123;
-    __twr_v121 = (uint64_t)(&TlInitializeZone);
-    __twr_v122 = (uint64_t)(&TlSymbolTableZone);
-    __twr_v123 = 1584ULL;
-    ((void (*)(uint64_t, uint64_t))__twr_v121)(__twr_v122, __twr_v123);
+    uint64_t __twr_v124;
+    __twr_v122 = (uint64_t)(&TlInitializeZone);
+    __twr_v123 = (uint64_t)(&TlSymbolTableZone);
+    __twr_v124 = 1584ULL;
+    ((void (*)(uint64_t, uint64_t))__twr_v122)(__twr_v123, __twr_v124);
     __twr_l1:;
     _jkl_epilogue:;
 }

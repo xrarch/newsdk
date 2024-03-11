@@ -509,3 +509,7 @@ EXTERN FN TlAcquireSemaphore (
 EXTERN FN TlReleaseSemaphore (
     IN semaphore : ^VOID,
 )
+
+EXTERN FN TlSystem (
+    IN cmdline : ^UBYTE,
+) : UWORD

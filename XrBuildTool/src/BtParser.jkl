@@ -8,7 +8,12 @@
 BtTargetHashTable : TlHashTable
 BtCurrentTarget : ^BtTarget
 
+PUBLIC BtCHost := FALSE
+PUBLIC BtPrebuiltCopies := FALSE
+
 PUBLIC BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
+PUBLIC BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC BtPrebuiltCopiesPath : UBYTE[FE_PATH_BUFFER_SIZE]
 
 EXTERN FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
 
@@ -304,12 +309,6 @@ FN (BtTargetInfoF) BtTargetInfoJklInclude ()
         &filepath, // fullpath
         &token, // errtoken
     )
-
-    // Check if this is actually a directory and that it exists.
-
-    IF NOT TlIsPathDirectory ( filepath.Buffer ) THEN
-        LexTokenError ( &token, "Doesn't exist or not a directory", 0, 0, 0 )
-    END
 
     // Append to the include directories.
 
@@ -607,6 +606,7 @@ FN BtParseTarget () : UBYTE
 
     TlInitializeList ( &target^.DependsOnListHead )
     TlInitializeList ( &target^.SourcesListHead )
+    TlInitializeList ( &target^.ObjectListHead )
 
     // Set as the current target.
 
@@ -697,6 +697,10 @@ FN BtLookupConfigMacros ()
         BT_ARCH_BUFFER_SIZE, // bufsize
     )
 
+    IF TlCompareString ( &BtTargetArchitectureName[0], "CHost" ) == 0 THEN
+        BtCHost = TRUE
+    END
+
     // Now look up JOBS.
 
     BtJobCount = 1
@@ -723,5 +727,49 @@ FN BtLookupConfigMacros ()
         IF BtJobCount == 0 THEN
             TlUserError ( "Zero JOBS specified", 0, 0, 0 )
         END
+    END
+
+    // SDK_BASE is up next.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "SDK_BASE", // name
+    ) TO ^LexMacro
+
+    IF NOT macro THEN
+        TlUserError ( "SDK_BASE wasn't defined in the config", 0, 0, 0 )
+    END
+
+    IF macro^.IsFunctionMacro THEN
+        TlUserError (
+            "SDK_BASE is a function macro for some reason", 0, 0, 0 )
+    END
+
+    TlCopyString (
+        &BtSdkBase[0], // dest
+        macro^.Contents.Buffer, // src
+        BT_ARCH_BUFFER_SIZE, // bufsize
+    )
+
+    // Then PREBUILT_COPIES.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "PREBUILT_COPIES", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlUserError (
+                "PREBUILT_COPIES is a function macro for some reason", 0, 0, 0 )
+        END
+
+        TlCopyString (
+            &BtPrebuiltCopiesPath[0], // dest
+            macro^.Contents.Buffer, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+
+        BtPrebuiltCopies = TRUE
     END
 END

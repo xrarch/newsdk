@@ -5,6 +5,15 @@
 #INCLUDE "Bt.hjk"
 
 EXTERN BtSelectedTarget : ^BtTarget
+EXTERN BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN BtCHost : UWORD
+
+EXTERN BtPrebuiltCopies : UWORD
+EXTERN BtPrebuiltCopiesPath : UBYTE[FE_PATH_BUFFER_SIZE]
+
+BtPathToJklCompiler : TlDynamicBuffer
+BtPathToAssembler : TlDynamicBuffer
+BtPathToLinker : TlDynamicBuffer
 
 BtLeafListHead : TlListEntry
 
@@ -420,6 +429,13 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         5, // length
     )
 
+    // Add this to the target's object list.
+
+    TlInsertAtTailList (
+        &pdc^.Target^.ObjectListHead, // head
+        &dagnode^.ObjectListEntry, // entry
+    )
+
     // Now we have these paths, check the existence of the dep file.
 
     IF nodetype == DAG_JKL_OBJECT AND
@@ -455,10 +471,14 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
 
     // We didn't need to add it to the DAG, so uninitialize all we can.
 
-    TlUninitializeDynamicBuffer ( objectpath )
+    // TlUninitializeDynamicBuffer ( objectpath )
     TlUninitializeDynamicBuffer ( depspath )
     TlUninitializeDynamicBuffer ( tmppath )
     TlUninitializeDynamicBuffer ( &dagnode^.SrcPath )
+
+    TlRemoveEntryList ( &dagnode^.LeafListEntry )
+    BtNodeCount -= 1
+    BtLeafCount -= 1
 
     LEAVE
 
@@ -605,6 +625,253 @@ FN (BtDagActionF) BtBuildJkl (
     TlPrintString ( "Building " )
     TlPrintString ( dagnode^.SrcPath.Buffer )
     TlPrintString ( "\n" )
+
+    // First we have to build the command line.
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtPathToJklCompiler.Buffer, // srcbuf
+        BtPathToJklCompiler.Count, // length
+    )
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        ' ', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.SrcPath.Buffer, // srcbuf
+        dagnode^.SrcPath.Count - 1, // length
+    )
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        ' ', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.TmpPath.Buffer, // srcbuf
+        dagnode^.TmpPath.Count - 1, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " header=", // srcbuf
+        8, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.DepsPath.Buffer, // srcbuf
+        dagnode^.DepsPath.Count - 1, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " incdir=", // srcbuf
+        8, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.Target^.IncludePaths.Buffer, // srcbuf
+        dagnode^.Target^.IncludePaths.Count, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " target=", // srcbuf
+        8, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        &BtTargetArchitectureName[0], // srcbuf
+        TlMeasureString ( &BtTargetArchitectureName[0] ), // length
+    )
+
+    IF dagnode^.Target^.JklOptions.Count THEN
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' '
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.Target^.JklOptions.Buffer, // srcbuf
+            dagnode^.Target^.JklOptions.Count, // length
+        )
+    END
+
+    head := &LexExposedMacroListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        macro := CONTAINEROF listentry TO LexMacro.ExposedMacroEntry
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            &macro^.Name[0], // srcbuf
+            TlMeasureString ( &macro^.Name[0] ), // length
+        )
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            '=', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            macro^.Contents.Buffer, // srcbuf
+            macro^.Contents.Count - 1, // length
+        )
+
+        listentry = listentry^.Next
+    END
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        0, // byte
+    )
+
+    // Now do the command.
+
+    IF TlSystem ( cmdline.Buffer ) THEN
+        BtTerminateWorkers = TRUE
+
+        LEAVE
+    END
+
+    IF BtPrebuiltCopies THEN
+        // Copy the .tmp file to the prebuilt copies directory.
+
+        TlUninitializeDynamicBuffer ( &cmdline )
+        TlInitializeDynamicBuffer ( &cmdline )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            "cp ", // srcbuf
+            3, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.TmpPath.Buffer, // srcbuf
+            dagnode^.TmpPath.Count - 1, // length
+        )
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            &BtPrebuiltCopiesPath[0], // srcbuf
+            TlMeasureString ( &BtPrebuiltCopiesPath[0] ) + 1, // length
+        )
+
+        IF TlSystem ( cmdline.Buffer ) THEN
+            BtTerminateWorkers = TRUE
+
+            LEAVE
+        END
+    END
+
+    // Uninit and reinit the cmdline dynamic buffer to reuse it.
+
+    TlUninitializeDynamicBuffer ( &cmdline )
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    // Now we have to build the secondary command line.
+    // If this is the C host, it's the C compiler. Otherwise, it's the
+    // assembler.
+
+    IF BtCHost THEN
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            "cc -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c -c ", // srcbuf
+            87, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.TmpPath.Buffer, // srcbuf
+            dagnode^.TmpPath.Count - 1, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            " -o ", // srcbuf
+            4, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.ObjectPath.Buffer, // srcbuf
+            dagnode^.ObjectPath.Count, // length
+        )
+    
+    ELSE
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            BtPathToAssembler.Buffer, // srcbuf
+            BtPathToAssembler.Count, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            " target=", // srcbuf
+            8, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            &BtTargetArchitectureName[0], // srcbuf
+            TlMeasureString ( &BtTargetArchitectureName[0] ), // length
+        )
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.TmpPath.Buffer, // srcbuf
+            dagnode^.TmpPath.Count - 1, // length
+        )
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.ObjectPath.Buffer, // srcbuf
+            dagnode^.ObjectPath.Count, // length
+        )
+    END
+
+    // Now do the command.
+
+    IF TlSystem ( cmdline.Buffer ) THEN
+        BtTerminateWorkers = TRUE
+    END
+
+    TlUninitializeDynamicBuffer ( &cmdline )
 END
 
 FN (BtDagActionF) BtBuildC (
@@ -616,17 +883,137 @@ FN (BtDagActionF) BtBuildC (
     TlPrintString ( "Building " )
     TlPrintString ( dagnode^.SrcPath.Buffer )
     TlPrintString ( "\n" )
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        "cc -Ofast -c ", // srcbuf
+        13, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.SrcPath.Buffer, // srcbuf
+        dagnode^.SrcPath.Count - 1, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " -o ", // srcbuf
+        4, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.ObjectPath.Buffer, // srcbuf
+        dagnode^.ObjectPath.Count, // length
+    )
+
+    // Now do the command.
+
+    IF TlSystem ( cmdline.Buffer ) THEN
+        BtTerminateWorkers = TRUE
+
+        LEAVE
+    END
+
+    IF BtPrebuiltCopies THEN
+        // Copy the .c file to the prebuilt copies directory.
+
+        TlUninitializeDynamicBuffer ( &cmdline )
+        TlInitializeDynamicBuffer ( &cmdline )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            "cp ", // srcbuf
+            3, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.SrcPath.Buffer, // srcbuf
+            dagnode^.SrcPath.Count - 1, // length
+        )
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            &BtPrebuiltCopiesPath[0], // srcbuf
+            TlMeasureString ( &BtPrebuiltCopiesPath[0] ) + 1, // length
+        )
+
+        IF TlSystem ( cmdline.Buffer ) THEN
+            BtTerminateWorkers = TRUE
+        END
+    END
 END
 
 FN (BtDagActionF) BtBuildS (
     IN dagnode : ^BtDagNode,
 )
 
-    // Build the S file.
+    // Assemble the file.
 
-    TlPrintString ( "Building " )
+    TlPrintString ( "Assembling " )
     TlPrintString ( dagnode^.SrcPath.Buffer )
     TlPrintString ( "\n" )
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtPathToAssembler.Buffer, // srcbuf
+        BtPathToAssembler.Count, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " target=", // srcbuf
+        8, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        &BtTargetArchitectureName[0], // srcbuf
+        TlMeasureString ( &BtTargetArchitectureName[0] ), // length
+    )
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        ' ', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.TmpPath.Buffer, // srcbuf
+        dagnode^.TmpPath.Count - 1, // length
+    )
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        ' ', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.ObjectPath.Buffer, // srcbuf
+        dagnode^.ObjectPath.Count, // length
+    )
+
+    // Now do the command.
+
+    IF TlSystem ( cmdline.Buffer ) THEN
+        BtTerminateWorkers = TRUE
+    END
 END
 
 FN (BtDagActionF) BtLinkExecutable (
@@ -638,6 +1025,143 @@ FN (BtDagActionF) BtLinkExecutable (
     TlPrintString ( "Linking " )
     TlPrintString ( dagnode^.Target^.FileName.Buffer )
     TlPrintString ( "\n" )
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    IF BtCHost THEN
+        // Use CC to link.
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            "cc -Ofast -o ", // srcbuf
+            13, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.Target^.FileName.Buffer, // srcbuf
+            dagnode^.Target^.FileName.Count - 1, // length
+        )
+
+        head := &dagnode^.Target^.ObjectListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            node := CONTAINEROF listentry TO BtDagNode.ObjectListEntry
+
+            TlInsertDynamicBuffer (
+                &cmdline, // array
+                ' ', // byte
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                node^.ObjectPath.Buffer, // srcbuf
+                node^.ObjectPath.Count - 1, // length
+            )
+
+            listentry = listentry^.Next
+        END
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            0, // byte
+        )
+
+    ELSE
+        // Use the linker.
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            BtPathToLinker.Buffer, // srcbuf
+            BtPathToLinker.Count, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            " link ", // srcbuf
+            6, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            dagnode^.Target^.FileName.Buffer, // srcbuf
+            dagnode^.Target^.FileName.Count - 1, // length
+        )
+
+        IF dagnode^.Target^.LinkOptions.Count THEN
+            TlInsertDynamicBuffer (
+                &cmdline, // array
+                ' '
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                dagnode^.Target^.LinkOptions.Buffer, // srcbuf
+                dagnode^.Target^.LinkOptions.Count, // length
+            )
+        END
+
+        IF dagnode^.Target^.LinkPaths.Count THEN
+            TlInsertDynamicBuffer (
+                &cmdline, // array
+                ' '
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                dagnode^.Target^.LinkPaths.Buffer, // srcbuf
+                dagnode^.Target^.LinkPaths.Count, // length
+            )
+        END
+
+        head := &dagnode^.Target^.ObjectListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            node := CONTAINEROF listentry TO BtDagNode.ObjectListEntry
+
+            TlInsertDynamicBuffer (
+                &cmdline, // array
+                ' ', // byte
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                node^.ObjectPath.Buffer, // srcbuf
+                node^.ObjectPath.Count - 1, // length
+            )
+
+            listentry = listentry^.Next
+        END
+
+        IF dagnode^.Target^.DyLinkPaths.Count THEN
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                " -d ", // srcbuf
+                4, // length
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                dagnode^.Target^.DyLinkPaths.Buffer, // srcbuf
+                dagnode^.Target^.DyLinkPaths.Count, // length
+            )
+        END
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            0, // byte
+        )
+    END
+
+    // Now do the command.
+
+    IF TlSystem ( cmdline.Buffer ) THEN
+        BtTerminateWorkers = TRUE
+    END
 END
 
 BtDagAction : BtDagActionF[DAG_MAX] = {
@@ -655,6 +1179,12 @@ FN (TlThreadStartRoutineF) BtWorkerThread (
         TlAcquireMutex ( BtLeafListMutex )
 
         IF NOT BtNodeCount THEN
+            TlReleaseMutex ( BtLeafListMutex )
+
+            BREAK
+        END
+
+        IF BtTerminateWorkers THEN
             TlReleaseMutex ( BtLeafListMutex )
 
             BREAK
@@ -716,7 +1246,82 @@ FN (TlTerminationHandlerF) BtTerminationHandler ()
 END
 
 FN BtBuildDag ()
-    
+
+    // Build some paths.
+
+    TlInitializeDynamicBuffer ( &BtPathToJklCompiler )
+    TlInitializeDynamicBuffer ( &BtPathToAssembler )
+    TlInitializeDynamicBuffer ( &BtPathToLinker )
+
+    // Build a path to the Jackal compiler.
+
+    TlCopyIntoDynamicBuffer (
+        &BtPathToJklCompiler, // array
+        &BtSdkBase[0], // srcbuf
+        TlMeasureString ( &BtSdkBase[0] ), // length
+    )
+
+    IF BtPathToJklCompiler.Buffer[BtPathToJklCompiler.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            &BtPathToJklCompiler, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        &BtPathToJklCompiler, // array
+        "bin/jkl.exe", // srcbuf
+        11, // length
+    )
+
+    // Build a path to the assembler.
+
+    TlCopyIntoDynamicBuffer (
+        &BtPathToAssembler, // array
+        &BtSdkBase[0], // srcbuf
+        TlMeasureString ( &BtSdkBase[0] ), // length
+    )
+
+    IF BtPathToAssembler.Buffer[BtPathToAssembler.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            &BtPathToAssembler, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        &BtPathToAssembler, // array
+        "bin/xrasm.exe", // srcbuf
+        13, // length
+    )
+
+    // Build a path to the linker.
+
+    TlCopyIntoDynamicBuffer (
+        &BtPathToLinker, // array
+        &BtSdkBase[0], // srcbuf
+        TlMeasureString ( &BtSdkBase[0] ), // length
+    )
+
+    IF BtPathToLinker.Buffer[BtPathToLinker.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            &BtPathToLinker, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        &BtPathToLinker, // array
+        "bin/xrlink.exe", // srcbuf
+        14, // length
+    )
+
+    // Create the prebuilt copies directory.
+
+    IF BtPrebuiltCopies THEN
+        TlCreateDirectory ( &BtPrebuiltCopiesPath[0] )
+    END
+
     // The update DAG represents all of the 'objects' that need to be updated to
     // bring the selected target up to date. A node represents one of these
     // objects, and a directed edge leads FROM an object TO an object that must

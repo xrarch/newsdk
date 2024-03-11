@@ -15,6 +15,8 @@ LexDirectiveHashTable : TlHashTable
 LexOperatorHashTable : TlHashTable
 LexIfStack : TlDynamicBuffer
 
+PUBLIC LexExposedMacroListHead : TlListEntry
+
 LexMacroZone : TlZone
 
 LexDirectiveToken : LexToken
@@ -692,6 +694,8 @@ FN LexDefineMacroFromArgumentString (
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
+    macro^.IsExposed = FALSE
+
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
     equalsptr := FeIsMacroArgument ( arg )
@@ -801,6 +805,8 @@ FN LexExpandMacro (
 
         WHILE arg DO
             argmacro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+            argmacro^.IsExposed = TRUE
 
             argmacro^.ResumeMacroScope = oldmacroscope
 
@@ -1063,6 +1069,12 @@ FN (LexDirectiveParseF) LexParseDefine ()
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
+    macro^.IsExposed = TRUE
+
+    IF LexCurrentMacroScope == LexRootMacroScope THEN
+        macro^.IsExposed = FALSE
+    END
+
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
     LexCollectDirectiveToken (
@@ -1281,6 +1293,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
     length : ULONG
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+    macro^.IsExposed = TRUE
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -1537,6 +1551,51 @@ FN (LexDirectiveParseF) LexParsePrint ()
     TlPrintString ( "\n" )
 
     TlUninitializeDynamicBuffer ( &buffer )
+END
+
+FN (LexDirectiveParseF) LexParseExpose ()
+
+    // Parse an EXPOSE keyword.
+
+    // Note: Added for Build Tool support.
+
+    buffer : UBYTE[LEX_DIRECTIVE_MAX]
+    token : LexToken
+
+    LexCollectDirectiveToken (
+        &token, // token
+        &buffer[0], // buffer
+    )
+
+    IF LexFalseCount THEN
+        // We're being compiled out, just return.
+
+        LEAVE
+    END
+
+    macro := CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        &buffer[0], // name
+    ) TO ^LexMacro
+
+    IF NOT macro THEN
+        // Wasn't defined anyway.
+
+        LEAVE
+    END
+
+    IF macro^.IsExposed THEN
+        // Already exposed.
+
+        LEAVE
+    END
+
+    macro^.IsExposed = TRUE
+
+    TlInsertAtTailList (
+        &LexExposedMacroListHead, // head
+        &macro^.ExposedMacroEntry, // entry
+    )
 END
 
 //
@@ -2327,6 +2386,10 @@ FN LexInitializePreprocessor ()
         SIZEOF LexMacro, // blocksize
     )
 
+    // Initialize the exposed macro list head.
+
+    TlInitializeList ( &LexExposedMacroListHead )
+
     // Insert the directives and operators into their hash tables.
 
     LexInsertDirective ( "INCLUDE", &LexParseInclude )
@@ -2340,6 +2403,7 @@ FN LexInitializePreprocessor ()
     LexInsertDirective ( "UNDEFINE", &LexParseUndefine )
     LexInsertDirective ( "ERROR", &LexParseError )
     LexInsertDirective ( "PRINT", &LexParsePrint )
+    LexInsertDirective ( "EXPOSE", &LexParseExpose )
 
     LexInsertOperator ( "==", &LexOperatorEquals )
     LexInsertOperator ( "<=", &LexOperatorLteq )

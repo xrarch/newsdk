@@ -126,11 +126,15 @@ STRUCT LexMacro
     Contents : TlDynamicBuffer,
     Name : UBYTE[LEX_DIRECTIVE_MAX],
 
+    ExposedMacroEntry : TlListEntry,
+
     ResumeMacroScope : ^TlSymbolTable,
 
     ArgListHead : ^LexMacroArgument,
+
     IsFunctionMacro : UBYTE,
     IsArgumentMacro : UBYTE,
+    IsExposed : UBYTE,
 END
 
 STRUCT LexMacroArgument
@@ -244,6 +248,8 @@ EXTERN FN LexCrunchNumber (
 
 #DEFINE BT_ARCH_BUFFER_SIZE 64
 
+EXTERN LexExposedMacroListHead : TlListEntry
+
 EXTERN BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 
 EXTERN BtJobCount : UWORD
@@ -275,6 +281,7 @@ STRUCT BtTarget
     DependsOnListHead : TlListEntry,
     SourcesListHead : TlListEntry,
     FileName : TlDynamicBuffer,
+    ObjectListHead : TlListEntry,
 
     DagNode : ^BtDagNode,
 
@@ -305,6 +312,7 @@ STRUCT BtDagNode
     InEdgeListHead : TlListEntry,
     OutEdgeListHead : TlListEntry,
     LeafListEntry : TlListEntry,
+    ObjectListEntry : TlListEntry,
 
     Target : ^BtTarget,
 

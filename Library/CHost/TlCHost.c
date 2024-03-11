@@ -175,3 +175,7 @@ void TlReleaseSemaphore (uint64_t semaphore) {
 void TlSetTerminationHandler (uint64_t handler) {
     signal(SIGINT, (sig_t)(handler));
 }
+
+uint64_t TlSystem (uint8_t *cmdline) {
+    return system((char *)cmdline);
+}
