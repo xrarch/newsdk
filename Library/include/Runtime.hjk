@@ -352,6 +352,10 @@ EXTERN FN TlCopyParentPath (
     IN destpath : ^TlDynamicBuffer,
 )
 
+EXTERN FN TlGetFileName (
+    IN path : ^UBYTE,
+) : ^UBYTE
+
 EXTERN FN TlIsPathDirectory (
     IN path : ^UBYTE,
 ) : UWORD

@@ -9,13 +9,11 @@ BtTargetHashTable : TlHashTable
 BtCurrentTarget : ^BtTarget
 
 PUBLIC BtCHost := FALSE
-PUBLIC BtPrebuiltCopies := FALSE
 PUBLIC BtArchHasSuffix := FALSE
 PUBLIC BtCleanUp := FALSE
 
 PUBLIC BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 PUBLIC BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
-PUBLIC BtPrebuiltCopiesPath : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC BtArchNameSuffix : UBYTE[FE_PATH_BUFFER_SIZE]
 
 EXTERN FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
@@ -45,6 +43,8 @@ FN BtParseStandardPath (
         LexTokenError ( errtoken,
             "Expected a relative path, found an absolute path", 0, 0, 0 )
     END
+
+    count := stdpath^.Count
 
     IF stdpathstr[0] != '<' THEN
         // Must be a relative path.
@@ -77,7 +77,8 @@ FN BtParseStandardPath (
             macro^.Contents.Count - 1, // length
         )
 
-        stdpathstr += 5
+        stdpathstr += 6
+        count -= 6
 
     ELSEIF TlCompareStringWithMax ( stdpathstr, "<bld>/", 5 ) == 0 THEN
         // Relative to the build base.
@@ -102,7 +103,8 @@ FN BtParseStandardPath (
             macro^.Contents.Count - 1, // length
         )
 
-        stdpathstr += 5
+        stdpathstr += 6
+        count -= 6
 
     ELSE
         // Dunno what this is.
@@ -131,7 +133,7 @@ FN BtParseStandardPath (
     TlCopyIntoDynamicBuffer (
         fullpath, // array
         stdpathstr, // srcbuf
-        stdpath^.Count, // length
+        count, // length
     )
 END
 
@@ -534,6 +536,34 @@ FN (BtTargetInfoF) BtTargetInfoDyLink ()
     TlUninitializeDynamicBuffer ( &filepath )
 END
 
+FN (BtTargetInfoF) BtTargetInfoPrebuilt ()
+
+    // Parse a PREBUILT info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    TlUninitializeDynamicBuffer ( &BtCurrentTarget^.PrebuiltCopiesPath )
+    TlInitializeDynamicBuffer ( &BtCurrentTarget^.PrebuiltCopiesPath )
+
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        &BtCurrentTarget^.PrebuiltCopiesPath, // fullpath
+        &token, // errtoken
+    )
+
+    BtCurrentTarget^.HasPrebuiltCopies = TRUE
+END
+
 BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_FILE] = &BtTargetInfoFile,
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
@@ -543,6 +573,7 @@ BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_JKLOPT] = &BtTargetInfoJklOpt,
     [TOKEN_LINK] = &BtTargetInfoLink,
     [TOKEN_DYLINK] = &BtTargetInfoDyLink,
+    [TOKEN_PREBUILT] = &BtTargetInfoPrebuilt,
 }
 
 FN BtParseTarget () : UBYTE
@@ -603,17 +634,50 @@ FN BtParseTarget () : UBYTE
     TlInitializeDynamicBuffer ( &target^.LinkPaths )
     TlInitializeDynamicBuffer ( &target^.DyLinkPaths )
     TlInitializeDynamicBuffer ( &target^.FileName )
+    TlInitializeDynamicBuffer ( &target^.PrebuiltCopiesPath )
 
     target^.CheckedForUpdate = FALSE
     target^.HasFileName = FALSE
+    target^.HasPrebuiltCopies = FALSE
 
     TlInitializeList ( &target^.DependsOnListHead )
     TlInitializeList ( &target^.SourcesListHead )
     TlInitializeList ( &target^.ObjectListHead )
+    TlInitializeList ( &target^.ExposedMacroListHead )
 
     // Set as the current target.
 
     BtCurrentTarget = target
+
+    // Set all of the currently exposed macros to be exposed to this target.
+
+    listhead := &LexExposedMacroListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        macro := CONTAINEROF listentry TO LexMacro.ExposedMacroEntry
+
+        exprec : ^BtExposedMacroRecord
+
+        status = TlBumpAlloc (
+            SIZEOF BtExposedMacroRecord, // sizeof
+            OUT exprec, // ptr
+        )
+
+        IF status THEN
+            TlInternalError (
+                "Failed to allocate exposed macro record", 0, 0, 0 )
+        END
+
+        exprec^.Macro = macro
+
+        TlInsertAtTailList (
+            &target^.ExposedMacroListHead, // head
+            &exprec^.Entry, // entry
+        )
+
+        listentry = listentry^.Next
+    END
 
     // Consume target information specifiers til we hit an END.
 
@@ -644,6 +708,15 @@ FN BtParseTarget () : UBYTE
         CAST target TO ^TlHashTableEntry, // entry
         namestring^.DynamicBuffer.Buffer, // key
     )
+
+    // Add a null terminator to the prebuilt copies path.
+
+    IF target^.HasPrebuiltCopies THEN
+        TlInsertDynamicBuffer (
+            &target^.PrebuiltCopiesPath, // array
+            0, // byte
+        )
+    END
 
     RETURN TRUE
 END
@@ -753,28 +826,6 @@ FN BtLookupConfigMacros ()
         macro^.Contents.Buffer, // src
         BT_ARCH_BUFFER_SIZE, // bufsize
     )
-
-    // Then PREBUILT_COPIES.
-
-    macro = CAST TlLookupSymbolTable (
-        LexCurrentMacroScope, // symboltable
-        "PREBUILT_COPIES", // name
-    ) TO ^LexMacro
-
-    IF macro THEN
-        IF macro^.IsFunctionMacro THEN
-            TlUserError (
-                "PREBUILT_COPIES is a function macro for some reason", 0, 0, 0 )
-        END
-
-        TlCopyString (
-            &BtPrebuiltCopiesPath[0], // dest
-            macro^.Contents.Buffer, // src
-            FE_PATH_BUFFER_SIZE, // bufsize
-        )
-
-        BtPrebuiltCopies = TRUE
-    END
 
     // Now ARCH_NAME_SUFFIX.
 

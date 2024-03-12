@@ -149,6 +149,7 @@ FN LexInitialize ()
     LexInsertKeyword ( "JKLOPT", TOKEN_TARGET_INFO, TOKEN_JKLOPT, 0 )
     LexInsertKeyword ( "LINK", TOKEN_TARGET_INFO, TOKEN_LINK, 0 )
     LexInsertKeyword ( "DYLINK", TOKEN_TARGET_INFO, TOKEN_DYLINK, 0 )
+    LexInsertKeyword ( "PREBUILT", TOKEN_TARGET_INFO, TOKEN_PREBUILT, 0 )
 END
 
 FN (LexGetCharacterF) LexGetCharacter () : UBYTE

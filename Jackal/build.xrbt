@@ -1,0 +1,45 @@
+#IF ( NOT ( DEFINED TRG_CT ) )
+	#DEFINE TRG_CT 1
+#END
+
+#IF ( NOT ( DEFINED TRG_FOX32 ) )
+	#DEFINE TRG_FOX32 1
+#END
+
+#IF ( NOT ( DEFINED TRG_XR17032 ) )
+	#DEFINE TRG_XR17032 1
+#END
+
+#EXPOSE TRG_CT
+#EXPOSE TRG_FOX32
+#EXPOSE TRG_XR17032
+
+TARGET "Jackal"
+	FILE "<bld>/jkl.exe"
+	
+	JKLINCLUDE "../Library/include"
+	JKLINCLUDE "./include"
+
+	SOURCES "../Library"
+	SOURCES "./Backend"
+	SOURCES "./Frontend"
+
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		SOURCES "./Frontend/CHost"
+		SOURCES "../Library/CHost"
+	#END
+
+	#IF TRG_CT
+		SOURCES "./CTranspiler"
+	#END
+
+	#IF TRG_FOX32
+		SOURCES "./fox32"
+	#END
+
+	#IF TRG_XR17032
+		SOURCES "./xr17032"
+	#END
+
+	PREBUILT "./Prebuilt"
+END

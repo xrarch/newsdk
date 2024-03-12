@@ -1,0 +1,16 @@
+TARGET "XrBuildTool"
+	FILE "<bld>/xrbt.exe"
+	
+	JKLINCLUDE "../Library/include"
+	SOURCES "../Library"
+
+	JKLINCLUDE "./include"
+	SOURCES "./src"
+
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		SOURCES "./src/CHost"
+		SOURCES "../Library/CHost"
+	#END
+
+	PREBUILT "./Prebuilt"
+END

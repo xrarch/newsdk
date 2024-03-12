@@ -1,0 +1,16 @@
+#IF ( NOT ( DEFINED SDK_BASE ) )
+	#DEFINE SDK_BASE "./"
+#END
+
+#IF ( NOT ( DEFINED BUILD_BASE ) )
+	#DEFINE BUILD_BASE "./build/"
+#END
+
+#IF ( NOT ( DEFINED BITS ) )
+	#DEFINE BITS 64
+#END
+
+#EXPOSE BITS
+
+#DEPEND "./Jackal/build.xrbt"
+#DEPEND "./XrBuildTool/build.xrbt"

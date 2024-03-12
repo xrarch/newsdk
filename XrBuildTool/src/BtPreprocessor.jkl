@@ -96,6 +96,12 @@ FN (TlHashTableEnumeratorF) LexMacroDelete (
 
     macro := CAST entry TO ^LexMacro
 
+    IF macro^.IsExposed THEN
+        TlRemoveEntryList ( &macro^.ExposedMacroEntry )
+
+        LEAVE
+    END
+
     TlUninitializeDynamicBuffer ( &macro^.Contents )
 
     TlFreeToZone (
@@ -1069,11 +1075,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
-    macro^.IsExposed = TRUE
-
-    IF LexCurrentMacroScope == LexRootMacroScope THEN
-        macro^.IsExposed = FALSE
-    END
+    macro^.IsExposed = FALSE
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 

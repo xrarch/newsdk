@@ -15,6 +15,8 @@ PUBLIC FeOutputFileHandle : ^VOID
 
 PUBLIC FeOutputHeaders : ^UBYTE = NULLPTR
 
+PUBLIC FeRootFileBlock : ^FeFileBlock
+
 JklBinaryName : ^UBYTE = NULLPTR
 
 PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
@@ -318,23 +320,25 @@ FN FeOutputHeaderDependencies ()
     TlInitializeDynamicBuffer ( &headerbuf )
 
     head := &FeFileBlockHashTable.OrderedListHead
-    entry := head^.Prev^.Prev
+    entry := head^.Prev
 
     WHILE head != entry DO
         hashentry := CONTAINEROF entry TO TlHashTableEntry.OrderedEntry
 
         fileblock := CAST hashentry TO ^FeFileBlock
 
-        TlCopyIntoDynamicBuffer (
-            &headerbuf, // array
-            &fileblock^.FilePath[0], // srcbuf
-            TlMeasureString ( &fileblock^.FilePath[0] ), // length
-        )
+        IF fileblock != FeRootFileBlock THEN
+            TlCopyIntoDynamicBuffer (
+                &headerbuf, // array
+                &fileblock^.FilePath[0], // srcbuf
+                TlMeasureString ( &fileblock^.FilePath[0] ), // length
+            )
 
-        TlInsertDynamicBuffer (
-            &headerbuf, // array
-            '\n', // byte
-        )
+            TlInsertDynamicBuffer (
+                &headerbuf, // array
+                '\n', // byte
+            )
+        END
 
         entry = entry^.Prev
     END

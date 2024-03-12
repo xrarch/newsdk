@@ -54,6 +54,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_JKLOPT,
     TOKEN_LINK,
     TOKEN_DYLINK,
+    TOKEN_PREBUILT,
 
     TOKEN_SUBTYPE_MAX, // MUST be at the end
 END
@@ -270,6 +271,12 @@ STRUCT BtSourcesRecord
     FilePathBuffer : TlDynamicBuffer,
 END
 
+STRUCT BtExposedMacroRecord
+    Entry : TlListEntry,
+
+    Macro : ^LexMacro,
+END
+
 STRUCT BtTarget
     Entry : TlHashTableEntry, // MUST be at the beginning
 
@@ -281,12 +288,16 @@ STRUCT BtTarget
     DependsOnListHead : TlListEntry,
     SourcesListHead : TlListEntry,
     FileName : TlDynamicBuffer,
+    PrebuiltCopiesPath : TlDynamicBuffer,
     ObjectListHead : TlListEntry,
+
+    ExposedMacroListHead : TlListEntry,
 
     DagNode : ^BtDagNode,
 
     CheckedForUpdate : UBYTE,
     HasFileName : UBYTE,
+    HasPrebuiltCopies : UBYTE,
 END
 
 ENUM BtDagNodeType : UBYTE

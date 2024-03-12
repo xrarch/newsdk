@@ -139,3 +139,28 @@ FN TlGetPathExtension (
 
     RETURN ""
 END
+
+FN TlGetFileName (
+    IN path : ^UBYTE,
+) : ^UBYTE
+
+    // Return a pointer to the last component of the path.
+
+    lcomp := path
+
+    ins := FALSE
+
+    WHILE path^ DO
+        IF path^ == '/' THEN
+            ins = TRUE
+
+        ELSEIF ins THEN
+            ins = FALSE
+            lcomp = path
+        END
+
+        path += 1
+    END
+
+    RETURN lcomp
+END

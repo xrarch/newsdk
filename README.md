@@ -6,9 +6,22 @@ Expect only very gradual progress on this.
 
 ## Usage
 
-To initially build the Jackal compiler, type `make bootstrap` to cause the "precompiled" C files to be built into the initial compiler at `./build/bsjkl`. Subsequent `make`s will use this compiler.
+To initially build the Jackal compiler, type `./bootstrap.sh` to cause the "precompiled" C files to be built into the initial compiler at `./bin/jkl.exe`. The custom build system will also be built.
 
-Note that compiling the compiler itself will create `./build/jkl` and leave the initial compiler alone. Do another `make bootstrap` to update it.
+Subsequent compilations of the tools can be performed as:
+
+```
+./bin/xrbt.exe ./build.xrbt [toolname] ARCHITECTURE=CHost JOBS=[desired multithread count]
+```
+
+Where toolname is one of the following choices:
+
+```
+Jackal      - The Jackal compiler.
+XrBuildTool - The build system.
+XrAsm       - The assembler.
+XrLink      - The linker.
+```
 
 ## Implementation Plan
 
@@ -16,7 +29,7 @@ Note that compiling the compiler itself will create `./build/jkl` and leave the 
 - [x] Self-hosted Jackal compiler w/ C backend.
 - [x] Fox32 backend.
 - [x] XR/17032 backend.
-- [ ] Self-hosted build tool ("xrbt") to replace `make`.
+- [x] Self-hosted build tool ("xrbt") to replace `make`.
 - [ ] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [ ] New linker written in Jackal with XR/17032 and Fox32 support.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.

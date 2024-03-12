@@ -24,6 +24,8 @@ EXTERN FeOutputFileHandle : ^VOID
 
 EXTERN FeOutputHeaders : ^UBYTE
 
+EXTERN FeRootFileBlock : ^FeFileBlock
+
 EXTERN JklTargetInfo : ^JklTargetInfoRecord
 
 ENUM JklPrimitiveType : UBYTE

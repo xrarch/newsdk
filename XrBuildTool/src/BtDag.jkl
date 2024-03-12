@@ -10,8 +10,6 @@ EXTERN BtCHost : UWORD
 EXTERN BtArchHasSuffix : UWORD
 EXTERN BtCleanUp : UWORD
 
-EXTERN BtPrebuiltCopies : UWORD
-EXTERN BtPrebuiltCopiesPath : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN BtArchNameSuffix : UBYTE[FE_PATH_BUFFER_SIZE]
 
 BtPathToJklCompiler : TlDynamicBuffer
@@ -22,6 +20,7 @@ BtLeafListHead : TlListEntry
 
 BtLeafListMutex := NULLPTR
 BtLeafSemaphore := NULLPTR
+BtPrintMutex := NULLPTR
 BtLeafCount := 0
 BtNodeCount := 0
 
@@ -189,7 +188,7 @@ FN BtAnyDepsLater (
     ptr : ^UBYTE
 
     status = TlAlloc (
-        stat^.SizeInBytes, // bytes
+        stat^.SizeInBytes + 1, // bytes
         OUT ptr, // ptr
     )
 
@@ -202,6 +201,8 @@ FN BtAnyDepsLater (
         stat^.SizeInBytes, // bytes
         ptr, // buffer
     )
+
+    ptr[stat^.SizeInBytes] = 0
 
     tokptr := ptr
 
@@ -516,10 +517,12 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
 
     // Now we have to open and read the deps file.
 
-    IF BtAnyDepsLater (
-        stat^.ModificationTime, // srctime
-        depspath^.Buffer, // depspath
-    ) THEN
+    IF nodetype == DAG_JKL_OBJECT AND
+        BtAnyDepsLater (
+            objstat^.ModificationTime, // srctime
+            depspath^.Buffer, // depspath
+        ) THEN
+
         GOTO AddToDag
     END
 
@@ -562,6 +565,12 @@ FN BtBuildDagForTarget (
 
     IF target^.CheckedForUpdate THEN
         RETURN target^.DagNode
+    END
+
+    // Create the prebuilt copies directory.
+
+    IF target^.HasPrebuiltCopies THEN
+        TlCreateDirectory ( target^.PrebuiltCopiesPath.Buffer )
     END
 
     dagnode : ^BtDagNode = NULLPTR
@@ -671,15 +680,26 @@ FNPTR BtDagActionF (
     IN dagnode : ^BtDagNode,
 )
 
+FN (BtDagActionF) BtBuildNull (
+    IN dagnode : ^BtDagNode,
+)
+
+    // Do nothing.
+END
+
 FN (BtDagActionF) BtBuildJkl (
     IN dagnode : ^BtDagNode,
 )
 
     // Build the JKL file.
 
+    TlAcquireMutex ( BtPrintMutex )
+
     TlPrintString ( "Building " )
-    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( TlGetFileName ( dagnode^.SrcPath.Buffer ) )
     TlPrintString ( "\n" )
+
+    TlReleaseMutex ( BtPrintMutex )
 
     // First we have to build the command line.
 
@@ -764,11 +784,12 @@ FN (BtDagActionF) BtBuildJkl (
         )
     END
 
-    head := &LexExposedMacroListHead
+    head := &dagnode^.Target^.ExposedMacroListHead
     listentry := head^.Next
 
     WHILE listentry != head DO
-        macro := CONTAINEROF listentry TO LexMacro.ExposedMacroEntry
+        exprec := CONTAINEROF listentry TO BtExposedMacroRecord.Entry
+        macro := exprec^.Macro
 
         TlInsertDynamicBuffer (
             &cmdline, // array
@@ -808,7 +829,7 @@ FN (BtDagActionF) BtBuildJkl (
         LEAVE
     END
 
-    IF BtPrebuiltCopies THEN
+    IF dagnode^.Target^.HasPrebuiltCopies THEN
         // Copy the .tmp file to the prebuilt copies directory.
 
         TlUninitializeDynamicBuffer ( &cmdline )
@@ -833,8 +854,8 @@ FN (BtDagActionF) BtBuildJkl (
 
         TlCopyIntoDynamicBuffer (
             &cmdline, // array
-            &BtPrebuiltCopiesPath[0], // srcbuf
-            TlMeasureString ( &BtPrebuiltCopiesPath[0] ) + 1, // length
+            dagnode^.Target^.PrebuiltCopiesPath.Buffer, // srcbuf
+            dagnode^.Target^.PrebuiltCopiesPath.Count, // length
         )
 
         IF TlSystem ( cmdline.Buffer ) THEN
@@ -935,9 +956,13 @@ FN (BtDagActionF) BtBuildC (
 
     // Build the C file.
 
+    TlAcquireMutex ( BtPrintMutex )
+
     TlPrintString ( "Building " )
-    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( TlGetFileName ( dagnode^.SrcPath.Buffer ) )
     TlPrintString ( "\n" )
+
+    TlReleaseMutex ( BtPrintMutex )
 
     cmdline : TlDynamicBuffer
 
@@ -975,7 +1000,7 @@ FN (BtDagActionF) BtBuildC (
         LEAVE
     END
 
-    IF BtPrebuiltCopies THEN
+    IF dagnode^.Target^.HasPrebuiltCopies THEN
         // Copy the .c file to the prebuilt copies directory.
 
         TlUninitializeDynamicBuffer ( &cmdline )
@@ -1000,8 +1025,8 @@ FN (BtDagActionF) BtBuildC (
 
         TlCopyIntoDynamicBuffer (
             &cmdline, // array
-            &BtPrebuiltCopiesPath[0], // srcbuf
-            TlMeasureString ( &BtPrebuiltCopiesPath[0] ) + 1, // length
+            dagnode^.Target^.PrebuiltCopiesPath.Buffer, // srcbuf
+            dagnode^.Target^.PrebuiltCopiesPath.Count, // length
         )
 
         IF TlSystem ( cmdline.Buffer ) THEN
@@ -1016,9 +1041,13 @@ FN (BtDagActionF) BtBuildS (
 
     // Assemble the file.
 
+    TlAcquireMutex ( BtPrintMutex )
+
     TlPrintString ( "Assembling " )
-    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( TlGetFileName ( dagnode^.SrcPath.Buffer ) )
     TlPrintString ( "\n" )
+
+    TlReleaseMutex ( BtPrintMutex )
 
     cmdline : TlDynamicBuffer
 
@@ -1077,9 +1106,13 @@ FN (BtDagActionF) BtLinkExecutable (
 
     // Link the executable.
 
+    TlAcquireMutex ( BtPrintMutex )
+
     TlPrintString ( "Linking " )
     TlPrintString ( dagnode^.Target^.FileName.Buffer )
     TlPrintString ( "\n" )
+
+    TlReleaseMutex ( BtPrintMutex )
 
     cmdline : TlDynamicBuffer
 
@@ -1116,6 +1149,8 @@ FN (BtDagActionF) BtLinkExecutable (
                 node^.ObjectPath.Buffer, // srcbuf
                 node^.ObjectPath.Count - 1, // length
             )
+
+            // TlPrintString ( node^.ObjectPath.Buffer )
 
             listentry = listentry^.Next
         END
@@ -1220,6 +1255,7 @@ FN (BtDagActionF) BtLinkExecutable (
 END
 
 BtDagAction : BtDagActionF[DAG_MAX] = {
+    [DAG_NULL] = &BtBuildNull,
     [DAG_JKL_OBJECT] = &BtBuildJkl,
     [DAG_C_OBJECT] = &BtBuildC,
     [DAG_S_OBJECT] = &BtBuildS,
@@ -1371,12 +1407,6 @@ FN BtBuildDag ()
         14, // length
     )
 
-    // Create the prebuilt copies directory.
-
-    IF BtPrebuiltCopies THEN
-        TlCreateDirectory ( &BtPrebuiltCopiesPath[0] )
-    END
-
     // The update DAG represents all of the 'objects' that need to be updated to
     // bring the selected target up to date. A node represents one of these
     // objects, and a directed edge leads FROM an object TO an object that must
@@ -1442,6 +1472,10 @@ FN BtBuildDag ()
     // Set up the leaf count semaphore.
 
     BtLeafSemaphore = TlCreateSemaphore ( 1 )
+
+    // Set up the printing mutex.
+
+    BtPrintMutex = TlCreateMutex ()
 
     IF BtJobCount == 1 THEN
         // Directly call the worker thread entrypoint in the context of this

@@ -144,6 +144,8 @@ FN LexInitialize ()
         &FeInputFile[0], // filepath
     )
 
+    FeRootFileBlock = fileblock
+
     // Initialize the section package.
 
     LexInitializeSectionStuff ()
