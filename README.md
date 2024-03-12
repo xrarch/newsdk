@@ -29,7 +29,7 @@ XrLink      - The linker.
 - [x] Self-hosted Jackal compiler w/ C backend.
 - [x] Fox32 backend.
 - [x] XR/17032 backend.
-- [x] Self-hosted build tool ("xrbt") to replace `make`.
+- [x] Self-hosted build tool `xrbt` to replace `make`.
 - [ ] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [ ] New linker written in Jackal with XR/17032 and Fox32 support.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.

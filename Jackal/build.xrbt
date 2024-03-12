@@ -27,6 +27,7 @@ TARGET "Jackal"
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		SOURCES "./Frontend/CHost"
 		SOURCES "../Library/CHost"
+		PREBUILT "./Prebuilt"
 	#END
 
 	#IF TRG_CT
@@ -40,6 +41,4 @@ TARGET "Jackal"
 	#IF TRG_XR17032
 		SOURCES "./xr17032"
 	#END
-
-	PREBUILT "./Prebuilt"
 END
