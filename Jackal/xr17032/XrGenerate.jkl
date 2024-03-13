@@ -1034,7 +1034,8 @@ FN XrGenerateFalseBranch (
         XR_B, // machtype
     )
 
-    jmpinst^.TypeBody.Branch.Label = LirGetLabel ( inst^.Body.Branch.FalseLabel )
+    jmpinst^.TypeBody.Branch.Label =
+        LirGetLabel ( inst^.Body.Branch.FalseLabel )
 
     LirInsertInstructionTail ( jmpinst )
 END
