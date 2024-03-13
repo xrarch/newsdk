@@ -16,7 +16,7 @@
 
 TARGET "Jackal"
 	FILE "<bld>/jkl.exe"
-	
+
 	JKLINCLUDE "../Library/include"
 	JKLINCLUDE "./include"
 
