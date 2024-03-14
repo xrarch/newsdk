@@ -3,3 +3,4 @@
 build/*.exe
 **/obj/**
 bin/*.exe
+test/**
