@@ -1,0 +1,50 @@
+Init:
+  - Initialize keyword tokens for directives and so on.
+  - Call the target; target should add tokens to the keyword table for all of
+    its instructions.
+
+Phase 1: Parses the asm file. Constructs the symbol table and outputs a singly
+         linked list of object elements (instructions, literal bytes, etc) per
+         section.
+
+  - Each . token is either a local label or a directive depending on whether the
+    next token is an identifier or a directive name.
+
+  - Every other token is either an instruction or a global label name, also
+    depending on the token type.
+
+  - Keep two byte offsets per section: A "runtime" byte offset (set by .org) and
+    a compile-time byte offset (advances monotonically).
+
+  - When an instruction token is encountered, dispatch to the target-specific
+    parser which will consume the instruction, add it to the chain, advance the
+    current byte offset, and return.
+      At this point, target code should add entries to the relocation table,
+      where relevant (i.e. for operands of instructions that are labels).
+
+  - Constant expressions are left in an AST form.
+      Where their value is not yet determinate (i.e. using a label that hasn't
+      been encountered yet), a worst (i.e. widest) case must be assumed.
+
+Phase 2: Create section data.
+
+  - For each section, create a byte array. Walk the chain of object elements and
+    fill in the contents of the byte array. Call target code to encode the
+    instructions.
+      (Except BSS!)
+
+  - Evaluate the constant expressions as needed.
+      At this time, errors are caught and emitted for usage of undefined labels
+      etc.
+
+Phase 3: Encoding.
+
+  - Call the encoder for the format specified by the user (default is XLOFF or
+    [insert name of new XLOFF variant here]).
+
+  - "Flat" encoder uses the relocation tables to relocate the sections to be
+    contiguous and then emits the binary section data consecutively to the
+    output file. Uses the earliest .org in the first section as a hint for where
+    to "begin".
+
+  - XLOFF encoder does XLOFF stuff to make an XLOFF binary.
