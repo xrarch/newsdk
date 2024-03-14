@@ -32,8 +32,9 @@ XrLink      - The linker.
 - [x] Self-hosted build tool `xrbt` to replace `make`.
 - [ ] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [ ] New linker written in Jackal with XR/17032 and Fox32 support.
+- [ ] Tools needed to begin MINTIA rewrite; disk image tool and AisixFS tool.
+- [ ] `xrbt` support for automatically creating and updating disk images if configured to do so.
+- [ ] Tool to automatically generate system service stubs for MINTIA.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.
 - [ ] MINTIA port of the new compiler.
-- [ ] RISCV64 assembler and linker support.
-- [ ] RISCV64 compiler backend.
-- [ ] MINTIA port to RISCV64.
+- [ ] Future ports and fun junk.
