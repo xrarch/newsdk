@@ -16,6 +16,10 @@ Phase 1: Parses the asm file. Constructs the symbol table and outputs a singly
   - Keep two byte offsets per section: A "runtime" byte offset (set by .org) and
     a compile-time byte offset (advances monotonically).
 
+  - Actually, in lieu of .org, have a pair of directives that create an "origin
+    override" area where a specific origin is assumed and no relocations are
+    generated within that region.
+
   - When an instruction token is encountered, dispatch to the target-specific
     parser which will consume the instruction, add it to the chain, advance the
     current byte offset, and return.
@@ -44,7 +48,8 @@ Phase 3: Encoding.
 
   - "Flat" encoder uses the relocation tables to relocate the sections to be
     contiguous and then emits the binary section data consecutively to the
-    output file. Uses the earliest .org in the first section as a hint for where
-    to "begin".
+    output file. Bases the output binary at the value of the macro FLAT_BASE
+    which, like all macros, can either be defined in the file or over the
+    command line.
 
   - XLOFF encoder does XLOFF stuff to make an XLOFF binary.
