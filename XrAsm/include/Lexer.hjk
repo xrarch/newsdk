@@ -1,31 +1,4 @@
-#INCLUDE "<inc>/Runtime.hjk"
-
-#DEFINE FE_PATH_BUFFER_SIZE 256
-
-EXTERN FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
-
-EXTERN FeInputFileHandle : ^VOID
-
-STRUCT FeFileBlock
-    Entry : TlHashTableEntry, // must be at the start
-
-    FilePath : UBYTE[FE_PATH_BUFFER_SIZE],
-    IncludeName : UBYTE[FE_PATH_BUFFER_SIZE],
-END
-
-EXTERN FN FeIsMacroArgument (
-    IN arg : ^UBYTE,
-) : ^UBYTE
-
-EXTERN FN FeCreateFileBlock (
-    IN includename : ^UBYTE,
-    OUT created : UBYTE,
-) : ^FeFileBlock
-
-EXTERN FN FeCopyPathFileBlock (
-    IN fileblock : ^FeFileBlock,
-    IN filepath : ^UBYTE,
-)
+#INCLUDE "<inc>/Frontend.hjk"
 
 #DEFINE LEX_PUTBACK_STACK_DEPTH 256
 #DEFINE LEX_BUFFER_SIZE 16384
@@ -34,10 +7,22 @@ EXTERN FN FeCopyPathFileBlock (
 ENUM LexTokenType : UBYTE
     TOKEN_ANY,
 
-    TOKEN_TARGET,
-    TOKEN_TARGET_INFO,
-    TOKEN_END,
+    TOKEN_DIRECTIVE, // subtype is a directive
+    TOKEN_INSTRUCTION, // subtype is an instruction
 
+    TOKEN_OPER, // subtype is operator type
+
+    TOKEN_LPAREN,
+    TOKEN_RPAREN,
+    TOKEN_LBRACKET,
+    TOKEN_RBRACKET,
+    TOKEN_COLON,
+    TOKEN_LBRACE,
+    TOKEN_RBRACE,
+    TOKEN_COMMA,
+    TOKEN_DOT,
+
+    TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
     TOKEN_NUMBER, // payload is the number value
 
@@ -46,18 +31,30 @@ ENUM LexTokenType : UBYTE
 END
 
 ENUM LexTokenSubtype : UBYTE
-    TOKEN_FILE,
-    TOKEN_DEPEND,
-    TOKEN_SOURCES,
-    TOKEN_JKLINCLUDE,
-    TOKEN_LIBDIR,
-    TOKEN_LINKOPT,
-    TOKEN_JKLOPT,
-    TOKEN_LINK,
-    TOKEN_DYLINK,
-    TOKEN_PREBUILT,
+    TOKEN_SUBTYPE_ANY,
 
-    TOKEN_SUBTYPE_MAX, // MUST be at the end
+    TOKEN_EQUIV,       // operator
+    TOKEN_NOTEQUIV,    // operator
+    TOKEN_BITAND,      // operator
+    TOKEN_BITOR,       // operator
+    TOKEN_LESSTHAN,    // operator
+    TOKEN_GREATERTHAN, // operator
+    TOKEN_LTEQ,        // operator
+    TOKEN_GTEQ,        // operator
+    TOKEN_PLUS,        // operator
+    TOKEN_MINUS,       // operator
+    TOKEN_DIVIDE,      // operator
+    TOKEN_MODULO,      // operator
+    TOKEN_BITXOR,      // operator
+    TOKEN_LEFTSHIFT,   // operator
+    TOKEN_RIGHTSHIFT,  // operator
+    TOKEN_BITNOT,      // operator
+    TOKEN_MUL,         // operator
+
+    TOKEN_IDENTIFIER_NEW,
+    TOKEN_IDENTIFIER_FOUND,
+
+    TOKEN_SUBTYPE_MAX, // MUST be at the end of the token subtypes
 END
 
 ENUM LexCharBehavior : UBYTE
@@ -73,6 +70,7 @@ FNPTR LexGetCharacterF () : UBYTE
 STRUCT LexInternedString
     Entry : TlHashTableEntry, // MUST be at the beginning
     DynamicBuffer : TlDynamicBuffer,
+    Section : ^LexSection,
 END
 
 STRUCT LexToken
@@ -112,6 +110,7 @@ STRUCT LexStream
     Macro : ^LexMacro,
     LastWasNewline : UBYTE,
 
+    LastScope : ^TlSymbolTable,
     LastMacroScope : ^TlSymbolTable,
 
     Backslash : UBYTE,
@@ -121,6 +120,31 @@ STRUCT LexStream
     CoalescePutback : UBYTE,
 END
 
+ENUM LexSymbolType : UBYTE
+    SYM_UNINITIALIZED,
+    SYM_LABEL,
+
+    // The "forward" types signify a symbol that has been used before it was
+    // defined, in a context where it was okay to do so. In fact, it's okay to
+    // never declare these as long as they weren't referenced in the source
+    // program.
+
+    SYM_FORWARD_LABEL,
+END
+
+STRUCT LexSymbol
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Name : ^UBYTE,
+    Section : ^LexSection,
+
+    // Parser private stuff in a symbol.
+
+    Value : UWORD,
+
+    Flags : ULONG,
+    Type : LexSymbolType,
+END
+
 STRUCT LexMacro
     Entry : TlHashTableEntry, // MUST be at the beginning
 
@@ -128,15 +152,12 @@ STRUCT LexMacro
     Contents : TlDynamicBuffer,
     Name : UBYTE[LEX_DIRECTIVE_MAX],
 
-    ExposedMacroEntry : TlListEntry,
-
+    ResumeScope : ^TlSymbolTable,
     ResumeMacroScope : ^TlSymbolTable,
 
     ArgListHead : ^LexMacroArgument,
-
     IsFunctionMacro : UBYTE,
     IsArgumentMacro : UBYTE,
-    IsExposed : UBYTE,
 END
 
 STRUCT LexMacroArgument
@@ -150,6 +171,8 @@ EXTERN LexCharTreatment : LexCharBehavior[256]
 
 EXTERN LexCurrentStream : ^LexStream
 EXTERN LexCurrentMacroScope : ^TlSymbolTable
+EXTERN LexRootScope : ^TlSymbolTable
+EXTERN LexCurrentScope : ^TlSymbolTable
 EXTERN LexFalseCount : ULONG
 
 EXTERN LexMacroDepth : ULONG
@@ -209,6 +232,16 @@ EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
 EXTERN FN LexParseDirective ()
 
+EXTERN FN LexEnterScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN LexResetScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN LexLeaveScope ()
+
 EXTERN FN LexCopyToken (
     IN dest : ^LexToken,
     IN src : ^LexToken,
@@ -247,92 +280,3 @@ EXTERN FN LexCrunchNumber (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
 ) : UWORD
-
-#DEFINE BT_ARCH_BUFFER_SIZE 64
-
-EXTERN LexExposedMacroListHead : TlListEntry
-
-EXTERN BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
-
-EXTERN BtJobCount : UWORD
-
-EXTERN FN BtStatFile (
-    IN fullpath : ^UBYTE,
-) : ^TlStatRecord
-
-STRUCT BtDependsListEntry
-    Entry : TlListEntry,
-
-    Target : ^BtTarget,
-END
-
-STRUCT BtSourcesRecord
-    Entry : TlListEntry,
-
-    FilePathBuffer : TlDynamicBuffer,
-END
-
-STRUCT BtExposedMacroRecord
-    Entry : TlListEntry,
-
-    Macro : ^LexMacro,
-END
-
-STRUCT BtTarget
-    Entry : TlHashTableEntry, // MUST be at the beginning
-
-    LinkOptions : TlDynamicBuffer,
-    LinkPaths : TlDynamicBuffer,
-    DyLinkPaths : TlDynamicBuffer,
-    JklOptions : TlDynamicBuffer,
-    IncludePaths : TlDynamicBuffer,
-    LibPaths : TlDynamicBuffer,
-    DependsOnListHead : TlListEntry,
-    SourcesListHead : TlListEntry,
-    FileName : TlDynamicBuffer,
-    PrebuiltCopiesPath : TlDynamicBuffer,
-    ObjectListHead : TlListEntry,
-
-    ExposedMacroListHead : TlListEntry,
-
-    DagNode : ^BtDagNode,
-
-    CheckedForUpdate : UBYTE,
-    HasFileName : UBYTE,
-    HasPrebuiltCopies : UBYTE,
-END
-
-ENUM BtDagNodeType : UBYTE
-    DAG_NULL,
-
-    DAG_JKL_OBJECT,
-    DAG_C_OBJECT,
-    DAG_S_OBJECT,
-    DAG_EXECUTABLE,
-
-    DAG_MAX,
-END
-
-STRUCT BtDagEdge
-    InEdgeListEntry : TlListEntry,
-    OutEdgeListEntry : TlListEntry,
-
-    From : ^BtDagNode,
-    To : ^BtDagNode,
-END
-
-STRUCT BtDagNode
-    InEdgeListHead : TlListEntry,
-    OutEdgeListHead : TlListEntry,
-    LeafListEntry : TlListEntry,
-    ObjectListEntry : TlListEntry,
-
-    Target : ^BtTarget,
-
-    SrcPath : TlDynamicBuffer,
-    ObjectPath : TlDynamicBuffer,
-    DepsPath : TlDynamicBuffer,
-    TmpPath : TlDynamicBuffer,
-
-    Type : BtDagNodeType,
-END

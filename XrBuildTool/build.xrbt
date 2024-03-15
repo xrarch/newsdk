@@ -1,7 +1,7 @@
 TARGET "XrBuildTool"
 	FILE "<bld>/xrbt.exe"
 	
-	JKLINCLUDE "../Library/include"
+	INCDIR "../Library/include"
 	SOURCES "../Library"
 
 	SOURCES "./src"

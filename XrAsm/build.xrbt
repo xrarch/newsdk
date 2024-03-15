@@ -1,14 +1,14 @@
 TARGET "XrAsm"
 	FILE "<bld>/xrasm.exe"
 	
-	JKLINCLUDE "../Library/include"
+	INCDIR "../Library/include"
 	SOURCES "../Library"
 
-	JKLINCLUDE "./include"
-	SOURCES "./src"
+	INCDIR "./include"
+	SOURCES "./Frontend"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
-		SOURCES "./src/CHost"
+		SOURCES "./Frontend/CHost"
 		SOURCES "../Library/CHost"
 	#END
 END

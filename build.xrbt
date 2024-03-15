@@ -14,3 +14,4 @@
 
 #DEPEND "./Jackal/build.xrbt"
 #DEPEND "./XrBuildTool/build.xrbt"
+#DEPEND "./XrAsm/build.xrbt"

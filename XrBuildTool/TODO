@@ -1,0 +1,8 @@
+- Manage header dependencies for assembly files as well.
+
+- Pass libdir argument to Jackal compiler.
+
+- Pass incdir and libdir arguments to assembler.
+
+- Support for automatically creating and updating a test disk image, by invoking
+  the (yet-to-be-written) disk image tool.

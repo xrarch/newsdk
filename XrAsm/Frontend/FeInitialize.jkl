@@ -1,0 +1,351 @@
+//
+// Frontend initialization.
+//
+
+#INCLUDE "<inc>/Lexer.hjk"
+
+PUBLIC FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
+
+PUBLIC FeInputFileHandle : ^VOID
+PUBLIC FeOutputFileHandle : ^VOID
+
+PUBLIC FeOutputHeaders : ^UBYTE = NULLPTR
+
+PUBLIC FeRootFileBlock : ^FeFileBlock
+
+AsmBinaryName : ^UBYTE = NULLPTR
+
+PUBLIC AsmTargetInfo : ^AsmTargetInfoRecord = NULLPTR
+
+FN AsmUsage ()
+    TlPrintString ( "Usage: " )
+    TlPrintString ( AsmBinaryName )
+    TlPrintString ( " [inputfile] [outputfile] target=[CHost/xr17032/fox32]\n" )
+
+    TlErrorExit ()
+END
+
+FeFileBlockHashTable : TlHashTable
+
+FN FeIsMacroArgument (
+    IN arg : ^UBYTE,
+) : ^UBYTE
+
+    i := 0
+
+    WHILE arg[i] DO
+        IF arg[i] == '=' THEN
+            RETURN &arg[i]
+        END
+
+        i += 1
+    END
+
+    RETURN NULLPTR
+END
+
+FN FeParseArguments (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Find the value of these arguments, if they exist:
+    //  libdir=
+    //  incdir=
+    //  target=
+    //
+    // Identify the source and destination filenames.
+
+    FeLibraryDirectory[0] = 0
+    FeIncludeDirectory[0] = 0
+
+    foundinput := FALSE
+    foundoutput := FALSE
+    foundtarget := FALSE
+
+    i := 1
+
+    WHILE i < argc DO
+        IF TlCompareStringWithMax ( argv[i], "libdir=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeLibraryDirectory[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+        ELSEIF TlCompareStringWithMax ( argv[i], "incdir=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeIncludeDirectory[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+        ELSEIF TlCompareStringWithMax ( argv[i], "target=", 7 ) == 0 THEN
+            TlCopyString (
+                &FeTargetString[0], // dest
+                &argv[i][7], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+            foundtarget = TRUE
+
+        ELSEIF TlCompareStringWithMax ( argv[i], "header=", 7 ) == 0 THEN
+            FeOutputHeaders = &argv[i][7]
+
+        ELSEIF FeIsMacroArgument ( argv[i] ) THEN
+            LexDefineMacroFromArgumentString ( argv[i] )
+
+        ELSEIF foundinput THEN
+            IF foundoutput THEN
+                TlPrintString ( "Too many arguments specified!\n" )
+                AsmUsage ()
+            END
+
+            foundoutput = TRUE
+
+            TlCopyString (
+                &FeOutputFile[0], // dest
+                argv[i], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+
+        ELSE
+            foundinput = TRUE
+
+            TlCopyString (
+                &FeInputFile[0], // dest
+                argv[i], // src
+                FE_PATH_BUFFER_SIZE, // bufsize
+            )
+        END
+
+        i += 1
+    END
+
+    IF NOT foundinput THEN
+        TlPrintString ( "Error: No input file specified.\n" )
+        AsmUsage ()
+    END
+
+    IF NOT foundoutput THEN
+        TlPrintString ( "Error: No output file specified.\n" )
+        AsmUsage ()
+    END
+
+    IF NOT foundtarget THEN
+        TlPrintString ( "Error: No target specified.\n" )
+        AsmUsage ()
+    END
+END
+
+FN FeCreateFileBlock (
+    IN includename : ^UBYTE,
+    OUT created : UBYTE,
+) : ^FeFileBlock
+
+    fileblock := CAST TlLookupOrAllocateEntryHashTable (
+        &FeFileBlockHashTable, // hashtable
+        SIZEOF FeFileBlock, // entrysize
+        includename, // key
+        OUT created, // created
+    ) TO ^FeFileBlock
+
+    IF created THEN
+        // Initialize the file block, since it didn't already exist.
+
+        TlCopyString (
+            &fileblock^.IncludeName[0], // dest
+            includename, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+
+        // Manually set the key on the hash table entry, because the one we
+        // passed in isn't permanent. If we left it like that, it'd try to use
+        // random memory as the key for comparison later, which is bad.
+
+        fileblock^.Entry.Key = &fileblock^.IncludeName[0]
+    END
+
+    RETURN fileblock
+END
+
+FN FeCopyPathFileBlock (
+    IN fileblock : ^FeFileBlock,
+    IN filepath : ^UBYTE,
+)
+
+    TlCopyString (
+        &fileblock^.FilePath[0], // dest
+        filepath, // src
+        FE_PATH_BUFFER_SIZE, // bufsize
+    )
+END
+
+EXTERN FoxTargetInfo : AsmTargetInfoRecord
+EXTERN XrTargetInfo : AsmTargetInfoRecord
+
+TrgInfoRecords : ^AsmTargetInfoRecord[8] = {
+    // &FoxTargetInfo,
+    // &XrTargetInfo,
+
+    NULLPTR, // MUST be here, as a sentinel
+}
+
+FN TrgInitialize ()
+    
+    // Initialize the target.
+
+    target := &TrgInfoRecords[0]
+
+    WHILE target^ != NULLPTR DO
+        IF TlCompareString ( &FeTargetString[0], target^^.Name ) == 0 THEN
+            AsmTargetInfo = target^
+
+            LEAVE
+        END
+
+        target += SIZEOF ^VOID
+    END
+
+    TlUserError ( "Unknown target specified", 0, 0, 0 )
+END
+
+FN FeInitialize (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Initialize the file block hash table.
+
+    TlInitializeHashTable ( &FeFileBlockHashTable )
+
+    // Initialize the preprocessor.
+
+    LexInitializePreprocessor ()
+
+    // Parse the arguments.
+
+    FeParseArguments ( argc, argv )
+
+    // Open the input and output files.
+
+    status := TlOpenSource (
+        &FeInputFile[0], // filename
+        OUT FeInputFileHandle, // handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open source file.", 0, 0, 0 )
+    END
+
+    // Initialize the target.
+
+    TrgInitialize ()
+
+    // Initialize the lexer.
+
+    // LexInitialize ()
+END
+
+FN FeOutputHeaderDependencies ()
+
+    // Output all of the header dependencies of this source file to a file.
+
+    handle : ^VOID
+
+    status := TlOpenDestination (
+        FeOutputHeaders, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open header dependencies file.", 0, 0, 0 )
+    END
+
+    headerbuf : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &headerbuf )
+
+    head := &FeFileBlockHashTable.OrderedListHead
+    entry := head^.Prev
+
+    WHILE head != entry DO
+        hashentry := CONTAINEROF entry TO TlHashTableEntry.OrderedEntry
+
+        fileblock := CAST hashentry TO ^FeFileBlock
+
+        IF fileblock != FeRootFileBlock THEN
+            TlCopyIntoDynamicBuffer (
+                &headerbuf, // array
+                &fileblock^.FilePath[0], // srcbuf
+                TlMeasureString ( &fileblock^.FilePath[0] ), // length
+            )
+
+            TlInsertDynamicBuffer (
+                &headerbuf, // array
+                '\n', // byte
+            )
+        END
+
+        entry = entry^.Prev
+    END
+
+    TlWriteFile (
+        handle, // handle
+        headerbuf.Count, // bytes
+        headerbuf.Buffer, // buffer
+    )
+
+    TlUninitializeDynamicBuffer ( &headerbuf )
+END
+
+FN AsmAssembleProgram (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Compile the entire program.
+
+    AsmBinaryName = &argv[0][0]
+
+    // Initialize the front-end components.
+
+    FeInitialize (
+        argc, // argc
+        argv, // argv
+    )
+
+    // Phase 1: Parse the assembly file and build the element chains.
+
+    // AsmParse ()
+
+    // Phase 2: Build the section data.
+
+    // AsmBuildData ()
+
+    // Open the output file.
+
+    status := TlOpenDestination (
+        &FeOutputFile[0], // filename
+        OUT FeOutputFileHandle, // handle
+    )
+
+    IF status THEN
+        TlUserError ( "Failed to open destination file.", 0, 0, 0 )
+    END
+
+    // Phase 3: Encode the output file.
+
+    // AsmEncoderInfo^.EntryFunc ()
+
+    // Output header dependencies to a text file, in order of when they were
+    // encountered.
+
+    IF FeOutputHeaders THEN
+        FeOutputHeaderDependencies ()
+    END
+END

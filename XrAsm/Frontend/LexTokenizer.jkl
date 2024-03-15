@@ -3,10 +3,8 @@
 // for the parser to use. Also does string internment, and creates the symbol
 // tables (with scopes directed by the parser).
 //
-// STOLEN from Jackal compiler and hacked to bits for the build tool.
-//
 
-#INCLUDE "Bt.hjk"
+#INCLUDE "<inc>/Lexer.hjk"
 
 PUBLIC LexCharTreatment : LexCharBehavior[256] = {
     [0] = CHAR_EOF,
@@ -51,10 +49,21 @@ PUBLIC LexCharTreatment : LexCharBehavior[256] = {
 #DEFINE LEX_TOKEN_STRING_SIZE 128
 
 PUBLIC LexCurrentStream : ^LexStream = NULLPTR
+PUBLIC LexRootScope : ^TlSymbolTable = NULLPTR
+PUBLIC LexCurrentScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexFalseCount : ULONG = 0
+
+LexMacroFree := 0
+
+LexSavedMacro : ^LexMacro = NULLPTR
+LexSavedMacroToken : LexToken
+
+LexCurrentOverlayScope : ^TlSymbolTable = NULLPTR
 
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 LexPutbackStackPtr : ULONG = 0
+
+LexInternedStringZone : TlZone
 
 STRUCT LexKeyword
     Entry : TlHashTableEntry, // MUST be at the beginning
@@ -67,8 +76,6 @@ LexKeywordHashTable : TlHashTable
 
 LexKeywordBumpArray : LexKeyword[128]
 LexKeywordBumpIndex := 0
-
-LexInternedStringZone : TlZone
 
 FN LexInsertKeyword (
     IN name : ^UBYTE,
@@ -98,6 +105,29 @@ FN LexInsertKeyword (
     )
 END
 
+FN (TlHashTableEnumeratorF) LexDeleteSymbol (
+    IN entry : ^TlHashTableEntry,
+)
+
+    // We can't free symbols because these structures are referenced throughout
+    // the phases of the compiler long after the front-end finishes.
+
+    // TlFreeToZone (
+    //     &LexSymbolZone, // zone
+    //     entry, // block
+    // )
+END
+
+FN LexCreateSymbolTable (
+    IN outerscope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    RETURN TlCreateSymbolTable (
+        outerscope, // outerscope
+        &LexDeleteSymbol, // deletefunc
+    )
+END
+
 FN LexInitialize ()
 
     dumpster : UBYTE
@@ -114,6 +144,8 @@ FN LexInitialize ()
         &FeInputFile[0], // filepath
     )
 
+    FeRootFileBlock = fileblock
+
     // Initialize the stream zone.
 
     LexInitializeStreamZone ()
@@ -127,6 +159,12 @@ FN LexInitialize ()
 
     LexPushStream ( filestream )
 
+    // Create the global symbol table scope.
+
+    LexRootScope = LexCreateSymbolTable ( NULLPTR )
+
+    LexCurrentScope = LexRootScope
+
     // Initialize the interned string zone.
 
     TlInitializeZone (
@@ -138,19 +176,33 @@ FN LexInitialize ()
 
     TlInitializeHashTable ( &LexKeywordHashTable )
 
-    LexInsertKeyword ( "END", TOKEN_END, 0, 0 )
-    LexInsertKeyword ( "TARGET", TOKEN_TARGET, 0, 0 )
+    LexInsertKeyword ( ")", TOKEN_RPAREN, 0, 0 )
+    LexInsertKeyword ( "]", TOKEN_RBRACKET, 0, 0 )
+    LexInsertKeyword ( ":", TOKEN_COLON, 0, 0 )
+    LexInsertKeyword ( "{", TOKEN_LBRACE, 0, 0 )
+    LexInsertKeyword ( "}", TOKEN_RBRACE, 0, 0 )
+    LexInsertKeyword ( ",", TOKEN_COMMA, 0, 0 )
+    LexInsertKeyword ( ".", TOKEN_DOT, 0, 0 )
+    LexInsertKeyword ( "[", TOKEN_LBRACKET, 0, 0 )
+    LexInsertKeyword ( "(", TOKEN_LPAREN, 0, 0 )
 
-    LexInsertKeyword ( "FILE", TOKEN_TARGET_INFO, TOKEN_FILE, 0 )
-    LexInsertKeyword ( "DEPEND", TOKEN_TARGET_INFO, TOKEN_DEPEND, 0 )
-    LexInsertKeyword ( "SOURCES", TOKEN_TARGET_INFO, TOKEN_SOURCES, 0 )
-    LexInsertKeyword ( "INCDIR", TOKEN_TARGET_INFO, TOKEN_JKLINCLUDE, 0 )
-    LexInsertKeyword ( "LIBDIR", TOKEN_TARGET_INFO, TOKEN_LIBDIR, 0 )
-    LexInsertKeyword ( "LINKOPT", TOKEN_TARGET_INFO, TOKEN_LINKOPT, 0 )
-    LexInsertKeyword ( "JKLOPT", TOKEN_TARGET_INFO, TOKEN_JKLOPT, 0 )
-    LexInsertKeyword ( "LINK", TOKEN_TARGET_INFO, TOKEN_LINK, 0 )
-    LexInsertKeyword ( "DYLINK", TOKEN_TARGET_INFO, TOKEN_DYLINK, 0 )
-    LexInsertKeyword ( "PREBUILT", TOKEN_TARGET_INFO, TOKEN_PREBUILT, 0 )
+    LexInsertKeyword ( "==", TOKEN_OPER, TOKEN_EQUIV, 0 )
+    LexInsertKeyword ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV, 0 )
+    LexInsertKeyword ( "&", TOKEN_OPER, TOKEN_BITAND, 0 )
+    LexInsertKeyword ( "|", TOKEN_OPER, TOKEN_BITOR, 0 )
+    LexInsertKeyword ( "<", TOKEN_OPER, TOKEN_LESSTHAN, 0 )
+    LexInsertKeyword ( ">", TOKEN_OPER, TOKEN_GREATERTHAN, 0 )
+    LexInsertKeyword ( "<=", TOKEN_OPER, TOKEN_LTEQ, 0 )
+    LexInsertKeyword ( ">=", TOKEN_OPER, TOKEN_GTEQ, 0 )
+    LexInsertKeyword ( "+", TOKEN_OPER, TOKEN_PLUS, 0 )
+    LexInsertKeyword ( "-", TOKEN_OPER, TOKEN_MINUS, 0 )
+    LexInsertKeyword ( "/", TOKEN_OPER, TOKEN_DIVIDE, 0 )
+    LexInsertKeyword ( "%", TOKEN_OPER, TOKEN_MODULO, 0 )
+    LexInsertKeyword ( "$", TOKEN_OPER, TOKEN_BITXOR, 0 )
+    LexInsertKeyword ( "<<", TOKEN_OPER, TOKEN_LEFTSHIFT, 0 )
+    LexInsertKeyword ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT, 0 )
+    LexInsertKeyword ( "~", TOKEN_OPER, TOKEN_BITNOT, 0 )
+    LexInsertKeyword ( "*", TOKEN_OPER, TOKEN_MUL, 0 )
 END
 
 FN (LexGetCharacterF) LexGetCharacter () : UBYTE
@@ -419,6 +471,11 @@ FN LexCrunchNumber (
                 i += 1
             END
 
+            IF (num & AsmTargetInfo^.ConstantMask) != num THEN
+                LexTokenError ( token,
+                    "Number does not fit in machine word.", 0, 0, 0 )
+            END
+
             RETURN num
         END
 
@@ -454,6 +511,11 @@ FN LexCrunchNumber (
             i += 1
         END
 
+        IF (num & AsmTargetInfo^.ConstantMask) != num THEN
+            LexTokenError ( token,
+                "Number does not fit in machine word.", 0, 0, 0 )
+        END
+
         RETURN num
     END
 
@@ -487,6 +549,11 @@ FN LexCrunchNumber (
         i += 1
     END
 
+    IF (num & AsmTargetInfo^.ConstantMask) != num THEN
+        LexTokenError ( token,
+            "Number does not fit in machine word.", 0, 0, 0 )
+    END
+
     RETURN num
 END
 
@@ -503,6 +570,27 @@ FN LexGetTokenContents (
     // token), if the token is all uppercase, and if the token is a SPLIT or
     // COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
     // in length or greater.
+
+    IF LexSavedMacro THEN
+        // There was previously a macro encountered in a macro free zone.
+
+        IF LexMacroFree THEN
+            // Still a macro free zone, return another dummy EOF token.
+
+            RETURN TOKEN_FLAG_FOGETTABOUTIT
+        END
+
+        // We can expand the macro now.
+
+        macro := LexSavedMacro
+
+        LexSavedMacro = NULLPTR
+
+        LexExpandMacro (
+            macro, // macro
+            &LexSavedMacroToken, // token
+        )
+    END
 
     // We GOTO LoopOnMacro in the case that the token turns out to be a macro
     // that needs expansion (this is intentionally picked over the alternative
@@ -685,6 +773,20 @@ FN LexGetTokenContents (
     // It is a macro! Expand it and loop, so our caller gets the next "real"
     // token.
 
+    IF LexMacroFree THEN
+        // This is a macro free zone. Remember that we found this macro and
+        // return a dummy EOF token (to avoid spurious token matches).
+
+        LexCopyToken (
+            &LexSavedMacroToken, // dest
+            token, // src
+        )
+
+        LexSavedMacro = macro
+
+        RETURN TOKEN_FLAG_FOGETTABOUTIT
+    END
+
     LexExpandMacro (
         macro, // macro
         token, // token
@@ -791,7 +893,126 @@ FN LexNextToken (
         LEAVE
     END
 
-    LexTokenError ( token, "Unknown token", 0, 0, 0 )
+    // This is an identifier. We have to create an entry in the symbol table
+    // for the current scope, if one does not exist.
+
+    token^.Type = TOKEN_IDENTIFIER
+    token^.Subtype = TOKEN_IDENTIFIER_FOUND
+
+    symbol : ^LexSymbol
+
+    IF LexCurrentOverlayScope THEN
+        symbol = CAST TlLookupSymbolTable (
+            LexCurrentOverlayScope, // symboltable
+            &buffer[0], // name
+        ) TO ^LexSymbol
+
+    ELSE
+        symbol = CAST TlLookupSymbolTable (
+            LexCurrentScope, // symboltable
+            &buffer[0], // name
+        ) TO ^LexSymbol
+    END
+
+    IF NOT symbol THEN
+        // Create new symbol from bump allocator.
+
+        status := TlBumpAlloc (
+            SIZEOF LexSymbol + length + 1, // bytes
+            OUT symbol, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
+        END
+
+        symbol^.Name = CAST (symbol + SIZEOF LexSymbol) TO ^UBYTE
+        symbol^.Type = SYM_UNINITIALIZED
+
+        TlCopyMemory (
+            symbol^.Name, // dest
+            &buffer[0], // src
+            length + 1, // sz (plus one for null terminator)
+        )
+
+        TlInsertSymbolTable (
+            LexCurrentScope, // symboltable
+            CAST symbol TO ^TlHashTableEntry, // entry
+            symbol^.Name, // name
+        )
+
+        token^.Subtype = TOKEN_IDENTIFIER_NEW
+    END
+
+    token^.Payload = symbol
+END
+
+FN LexEnterScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    // Enter a new scope.
+
+    oldscope := LexCurrentScope
+
+    IF NOT scope THEN
+        LexCurrentScope = TlCreateSymbolTable (
+            oldscope, // outerscope
+            &LexDeleteSymbol, // deletefunc
+        )
+    ELSE
+        LexCurrentScope = scope
+    END
+
+    RETURN oldscope
+END
+
+FN LexResetScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+    oldscope := LexCurrentScope
+
+    LexCurrentScope = scope
+
+    RETURN oldscope
+END
+
+FN LexLeaveScope ()
+
+    // Leave the current scope.
+
+    LexCurrentScope = TlDeleteSymbolTable ( LexCurrentScope )
+END
+
+FN LexEnterOverlayScope (
+    IN scope : ^TlSymbolTable,
+)
+
+    // Overlay the scope.
+
+    LexCurrentOverlayScope = scope
+END
+
+FN LexExitOverlayScope ()
+
+    // Un-overlay the scope.
+
+    LexCurrentOverlayScope = NULLPTR
+END
+
+FN LexEnterMacroFreeZone ()
+
+    // Enter a macro free zone.
+
+    LexMacroFree += 1
+END
+
+FN LexLeaveMacroFreeZone ()
+
+    // Leave a macro free zone.
+
+    LexMacroFree -= 1
 END
 
 FN LexCopyToken (

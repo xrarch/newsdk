@@ -1,0 +1,61 @@
+#INCLUDE "<inc>/Runtime.hjk"
+
+#DEFINE FE_PATH_BUFFER_SIZE 256
+
+EXTERN FN AsmAssembleProgram (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+
+EXTERN FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+
+EXTERN FeInputFileHandle : ^VOID
+EXTERN FeOutputFileHandle : ^VOID
+
+EXTERN FeOutputHeaders : ^UBYTE
+
+EXTERN FeRootFileBlock : ^FeFileBlock
+
+FNPTR AsmTargetParseF (
+    IN token : ^LexToken,
+)
+
+FNPTR AsmTargetEncodeF (
+    IN instruction : ^AsmElement,
+)
+
+EXTERN AsmTargetInfo : ^AsmTargetInfoRecord
+
+STRUCT AsmTargetInfoRecord
+    Name : ^UBYTE,
+    ParseFunc : AsmTargetParseF,
+    EncodeFunc : AsmTargetEncodeF,
+    ConstantMask : UWORD,
+END
+
+// fileblock stuff
+
+STRUCT FeFileBlock
+    Entry : TlHashTableEntry, // must be at the start
+
+    FilePath : UBYTE[FE_PATH_BUFFER_SIZE],
+    IncludeName : UBYTE[FE_PATH_BUFFER_SIZE],
+END
+
+EXTERN FN FeIsMacroArgument (
+    IN arg : ^UBYTE,
+) : ^UBYTE
+
+EXTERN FN FeCreateFileBlock (
+    IN includename : ^UBYTE,
+    OUT created : UBYTE,
+) : ^FeFileBlock
+
+EXTERN FN FeCopyPathFileBlock (
+    IN fileblock : ^FeFileBlock,
+    IN filepath : ^UBYTE,
+)

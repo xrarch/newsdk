@@ -291,7 +291,7 @@ END
 
 FN (BtTargetInfoF) BtTargetInfoJklInclude ()
 
-    // Parse a JKLINCLUDE info specifier.
+    // Parse an INCDIR info specifier.
 
     token : LexToken
 
@@ -330,6 +330,54 @@ FN (BtTargetInfoF) BtTargetInfoJklInclude ()
 
     TlCopyIntoDynamicBuffer (
         &BtCurrentTarget^.IncludePaths, // array
+        filepath.Buffer, // srcbuf
+        filepath.Count - 1, // length
+    )
+
+    TlUninitializeDynamicBuffer ( &filepath )
+END
+
+FN (BtTargetInfoF) BtTargetInfoLibDir ()
+
+    // Parse a LIBDIR info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    filepath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &filepath )
+
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        &filepath, // fullpath
+        &token, // errtoken
+    )
+
+    // Append to the include directories.
+
+    IF BtCurrentTarget^.LibPaths.Count THEN
+        // There's already stuff in the include paths, so add a colon separator.
+
+        TlInsertDynamicBuffer (
+            &BtCurrentTarget^.LibPaths, // array
+            ':', // byte
+        )
+    END
+
+    // Copy the full path (except the null terminator).
+
+    TlCopyIntoDynamicBuffer (
+        &BtCurrentTarget^.LibPaths, // array
         filepath.Buffer, // srcbuf
         filepath.Count - 1, // length
     )
@@ -569,6 +617,7 @@ BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
     [TOKEN_SOURCES] = &BtTargetInfoSources,
     [TOKEN_JKLINCLUDE] = &BtTargetInfoJklInclude,
+    [TOKEN_LIBDIR] = &BtTargetInfoLibDir,
     [TOKEN_LINKOPT] = &BtTargetInfoLinkOpt,
     [TOKEN_JKLOPT] = &BtTargetInfoJklOpt,
     [TOKEN_LINK] = &BtTargetInfoLink,
@@ -631,6 +680,7 @@ FN BtParseTarget () : UBYTE
     TlInitializeDynamicBuffer ( &target^.LinkOptions )
     TlInitializeDynamicBuffer ( &target^.JklOptions )
     TlInitializeDynamicBuffer ( &target^.IncludePaths )
+    TlInitializeDynamicBuffer ( &target^.LibPaths )
     TlInitializeDynamicBuffer ( &target^.LinkPaths )
     TlInitializeDynamicBuffer ( &target^.DyLinkPaths )
     TlInitializeDynamicBuffer ( &target^.FileName )
