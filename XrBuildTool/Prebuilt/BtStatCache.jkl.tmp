@@ -136,9 +136,15 @@ uint64_t BtStatFile(uint64_t _mng_fullpath162) {
     uint64_t __twr_v175;
     uint64_t __twr_v176;
     uint64_t __twr_v177;
+    uint64_t __twr_v178;
+    uint64_t __twr_v179;
+    uint64_t __twr_v180;
+    uint64_t __twr_v181;
+    uint64_t __twr_v182;
+    uint64_t __twr_v183;
     __twr_v163 = (uint64_t)(&TlLookupOrAllocateEntryHashTable);
     __twr_v164 = (uint64_t)(&BtStatHashTable);
-    __twr_v165 = 60ULL;
+    __twr_v165 = 316ULL;
     __twr_v166 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v163)(__twr_v164, __twr_v165, _mng_fullpath162, (uint64_t)(&_mng_created167));
     _mng_statentry168 = __twr_v166;
     if (!(_mng_created167)) { goto __twr_l3; } else { goto __twr_l4; }
@@ -156,10 +162,18 @@ uint64_t BtStatFile(uint64_t _mng_fullpath162) {
     _jkl_retv = __twr_v175;
     goto _jkl_epilogue;
     __twr_l5:;
+    __twr_v176 = (uint64_t)(&TlCopyString);
+    __twr_v177 = 60ULL;
+    __twr_v178 = _mng_statentry168 + __twr_v177;
+    __twr_v179 = 256ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t))__twr_v176)(__twr_v178, _mng_fullpath162, __twr_v179);
+    __twr_v180 = 40ULL;
+    __twr_v181 = _mng_statentry168 + __twr_v180;
+    *(uint64_t*)(__twr_v181) = __twr_v178;
     __twr_l3:;
-    __twr_v176 = 48ULL;
-    __twr_v177 = _mng_statentry168 + __twr_v176;
-    _jkl_retv = __twr_v177;
+    __twr_v182 = 48ULL;
+    __twr_v183 = _mng_statentry168 + __twr_v182;
+    _jkl_retv = __twr_v183;
     goto _jkl_epilogue;
     __twr_l2:;
     _jkl_epilogue:;

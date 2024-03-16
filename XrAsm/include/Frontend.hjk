@@ -37,6 +37,15 @@ STRUCT AsmTargetInfoRecord
     ConstantMask : UWORD,
 END
 
+EXTERN AsmEncoderInfo : ^AsmEncoderInfoRecord
+
+FNPTR AsmEncoderEntryF ()
+
+STRUCT AsmEncoderInfoRecord
+    Name : ^UBYTE,
+    EntryFunc : AsmEncoderEntryF,
+END
+
 // fileblock stuff
 
 STRUCT FeFileBlock

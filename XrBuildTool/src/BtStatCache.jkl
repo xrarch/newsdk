@@ -9,6 +9,7 @@ BtStatHashTable : TlHashTable
 STRUCT BtStatCacheEntry
     Entry : TlHashTableEntry,
     Stat : TlStatRecord,
+    Name : UBYTE[FE_PATH_BUFFER_SIZE],
 END
 
 FN BtInitializeStatCache ()
@@ -47,6 +48,18 @@ FN BtStatFile (
 
             RETURN NULLPTR
         END
+
+        TlCopyString (
+            &statentry^.Name[0], // dest
+            fullpath, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
+
+        // Manually set the key on the hash table entry, because the one we
+        // passed in isn't permanent. If we left it like that, it'd try to use
+        // random memory as the key for comparison later, which is bad.
+
+        statentry^.Entry.Key = &statentry^.Name[0]
     END
 
     RETURN &statentry^.Stat
