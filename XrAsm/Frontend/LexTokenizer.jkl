@@ -53,13 +53,6 @@ PUBLIC LexRootScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexCurrentScope : ^TlSymbolTable = NULLPTR
 PUBLIC LexFalseCount : ULONG = 0
 
-LexMacroFree := 0
-
-LexSavedMacro : ^LexMacro = NULLPTR
-LexSavedMacroToken : LexToken
-
-LexCurrentOverlayScope : ^TlSymbolTable = NULLPTR
-
 LexPutbackStack : LexToken[LEX_PUTBACK_STACK_DEPTH]
 LexPutbackStackPtr : ULONG = 0
 
@@ -571,27 +564,6 @@ FN LexGetTokenContents (
     // COALESCE token. The buffer is assumed to be LEX_TOKEN_STRING_SIZE bytes
     // in length or greater.
 
-    IF LexSavedMacro THEN
-        // There was previously a macro encountered in a macro free zone.
-
-        IF LexMacroFree THEN
-            // Still a macro free zone, return another dummy EOF token.
-
-            RETURN TOKEN_FLAG_FOGETTABOUTIT
-        END
-
-        // We can expand the macro now.
-
-        macro := LexSavedMacro
-
-        LexSavedMacro = NULLPTR
-
-        LexExpandMacro (
-            macro, // macro
-            &LexSavedMacroToken, // token
-        )
-    END
-
     // We GOTO LoopOnMacro in the case that the token turns out to be a macro
     // that needs expansion (this is intentionally picked over the alternative
     // of wrapping this routine in a WHILE TRUE loop).
@@ -773,20 +745,6 @@ FN LexGetTokenContents (
     // It is a macro! Expand it and loop, so our caller gets the next "real"
     // token.
 
-    IF LexMacroFree THEN
-        // This is a macro free zone. Remember that we found this macro and
-        // return a dummy EOF token (to avoid spurious token matches).
-
-        LexCopyToken (
-            &LexSavedMacroToken, // dest
-            token, // src
-        )
-
-        LexSavedMacro = macro
-
-        RETURN TOKEN_FLAG_FOGETTABOUTIT
-    END
-
     LexExpandMacro (
         macro, // macro
         token, // token
@@ -899,20 +857,10 @@ FN LexNextToken (
     token^.Type = TOKEN_IDENTIFIER
     token^.Subtype = TOKEN_IDENTIFIER_FOUND
 
-    symbol : ^LexSymbol
-
-    IF LexCurrentOverlayScope THEN
-        symbol = CAST TlLookupSymbolTable (
-            LexCurrentOverlayScope, // symboltable
-            &buffer[0], // name
-        ) TO ^LexSymbol
-
-    ELSE
-        symbol = CAST TlLookupSymbolTable (
-            LexCurrentScope, // symboltable
-            &buffer[0], // name
-        ) TO ^LexSymbol
-    END
+    symbol := CAST TlLookupSymbolTable (
+        LexCurrentScope, // symboltable
+        &buffer[0], // name
+    ) TO ^LexSymbol
 
     IF NOT symbol THEN
         // Create new symbol from bump allocator.
@@ -983,36 +931,6 @@ FN LexLeaveScope ()
     // Leave the current scope.
 
     LexCurrentScope = TlDeleteSymbolTable ( LexCurrentScope )
-END
-
-FN LexEnterOverlayScope (
-    IN scope : ^TlSymbolTable,
-)
-
-    // Overlay the scope.
-
-    LexCurrentOverlayScope = scope
-END
-
-FN LexExitOverlayScope ()
-
-    // Un-overlay the scope.
-
-    LexCurrentOverlayScope = NULLPTR
-END
-
-FN LexEnterMacroFreeZone ()
-
-    // Enter a macro free zone.
-
-    LexMacroFree += 1
-END
-
-FN LexLeaveMacroFreeZone ()
-
-    // Leave a macro free zone.
-
-    LexMacroFree -= 1
 END
 
 FN LexCopyToken (
