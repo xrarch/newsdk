@@ -11,7 +11,7 @@ To initially build the Jackal compiler, type `./bootstrap.sh` to cause the "prec
 Subsequent compilations of the tools can be performed as:
 
 ```
-./bin/xrbt.exe ./build.xrbt [toolname] ARCHITECTURE=CHost JOBS=[desired multithread count]
+./bin/xrbt.exe ./build.xrbt ARCHITECTURE=CHost JOBS=[desired multithread count] [toolname]
 ```
 
 Where toolname is one of the following choices:
