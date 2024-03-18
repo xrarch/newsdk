@@ -1,0 +1,29 @@
+//
+// Implements the generic part of parsing XR/SDK assembly.
+//
+
+#INCLUDE "<inc>/Parser.hjk"
+
+FN AsmParse ()
+
+    // Parse an assembly program.
+    //
+    // An assembly program consists of a sequence of global labels, local
+    // labels, directives, and machine instructions. We parse these all in the
+    // generic code, except for instructions, which we dispatch to target-
+    // specific code to parse for maximum flexibility (and speed).
+    //
+    // The result of parsing is a chain of "elements" represented by the
+    // AsmElement structure. Labels are not represented in this chain, since
+    // an AsmElement corresponds to a data element that will be present in the
+    // final output.
+    //
+    // Note also that this chain is per-section. The section directive can be
+    // used to switch between sections on a whim, and we need to keep track of
+    // what actually ends up where.
+    //
+    // Global labels: TOKEN_IDENTIFIER TOKEN_COLON
+    // Local labels: TOKEN_DOT TOKEN_IDENTIFIER TOKEN_COLON
+    // Directives: TOKEN_DOT TOKEN_DIRECTIVE [arguments ...]
+    // Instructions: TOKEN_INSTRUCTION [arguments ...]
+END

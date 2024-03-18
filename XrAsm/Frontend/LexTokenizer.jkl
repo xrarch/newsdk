@@ -300,8 +300,6 @@ END
 #DEFINE TOKEN_FLAG_COALESCE 2
 #DEFINE TOKEN_FLAG_STRING   4
 #DEFINE TOKEN_FLAG_CHARLIT  8
-#DEFINE TOKEN_FLAG_UPPER    16
-#DEFINE TOKEN_FLAG_FOGETTABOUTIT 32
 
 FN LexGetStringTokenInternal (
     IN token : ^LexToken,
@@ -690,17 +688,11 @@ FN LexGetTokenContents (
     // also turn out to be a macro, in which case we must add it to the stream
     // stack and loop here.
 
-    uppercaseonly := byte >= 'A' AND byte <= 'Z'
-
     len := 0
 
     WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
         IF len == LEX_TOKEN_STRING_SIZE - 1 THEN
             LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
-        END
-
-        IF uppercaseonly THEN
-            uppercaseonly = byte >= 'A' AND byte <= 'Z'
         END
 
         buffer[len] = byte
@@ -716,10 +708,6 @@ FN LexGetTokenContents (
         LexCharTreatment[byte] == CHAR_COALESCE THEN
 
         LexCurrentStream^.CoalescePutback = byte
-    END
-
-    IF uppercaseonly AND len > 1 THEN
-        RETURN TOKEN_FLAG_UPPER
     END
 
     // Check if this is a defined macro name. If so, place that macro on the top
@@ -773,9 +761,7 @@ FN LexNextToken (
         OUT internedstring, // internedstring
     )
 
-    IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE |
-       TOKEN_FLAG_UPPER ) THEN
-
+    IF tokenflag & ( TOKEN_FLAG_SPLIT | TOKEN_FLAG_COALESCE ) THEN
         // This must be a keyword token. If it doesn't hash to a keyword,
         // there's a syntax error.
 
@@ -785,12 +771,6 @@ FN LexNextToken (
         ) TO ^LexKeyword
 
         IF NOT keyword THEN
-            IF tokenflag & TOKEN_FLAG_UPPER THEN
-                LexTokenError ( token,
-                    "Bad use of uppercase alphabetic token (must be keyword).",
-                    0, 0, 0 )
-            END
-
             LexTokenError ( token, "Unknown keyword", 0, 0, 0 )
         END
 
@@ -823,14 +803,6 @@ FN LexNextToken (
         LEAVE
     END
 
-    IF tokenflag & TOKEN_FLAG_FOGETTABOUTIT THEN
-        // This is an ignored macro.
-
-        token^.Type = TOKEN_EOF
-
-        LEAVE
-    END
-
     IF NOT length THEN
         // EOF has been reached.
 
@@ -847,6 +819,21 @@ FN LexNextToken (
             token, // token
             &buffer[0], // buffer
         ) TO ^VOID
+
+        LEAVE
+    END
+
+    keyword := CAST TlLookupHashTable (
+        &LexKeywordHashTable, // hashtable
+        &buffer[0], // key
+    ) TO ^LexKeyword
+
+    IF keyword THEN
+        // It was a keyword.
+
+        token^.Type = keyword^.Type
+        token^.Subtype = keyword^.Subtype
+        token^.TypeContext = keyword^.TypeContext
 
         LEAVE
     END

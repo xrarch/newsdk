@@ -359,6 +359,8 @@ FN FeOutputHeaderDependencies ()
     TlUninitializeDynamicBuffer ( &headerbuf )
 END
 
+EXTERN FN AsmParse ()
+
 FN AsmAssembleProgram (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -377,7 +379,7 @@ FN AsmAssembleProgram (
 
     // Phase 1: Parse the assembly file and build the element chains.
 
-    // AsmParse ()
+    AsmParse ()
 
     // Phase 2: Build the section data.
 
