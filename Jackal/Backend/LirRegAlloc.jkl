@@ -412,6 +412,16 @@ FN LirAllocateRegister (
     hint := reg^.Hint
     calleesavedonly := reg^.LiveAcrossCall
 
+    IF NOT hint AND
+        reg^.HintToVirtual AND
+        reg^.HintToVirtual^.Type == LIR_MACHINE_REG THEN
+
+        // There was no hint, but we were hinted to the same as some other
+        // virtual, so use their machine register as our hint instead.
+
+        hint = reg^.HintToVirtual^.MachineRegister
+    END
+
     IF hint AND
         NOT statmap[hint] AND
         (NOT calleesavedonly OR

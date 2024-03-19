@@ -45,6 +45,8 @@ FN LirCreateRegister () : ^LirRegister
         TlInternalError ( "Failed to create LIR register", 0, 0, 0 )
     END
 
+    reg^.HintToVirtual = NULLPTR
+
     reg^.Type = LIR_VIRTUAL_REG
     reg^.Symbol = NULLPTR
     reg^.DefinedYet = FALSE
@@ -174,6 +176,23 @@ FN LirRemoveInstruction (
         p^.Prev = lirinst^.Prev
     ELSE // no next means we were the tail
         block^.LirTail = lirinst^.Prev
+    END
+END
+
+FN LirMoveHint (
+    IN reg1 : ^LirRegister,
+    IN reg2 : ^LirRegister,
+)
+
+    // Hint two virtual registers to eachother.
+    // Should be done when reg-to-reg MOVs are generated.
+
+    IF NOT reg1^.HintToVirtual THEN
+        reg1^.HintToVirtual = reg2
+    END
+
+    IF NOT reg2^.HintToVirtual THEN
+        reg2^.HintToVirtual = reg1
     END
 END
 

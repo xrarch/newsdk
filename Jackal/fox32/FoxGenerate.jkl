@@ -684,6 +684,8 @@ FN (LirSelectF) FoxSelectMove (
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
+    LirMoveHint ( defreg, srcreg )
+
     LirInsertInstructionTail ( lirinst )
 
     RETURN defreg
@@ -1476,6 +1478,10 @@ FN FoxGenerateArithmeticMove (
         movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
         movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
         movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        IF srcreg THEN
+            LirMoveHint ( defreg, srcreg )
+        END
 
         LirInsertInstructionTail ( movinst )
     END

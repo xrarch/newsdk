@@ -942,6 +942,8 @@ FN (LirSelectF) XrSelectMove (
     lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
     lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
 
+    LirMoveHint ( defreg, srcreg )
+
     LirInsertInstructionTail ( lirinst )
 
     RETURN defreg

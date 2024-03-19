@@ -65,6 +65,8 @@ STRUCT LirRegister
 
     LivenessFirst : ^LirInstruction,
 
+    HintToVirtual : ^LirRegister,
+
     SpilledOffset : ULONG,
 
     LivenessStart : ULONG,
@@ -184,6 +186,11 @@ EXTERN FN LirGetSpillOffset (
     IN irfunc : ^IrFunction,
     IN spilledreg : ^LirRegister,
 ) : UWORD
+
+EXTERN FN LirMoveHint (
+    IN reg1 : ^LirRegister,
+    IN reg2 : ^LirRegister,
+)
 
 ENUM LirAbiUsage : UBYTE
     LIR_REG_UNUSABLE, // MUST be first in the enum
