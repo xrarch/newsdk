@@ -24,7 +24,7 @@ FN LirInsertionSortInterval (
 )
 
     // Insertion sort this interval into the sorted-by-start list, for which we
-    // reuse IntervalListEntry. This should be average O(1) because they are
+    // reuse IntervalListEntry. This should be average O(n) because they are
     // almost always in reverse order in the original list.
 
     head := &LirSortedIntervalListHead
