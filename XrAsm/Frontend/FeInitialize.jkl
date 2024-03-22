@@ -234,6 +234,8 @@ FN TrgInitialize ()
         target += SIZEOF ^VOID
     END
 
+    // TODO UNCOMMENT THIS!!
+    AsmTargetInfo = NULLPTR
     // TlUserError ( "Unknown target specified", 0, 0, 0 )
 END
 
@@ -263,6 +265,8 @@ FN EncInitialize ()
         encoder += SIZEOF ^VOID
     END
 
+    // TODO UNCOMMENT THIS!!
+    AsmEncoderInfo = NULLPTR
     // TlUserError ( "Unknown encoder specified", 0, 0, 0 )
 END
 
