@@ -231,9 +231,7 @@ FN XrAsmEmitCompoundInitializer (
 
             i += 1
 
-        ELSEIF i >= contentsarray^.LengthInUnits AND
-            i >= backpatcharray^.LengthInUnits THEN
-
+        ELSEIF i >= backpatcharray^.LengthInUnits THEN
             BREAK
         
         ELSE

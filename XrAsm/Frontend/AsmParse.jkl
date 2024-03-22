@@ -2,7 +2,7 @@
 // Implements the generic part of parsing XR/SDK assembly.
 //
 
-#INCLUDE "<inc>/Parser.hjk"
+#INCLUDE "<inc>/Asm.hjk"
 
 FN AsmParse ()
 
