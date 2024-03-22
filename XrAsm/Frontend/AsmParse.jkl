@@ -4,6 +4,199 @@
 
 #INCLUDE "<inc>/Asm.hjk"
 
+PUBLIC AsmCurrentSection : ^AsmSection = NULLPTR
+
+PUBLIC AsmSectionListHead : TlListEntry
+
+AsmLastLabel : ^LexSymbol = NULLPTR
+
+FNPTR AsmDirectiveF ()
+
+FN (AsmDirectiveF) AsmParseSection ()
+
+    // Parse the section directive.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Unexpected token", 0, 0, 0 )
+    END
+
+    symbol := CAST token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_UNINITIALIZED AND
+        symbol^.Type != SYM_SECTION THEN
+
+        LexTokenError ( &token, "Expected section name", 0, 0, 0 )
+    END
+
+    section := symbol^.Section
+
+    IF symbol^.Type == SYM_UNINITIALIZED THEN
+        // Initialize it!
+
+        symbol^.Type = SYM_SECTION
+
+        status := TlBumpAlloc (
+            SIZEOF AsmSection, // bytes
+            OUT section, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate section", 0, 0, 0 )
+        END
+
+        symbol^.Section = section
+
+        // Initialize the section structure.
+
+        TlInitializeList ( &section^.ElementListHead )
+
+        section^.FileOffset = 0
+        section^.MemoryOffset = 0
+
+        TlInsertAtTailList (
+            &AsmSectionListHead, // head
+            &section^.SectionListEntry, // entry
+        )
+    END
+
+    AsmCurrentSection = section
+    AsmLastLabel = NULLPTR
+END
+
+AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_SECTION] = &AsmParseSection,
+}
+
+FN AsmInitializeLabel (
+    IN errtoken : ^LexToken,
+    IN symbol : ^LexSymbol,
+    IN global : UBYTE,
+)
+
+    // Initialize the label. Duh.
+
+    IF symbol^.Type != SYM_UNINITIALIZED AND
+        symbol^.Type != SYM_FORWARD_LABEL THEN
+
+        LexTokenError ( errtoken, "Expected a new label name", 0, 0, 0 )
+    END
+
+    IF NOT global AND NOT AsmLastLabel THEN
+        LexTokenError ( errtoken,
+            "Local label without corresponding global label", 0, 0, 0 )
+    END
+
+    AsmEnsureSection ( errtoken )
+
+    IF global THEN
+        AsmLastLabel = symbol
+
+        // Create a local label scope.
+
+        symbol^.LocalLabelScope = LexCreateSymbolTable ( NULLPTR )
+    END
+
+    symbol^.Type = SYM_LABEL
+
+    symbol^.FileOffset = AsmCurrentSection^.FileOffset
+    symbol^.MemoryOffset = AsmCurrentSection^.MemoryOffset
+    symbol^.Section = AsmCurrentSection
+END
+
+FN AsmParseElement () : UWORD
+
+    // Parse an assembly element.
+
+    token : LexToken
+    errtoken : LexToken
+
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_IDENTIFIER THEN
+        // Global label.
+
+        IF NOT LexMatchToken (
+            &errtoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &errtoken,
+                "Expected a colon after label name", 0, 0, 0 )
+        END
+
+        AsmInitializeLabel (
+            &token, // errtoken
+            CAST token.Payload TO ^LexSymbol, // symbol
+            TRUE, // global
+        )
+
+    ELSEIF token.Type == TOKEN_DOT THEN
+        // Local label or directive.
+
+        // Switch to the scope of the last global label, so that if this is a
+        // local label identifier, it's placed in the correct symbol table.
+        
+        oldscope : ^TlSymbolTable
+
+        IF AsmLastLabel THEN
+            oldscope = LexEnterScope ( AsmLastLabel^.LocalLabelScope )
+        END
+
+        LexGetToken ( &token )
+
+        // Now switch back.
+        
+        IF AsmLastLabel THEN
+            LexResetScope ( oldscope )
+        END
+
+        IF token.Type == TOKEN_IDENTIFIER THEN
+            // Local label.
+
+            IF NOT LexMatchToken (
+                &errtoken, // token
+                TOKEN_COLON, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &errtoken,
+                    "Expected a colon after label name", 0, 0, 0 )
+            END
+
+            AsmInitializeLabel (
+                &token, // errtoken
+                CAST token.Payload TO ^LexSymbol, // symbol
+                FALSE, // global
+            )
+        
+        ELSEIF token.Type == TOKEN_DIRECTIVE THEN
+            // Directive. Dispatch to the handler.
+
+            AsmDirectivesTable[token.Subtype] ()
+        END
+
+    ELSEIF token.Type == TOKEN_INSTRUCTION THEN
+        // Dispatch to target-specific parser.
+
+        AsmEnsureSection ( &token )
+
+        AsmTargetInfo^.ParseFunc ( &token )
+
+    ELSEIF token.Type == TOKEN_EOF THEN
+        RETURN FALSE
+
+    ELSE
+        LexTokenError ( &token, "Unexpected token", 0, 0, 0 )
+    END
+
+    RETURN TRUE
+END
+
 FN AsmParse ()
 
     // Parse an assembly program.
@@ -26,4 +219,10 @@ FN AsmParse ()
     // Local labels: TOKEN_DOT TOKEN_IDENTIFIER TOKEN_COLON
     // Directives: TOKEN_DOT TOKEN_DIRECTIVE [arguments ...]
     // Instructions: TOKEN_INSTRUCTION [arguments ...]
+
+    TlInitializeList ( &AsmSectionListHead )
+
+    WHILE AsmParseElement () DO
+        // Keep going...
+    END
 END

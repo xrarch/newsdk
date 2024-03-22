@@ -234,7 +234,7 @@ FN TrgInitialize ()
         target += SIZEOF ^VOID
     END
 
-    TlUserError ( "Unknown target specified", 0, 0, 0 )
+    // TlUserError ( "Unknown target specified", 0, 0, 0 )
 END
 
 EXTERN FlatEncoderInfo : AsmEncoderInfoRecord
@@ -263,7 +263,7 @@ FN EncInitialize ()
         encoder += SIZEOF ^VOID
     END
 
-    TlUserError ( "Unknown encoder specified", 0, 0, 0 )
+    // TlUserError ( "Unknown encoder specified", 0, 0, 0 )
 END
 
 FN FeInitialize (
@@ -304,7 +304,7 @@ FN FeInitialize (
 
     // Initialize the lexer.
 
-    // LexInitialize ()
+    LexInitialize ()
 END
 
 FN FeOutputHeaderDependencies ()

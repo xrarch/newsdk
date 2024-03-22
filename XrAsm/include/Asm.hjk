@@ -1,2 +1,33 @@
 #INCLUDE "<inc>/Lexer.hjk"
 
+STRUCT AsmElement
+    Entry : TlListEntry,
+
+    ErrorToken : LexToken,
+END
+
+STRUCT AsmSection
+    SectionListEntry : TlListEntry,
+
+    ElementListHead : TlListEntry,
+
+    // Current offsets. File offset increases monotonically and reflects the
+    // placement of the data within the file. Memory offset can be set by .org
+    // and other things.
+
+    FileOffset : UWORD,
+    MemoryOffset : UWORD,
+END
+
+EXTERN AsmCurrentSection : ^AsmSection
+
+#MACRO AsmAdvanceSection ( bytes ) [
+    AsmCurrentSection^.FileOffset += (bytes)
+    AsmCurrentSection^.MemoryOffset += (bytes)
+]
+
+#MACRO AsmEnsureSection ( errtoken ) [
+    IF NOT AsmCurrentSection THEN
+        LexTokenError ( (errtoken), "No section declared", 0, 0, 0 )
+    END
+]

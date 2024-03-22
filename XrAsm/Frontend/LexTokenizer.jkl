@@ -179,6 +179,8 @@ FN LexInitialize ()
     LexInsertKeyword ( "[", TOKEN_LBRACKET, 0, 0 )
     LexInsertKeyword ( "(", TOKEN_LPAREN, 0, 0 )
 
+    LexInsertKeyword ( "section", TOKEN_DIRECTIVE, TOKEN_SECTION, 0 )
+
     LexInsertKeyword ( "==", TOKEN_OPER, TOKEN_EQUIV, 0 )
     LexInsertKeyword ( "!=", TOKEN_OPER, TOKEN_NOTEQUIV, 0 )
     LexInsertKeyword ( "&", TOKEN_OPER, TOKEN_BITAND, 0 )

@@ -33,6 +33,8 @@ END
 ENUM LexTokenSubtype : UBYTE
     TOKEN_SUBTYPE_ANY,
 
+    TOKEN_SECTION,     // directive
+
     TOKEN_EQUIV,       // operator
     TOKEN_NOTEQUIV,    // operator
     TOKEN_BITAND,      // operator
@@ -123,6 +125,7 @@ END
 ENUM LexSymbolType : UBYTE
     SYM_UNINITIALIZED,
     SYM_LABEL,
+    SYM_SECTION,
 
     // The "forward" types signify a symbol that has been used before it was
     // defined, in a context where it was okay to do so. In fact, it's okay to
@@ -135,11 +138,15 @@ END
 STRUCT LexSymbol
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : ^UBYTE,
-    Section : ^LexSection,
 
     // Parser private stuff in a symbol.
 
-    Value : UWORD,
+    LocalLabelScope : ^TlSymbolTable,
+
+    Section : ^AsmSection,
+
+    FileOffset : UWORD,
+    MemoryOffset : UWORD,
 
     Flags : ULONG,
     Type : LexSymbolType,
