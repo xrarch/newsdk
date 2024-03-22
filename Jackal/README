@@ -11,4 +11,5 @@ Directory structure:
 
   xr17032/ - XR/17032 target specific code.
   fox32/ - Fox32 target specific code.
-  rv64/ - RISCV64 target specific code.
+  aphelion/ - Aphelion target specific code.
+  amd64/ - AMD64 target specific code.
