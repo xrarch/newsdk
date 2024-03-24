@@ -67,7 +67,7 @@ END
 
 LexKeywordHashTable : TlHashTable
 
-LexKeywordBumpArray : LexKeyword[128]
+LexKeywordBumpArray : LexKeyword[256]
 LexKeywordBumpIndex := 0
 
 FN LexInsertKeyword (
@@ -205,6 +205,10 @@ FN LexInitialize ()
     LexInsertKeyword ( ">>", TOKEN_OPER, TOKEN_RIGHTSHIFT, 0 )
     LexInsertKeyword ( "~", TOKEN_OPER, TOKEN_BITNOT, 0 )
     LexInsertKeyword ( "*", TOKEN_OPER, TOKEN_MUL, 0 )
+
+    // Call the target to register its instruction keywords.
+
+    AsmTargetInfo^.KeywordsFunc ()
 END
 
 FN (LexGetCharacterF) LexGetCharacter () : UBYTE

@@ -28,12 +28,15 @@ FNPTR AsmTargetEncodeF (
     IN instruction : ^AsmElement,
 )
 
+FNPTR AsmTargetKeywordsF ()
+
 EXTERN AsmTargetInfo : ^AsmTargetInfoRecord
 
 STRUCT AsmTargetInfoRecord
     Name : ^UBYTE,
     ParseFunc : AsmTargetParseF,
     EncodeFunc : AsmTargetEncodeF,
+    KeywordsFunc : AsmTargetKeywordsF,
     ConstantMask : UWORD,
     PointerSize : UWORD,
 END

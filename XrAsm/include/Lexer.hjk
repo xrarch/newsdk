@@ -9,6 +9,10 @@ ENUM LexTokenType : UBYTE
 
     TOKEN_DIRECTIVE, // subtype is a directive
     TOKEN_INSTRUCTION, // subtype is an instruction
+    TOKEN_AUX, // subtype is target-specific
+    TOKEN_REGISTER,
+    TOKEN_CONTROL_REGISTER,
+    TOKEN_FP_REGISTER,
 
     TOKEN_OPER, // subtype is operator type
 
@@ -303,3 +307,10 @@ EXTERN FN LexCrunchNumber (
     IN token : ^LexToken,
     IN buffer : ^UBYTE,
 ) : UWORD
+
+EXTERN FN LexInsertKeyword (
+    IN name : ^UBYTE,
+    IN type : LexTokenType,
+    IN subtype : LexTokenSubtype,
+    IN context : UBYTE,
+)

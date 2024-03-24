@@ -4,8 +4,252 @@
 
 #INCLUDE "<inc>/Asm.hjk"
 
+EXTERN FN (AsmTargetKeywordsF) XrRegisterKeywords ()
+
 PUBLIC XrTargetInfo : AsmTargetInfoRecord = {
     [Name] = "xr17032",
+    [KeywordsFunc] = &XrRegisterKeywords,
     [ConstantMask] = 0xFFFFFFFF,
     [PointerSize] = 4,
 }
+
+ENUM XrInstructionSubtype : LexTokenSubtype
+    // Real instructions
+
+    XR_JAL,
+    XR_J,
+
+    XR_BEQ,
+    XR_BNE,
+    XR_BLT,
+    XR_BGT,
+    XR_BLE,
+    XR_BGE,
+    XR_BPE,
+    XR_BPO,
+
+    XR_ADDI,
+    XR_SUBI,
+    XR_SLTI,
+    XR_ANDI,
+    XR_XORI,
+    XR_ORI,
+    XR_LUI,
+
+    XR_MOV,
+    XR_JALR,
+
+    XR_LSH,
+    XR_RSH,
+    XR_ASH,
+    XR_ROR,
+    
+    XR_ADD,
+    XR_SUB,
+    XR_SLT,
+    XR_AND,
+    XR_XOR,
+    XR_OR,
+    XR_NOR,
+
+    XR_MUL,
+    XR_DIV,
+    XR_MOD,
+
+    XR_LL,
+    XR_SC,
+
+    XR_MB,
+    XR_WMB,
+    XR_BRK,
+    XR_SYS,
+
+    XR_MFCR,
+    XR_MTCR,
+
+    XR_HLT,
+    XR_RFE,
+
+    // Pseudo-instructions
+
+    XR_B,
+    XR_RET,
+    XR_JR,
+    XR_LI,
+    XR_LA,
+    XR_NOP,
+
+    XR_LSHI,
+    XR_RSHI,
+    XR_ASHI,
+    XR_RORI,
+END
+
+ENUM XrAuxSubtype : LexTokenSubtype
+    XR_AUX_TMP,
+
+    XR_AUX_BYTE,
+    XR_AUX_INT,
+    XR_AUX_LONG,
+
+    XR_AUX_SIGNED,
+
+    XR_AUX_SHIFT,
+END
+
+FN (AsmTargetKeywordsF) XrRegisterKeywords ()
+
+    // Register all of the instruction keywords.
+    // These are keywords that cause the target independent parser to dispatch
+    // to us.
+
+    LexInsertKeyword ( "jal", TOKEN_INSTRUCTION, XR_JAL, 0 )
+    LexInsertKeyword ( "j", TOKEN_INSTRUCTION, XR_J, 0 )
+
+    LexInsertKeyword ( "beq", TOKEN_INSTRUCTION, XR_BEQ, 0 )
+    LexInsertKeyword ( "bne", TOKEN_INSTRUCTION, XR_BNE, 0 )
+    LexInsertKeyword ( "blt", TOKEN_INSTRUCTION, XR_BLT, 0 )
+    LexInsertKeyword ( "bgt", TOKEN_INSTRUCTION, XR_BGT, 0 )
+    LexInsertKeyword ( "ble", TOKEN_INSTRUCTION, XR_BLE, 0 )
+    LexInsertKeyword ( "bge", TOKEN_INSTRUCTION, XR_BGE, 0 )
+    LexInsertKeyword ( "bpe", TOKEN_INSTRUCTION, XR_BPE, 0 )
+    LexInsertKeyword ( "bpo", TOKEN_INSTRUCTION, XR_BPO, 0 )
+
+    LexInsertKeyword ( "addi", TOKEN_INSTRUCTION, XR_ADDI, 0 )
+    LexInsertKeyword ( "subi", TOKEN_INSTRUCTION, XR_SUBI, 0 )
+    LexInsertKeyword ( "slti", TOKEN_INSTRUCTION, XR_SLTI, 0 )
+    LexInsertKeyword ( "andi", TOKEN_INSTRUCTION, XR_ANDI, 0 )
+    LexInsertKeyword ( "xori", TOKEN_INSTRUCTION, XR_XORI, 0 )
+    LexInsertKeyword ( "ori", TOKEN_INSTRUCTION, XR_ORI, 0 )
+    LexInsertKeyword ( "lui", TOKEN_INSTRUCTION, XR_LUI, 0 )
+
+    LexInsertKeyword ( "mov", TOKEN_INSTRUCTION, XR_MOV, 0 )
+    LexInsertKeyword ( "jalr", TOKEN_INSTRUCTION, XR_JALR, 0 )
+
+    LexInsertKeyword ( "lsh", TOKEN_INSTRUCTION, XR_LSH, 0 )
+    LexInsertKeyword ( "rsh", TOKEN_INSTRUCTION, XR_RSH, 0 )
+    LexInsertKeyword ( "ash", TOKEN_INSTRUCTION, XR_ASH, 0 )
+    LexInsertKeyword ( "ror", TOKEN_INSTRUCTION, XR_ROR, 0 )
+
+    LexInsertKeyword ( "add", TOKEN_INSTRUCTION, XR_ADD, 0 )
+    LexInsertKeyword ( "sub", TOKEN_INSTRUCTION, XR_SUB, 0 )
+    LexInsertKeyword ( "slt", TOKEN_INSTRUCTION, XR_SLT, 0 )
+    LexInsertKeyword ( "and", TOKEN_INSTRUCTION, XR_AND, 0 )
+    LexInsertKeyword ( "xor", TOKEN_INSTRUCTION, XR_XOR, 0 )
+    LexInsertKeyword ( "or", TOKEN_INSTRUCTION, XR_OR, 0 )
+    LexInsertKeyword ( "nor", TOKEN_INSTRUCTION, XR_NOR, 0 )
+
+    LexInsertKeyword ( "mul", TOKEN_INSTRUCTION, XR_MUL, 0 )
+    LexInsertKeyword ( "div", TOKEN_INSTRUCTION, XR_DIV, 0 )
+    LexInsertKeyword ( "mod", TOKEN_INSTRUCTION, XR_MOD, 0 )
+
+    LexInsertKeyword ( "ll", TOKEN_INSTRUCTION, XR_LL, 0 )
+    LexInsertKeyword ( "sc", TOKEN_INSTRUCTION, XR_SC, 0 )
+
+    LexInsertKeyword ( "mb", TOKEN_INSTRUCTION, XR_MB, 0 )
+    LexInsertKeyword ( "wmb", TOKEN_INSTRUCTION, XR_WMB, 0 )
+    LexInsertKeyword ( "brk", TOKEN_INSTRUCTION, XR_BRK, 0 )
+    LexInsertKeyword ( "sys", TOKEN_INSTRUCTION, XR_SYS, 0 )
+
+    LexInsertKeyword ( "mfcr", TOKEN_INSTRUCTION, XR_MFCR, 0 )
+    LexInsertKeyword ( "mtcr", TOKEN_INSTRUCTION, XR_MTCR, 0 )
+
+    LexInsertKeyword ( "hlt", TOKEN_INSTRUCTION, XR_HLT, 0 )
+    LexInsertKeyword ( "rfe", TOKEN_INSTRUCTION, XR_RFE, 0 )
+
+    // Pseudo-instructions
+
+    LexInsertKeyword ( "b", TOKEN_INSTRUCTION, XR_B, 0 )
+    LexInsertKeyword ( "ret", TOKEN_INSTRUCTION, XR_RET, 0 )
+    LexInsertKeyword ( "jr", TOKEN_INSTRUCTION, XR_JR, 0 )
+    LexInsertKeyword ( "li", TOKEN_INSTRUCTION, XR_LI, 0 )
+    LexInsertKeyword ( "la", TOKEN_INSTRUCTION, XR_LA, 0 )
+    LexInsertKeyword ( "nop", TOKEN_INSTRUCTION, XR_NOP, 0 )
+
+    LexInsertKeyword ( "lshi", TOKEN_INSTRUCTION, XR_LSHI, 0 )
+    LexInsertKeyword ( "rshi", TOKEN_INSTRUCTION, XR_RSHI, 0 )
+    LexInsertKeyword ( "ashi", TOKEN_INSTRUCTION, XR_ASHI, 0 )
+    LexInsertKeyword ( "rori", TOKEN_INSTRUCTION, XR_RORI, 0 )
+
+    // Registers
+
+    LexInsertKeyword ( "zero", TOKEN_REGISTER, 0, 0 )
+    LexInsertKeyword ( "t0", TOKEN_REGISTER, 0, 1 )
+    LexInsertKeyword ( "t1", TOKEN_REGISTER, 0, 2 )
+    LexInsertKeyword ( "t2", TOKEN_REGISTER, 0, 3 )
+    LexInsertKeyword ( "t3", TOKEN_REGISTER, 0, 4 )
+    LexInsertKeyword ( "t4", TOKEN_REGISTER, 0, 5 )
+    LexInsertKeyword ( "t5", TOKEN_REGISTER, 0, 6 )
+    LexInsertKeyword ( "a0", TOKEN_REGISTER, 0, 7 )
+    LexInsertKeyword ( "a1", TOKEN_REGISTER, 0, 8 )
+    LexInsertKeyword ( "a2", TOKEN_REGISTER, 0, 9 )
+    LexInsertKeyword ( "a3", TOKEN_REGISTER, 0, 10 )
+    LexInsertKeyword ( "s0", TOKEN_REGISTER, 0, 11 )
+    LexInsertKeyword ( "s1", TOKEN_REGISTER, 0, 12 )
+    LexInsertKeyword ( "s2", TOKEN_REGISTER, 0, 13 )
+    LexInsertKeyword ( "s3", TOKEN_REGISTER, 0, 14 )
+    LexInsertKeyword ( "s4", TOKEN_REGISTER, 0, 15 )
+    LexInsertKeyword ( "s5", TOKEN_REGISTER, 0, 16 )
+    LexInsertKeyword ( "s6", TOKEN_REGISTER, 0, 17 )
+    LexInsertKeyword ( "s7", TOKEN_REGISTER, 0, 18 )
+    LexInsertKeyword ( "s8", TOKEN_REGISTER, 0, 19 )
+    LexInsertKeyword ( "s9", TOKEN_REGISTER, 0, 20 )
+    LexInsertKeyword ( "s10", TOKEN_REGISTER, 0, 21 )
+    LexInsertKeyword ( "s11", TOKEN_REGISTER, 0, 22 )
+    LexInsertKeyword ( "s12", TOKEN_REGISTER, 0, 23 )
+    LexInsertKeyword ( "s13", TOKEN_REGISTER, 0, 24 )
+    LexInsertKeyword ( "s14", TOKEN_REGISTER, 0, 25 )
+    LexInsertKeyword ( "s15", TOKEN_REGISTER, 0, 26 )
+    LexInsertKeyword ( "s16", TOKEN_REGISTER, 0, 27 )
+    LexInsertKeyword ( "s17", TOKEN_REGISTER, 0, 28 )
+    LexInsertKeyword ( "tp", TOKEN_REGISTER, 0, 29 )
+    LexInsertKeyword ( "sp", TOKEN_REGISTER, 0, 30 )
+    LexInsertKeyword ( "lr", TOKEN_REGISTER, 0, 31 )
+
+    // Control registers
+
+    LexInsertKeyword ( "rs", TOKEN_CONTROL_REGISTER, 0, 0 )
+    LexInsertKeyword ( "whami", TOKEN_CONTROL_REGISTER, 0, 1 )
+
+    LexInsertKeyword ( "eb", TOKEN_CONTROL_REGISTER, 0, 5 )
+    LexInsertKeyword ( "epc", TOKEN_CONTROL_REGISTER, 0, 6 )
+    LexInsertKeyword ( "ebadaddr", TOKEN_CONTROL_REGISTER, 0, 7 )
+
+    LexInsertKeyword ( "tbmissaddr", TOKEN_CONTROL_REGISTER, 0, 9 )
+    LexInsertKeyword ( "tbpc", TOKEN_CONTROL_REGISTER, 0, 10 )
+
+    LexInsertKeyword ( "scratch0", TOKEN_CONTROL_REGISTER, 0, 11 )
+    LexInsertKeyword ( "scratch1", TOKEN_CONTROL_REGISTER, 0, 12 )
+    LexInsertKeyword ( "scratch2", TOKEN_CONTROL_REGISTER, 0, 13 )
+    LexInsertKeyword ( "scratch3", TOKEN_CONTROL_REGISTER, 0, 14 )
+    LexInsertKeyword ( "scratch4", TOKEN_CONTROL_REGISTER, 0, 15 )
+
+    LexInsertKeyword ( "itbpte", TOKEN_CONTROL_REGISTER, 0, 16 )
+    LexInsertKeyword ( "itbtag", TOKEN_CONTROL_REGISTER, 0, 17 )
+    LexInsertKeyword ( "itbindex", TOKEN_CONTROL_REGISTER, 0, 18 )
+    LexInsertKeyword ( "itbctrl", TOKEN_CONTROL_REGISTER, 0, 19 )
+    LexInsertKeyword ( "icachectrl", TOKEN_CONTROL_REGISTER, 0, 20 )
+    LexInsertKeyword ( "itbaddr", TOKEN_CONTROL_REGISTER, 0, 21 )
+
+    LexInsertKeyword ( "dtbpte", TOKEN_CONTROL_REGISTER, 0, 24 )
+    LexInsertKeyword ( "dtbtag", TOKEN_CONTROL_REGISTER, 0, 25 )
+    LexInsertKeyword ( "dtbindex", TOKEN_CONTROL_REGISTER, 0, 26 )
+    LexInsertKeyword ( "dtbctrl", TOKEN_CONTROL_REGISTER, 0, 27 )
+    LexInsertKeyword ( "dcachectrl", TOKEN_CONTROL_REGISTER, 0, 28 )
+    LexInsertKeyword ( "dtbaddr", TOKEN_CONTROL_REGISTER, 0, 29 )
+
+    // Syntactic junk
+
+    LexInsertKeyword ( "tmp", TOKEN_AUX, XR_AUX_TMP, 0 )
+
+    LexInsertKeyword ( "byte", TOKEN_AUX, XR_AUX_BYTE, 0 )
+    LexInsertKeyword ( "int", TOKEN_AUX, XR_AUX_INT, 0 )
+    LexInsertKeyword ( "long", TOKEN_AUX, XR_AUX_LONG, 0 )
+
+    LexInsertKeyword ( "signed", TOKEN_AUX, XR_AUX_SIGNED, 0 )
+
+    LexInsertKeyword ( "LSH", TOKEN_AUX, XR_AUX_SHIFT, 0 )
+    LexInsertKeyword ( "RSH", TOKEN_AUX, XR_AUX_SHIFT, 1 )
+    LexInsertKeyword ( "ASH", TOKEN_AUX, XR_AUX_SHIFT, 2 )
+    LexInsertKeyword ( "ROR", TOKEN_AUX, XR_AUX_SHIFT, 3 )
+END
