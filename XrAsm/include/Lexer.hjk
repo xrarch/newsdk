@@ -13,6 +13,7 @@ ENUM LexTokenType : UBYTE
     TOKEN_REGISTER,
     TOKEN_CONTROL_REGISTER,
     TOKEN_FP_REGISTER,
+    TOKEN_SIZE_SPECIFIER,
 
     TOKEN_OPER, // subtype is operator type
 

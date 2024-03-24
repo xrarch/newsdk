@@ -256,9 +256,9 @@ FN (AsmTargetKeywordsF) XrRegisterKeywords ()
 
     LexInsertKeyword ( "tmp", TOKEN_AUX, XR_AUX_TMP, 0 )
 
-    LexInsertKeyword ( "byte", TOKEN_AUX, XR_AUX_BYTE, 0 )
-    LexInsertKeyword ( "int", TOKEN_AUX, XR_AUX_INT, 0 )
-    LexInsertKeyword ( "long", TOKEN_AUX, XR_AUX_LONG, 0 )
+    LexInsertKeyword ( "byte", TOKEN_SIZE_SPECIFIER, XR_AUX_BYTE, 0 )
+    LexInsertKeyword ( "int", TOKEN_SIZE_SPECIFIER, XR_AUX_INT, 0 )
+    LexInsertKeyword ( "long", TOKEN_SIZE_SPECIFIER, XR_AUX_LONG, 0 )
 
     LexInsertKeyword ( "signed", TOKEN_AUX, XR_AUX_SIGNED, 0 )
 
@@ -433,6 +433,118 @@ FN (XrInstructionMnemonicF) XrParseLui (
     elem^.Body.Xr.ImmExpr = operexpr
 END
 
+FN XrParseMovLoad (
+    IN elem : ^AsmElement,
+    IN token : ^LexToken,
+)
+
+    // Parse the load cases of MOV.
+
+    elem^.Body.Xr.RegA = token^.TypeContext
+
+    nexttok : LexToken
+
+    LexGetToken ( &nexttok )
+
+    IF nexttok.Type == TOKEN_REGISTER THEN
+        // Actually a reg-to-reg MOV.
+        // Turn this into ADDI RA, RB, 0.
+
+        elem^.Body.Xr.ImmExpr = NULLPTR
+        elem^.Body.Xr.Opcode = 0x3C // ADDI
+        elem^.Body.Xr.RegB = nexttok.TypeContext
+        elem^.Body.Xr.FormatType = XR_FORMAT_IMM
+
+        LEAVE
+    END
+
+    IF nexttok.Type != TOKEN_SIZE_SPECIFIER THEN
+        LexTokenError ( &nexttok,
+            "Expected register or size specifier", 0, 0, 0 )
+    END
+
+    brackettoken : LexToken
+
+    IF NOT LexMatchToken (
+        &brackettoken, // token
+        TOKEN_LBRACKET, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &brackettoken, "Expected left bracket", 0, 0, 0 )
+    END
+
+    // TODO this stuff
+END
+
+FN XrParseMovStore (
+    IN elem : ^AsmElement,
+    IN token : ^LexToken,
+)
+
+    // Parse the store cases of MOV.
+END
+
+FN (XrInstructionMnemonicF) XrParseMov (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse the various MOV instructions.
+    //
+    // These are:
+    //
+    // Loads:
+    //   MOV RA, BYTE/INT/LONG [RB]
+    //   MOV RA, BYTE/INT/LONG [RB + OFF]
+    //   MOV RA, BYTE/INT/LONG [RB + RC]
+    //   MOV RA, BYTE/INT/LONG [RB + RC xSH VAL]
+    //   MOV RA, BYTE/INT/LONG [IMM]
+    //     LUI RA, ZERO, IMM >> 16
+    //     MOV RA, BYTE/INT/LONG [RA + IMM & 0xFFFF]
+    //   MOV RA, RB
+    //
+    // Stores:
+    //   MOV BYTE/INT/LONG [RB], RA/SIGNEXT(IMM5)
+    //   MOV BYTE/INT/LONG [RB + OFF], RA/SIGNEXT(IMM5)
+    //   MOV BYTE/INT/LONG [RB + RC], RA
+    //   MOV BYTE/INT/LONG [RB + RC xSH VAL], RA
+    //   MOV BYTE/INT/LONG [IMM], REG1, TMP=REG2
+    //     LUI REG2, ZERO, IMM >> 16
+    //     MOV BYTE/INT/LONG [REG2 + IMM & 0xFFFF], REG1
+
+    elem := AsmCreateElement ( token )
+
+    nexttok : LexToken
+
+    LexGetToken ( &nexttok )
+
+    IF nexttok.Type == TOKEN_REGISTER THEN
+        // This is a load.
+
+        AsmConsumeComma ()
+
+        XrParseMovLoad (
+            elem, // elem
+            &nexttok, // token
+        )
+
+        RETURN elem
+    END
+
+    IF nexttok.Type != TOKEN_SIZE_SPECIFIER THEN
+        LexTokenError ( &nexttok,
+            "Expected register or size specifier", 0, 0, 0 )
+    END
+
+    // This is a store.
+
+    XrParseMovStore (
+        elem, // elem
+        &nexttok, // token
+    )
+
+    RETURN elem
+END
+
 XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_JAL] = &XrParseJumpFormat,
     [XR_J] = &XrParseJumpFormat,
@@ -454,9 +566,9 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_ORI] = &XrParseImmFormat,
     [XR_LUI] = &XrParseLui,
 
-#IF 0
     [XR_MOV] = &XrParseMov,
 
+#IF 0
     [XR_JALR] = &XrParseJalr,
 
     [XR_LSH] = &XrParseRegFormat,
