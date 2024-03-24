@@ -10,11 +10,15 @@ STRUCT AsmBytesChunkBody
     Byte : UBYTE,
 END
 
+#INCLUDE "../xr17032/XrInstruction.hjk"
+
 UNION AsmElementBody
     Data : ^AsmExpressionNode,
     IncBin : AsmIncBinBody,
     BytesChunk : AsmBytesChunkBody,
     String : ^TlDynamicBuffer,
+
+    Xr : XrInstructionBody,
 END
 
 STRUCT AsmElement
@@ -30,12 +34,33 @@ STRUCT AsmSection
 
     ElementListHead : TlListEntry,
 
+    RelocationListHead : TlListEntry,
+
     // Current offsets. File offset increases monotonically and reflects the
     // placement of the data within the file. Memory offset can be set by .org
     // and other things.
 
     FileOffset : UWORD,
     MemoryOffset : UWORD,
+END
+
+ENUM AsmRelocationType : UBYTE
+    XLO_RELOC_LONG = 1,
+
+    XLO_RELOC_XR17032_ABSJ = 2,
+    XLO_RELOC_XR17032_LA = 3,
+    XLO_RELOC_XR17032_FAR_INT = 4,
+    XLO_RELOC_XR17032_FAR_LONG = 5,
+
+    XLO_RELOC_MAX,
+END
+
+STRUCT AsmRelocation
+    Entry : TlListEntry,
+
+    Offset : UWORD,
+
+    Type : AsmRelocationType,
 END
 
 ENUM AsmExpressionNodeType : UBYTE
@@ -57,12 +82,30 @@ END
 
 STRUCT AsmExpressionNode
     Token : LexToken,
-    Section : ^AsmSection,
 
     Body : AsmExpressionBody,
 
     Type : AsmExpressionNodeType,
 END
+
+EXTERN FN AsmConsumeComma ()
+
+EXTERN FN AsmCreateElement (
+    IN errtoken : ^LexToken,
+) : ^AsmElement
+
+EXTERN FN AsmEvaluateNode (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+    OUT section : ^AsmSection,
+) : UWORD
+
+EXTERN FN AsmCreateExpressionNode (
+    IN type : AsmExpressionNodeType,
+    IN token : ^LexToken,
+) : ^AsmExpressionNode
+
+EXTERN FN AsmParseAtom () : ^AsmExpressionNode
 
 EXTERN AsmCurrentSection : ^AsmSection
 

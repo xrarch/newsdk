@@ -129,7 +129,9 @@ FN LexNextNonWhitespaceCharacter (
 
     // Skip any leading whitespace.
 
-    WHILE LexCharTreatment[byte] == CHAR_WHITESPACE DO
+    WHILE LexCharTreatment[byte] == CHAR_WHITESPACE OR
+        byte == '\n' DO
+
         stream = LexCurrentStream
 
         IF stream THEN
@@ -158,7 +160,9 @@ FN LexCollectDirectiveToken (
     byte := LexNextNonWhitespaceCharacter ( token )
     len := 0
 
-    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE AND
+        byte != '\n' DO
+
         IF LexCharTreatment[byte] != CHAR_NORMAL AND
             LexCharTreatment[byte] != CHAR_SPLIT AND
             LexCharTreatment[byte] != CHAR_COALESCE THEN
@@ -558,7 +562,9 @@ FN LexCollectValue (
 
     byte = LexStreamNextCharacter ()
 
-    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
+    WHILE LexCharTreatment[byte] != CHAR_WHITESPACE AND
+        byte != '\n' DO
+
         IF byte == 0 THEN
             LexTokenError ( token, "Unexpected EOF", 0, 0, 0 )
         END
@@ -1173,7 +1179,9 @@ FN LexCollectMacroArgumentName (
     END
 
     WHILE TRUE DO
-        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+        IF LexCharTreatment[byte] == CHAR_WHITESPACE OR
+            byte == '\n' THEN
+
             buffer^ = 0
 
             RETURN ARG_NAME_NONZERO

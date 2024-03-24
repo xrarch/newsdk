@@ -23,8 +23,6 @@ Phase 1: Parses the asm file. Constructs the symbol table and outputs a singly
   - When an instruction token is encountered, dispatch to the target-specific
     parser which will consume the instruction, add it to the chain, advance the
     current byte offset, and return.
-      At this point, target code should add entries to the relocation table,
-      where relevant (i.e. for operands of instructions that are labels).
 
   - Constant expressions are left in an AST form.
       Where their value is not yet determinate (i.e. using a label that hasn't
@@ -36,6 +34,9 @@ Phase 2: Create section data.
     fill in the contents of the byte array. Call target code to encode the
     instructions.
       (Except BSS!)
+
+      At this point, target code should add entries to the relocation table,
+      where relevant (i.e. for operands of instructions that are labels).
 
   - Evaluate the constant expressions as needed.
       At this time, errors are caught and emitted for usage of undefined labels

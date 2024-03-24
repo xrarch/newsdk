@@ -10,6 +10,21 @@ PUBLIC AsmSectionListHead : TlListEntry
 
 AsmLastLabel : ^LexSymbol = NULLPTR
 
+FN AsmConsumeComma ()
+
+    // Consume a comma token.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_COMMA, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a comma", 0, 0, 0 )
+    END
+END
+
 FN AsmCreateExpressionNode (
     IN type : AsmExpressionNodeType,
     IN token : ^LexToken,
@@ -29,7 +44,6 @@ FN AsmCreateExpressionNode (
     END
 
     node^.Type = type
-    node^.Section = NULLPTR
 
     LexCopyToken (
         &node^.Token, // dest
@@ -127,6 +141,7 @@ FNPTR AsmOperatorF (
 FNPTR AsmEvalF (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
+    OUT section : ^AsmSection,
 ) : UWORD
 
 STRUCT AsmOperator
@@ -157,15 +172,11 @@ AsmLeftOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
     },
 }
 
-EXTERN FN AsmEvaluateNode (
-    IN node : ^AsmExpressionNode,
-    OUT value : UWORD,
-) : UWORD
-
 #MACRO AsmEvalGenerate ( name, operator ) [
     FN (AsmEvalF) name (
         IN node : ^AsmExpressionNode,
         OUT value : UWORD,
+        OUT section : ^AsmSection,
     ) : UWORD
 
         left : UWORD
@@ -174,15 +185,27 @@ EXTERN FN AsmEvaluateNode (
         IF NOT AsmEvaluateNode (
             node^.Body.Operator.Left, // node
             OUT left, // value
+            OUT section, // section
         ) THEN
             RETURN FALSE
         END
 
+        rsection : ^AsmSection
+
         IF NOT AsmEvaluateNode (
             node^.Body.Operator.Right, // node
             OUT right, // value
+            OUT rsection, // section
         ) THEN
             RETURN FALSE
+        END
+
+        IF NOT section THEN
+            section = rsection
+
+        ELSEIF rsection AND section != rsection THEN
+            LexTokenError ( &node^.Token,
+                "Incompatible label sections", 0, 0, 0 )
         END
 
         value = left operator right
@@ -205,6 +228,7 @@ AsmEvalGenerate ( AsmEvalBitOr, | )
 FN (AsmEvalF) AsmEvalBitNot (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
+    OUT section : ^AsmSection,
 ) : UWORD
 
     left : UWORD
@@ -212,6 +236,7 @@ FN (AsmEvalF) AsmEvalBitNot (
     IF NOT AsmEvaluateNode (
         node^.Body.Operator.Left, // node
         OUT left, // value
+        OUT section, // section
     ) THEN
         RETURN FALSE
     END
@@ -224,6 +249,7 @@ END
 FN (AsmEvalF) AsmEvalInverse (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
+    OUT section : ^AsmSection,
 ) : UWORD
 
     left : UWORD
@@ -231,6 +257,7 @@ FN (AsmEvalF) AsmEvalInverse (
     IF NOT AsmEvaluateNode (
         node^.Body.Operator.Left, // node
         OUT left, // value
+        OUT section, // section
     ) THEN
         RETURN FALSE
     END
@@ -295,6 +322,7 @@ AsmOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
 FN AsmEvaluateNode (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
+    OUT section : ^AsmSection,
 ) : UWORD
 
     // Evaluate the expression tree rooted at the given node.
@@ -305,6 +333,7 @@ FN AsmEvaluateNode (
         RETURN AsmOperators[node^.Token.Subtype].EvalFunc (
             node, // node
             OUT value, // value
+            OUT section, // section
         )
     END
 
@@ -316,12 +345,14 @@ FN AsmEvaluateNode (
         END
 
         value = node^.Body.Label^.MemoryOffset
+        section = node^.Body.Label^.Section
 
         RETURN TRUE
     END
 
     IF node^.Type == AST_CONSTANT THEN
         value = node^.Body.Constant
+        section = NULLPTR
 
         RETURN TRUE
     END
@@ -329,6 +360,7 @@ FN AsmEvaluateNode (
     TlInternalError ( "Weird node type", node^.Type, 0, 0 )
 END
 
+// FORWARD
 EXTERN FN AsmParseExpression (
     IN minprecedence : UWORD,
 ) : ^AsmExpressionNode
@@ -423,7 +455,6 @@ FN AsmParseAtom () : ^AsmExpressionNode
         END
 
         atomnode^.Body.Label = symbol
-        atomnode^.Section = symbol^.Section
 
     ELSEIF token.Type == TOKEN_DOT THEN
         // This is a local label of the current global label.
@@ -465,7 +496,6 @@ FN AsmParseAtom () : ^AsmExpressionNode
         )
 
         atomnode^.Body.Label = symbol
-        atomnode^.Section = symbol^.Section
 
     ELSEIF token.Type == TOKEN_LPAREN THEN
         // This is a parenthesized expression.
@@ -502,8 +532,6 @@ FN AsmParseAtom () : ^AsmExpressionNode
 
             atomnode^.Body.Operator.Left =
                 AsmParseExpression ( operator^.Precedence )
-
-            atomnode^.Section = atomnode^.Body.Operator.Left^.Section
         END
 
         IF operator^.ParseFunc THEN
@@ -557,7 +585,6 @@ FN AsmParseExpression (
         )
 
         node^.Body.Operator.Left = atomnode
-        node^.Section = atomnode^.Section
 
         IF NOT operator^.NoRightSide THEN
             right := AsmParseExpression (
@@ -565,17 +592,6 @@ FN AsmParseExpression (
             )
 
             node^.Body.Operator.Right = right
-
-            IF right^.Section THEN
-                IF node^.Section AND
-                    node^.Section != right^.Section THEN
-
-                    LexTokenError ( &right^.Token,
-                        "Incompatible label sections", 0, 0, 0 )
-                END
-
-                node^.Section = right^.Section
-            END
         END
 
         IF operator^.ParseFunc THEN
@@ -729,10 +745,12 @@ FN (AsmDirectiveF) AsmParseDp (
     AsmAdvanceSection ( AsmTargetInfo^.PointerSize )
 
     value : UWORD
+    section : ^AsmSection
 
     IF AsmEvaluateNode (
         expr, // node
         OUT value, // value
+        OUT section, // section
     ) THEN
         TlPrintNumber ( value )
         TlPrintString ( "\n" )
@@ -767,17 +785,19 @@ FN (AsmDirectiveF) AsmParseDefine (
     valuenode := AsmParseAtom ()
 
     value : UWORD
+    section : ^AsmSection
 
     IF NOT AsmEvaluateNode (
         valuenode, // node
         OUT value, // value
+        OUT section, // section
     ) THEN
         LexTokenError ( &valuenode^.Token,
             "Couldn't evaluate expression", 0, 0, 0 )
     END
 
     symbol^.Type = SYM_LABEL
-    symbol^.Section = valuenode^.Section
+    symbol^.Section = section
     symbol^.MemoryOffset = value
     symbol^.FileOffset = value
 END
@@ -836,10 +856,12 @@ FN (AsmDirectiveF) AsmParseBytes (
 
     howmany : UWORD
     which : UWORD
+    dumpster : ^AsmSection
 
     IF NOT AsmEvaluateNode (
         howmanynode, // node
         OUT howmany, // value
+        OUT dumpster, // section
     ) THEN
         LexTokenError ( &howmanynode^.Token,
             "Incalculable expression", 0, 0, 0 )
@@ -848,6 +870,7 @@ FN (AsmDirectiveF) AsmParseBytes (
     IF NOT AsmEvaluateNode (
         whichnode, // node
         OUT which, // value
+        OUT dumpster, // section
     ) THEN
         LexTokenError ( &whichnode^.Token,
             "Incalculable expression", 0, 0, 0 )
@@ -974,9 +997,12 @@ FN (AsmDirectiveF) AsmParseAlign (
 
     howmany : UWORD
 
+    dumpster : ^AsmSection
+
     IF NOT AsmEvaluateNode (
         howmanynode, // node
         OUT howmany, // value
+        OUT dumpster, // section
     ) THEN
         LexTokenError ( &howmanynode^.Token,
             "Incalculable expression", 0, 0, 0 )
@@ -1109,6 +1135,11 @@ FN AsmParseElement () : UWORD
 
     ELSEIF token.Type == TOKEN_EOF THEN
         RETURN FALSE
+
+    ELSEIF token.Type == TOKEN_NEWLINE THEN
+        // Skip. Newline tokens are just to terminate expressions.
+
+        RETURN TRUE
 
     ELSE
         LexTokenError ( &token, "Unexpected token", 0, 0, 0 )

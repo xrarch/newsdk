@@ -10,7 +10,6 @@ PUBLIC LexCharTreatment : LexCharBehavior[256] = {
     [0] = CHAR_EOF,
 
     [' ']  = CHAR_WHITESPACE,
-    ['\n'] = CHAR_WHITESPACE,
     ['\t'] = CHAR_WHITESPACE,
 
     ['^'] = CHAR_SPLIT,
@@ -24,6 +23,7 @@ PUBLIC LexCharTreatment : LexCharBehavior[256] = {
     ['{'] = CHAR_SPLIT,
     ['}'] = CHAR_SPLIT,
     ['#'] = CHAR_SPLIT,
+    ['\n'] = CHAR_SPLIT,
 
     ['='] = CHAR_COALESCE,
     ['&'] = CHAR_COALESCE,
@@ -178,6 +178,7 @@ FN LexInitialize ()
     LexInsertKeyword ( ".", TOKEN_DOT, 0, 0 )
     LexInsertKeyword ( "[", TOKEN_LBRACKET, 0, 0 )
     LexInsertKeyword ( "(", TOKEN_LPAREN, 0, 0 )
+    LexInsertKeyword ( "\n", TOKEN_NEWLINE, 0, 0 )
 
     LexInsertKeyword ( "section", TOKEN_DIRECTIVE, TOKEN_SECTION, 0 )
     LexInsertKeyword ( "db", TOKEN_DIRECTIVE, TOKEN_DB, 0 )

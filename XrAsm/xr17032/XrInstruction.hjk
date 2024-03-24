@@ -1,0 +1,19 @@
+ENUM XrInstructionFormatType : UBYTE
+    XR_FORMAT_JUMP,
+    XR_FORMAT_BRANCH,
+    XR_FORMAT_IMM,
+    XR_FORMAT_REG,
+END
+
+STRUCT XrInstructionBody
+    ImmExpr : ^AsmExpressionNode,
+    ShiftAmount : UBYTE,
+    ShiftType : UBYTE,
+    RegA : UBYTE,
+    RegB : UBYTE,
+    RegC : UBYTE,
+    FunctionCode : UBYTE,
+    Opcode : UBYTE,
+
+    FormatType : XrInstructionFormatType,
+END

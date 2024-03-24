@@ -201,7 +201,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
                 stream^.LastWasNewline = TRUE
 
-                RETURN 0x0A
+                RETURN ' '
             END
 
             // The macro stream has emptied.
@@ -275,7 +275,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
                 IF NOT stream^.LastWasNewline THEN
                     stream^.LastWasNewline = TRUE
 
-                    RETURN 0x0A
+                    RETURN ' '
                 END
 
                 LexFreeStream ( LexPopStream () )

@@ -4,11 +4,18 @@
 
 #INCLUDE "<inc>/Asm.hjk"
 
+// FORWARD
 EXTERN FN (AsmTargetKeywordsF) XrRegisterKeywords ()
+
+// FORWARD
+EXTERN FN (AsmTargetParseF) XrParseInstruction (
+    IN token : ^LexToken,
+)
 
 PUBLIC XrTargetInfo : AsmTargetInfoRecord = {
     [Name] = "xr17032",
     [KeywordsFunc] = &XrRegisterKeywords,
+    [ParseFunc] = &XrParseInstruction,
     [ConstantMask] = 0xFFFFFFFF,
     [PointerSize] = 4,
 }
@@ -83,6 +90,13 @@ ENUM XrInstructionSubtype : LexTokenSubtype
     XR_RSHI,
     XR_ASHI,
     XR_RORI,
+
+    // "Virtual" instruction codes
+
+    XR_SLTI_SIGNED,
+    XR_SLT_SIGNED,
+
+    XR_INSTRUCTION_MAX,
 END
 
 ENUM XrAuxSubtype : LexTokenSubtype
@@ -252,4 +266,251 @@ FN (AsmTargetKeywordsF) XrRegisterKeywords ()
     LexInsertKeyword ( "RSH", TOKEN_AUX, XR_AUX_SHIFT, 1 )
     LexInsertKeyword ( "ASH", TOKEN_AUX, XR_AUX_SHIFT, 2 )
     LexInsertKeyword ( "ROR", TOKEN_AUX, XR_AUX_SHIFT, 3 )
+END
+
+XrSubtypeToOpcode : UBYTE[XR_INSTRUCTION_MAX] = {
+    [XR_JAL] = 0x07,
+    [XR_J] = 0x06,
+
+    [XR_BEQ] = 0x3D,
+    [XR_BNE] = 0x35,
+    [XR_BLT] = 0x2D,
+    [XR_BGT] = 0x25,
+    [XR_BLE] = 0x1D,
+    [XR_BGE] = 0x15,
+    [XR_BPE] = 0x0D,
+    [XR_BPO] = 0x05,
+}
+
+FNPTR XrInstructionMnemonicF (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+FN (XrInstructionMnemonicF) XrParseJumpFormat (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an absolute jump format instruction.
+
+    elem := AsmCreateElement ( token )
+
+    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_JUMP
+    elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
+
+    AsmAdvanceSection ( 4 )
+
+    RETURN elem
+END
+
+FN (XrInstructionMnemonicF) XrParseBranchFormat (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a branch format instruction.
+
+    elem := AsmCreateElement ( token )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_BRANCH
+    elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+
+    AsmAdvanceSection ( 4 )
+
+    RETURN elem
+END
+
+FN (XrInstructionMnemonicF) XrParseImmFormat (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an imm format instruction.
+
+    elem := AsmCreateElement ( token )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_IMM
+    elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegB = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+
+    AsmAdvanceSection ( 4 )
+
+    RETURN elem
+END
+
+FN (XrInstructionMnemonicF) XrParseSlti (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an SLTI [SIGNED] instruction.
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_AUX, // type
+        XR_AUX_SIGNED, // subtype
+    ) THEN
+        // It's the signed variant, so fiddle the subtype.
+
+        token^.Subtype = XR_SLTI_SIGNED
+    END
+
+    RETURN XrParseImmFormat ( token )
+END
+
+FN (XrInstructionMnemonicF) XrParseLui (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an LUI instruction.
+
+    elem := XrParseImmFormat ( token )
+
+    // Wrap the immediate in a right shift by 16 bits.
+
+    oldexpr := elem^.Body.Xr.ImmExpr
+
+    operexpr := AsmCreateExpressionNode (
+        AST_OPERATOR, // type
+        token, // token
+    )
+
+    operexpr^.Token.Type = TOKEN_OPER
+    operexpr^.Token.Subtype = TOKEN_RIGHTSHIFT
+
+    operexpr^.Body.Operator.Left = oldexpr
+
+    constantexpr := AsmCreateExpressionNode (
+        AST_CONSTANT, // type
+        token, // token
+    )
+
+    constantexpr^.Body.Constant = 16
+
+    operexpr^.Body.Operator.Right = constantexpr
+
+    elem^.Body.Xr.ImmExpr = operexpr
+END
+
+XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
+    [XR_JAL] = &XrParseJumpFormat,
+    [XR_J] = &XrParseJumpFormat,
+
+    [XR_BEQ] = &XrParseBranchFormat,
+    [XR_BNE] = &XrParseBranchFormat,
+    [XR_BLT] = &XrParseBranchFormat,
+    [XR_BGT] = &XrParseBranchFormat,
+    [XR_BLE] = &XrParseBranchFormat,
+    [XR_BGE] = &XrParseBranchFormat,
+    [XR_BPE] = &XrParseBranchFormat,
+    [XR_BPO] = &XrParseBranchFormat,
+
+    [XR_ADDI] = &XrParseImmFormat,
+    [XR_SUBI] = &XrParseImmFormat,
+    [XR_SLTI] = &XrParseSlti,
+    [XR_ANDI] = &XrParseImmFormat,
+    [XR_XORI] = &XrParseImmFormat,
+    [XR_ORI] = &XrParseImmFormat,
+    [XR_LUI] = &XrParseLui,
+
+#IF 0
+    [XR_MOV] = &XrParseMov,
+
+    [XR_JALR] = &XrParseJalr,
+
+    [XR_LSH] = &XrParseRegFormat,
+    [XR_RSH] = &XrParseRegFormat,
+    [XR_ASH] = &XrParseRegFormat,
+    [XR_ROR] = &XrParseRegFormat,
+
+    [XR_ADD] = &XrParseRegFormat,
+    [XR_SUB] = &XrParseRegFormat,
+    [XR_SLT] = &XrParseSlt,
+    [XR_AND] = &XrParseRegFormat,
+    [XR_XOR] = &XrParseRegFormat,
+    [XR_OR] = &XrParseRegFormat,
+    [XR_NOR] = &XrParseRegFormat,
+
+    [XR_MUL] = &XrParseRegFormat,
+    [XR_DIV] = &XrParseRegFormat,
+    [XR_MOD] = &XrParseRegFormat,
+
+    [XR_LL] = &XrParseLoadLocked,
+    [XR_SC] = &XrParseStoreConditional,
+
+    [XR_MB] = &XrParseNone,
+    [XR_WMB] = &XrParseNone,
+    [XR_BRK] = &XrParseNone,
+    [XR_SYS] = &XrParseNone,
+
+    [XR_MFCR] = &XrParseMfcr,
+    [XR_MTCR] = &XrParseMtcr,
+
+    [XR_HLT] = &XrParseNone,
+    [XR_RFE] = &XrParseNone,
+
+    [XR_B] = &XrParseB,
+    [XR_RET] = &XrParseRet,
+    [XR_JR] = &XrParseJr,
+    [XR_LI] = &XrParseLi,
+    [XR_LA] = &XrParseLa,
+    [XR_NOP] = &XrParseNone,
+
+    [XR_LSHI] = &XrParseShiftImm,
+    [XR_RSHI] = &XrParseShiftImm,
+    [XR_ASHI] = &XrParseShiftImm,
+    [XR_RORI] = &XrParseShiftImm,
+#END
+}
+
+FN (AsmTargetParseF) XrParseInstruction (
+    IN token : ^LexToken,
+)
+
+    // Parse the instruction.
+    // First line is to dispatch to the parse function that corresponds to this
+    // instruction mnemonic.
+
+    XrInstructionMnemonics[token^.Subtype] ( token )
 END
