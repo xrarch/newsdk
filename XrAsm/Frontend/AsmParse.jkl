@@ -29,6 +29,7 @@ FN AsmCreateExpressionNode (
     END
 
     node^.Type = type
+    node^.Section = NULLPTR
 
     LexCopyToken (
         &node^.Token, // dest
@@ -39,7 +40,6 @@ FN AsmCreateExpressionNode (
 END
 
 FN AsmCreateElement (
-    IN section : ^AsmSection,
     IN errtoken : ^LexToken,
 ) : ^AsmElement
 
@@ -63,12 +63,10 @@ FN AsmCreateElement (
         errtoken, // src
     )
 
-    IF section THEN
-        TlInsertAtTailList (
-            &section^.ElementListHead, // head
-            &node^.Entry, // entry
-        )
-    END
+    TlInsertAtTailList (
+        &AsmCurrentSection^.ElementListHead, // head
+        &node^.Entry, // entry
+    )
 
     RETURN node
 END
@@ -392,6 +390,11 @@ FN AsmParseAtom () : ^AsmExpressionNode
         ) THEN
             // Yep. Collect local label name.
 
+            IF NOT symbol^.LocalLabelScope THEN
+                LexTokenError ( &token,
+                    "This label has no local labels", 0, 0, 0 )
+            END
+
             oldscope := LexEnterScope ( symbol^.LocalLabelScope )
 
             IF NOT LexMatchToken (
@@ -420,6 +423,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         END
 
         atomnode^.Body.Label = symbol
+        atomnode^.Section = symbol^.Section
 
     ELSEIF token.Type == TOKEN_DOT THEN
         // This is a local label of the current global label.
@@ -461,6 +465,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         )
 
         atomnode^.Body.Label = symbol
+        atomnode^.Section = symbol^.Section
 
     ELSEIF token.Type == TOKEN_LPAREN THEN
         // This is a parenthesized expression.
@@ -497,6 +502,8 @@ FN AsmParseAtom () : ^AsmExpressionNode
 
             atomnode^.Body.Operator.Left =
                 AsmParseExpression ( operator^.Precedence )
+
+            atomnode^.Section = atomnode^.Body.Operator.Left^.Section
         END
 
         IF operator^.ParseFunc THEN
@@ -550,11 +557,25 @@ FN AsmParseExpression (
         )
 
         node^.Body.Operator.Left = atomnode
+        node^.Section = atomnode^.Section
 
         IF NOT operator^.NoRightSide THEN
-            node^.Body.Operator.Right = AsmParseExpression (
+            right := AsmParseExpression (
                 operator^.Precedence + 1, // minprecedence
             )
+
+            node^.Body.Operator.Right = right
+
+            IF right^.Section THEN
+                IF node^.Section AND
+                    node^.Section != right^.Section THEN
+
+                    LexTokenError ( &right^.Token,
+                        "Incompatible label sections", 0, 0, 0 )
+                END
+
+                node^.Section = right^.Section
+            END
         END
 
         IF operator^.ParseFunc THEN
@@ -641,10 +662,7 @@ FN (AsmDirectiveF) AsmParseDb (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement (
-        AsmCurrentSection, // section
-        errtoken, // errtoken
-    )
+    elem := AsmCreateElement ( errtoken )
 
     elem^.Body.Data = expr
 
@@ -659,10 +677,7 @@ FN (AsmDirectiveF) AsmParseDi (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement (
-        AsmCurrentSection, // section
-        errtoken, // errtoken
-    )
+    elem := AsmCreateElement ( errtoken )
 
     elem^.Body.Data = expr
 
@@ -677,10 +692,7 @@ FN (AsmDirectiveF) AsmParseDl (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement (
-        AsmCurrentSection, // section
-        errtoken, // errtoken
-    )
+    elem := AsmCreateElement ( errtoken )
 
     elem^.Body.Data = expr
 
@@ -695,10 +707,7 @@ FN (AsmDirectiveF) AsmParseDq (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement (
-        AsmCurrentSection, // section
-        errtoken, // errtoken
-    )
+    elem := AsmCreateElement ( errtoken )
 
     elem^.Body.Data = expr
 
@@ -713,14 +722,290 @@ FN (AsmDirectiveF) AsmParseDp (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement (
-        AsmCurrentSection, // section
-        errtoken, // errtoken
-    )
+    elem := AsmCreateElement ( errtoken )
 
     elem^.Body.Data = expr
 
     AsmAdvanceSection ( AsmTargetInfo^.PointerSize )
+
+    value : UWORD
+
+    IF AsmEvaluateNode (
+        expr, // node
+        OUT value, // value
+    ) THEN
+        TlPrintNumber ( value )
+        TlPrintString ( "\n" )
+    END
+END
+
+FN (AsmDirectiveF) AsmParseDefine (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the DEFINE directive, which defines a global label with a specific
+    // constant value.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    symbol := CAST token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_UNINITIALIZED AND
+        symbol^.Type != SYM_FORWARD_LABEL THEN
+
+        LexTokenError ( &token, "Expected a new label name", 0, 0, 0 )
+    END
+
+    valuenode := AsmParseAtom ()
+
+    value : UWORD
+
+    IF NOT AsmEvaluateNode (
+        valuenode, // node
+        OUT value, // value
+    ) THEN
+        LexTokenError ( &valuenode^.Token,
+            "Couldn't evaluate expression", 0, 0, 0 )
+    END
+
+    symbol^.Type = SYM_LABEL
+    symbol^.Section = valuenode^.Section
+    symbol^.MemoryOffset = value
+    symbol^.FileOffset = value
+END
+
+FN (AsmDirectiveF) AsmParseIncBin (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the INCBIN directive, which encodes a binary file directly into the
+    // current section.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    elem := AsmCreateElement ( errtoken )
+
+    // All we do at this stage is remember the path and figure out the size of
+    // the file.
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    elem^.Body.IncBin.Path = string^.DynamicBuffer.Buffer
+
+    stat : TlStatRecord
+
+    status := TlStatFile (
+        elem^.Body.IncBin.Path, // path
+        &stat, // statrecord
+    )
+
+    IF status THEN
+        LexTokenError ( &token, "Failed to open file", 0, 0, 0 )
+    END
+
+    elem^.Body.IncBin.Size = stat.SizeInBytes
+
+    AsmAdvanceSection ( stat.SizeInBytes )
+END
+
+FN (AsmDirectiveF) AsmParseBytes (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the BYTES directive, which inserts a specified number of the
+    // specified byte into the current section.
+
+    howmanynode := AsmParseAtom ()
+    whichnode := AsmParseAtom ()
+
+    howmany : UWORD
+    which : UWORD
+
+    IF NOT AsmEvaluateNode (
+        howmanynode, // node
+        OUT howmany, // value
+    ) THEN
+        LexTokenError ( &howmanynode^.Token,
+            "Incalculable expression", 0, 0, 0 )
+    END
+
+    IF NOT AsmEvaluateNode (
+        whichnode, // node
+        OUT which, // value
+    ) THEN
+        LexTokenError ( &whichnode^.Token,
+            "Incalculable expression", 0, 0, 0 )
+    END
+
+    elem := AsmCreateElement ( errtoken )
+
+    elem^.Body.BytesChunk.Count = howmany
+    elem^.Body.BytesChunk.Byte = which
+
+    AsmAdvanceSection ( howmany )
+END
+
+FN (AsmDirectiveF) AsmParseGlobal (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the GLOBAL directive, which sets a label as global.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    symbol := CAST token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_LABEL THEN
+        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    symbol^.Visibility = LABEL_GLOBAL
+END
+
+FN (AsmDirectiveF) AsmParseExport (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the EXPORT directive, which sets a label as export.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    symbol := CAST token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_LABEL THEN
+        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    symbol^.Visibility = LABEL_EXPORT
+END
+
+FN (AsmDirectiveF) AsmParseExtern (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the EXTERN directive, which sets a label as export.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    symbol := CAST token.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_UNINITIALIZED THEN
+        LexTokenError ( &token, "Expected a new label name", 0, 0, 0 )
+    END
+
+    symbol^.Type = SYM_LABEL
+    symbol^.Visibility = LABEL_EXTERN
+END
+
+FN (AsmDirectiveF) AsmParseDs (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the DS directive, which encodes a string directly into the current
+    // section.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    elem := AsmCreateElement ( errtoken )
+
+    elem^.Body.String = &string^.DynamicBuffer
+
+    AsmAdvanceSection ( string^.DynamicBuffer.Count - 1 )
+END
+
+FN (AsmDirectiveF) AsmParseAlign (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the ALIGN directive, which aligns the current offset up to the
+    // next multiple of the argument.
+
+    howmanynode := AsmParseAtom ()
+
+    howmany : UWORD
+
+    IF NOT AsmEvaluateNode (
+        howmanynode, // node
+        OUT howmany, // value
+    ) THEN
+        LexTokenError ( &howmanynode^.Token,
+            "Incalculable expression", 0, 0, 0 )
+    END
+
+    po2 := TlIsPowerOfTwo ( howmany )
+
+    IF po2 == -1 THEN
+        LexTokenError ( &howmanynode^.Token,
+            "Alignment must be a power of two", 0, 0, 0 )
+    END
+
+    AsmEnsureSection ( errtoken )
+
+    oldoff := AsmCurrentSection^.MemoryOffset
+    newoff := oldoff + (howmany - 1) & ~(howmany - 1)
+    diff := newoff - oldoff
+
+    AsmCurrentSection^.MemoryOffset = newoff
+    AsmCurrentSection^.FileOffset += diff
+
+    IF diff THEN
+        elem := AsmCreateElement ( errtoken )
+
+        elem^.ErrorToken.Subtype = TOKEN_BYTES
+
+        elem^.Body.BytesChunk.Count = diff
+        elem^.Body.BytesChunk.Byte = 0
+    END
 END
 
 AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
@@ -730,6 +1015,14 @@ AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_DL] = &AsmParseDl,
     [TOKEN_DQ] = &AsmParseDq,
     [TOKEN_DP] = &AsmParseDp,
+    [TOKEN_DEFINE] = &AsmParseDefine,
+    [TOKEN_INCBIN] = &AsmParseIncBin,
+    [TOKEN_BYTES] = &AsmParseBytes,
+    [TOKEN_GLOBAL] = &AsmParseGlobal,
+    [TOKEN_EXPORT] = &AsmParseExport,
+    [TOKEN_EXTERN] = &AsmParseExtern,
+    [TOKEN_DS] = &AsmParseDs,
+    [TOKEN_ALIGN] = &AsmParseAlign,
 }
 
 FN AsmParseElement () : UWORD

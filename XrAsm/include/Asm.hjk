@@ -1,7 +1,20 @@
 #INCLUDE "<inc>/Lexer.hjk"
 
+STRUCT AsmIncBinBody
+    Path : ^UBYTE,
+    Size : UWORD,
+END
+
+STRUCT AsmBytesChunkBody
+    Count : UWORD,
+    Byte : UBYTE,
+END
+
 UNION AsmElementBody
     Data : ^AsmExpressionNode,
+    IncBin : AsmIncBinBody,
+    BytesChunk : AsmBytesChunkBody,
+    String : ^TlDynamicBuffer,
 END
 
 STRUCT AsmElement
@@ -44,6 +57,7 @@ END
 
 STRUCT AsmExpressionNode
     Token : LexToken,
+    Section : ^AsmSection,
 
     Body : AsmExpressionBody,
 

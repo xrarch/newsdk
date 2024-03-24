@@ -40,7 +40,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_DQ,          // directive
     TOKEN_DP,          // directive
     TOKEN_DEFINE,      // directive
-    TOKEN_STATIC,      // directive
+    TOKEN_INCBIN,      // directive
     TOKEN_BYTES,       // directive
     TOKEN_GLOBAL,      // directive
     TOKEN_EXPORT,      // directive
@@ -144,6 +144,13 @@ ENUM LexSymbolType : UBYTE
     SYM_FORWARD_LABEL,
 END
 
+ENUM AsmLabelVisibility : UBYTE
+    LABEL_LOCAL,
+    LABEL_GLOBAL,
+    LABEL_EXPORT,
+    LABEL_EXTERN,
+END
+
 STRUCT LexSymbol
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : ^UBYTE,
@@ -157,8 +164,8 @@ STRUCT LexSymbol
     FileOffset : UWORD,
     MemoryOffset : UWORD,
 
-    Flags : ULONG,
     Type : LexSymbolType,
+    Visibility : AsmLabelVisibility,
 END
 
 STRUCT LexMacro

@@ -186,7 +186,7 @@ FN LexInitialize ()
     LexInsertKeyword ( "dq", TOKEN_DIRECTIVE, TOKEN_DQ, 0 )
     LexInsertKeyword ( "dp", TOKEN_DIRECTIVE, TOKEN_DP, 0 )
     LexInsertKeyword ( "define", TOKEN_DIRECTIVE, TOKEN_DEFINE, 0 )
-    LexInsertKeyword ( "static", TOKEN_DIRECTIVE, TOKEN_STATIC, 0 )
+    LexInsertKeyword ( "incbin", TOKEN_DIRECTIVE, TOKEN_INCBIN, 0 )
     LexInsertKeyword ( "bytes", TOKEN_DIRECTIVE, TOKEN_BYTES, 0 )
     LexInsertKeyword ( "global", TOKEN_DIRECTIVE, TOKEN_GLOBAL, 0 )
     LexInsertKeyword ( "export", TOKEN_DIRECTIVE, TOKEN_EXPORT, 0 )
@@ -872,6 +872,11 @@ FN LexNextToken (
 
         symbol^.Name = CAST (symbol + SIZEOF LexSymbol) TO ^UBYTE
         symbol^.Type = SYM_UNINITIALIZED
+        symbol^.Visibility = LABEL_LOCAL
+        symbol^.Section = NULLPTR
+        symbol^.LocalLabelScope = NULLPTR
+        symbol^.FileOffset = 0
+        symbol^.MemoryOffset = 0
 
         TlCopyMemory (
             symbol^.Name, // dest
