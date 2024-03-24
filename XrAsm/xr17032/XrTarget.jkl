@@ -498,6 +498,7 @@ FN (XrInstructionMnemonicF) XrParseMov (
     //   MOV RA, BYTE/INT/LONG [RB + RC]
     //   MOV RA, BYTE/INT/LONG [RB + RC xSH VAL]
     //   MOV RA, BYTE/INT/LONG [IMM]
+    //     (LA, FAR_INT, or FAR_LONG relocation required)
     //     LUI RA, ZERO, IMM >> 16
     //     MOV RA, BYTE/INT/LONG [RA + IMM & 0xFFFF]
     //   MOV RA, RB
@@ -508,6 +509,7 @@ FN (XrInstructionMnemonicF) XrParseMov (
     //   MOV BYTE/INT/LONG [RB + RC], RA
     //   MOV BYTE/INT/LONG [RB + RC xSH VAL], RA
     //   MOV BYTE/INT/LONG [IMM], REG1, TMP=REG2
+    //     (LA, FAR_INT, or FAR_LONG relocation required)
     //     LUI REG2, ZERO, IMM >> 16
     //     MOV BYTE/INT/LONG [REG2 + IMM & 0xFFFF], REG1
 
