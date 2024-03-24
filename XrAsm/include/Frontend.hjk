@@ -35,6 +35,7 @@ STRUCT AsmTargetInfoRecord
     ParseFunc : AsmTargetParseF,
     EncodeFunc : AsmTargetEncodeF,
     ConstantMask : UWORD,
+    PointerSize : UWORD,
 END
 
 EXTERN AsmEncoderInfo : ^AsmEncoderInfoRecord

@@ -213,7 +213,7 @@ EXTERN XrTargetInfo : AsmTargetInfoRecord
 
 TrgInfoRecords : ^AsmTargetInfoRecord[8] = {
     // &FoxTargetInfo,
-    // &XrTargetInfo,
+    &XrTargetInfo,
 
     NULLPTR, // MUST be here, as a sentinel
 }
@@ -234,9 +234,7 @@ FN TrgInitialize ()
         target += SIZEOF ^VOID
     END
 
-    // TODO UNCOMMENT THIS!!
-    AsmTargetInfo = NULLPTR
-    // TlUserError ( "Unknown target specified", 0, 0, 0 )
+    TlUserError ( "Unknown target specified", 0, 0, 0 )
 END
 
 EXTERN FlatEncoderInfo : AsmEncoderInfoRecord

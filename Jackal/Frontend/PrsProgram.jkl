@@ -691,7 +691,7 @@ FN PrsAtom () : ^PrsAstNode
         // This is a constant number.
 
         atomnode = PrsCreateAstNode (
-            AST_CONSTANT,
+            AST_CONSTANT, // type
             &token, // token
         )
 
@@ -711,7 +711,7 @@ FN PrsAtom () : ^PrsAstNode
             // This is a constant.
 
             atomnode = PrsCreateAstNode (
-                AST_CONSTANT,
+                AST_CONSTANT, // type
                 &token, // token
             )
 

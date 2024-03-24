@@ -34,15 +34,22 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_SUBTYPE_ANY,
 
     TOKEN_SECTION,     // directive
+    TOKEN_DB,          // directive
+    TOKEN_DI,          // directive
+    TOKEN_DL,          // directive
+    TOKEN_DQ,          // directive
+    TOKEN_DP,          // directive
+    TOKEN_DEFINE,      // directive
+    TOKEN_STATIC,      // directive
+    TOKEN_BYTES,       // directive
+    TOKEN_GLOBAL,      // directive
+    TOKEN_EXPORT,      // directive
+    TOKEN_EXTERN,      // directive
+    TOKEN_DS,          // directive
+    TOKEN_ALIGN,       // directive
 
-    TOKEN_EQUIV,       // operator
-    TOKEN_NOTEQUIV,    // operator
     TOKEN_BITAND,      // operator
     TOKEN_BITOR,       // operator
-    TOKEN_LESSTHAN,    // operator
-    TOKEN_GREATERTHAN, // operator
-    TOKEN_LTEQ,        // operator
-    TOKEN_GTEQ,        // operator
     TOKEN_PLUS,        // operator
     TOKEN_MINUS,       // operator
     TOKEN_DIVIDE,      // operator
@@ -52,6 +59,8 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_RIGHTSHIFT,  // operator
     TOKEN_BITNOT,      // operator
     TOKEN_MUL,         // operator
+
+    TOKEN_INVERSE,     // virtual operator
 
     TOKEN_IDENTIFIER_NEW,
     TOKEN_IDENTIFIER_FOUND,

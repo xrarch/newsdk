@@ -1,9 +1,15 @@
 #INCLUDE "<inc>/Lexer.hjk"
 
+UNION AsmElementBody
+    Data : ^AsmExpressionNode,
+END
+
 STRUCT AsmElement
     Entry : TlListEntry,
 
     ErrorToken : LexToken,
+
+    Body : AsmElementBody,
 END
 
 STRUCT AsmSection
@@ -17,6 +23,31 @@ STRUCT AsmSection
 
     FileOffset : UWORD,
     MemoryOffset : UWORD,
+END
+
+ENUM AsmExpressionNodeType : UBYTE
+    AST_CONSTANT,
+    AST_LABEL,
+    AST_OPERATOR,
+END
+
+STRUCT AsmOperatorBody
+    Left : ^AsmExpressionNode,
+    Right : ^AsmExpressionNode,
+END
+
+UNION AsmExpressionBody
+    Constant : UWORD,
+    Label : ^LexSymbol,
+    Operator : AsmOperatorBody,
+END
+
+STRUCT AsmExpressionNode
+    Token : LexToken,
+
+    Body : AsmExpressionBody,
+
+    Type : AsmExpressionNodeType,
 END
 
 EXTERN AsmCurrentSection : ^AsmSection

@@ -1,0 +1,11 @@
+//
+// Implements target-specific code for XR/17032 assembly.
+//
+
+#INCLUDE "<inc>/Asm.hjk"
+
+PUBLIC XrTargetInfo : AsmTargetInfoRecord = {
+    [Name] = "xr17032",
+    [ConstantMask] = 0xFFFFFFFF,
+    [PointerSize] = 4,
+}

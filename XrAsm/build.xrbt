@@ -7,6 +7,8 @@ TARGET "XrAsm"
 	INCDIR "./include"
 	SOURCES "./Frontend"
 
+	SOURCES "./xr17032"
+
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		SOURCES "./Frontend/CHost"
 		SOURCES "../Library/CHost"

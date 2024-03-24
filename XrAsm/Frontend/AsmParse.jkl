@@ -10,11 +10,575 @@ PUBLIC AsmSectionListHead : TlListEntry
 
 AsmLastLabel : ^LexSymbol = NULLPTR
 
-FNPTR AsmDirectiveF ()
+FN AsmCreateExpressionNode (
+    IN type : AsmExpressionNodeType,
+    IN token : ^LexToken,
+) : ^AsmExpressionNode
 
-FN (AsmDirectiveF) AsmParseSection ()
+    // Create an expression node.
 
-    // Parse the section directive.
+    node : ^AsmExpressionNode
+
+    status := TlBumpAlloc (
+        SIZEOF AsmExpressionNode, // bytes
+        OUT node, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create expr node", 0, 0, 0 )
+    END
+
+    node^.Type = type
+
+    LexCopyToken (
+        &node^.Token, // dest
+        token, // src
+    )
+
+    RETURN node
+END
+
+FN AsmCreateElement (
+    IN section : ^AsmSection,
+    IN errtoken : ^LexToken,
+) : ^AsmElement
+
+    // Create an element.
+
+    AsmEnsureSection ( errtoken )
+
+    node : ^AsmElement
+
+    status := TlBumpAlloc (
+        SIZEOF AsmElement, // bytes
+        OUT node, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create element", 0, 0, 0 )
+    END
+
+    LexCopyToken (
+        &node^.ErrorToken, // dest
+        errtoken, // src
+    )
+
+    IF section THEN
+        TlInsertAtTailList (
+            &section^.ElementListHead, // head
+            &node^.Entry, // entry
+        )
+    END
+
+    RETURN node
+END
+
+FN AsmInitializeLabel (
+    IN errtoken : ^LexToken,
+    IN symbol : ^LexSymbol,
+    IN global : UBYTE,
+    IN forward : UBYTE,
+)
+
+    // Initialize the label. Duh.
+
+    IF NOT forward THEN
+        IF NOT global AND NOT AsmLastLabel THEN
+            LexTokenError ( errtoken,
+                "Local label without corresponding global label", 0, 0, 0 )
+        END
+
+        IF symbol^.Type != SYM_UNINITIALIZED AND
+            symbol^.Type != SYM_FORWARD_LABEL THEN
+
+            LexTokenError ( errtoken, "Expected a new label name", 0, 0, 0 )
+        END
+    END
+
+    IF global THEN
+        IF NOT forward THEN
+            AsmLastLabel = symbol
+        END
+
+        IF symbol^.Type == SYM_UNINITIALIZED THEN
+            // Create a local label scope.
+
+            symbol^.LocalLabelScope = LexCreateSymbolTable ( NULLPTR )
+        END
+    END
+
+    IF forward THEN
+        symbol^.Type = SYM_FORWARD_LABEL
+
+    ELSE
+        AsmEnsureSection ( errtoken )
+
+        symbol^.Type = SYM_LABEL
+
+        symbol^.FileOffset = AsmCurrentSection^.FileOffset
+        symbol^.MemoryOffset = AsmCurrentSection^.MemoryOffset
+        symbol^.Section = AsmCurrentSection
+    END
+END
+
+FNPTR AsmOperatorF (
+    IN operator : ^AsmOperator,
+    IN node : ^AsmExpressionNode,
+)
+
+FNPTR AsmEvalF (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+) : UWORD
+
+STRUCT AsmOperator
+    ParseFunc : AsmOperatorF,
+    EvalFunc : AsmEvalF,
+
+    Precedence : UBYTE,
+    NoRightSide : UBYTE,
+END
+
+FN (AsmOperatorF) AsmParseInverse (
+    IN operator : ^AsmOperator,
+    IN node : ^AsmExpressionNode,
+)
+
+    // Indicate that this is a unary inverse and not a subtraction.
+
+    node^.Token.Subtype = TOKEN_INVERSE
+END
+
+AsmLeftOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_MINUS] = {
+        [Precedence] = 24,
+        [ParseFunc] = &AsmParseInverse,
+    },
+    [TOKEN_BITNOT] = {
+        [Precedence] = 24,
+    },
+}
+
+EXTERN FN AsmEvaluateNode (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+) : UWORD
+
+#MACRO AsmEvalGenerate ( name, operator ) [
+    FN (AsmEvalF) name (
+        IN node : ^AsmExpressionNode,
+        OUT value : UWORD,
+    ) : UWORD
+
+        left : UWORD
+        right : UWORD
+
+        IF NOT AsmEvaluateNode (
+            node^.Body.Operator.Left, // node
+            OUT left, // value
+        ) THEN
+            RETURN FALSE
+        END
+
+        IF NOT AsmEvaluateNode (
+            node^.Body.Operator.Right, // node
+            OUT right, // value
+        ) THEN
+            RETURN FALSE
+        END
+
+        value = left operator right
+
+        RETURN TRUE
+    END
+]
+
+AsmEvalGenerate ( AsmEvalMultiply, * )
+AsmEvalGenerate ( AsmEvalDivide, / )
+AsmEvalGenerate ( AsmEvalModulo, % )
+AsmEvalGenerate ( AsmEvalPlus, + )
+AsmEvalGenerate ( AsmEvalMinus, - )
+AsmEvalGenerate ( AsmEvalLeftShift, << )
+AsmEvalGenerate ( AsmEvalRightShift, >> )
+AsmEvalGenerate ( AsmEvalBitAnd, & )
+AsmEvalGenerate ( AsmEvalBitXor, $ )
+AsmEvalGenerate ( AsmEvalBitOr, | )
+
+FN (AsmEvalF) AsmEvalBitNot (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+) : UWORD
+
+    left : UWORD
+
+    IF NOT AsmEvaluateNode (
+        node^.Body.Operator.Left, // node
+        OUT left, // value
+    ) THEN
+        RETURN FALSE
+    END
+
+    value = ~left
+
+    RETURN TRUE
+END
+
+FN (AsmEvalF) AsmEvalInverse (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+) : UWORD
+
+    left : UWORD
+
+    IF NOT AsmEvaluateNode (
+        node^.Body.Operator.Left, // node
+        OUT left, // value
+    ) THEN
+        RETURN FALSE
+    END
+
+    value = -left
+
+    RETURN TRUE
+END
+
+AsmOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_MUL] = {
+        [Precedence] = 20,
+        [EvalFunc] = &AsmEvalMultiply,
+    },
+    [TOKEN_DIVIDE] = {
+        [Precedence] = 20,
+        [EvalFunc] = &AsmEvalDivide,
+    },
+    [TOKEN_MODULO] = {
+        [Precedence] = 20,
+        [EvalFunc] = &AsmEvalModulo,
+    },
+    [TOKEN_PLUS] = {
+        [Precedence] = 19,
+        [EvalFunc] = &AsmEvalPlus,
+    },
+    [TOKEN_MINUS] = {
+        [Precedence] = 19,
+        [EvalFunc] = &AsmEvalMinus,
+    },
+    [TOKEN_LEFTSHIFT] = {
+        [Precedence] = 18,
+        [EvalFunc] = &AsmEvalLeftShift,
+    },
+    [TOKEN_RIGHTSHIFT] = {
+        [Precedence] = 18,
+        [EvalFunc] = &AsmEvalRightShift,
+    },
+    [TOKEN_BITAND] = {
+        [Precedence] = 17,
+        [EvalFunc] = &AsmEvalBitAnd,
+    },
+    [TOKEN_BITXOR] = {
+        [Precedence] = 16,
+        [EvalFunc] = &AsmEvalBitXor,
+    },
+    [TOKEN_BITOR] = {
+        [Precedence] = 15,
+        [EvalFunc] = &AsmEvalBitOr,
+    },
+
+    // Left-ops
+
+    [TOKEN_BITNOT] = {
+        [EvalFunc] = &AsmEvalBitNot,
+    },
+    [TOKEN_INVERSE] = {
+        [EvalFunc] = &AsmEvalInverse,
+    }
+}
+
+FN AsmEvaluateNode (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+) : UWORD
+
+    // Evaluate the expression tree rooted at the given node.
+    // The return value is TRUE if the expression could be evaluated right now,
+    // otherwise FALSE.
+
+    IF node^.Type == AST_OPERATOR THEN
+        RETURN AsmOperators[node^.Token.Subtype].EvalFunc (
+            node, // node
+            OUT value, // value
+        )
+    END
+
+    IF node^.Type == AST_LABEL THEN
+        IF node^.Body.Label^.Type == SYM_FORWARD_LABEL THEN
+            // Can't be evaluated yet.
+
+            RETURN FALSE
+        END
+
+        value = node^.Body.Label^.MemoryOffset
+
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_CONSTANT THEN
+        value = node^.Body.Constant
+
+        RETURN TRUE
+    END
+
+    TlInternalError ( "Weird node type", node^.Type, 0, 0 )
+END
+
+EXTERN FN AsmParseExpression (
+    IN minprecedence : UWORD,
+) : ^AsmExpressionNode
+
+FN AsmParseAtom () : ^AsmExpressionNode
+
+    // Parse an atom. This is an "atomic" part of an expression, such as a
+    // single constant number or identifier.
+
+    atomnode : ^AsmExpressionNode
+
+    token : LexToken
+
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_NUMBER THEN
+        // This is a constant number.
+
+        atomnode = AsmCreateExpressionNode (
+            AST_CONSTANT, // type
+            &token, // token
+        )
+
+        atomnode^.Body.Constant = CAST token.Payload TO UWORD
+
+    ELSEIF token.Type == TOKEN_IDENTIFIER THEN
+        // This is a global label.
+
+        symbol := CAST token.Payload TO ^LexSymbol
+
+        IF token.Subtype == TOKEN_IDENTIFIER_NEW THEN
+            // First sighting of the global label.
+            // Initialize it as a forward label.
+
+            AsmInitializeLabel (
+                &token, // errtoken
+                symbol, // symbol
+                TRUE, // global
+                TRUE, // forward
+            )
+
+        ELSEIF symbol^.Type != SYM_LABEL AND
+            symbol^.Type != SYM_FORWARD_LABEL THEN
+
+            LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        END
+
+        atomnode = AsmCreateExpressionNode (
+            AST_LABEL, // type
+            &token, // token
+        )
+
+        // If there's a dot after this, then we want a local label.
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_DOT, // type
+            0, // subtype
+        ) THEN
+            // Yep. Collect local label name.
+
+            oldscope := LexEnterScope ( symbol^.LocalLabelScope )
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_IDENTIFIER, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected local label name", 0, 0, 0 )
+            END
+
+            symbol = CAST token.Payload TO ^LexSymbol
+
+            IF token.Subtype == TOKEN_IDENTIFIER_NEW THEN
+                // First sighting of the local label.
+                // Initialize it as a forward label.
+
+                AsmInitializeLabel (
+                    &token, // errtoken
+                    symbol, // symbol
+                    FALSE, // global
+                    TRUE, // forward
+                )
+            END
+
+            LexResetScope ( oldscope )
+        END
+
+        atomnode^.Body.Label = symbol
+
+    ELSEIF token.Type == TOKEN_DOT THEN
+        // This is a local label of the current global label.
+
+        IF NOT AsmLastLabel THEN
+            LexTokenError ( &token,
+                "Local label without corresponding global label", 0, 0, 0 )
+        END
+
+        oldscope := LexEnterScope ( AsmLastLabel^.LocalLabelScope )
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected local label name", 0, 0, 0 )
+        END
+
+        symbol := CAST token.Payload TO ^LexSymbol
+
+        IF token.Subtype == TOKEN_IDENTIFIER_NEW THEN
+            // First sighting of the local label.
+            // Initialize it as a forward label.
+
+            AsmInitializeLabel (
+                &token, // errtoken
+                symbol, // symbol
+                FALSE, // global
+                TRUE, // forward
+            )
+        END
+
+        LexResetScope ( oldscope )
+
+        atomnode = AsmCreateExpressionNode (
+            AST_LABEL, // type
+            &token, // token
+        )
+
+        atomnode^.Body.Label = symbol
+
+    ELSEIF token.Type == TOKEN_LPAREN THEN
+        // This is a parenthesized expression.
+
+        atomnode = AsmParseExpression ( 0 )
+
+        // Collect the right parenthesis.
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right parenthesis.", 0, 0, 0 )
+        END
+
+    ELSEIF token.Type == TOKEN_OPER THEN
+        // This must be a left-operator. Look it up in the table.
+        // The operator type stays as the subtype of the token.
+
+        operator := &AsmLeftOperators[token.Subtype]
+
+        IF NOT operator^.Precedence THEN
+            LexTokenError ( &token, "Expected a left operator.", 0, 0, 0 )
+        END
+
+        atomnode = AsmCreateExpressionNode (
+            AST_OPERATOR, // type
+            &token, // token
+        )
+
+        IF NOT operator^.NoRightSide THEN
+            // Actually the left side but who's checking.
+
+            atomnode^.Body.Operator.Left =
+                AsmParseExpression ( operator^.Precedence )
+        END
+
+        IF operator^.ParseFunc THEN
+            operator^.ParseFunc (
+                operator, // operator
+                atomnode, // node
+            )
+        END
+
+    ELSE
+        LexTokenError ( &token, "Expected an atom", 0, 0, 0 )
+    END
+
+    RETURN atomnode
+END
+
+FN AsmParseExpression (
+    IN minprecedence : UWORD,
+) : ^AsmExpressionNode
+
+    // Parse an expression.
+
+    atomnode := AsmParseAtom ()
+
+    optoken : LexToken
+
+    WHILE LexMatchToken (
+        &optoken, // token
+        TOKEN_OPER, // type
+        0, // subtype
+    ) DO
+        operator := &AsmOperators[optoken.Subtype]
+
+        IF NOT operator^.Precedence THEN
+            // This must have been a left operator, which we didn't expect.
+
+            LexTokenError ( &optoken, "Unexpected left operator", 0, 0, 0 )
+        END
+
+        IF operator^.Precedence < minprecedence THEN
+            // Put the operator token back.
+
+            LexPutbackToken ( &optoken )
+
+            BREAK
+        END
+
+        node := AsmCreateExpressionNode (
+            AST_OPERATOR, // type
+            &optoken, // token
+        )
+
+        node^.Body.Operator.Left = atomnode
+
+        IF NOT operator^.NoRightSide THEN
+            node^.Body.Operator.Right = AsmParseExpression (
+                operator^.Precedence + 1, // minprecedence
+            )
+        END
+
+        IF operator^.ParseFunc THEN
+            operator^.ParseFunc (
+                operator, // operator
+                node, // node
+            )
+        END
+
+        atomnode = node
+    END
+
+    RETURN atomnode
+END
+
+FNPTR AsmDirectiveF (
+    IN errtoken : ^LexToken,
+)
+
+FN (AsmDirectiveF) AsmParseSection (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the section directive, which selects the current section.
 
     token : LexToken
 
@@ -69,45 +633,104 @@ FN (AsmDirectiveF) AsmParseSection ()
     AsmLastLabel = NULLPTR
 END
 
-AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
-    [TOKEN_SECTION] = &AsmParseSection,
-}
-
-FN AsmInitializeLabel (
+FN (AsmDirectiveF) AsmParseDb (
     IN errtoken : ^LexToken,
-    IN symbol : ^LexSymbol,
-    IN global : UBYTE,
 )
 
-    // Initialize the label. Duh.
+    // Parse the DB directive, which places a byte in the section.
 
-    IF symbol^.Type != SYM_UNINITIALIZED AND
-        symbol^.Type != SYM_FORWARD_LABEL THEN
+    expr := AsmParseAtom ()
 
-        LexTokenError ( errtoken, "Expected a new label name", 0, 0, 0 )
-    END
+    elem := AsmCreateElement (
+        AsmCurrentSection, // section
+        errtoken, // errtoken
+    )
 
-    IF NOT global AND NOT AsmLastLabel THEN
-        LexTokenError ( errtoken,
-            "Local label without corresponding global label", 0, 0, 0 )
-    END
+    elem^.Body.Data = expr
 
-    AsmEnsureSection ( errtoken )
-
-    IF global THEN
-        AsmLastLabel = symbol
-
-        // Create a local label scope.
-
-        symbol^.LocalLabelScope = LexCreateSymbolTable ( NULLPTR )
-    END
-
-    symbol^.Type = SYM_LABEL
-
-    symbol^.FileOffset = AsmCurrentSection^.FileOffset
-    symbol^.MemoryOffset = AsmCurrentSection^.MemoryOffset
-    symbol^.Section = AsmCurrentSection
+    AsmAdvanceSection ( 1 )
 END
+
+FN (AsmDirectiveF) AsmParseDi (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the DI directive, which places an int in the section.
+
+    expr := AsmParseAtom ()
+
+    elem := AsmCreateElement (
+        AsmCurrentSection, // section
+        errtoken, // errtoken
+    )
+
+    elem^.Body.Data = expr
+
+    AsmAdvanceSection ( 2 )
+END
+
+FN (AsmDirectiveF) AsmParseDl (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the DL directive, which places a long in the section.
+
+    expr := AsmParseAtom ()
+
+    elem := AsmCreateElement (
+        AsmCurrentSection, // section
+        errtoken, // errtoken
+    )
+
+    elem^.Body.Data = expr
+
+    AsmAdvanceSection ( 4 )
+END
+
+FN (AsmDirectiveF) AsmParseDq (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the DQ directive, which places a quad in the section.
+
+    expr := AsmParseAtom ()
+
+    elem := AsmCreateElement (
+        AsmCurrentSection, // section
+        errtoken, // errtoken
+    )
+
+    elem^.Body.Data = expr
+
+    AsmAdvanceSection ( 8 )
+END
+
+FN (AsmDirectiveF) AsmParseDp (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the DP directive, which places a pointer in the section.
+
+    expr := AsmParseAtom ()
+
+    elem := AsmCreateElement (
+        AsmCurrentSection, // section
+        errtoken, // errtoken
+    )
+
+    elem^.Body.Data = expr
+
+    AsmAdvanceSection ( AsmTargetInfo^.PointerSize )
+END
+
+AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_SECTION] = &AsmParseSection,
+    [TOKEN_DB] = &AsmParseDb,
+    [TOKEN_DI] = &AsmParseDi,
+    [TOKEN_DL] = &AsmParseDl,
+    [TOKEN_DQ] = &AsmParseDq,
+    [TOKEN_DP] = &AsmParseDp,
+}
 
 FN AsmParseElement () : UWORD
 
@@ -134,6 +757,7 @@ FN AsmParseElement () : UWORD
             &token, // errtoken
             CAST token.Payload TO ^LexSymbol, // symbol
             TRUE, // global
+            FALSE, // forward
         )
 
     ELSEIF token.Type == TOKEN_DOT THEN
@@ -172,12 +796,15 @@ FN AsmParseElement () : UWORD
                 &token, // errtoken
                 CAST token.Payload TO ^LexSymbol, // symbol
                 FALSE, // global
+                FALSE, // forward
             )
         
         ELSEIF token.Type == TOKEN_DIRECTIVE THEN
             // Directive. Dispatch to the handler.
 
-            AsmDirectivesTable[token.Subtype] ()
+            AsmDirectivesTable[token.Subtype] (
+                &token, // errtoken
+            )
         END
 
     ELSEIF token.Type == TOKEN_INSTRUCTION THEN
