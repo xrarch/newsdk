@@ -463,17 +463,31 @@ FN XrParseMovLoad (
             "Expected register or size specifier", 0, 0, 0 )
     END
 
-    brackettoken : LexToken
+    rbtoken : LexToken
 
     IF NOT LexMatchToken (
-        &brackettoken, // token
+        &rbtoken, // token
         TOKEN_LBRACKET, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &brackettoken, "Expected left bracket", 0, 0, 0 )
+        LexTokenError ( &rbtoken, "Expected left bracket", 0, 0, 0 )
     END
 
-    // TODO this stuff
+    IF LexMatchToken (
+        &rbtoken, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        elem^.Body.Xr.RegB = rbtoken.TypeContext
+
+        TlInternalError ( "TODO parse reg loads", 0, 0, 0 )
+
+        LEAVE
+    END
+
+    // Must be an inline load.
+
+    TlInternalError ( "TODO parse inline load", 0, 0, 0 )
 END
 
 FN XrParseMovStore (
@@ -482,6 +496,8 @@ FN XrParseMovStore (
 )
 
     // Parse the store cases of MOV.
+
+    TlInternalError ( "TODO parse stores", 0, 0, 0 )
 END
 
 FN (XrInstructionMnemonicF) XrParseMov (
