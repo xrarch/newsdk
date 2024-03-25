@@ -53,6 +53,51 @@ FN AsmCreateExpressionNode (
     RETURN node
 END
 
+FN AsmCreateOperation (
+    IN operator : LexTokenSubtype,
+    IN left : ^AsmExpressionNode,
+    IN right : ^AsmExpressionNode,
+) : ^AsmExpressionNode
+
+    // Helper function to create an expression node representing an operation
+    // between two existing nodes.
+
+    node := AsmCreateExpressionNode (
+        AST_OPERATOR, // type
+        &left^.Token, // token
+    )
+
+    node^.Token.Subtype = operator
+
+    node^.Body.Operator.Left = left
+    node^.Body.Operator.Right = right
+
+    RETURN node
+END
+
+FN AsmCreateOperationWithConstant (
+    IN operator : LexTokenSubtype,
+    IN left : ^AsmExpressionNode,
+    IN constant : UWORD,
+) : ^AsmExpressionNode
+
+    // Helper function to create an expression node representing an operation
+    // between an existing node and a constant.
+
+    constnode := AsmCreateExpressionNode (
+        AST_CONSTANT, // type
+        &left^.Token, // token
+    )
+
+    constnode^.Body.Constant = constant
+
+    RETURN AsmCreateOperation (
+        operator, // operator
+        left, // left
+        constnode, // right
+    )
+END
+
 FN AsmCreateElement (
     IN errtoken : ^LexToken,
 ) : ^AsmElement
@@ -71,6 +116,8 @@ FN AsmCreateElement (
     IF status THEN
         TlInternalError ( "Failed to create element", 0, 0, 0 )
     END
+
+    node^.RelocationType = XLO_RELOC_NONE
 
     LexCopyToken (
         &node^.ErrorToken, // dest
@@ -141,7 +188,7 @@ FNPTR AsmOperatorF (
 FNPTR AsmEvalF (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
-    OUT section : ^AsmSection,
+    OUT refsymbol : ^LexSymbol,
 ) : UWORD
 
 STRUCT AsmOperator
@@ -176,7 +223,7 @@ AsmLeftOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
     FN (AsmEvalF) name (
         IN node : ^AsmExpressionNode,
         OUT value : UWORD,
-        OUT section : ^AsmSection,
+        OUT refsymbol : ^LexSymbol,
     ) : UWORD
 
         left : UWORD
@@ -185,27 +232,39 @@ AsmLeftOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
         IF NOT AsmEvaluateNode (
             node^.Body.Operator.Left, // node
             OUT left, // value
-            OUT section, // section
+            OUT refsymbol, // refsymbol
         ) THEN
             RETURN FALSE
         END
 
-        rsection : ^AsmSection
+        rsymbol : ^LexSymbol
 
         IF NOT AsmEvaluateNode (
             node^.Body.Operator.Right, // node
             OUT right, // value
-            OUT rsection, // section
+            OUT rsymbol, // refsymbol
         ) THEN
             RETURN FALSE
         END
 
-        IF NOT section THEN
-            section = rsection
+        IF NOT refsymbol THEN
+            refsymbol = rsymbol
 
-        ELSEIF rsection AND section != rsection THEN
-            LexTokenError ( &node^.Token,
-                "Incompatible label sections", 0, 0, 0 )
+        ELSEIF rsymbol THEN
+            // Check for compatibility. Neither may be extern. If they aren't,
+            // they must also be in the same section.
+
+            IF refsymbol^.Visibility == LABEL_EXTERN OR
+                rsymbol^.Visibility == LABEL_EXTERN THEN
+
+                LexTokenError ( &node^.Token,
+                    "Can't operate on multiple extern labels", 0, 0, 0 )
+            END 
+
+            IF refsymbol^.Section != rsymbol^.Section THEN
+                LexTokenError ( &node^.Token,
+                    "Labels have incompatible sections", 0, 0, 0 )
+            END
         END
 
         value = left operator right
@@ -228,7 +287,7 @@ AsmEvalGenerate ( AsmEvalBitOr, | )
 FN (AsmEvalF) AsmEvalBitNot (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
-    OUT section : ^AsmSection,
+    OUT refsymbol : ^LexSymbol,
 ) : UWORD
 
     left : UWORD
@@ -236,7 +295,7 @@ FN (AsmEvalF) AsmEvalBitNot (
     IF NOT AsmEvaluateNode (
         node^.Body.Operator.Left, // node
         OUT left, // value
-        OUT section, // section
+        OUT refsymbol, // refsymbol
     ) THEN
         RETURN FALSE
     END
@@ -249,7 +308,7 @@ END
 FN (AsmEvalF) AsmEvalInverse (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
-    OUT section : ^AsmSection,
+    OUT refsymbol : ^LexSymbol,
 ) : UWORD
 
     left : UWORD
@@ -257,7 +316,7 @@ FN (AsmEvalF) AsmEvalInverse (
     IF NOT AsmEvaluateNode (
         node^.Body.Operator.Left, // node
         OUT left, // value
-        OUT section, // section
+        OUT refsymbol, // refsymbol
     ) THEN
         RETURN FALSE
     END
@@ -322,7 +381,7 @@ AsmOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
 FN AsmEvaluateNode (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
-    OUT section : ^AsmSection,
+    OUT refsymbol : ^LexSymbol,
 ) : UWORD
 
     // Evaluate the expression tree rooted at the given node.
@@ -333,7 +392,7 @@ FN AsmEvaluateNode (
         RETURN AsmOperators[node^.Token.Subtype].EvalFunc (
             node, // node
             OUT value, // value
-            OUT section, // section
+            OUT refsymbol, // refsymbol
         )
     END
 
@@ -345,14 +404,14 @@ FN AsmEvaluateNode (
         END
 
         value = node^.Body.Label^.MemoryOffset
-        section = node^.Body.Label^.Section
+        refsymbol = node^.Body.Label
 
         RETURN TRUE
     END
 
     IF node^.Type == AST_CONSTANT THEN
         value = node^.Body.Constant
-        section = NULLPTR
+        refsymbol = NULLPTR
 
         RETURN TRUE
     END
@@ -743,18 +802,6 @@ FN (AsmDirectiveF) AsmParseDp (
     elem^.Body.Data = expr
 
     AsmAdvanceSection ( AsmTargetInfo^.PointerSize )
-
-    value : UWORD
-    section : ^AsmSection
-
-    IF AsmEvaluateNode (
-        expr, // node
-        OUT value, // value
-        OUT section, // section
-    ) THEN
-        TlPrintNumber ( value )
-        TlPrintString ( "\n" )
-    END
 END
 
 FN (AsmDirectiveF) AsmParseDefine (
@@ -785,21 +832,27 @@ FN (AsmDirectiveF) AsmParseDefine (
     valuenode := AsmParseAtom ()
 
     value : UWORD
-    section : ^AsmSection
+    refsymbol : ^LexSymbol
 
     IF NOT AsmEvaluateNode (
         valuenode, // node
         OUT value, // value
-        OUT section, // section
+        OUT refsymbol, // refsymbol
     ) THEN
         LexTokenError ( &valuenode^.Token,
             "Couldn't evaluate expression", 0, 0, 0 )
     END
 
     symbol^.Type = SYM_LABEL
-    symbol^.Section = section
     symbol^.MemoryOffset = value
     symbol^.FileOffset = value
+
+    IF refsymbol THEN
+        symbol^.Section = refsymbol^.Section
+
+    ELSE
+        symbol^.Section = NULLPTR
+    END
 END
 
 FN (AsmDirectiveF) AsmParseIncBin (
@@ -856,12 +909,12 @@ FN (AsmDirectiveF) AsmParseBytes (
 
     howmany : UWORD
     which : UWORD
-    dumpster : ^AsmSection
+    dumpster : ^VOID
 
     IF NOT AsmEvaluateNode (
         howmanynode, // node
         OUT howmany, // value
-        OUT dumpster, // section
+        OUT dumpster, // refsymbol
     ) THEN
         LexTokenError ( &howmanynode^.Token,
             "Incalculable expression", 0, 0, 0 )
@@ -870,7 +923,7 @@ FN (AsmDirectiveF) AsmParseBytes (
     IF NOT AsmEvaluateNode (
         whichnode, // node
         OUT which, // value
-        OUT dumpster, // section
+        OUT dumpster, // refsymbol
     ) THEN
         LexTokenError ( &whichnode^.Token,
             "Incalculable expression", 0, 0, 0 )
@@ -938,7 +991,7 @@ FN (AsmDirectiveF) AsmParseExtern (
     IN errtoken : ^LexToken,
 )
 
-    // Parse the EXTERN directive, which sets a label as export.
+    // Parse the EXTERN directive, which defines an extern label.
 
     token : LexToken
 
@@ -997,12 +1050,12 @@ FN (AsmDirectiveF) AsmParseAlign (
 
     howmany : UWORD
 
-    dumpster : ^AsmSection
+    dumpster : ^VOID
 
     IF NOT AsmEvaluateNode (
         howmanynode, // node
         OUT howmany, // value
-        OUT dumpster, // section
+        OUT dumpster, // refsymbol
     ) THEN
         LexTokenError ( &howmanynode^.Token,
             "Incalculable expression", 0, 0, 0 )

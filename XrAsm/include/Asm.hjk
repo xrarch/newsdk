@@ -10,6 +10,19 @@ STRUCT AsmBytesChunkBody
     Byte : UBYTE,
 END
 
+ENUM AsmRelocationType : UBYTE
+    XLO_RELOC_NONE = 0,
+
+    XLO_RELOC_LONG = 1,
+
+    XLO_RELOC_XR17032_ABSJ = 2,
+    XLO_RELOC_XR17032_LA = 3,
+    XLO_RELOC_XR17032_FAR_INT = 4,
+    XLO_RELOC_XR17032_FAR_LONG = 5,
+
+    XLO_RELOC_MAX,
+END
+
 #INCLUDE "../xr17032/XrInstruction.hjk"
 
 UNION AsmElementBody
@@ -27,6 +40,8 @@ STRUCT AsmElement
     ErrorToken : LexToken,
 
     Body : AsmElementBody,
+
+    RelocationType : AsmRelocationType,
 END
 
 STRUCT AsmSection
@@ -42,17 +57,6 @@ STRUCT AsmSection
 
     FileOffset : UWORD,
     MemoryOffset : UWORD,
-END
-
-ENUM AsmRelocationType : UBYTE
-    XLO_RELOC_LONG = 1,
-
-    XLO_RELOC_XR17032_ABSJ = 2,
-    XLO_RELOC_XR17032_LA = 3,
-    XLO_RELOC_XR17032_FAR_INT = 4,
-    XLO_RELOC_XR17032_FAR_LONG = 5,
-
-    XLO_RELOC_MAX,
 END
 
 STRUCT AsmRelocation
@@ -97,12 +101,24 @@ EXTERN FN AsmCreateElement (
 EXTERN FN AsmEvaluateNode (
     IN node : ^AsmExpressionNode,
     OUT value : UWORD,
-    OUT section : ^AsmSection,
+    OUT refsymbol : ^LexSymbol,
 ) : UWORD
 
 EXTERN FN AsmCreateExpressionNode (
     IN type : AsmExpressionNodeType,
     IN token : ^LexToken,
+) : ^AsmExpressionNode
+
+EXTERN FN AsmCreateOperation (
+    IN operator : LexTokenSubtype,
+    IN left : ^AsmExpressionNode,
+    IN right : ^AsmExpressionNode,
+) : ^AsmExpressionNode
+
+EXTERN FN AsmCreateOperationWithConstant (
+    IN operator : LexTokenSubtype,
+    IN left : ^AsmExpressionNode,
+    IN constant : UWORD,
 ) : ^AsmExpressionNode
 
 EXTERN FN AsmParseAtom () : ^AsmExpressionNode
