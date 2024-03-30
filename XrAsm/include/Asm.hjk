@@ -41,6 +41,9 @@ STRUCT AsmElement
 
     Body : AsmElementBody,
 
+    FileOffset : UWORD,
+    MemoryOffset : UWORD,
+
     RelocationType : AsmRelocationType,
 END
 
@@ -96,6 +99,7 @@ EXTERN FN AsmConsumeComma ()
 
 EXTERN FN AsmCreateElement (
     IN errtoken : ^LexToken,
+    IN size : UWORD,
 ) : ^AsmElement
 
 EXTERN FN AsmEvaluateNode (

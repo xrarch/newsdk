@@ -100,6 +100,7 @@ END
 
 FN AsmCreateElement (
     IN errtoken : ^LexToken,
+    IN size : UWORD,
 ) : ^AsmElement
 
     // Create an element.
@@ -118,6 +119,8 @@ FN AsmCreateElement (
     END
 
     node^.RelocationType = XLO_RELOC_NONE
+    node^.FileOffset = AsmCurrentSection^.FileOffset
+    node^.MemoryOffset = AsmCurrentSection^.MemoryOffset
 
     LexCopyToken (
         &node^.ErrorToken, // dest
@@ -128,6 +131,8 @@ FN AsmCreateElement (
         &AsmCurrentSection^.ElementListHead, // head
         &node^.Entry, // entry
     )
+
+    AsmAdvanceSection ( size )
 
     RETURN node
 END
@@ -737,11 +742,12 @@ FN (AsmDirectiveF) AsmParseDb (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        1, // size
+    )
 
     elem^.Body.Data = expr
-
-    AsmAdvanceSection ( 1 )
 END
 
 FN (AsmDirectiveF) AsmParseDi (
@@ -752,11 +758,12 @@ FN (AsmDirectiveF) AsmParseDi (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        2, // size
+    )
 
     elem^.Body.Data = expr
-
-    AsmAdvanceSection ( 2 )
 END
 
 FN (AsmDirectiveF) AsmParseDl (
@@ -767,11 +774,12 @@ FN (AsmDirectiveF) AsmParseDl (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        4, // size
+    )
 
     elem^.Body.Data = expr
-
-    AsmAdvanceSection ( 4 )
 END
 
 FN (AsmDirectiveF) AsmParseDq (
@@ -782,11 +790,12 @@ FN (AsmDirectiveF) AsmParseDq (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        8, // size
+    )
 
     elem^.Body.Data = expr
-
-    AsmAdvanceSection ( 8 )
 END
 
 FN (AsmDirectiveF) AsmParseDp (
@@ -797,11 +806,12 @@ FN (AsmDirectiveF) AsmParseDp (
 
     expr := AsmParseAtom ()
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        AsmTargetInfo^.PointerSize, // size
+    )
 
     elem^.Body.Data = expr
-
-    AsmAdvanceSection ( AsmTargetInfo^.PointerSize )
 END
 
 FN (AsmDirectiveF) AsmParseDefine (
@@ -872,19 +882,15 @@ FN (AsmDirectiveF) AsmParseIncBin (
         LexTokenError ( &token, "Expected a string", 0, 0, 0 )
     END
 
-    elem := AsmCreateElement ( errtoken )
-
     // All we do at this stage is remember the path and figure out the size of
     // the file.
 
     string := CAST token.Payload TO ^LexInternedString
 
-    elem^.Body.IncBin.Path = string^.DynamicBuffer.Buffer
-
     stat : TlStatRecord
 
     status := TlStatFile (
-        elem^.Body.IncBin.Path, // path
+        string^.DynamicBuffer.Buffer, // path
         &stat, // statrecord
     )
 
@@ -892,9 +898,13 @@ FN (AsmDirectiveF) AsmParseIncBin (
         LexTokenError ( &token, "Failed to open file", 0, 0, 0 )
     END
 
-    elem^.Body.IncBin.Size = stat.SizeInBytes
+    elem := AsmCreateElement (
+        errtoken, // token
+        stat.SizeInBytes, // size
+    )
 
-    AsmAdvanceSection ( stat.SizeInBytes )
+    elem^.Body.IncBin.Path = string^.DynamicBuffer.Buffer
+    elem^.Body.IncBin.Size = stat.SizeInBytes
 END
 
 FN (AsmDirectiveF) AsmParseBytes (
@@ -929,12 +939,13 @@ FN (AsmDirectiveF) AsmParseBytes (
             "Incalculable expression", 0, 0, 0 )
     END
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        howmany, // size
+    )
 
     elem^.Body.BytesChunk.Count = howmany
     elem^.Body.BytesChunk.Byte = which
-
-    AsmAdvanceSection ( howmany )
 END
 
 FN (AsmDirectiveF) AsmParseGlobal (
@@ -1032,11 +1043,12 @@ FN (AsmDirectiveF) AsmParseDs (
 
     string := CAST token.Payload TO ^LexInternedString
 
-    elem := AsmCreateElement ( errtoken )
+    elem := AsmCreateElement (
+        errtoken, // token
+        string^.DynamicBuffer.Count - 1, // size
+    )
 
     elem^.Body.String = &string^.DynamicBuffer
-
-    AsmAdvanceSection ( string^.DynamicBuffer.Count - 1 )
 END
 
 FN (AsmDirectiveF) AsmParseAlign (
@@ -1078,7 +1090,10 @@ FN (AsmDirectiveF) AsmParseAlign (
     AsmCurrentSection^.FileOffset += diff
 
     IF diff THEN
-        elem := AsmCreateElement ( errtoken )
+        elem := AsmCreateElement (
+            errtoken, // token
+            0, // size
+        )
 
         elem^.ErrorToken.Subtype = TOKEN_BYTES
 
