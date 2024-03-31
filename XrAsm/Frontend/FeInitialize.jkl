@@ -9,7 +9,6 @@ PUBLIC FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
 PUBLIC FeTargetString : UBYTE[FE_PATH_BUFFER_SIZE]
-PUBLIC FeEncoderString : UBYTE[FE_PATH_BUFFER_SIZE]
 
 PUBLIC FeInputFileHandle : ^VOID
 PUBLIC FeOutputFileHandle : ^VOID
@@ -97,15 +96,6 @@ FN FeParseArguments (
 
             foundtarget = TRUE
 
-        ELSEIF TlCompareStringWithMax ( argv[i], "encoder=", 8 ) == 0 THEN
-            TlCopyString (
-                &FeEncoderString[0], // dest
-                &argv[i][8], // src
-                FE_PATH_BUFFER_SIZE, // bufsize
-            )
-
-            foundencoder = TRUE
-
         ELSEIF TlCompareStringWithMax ( argv[i], "header=", 7 ) == 0 THEN
             FeOutputHeaders = &argv[i][7]
 
@@ -152,16 +142,6 @@ FN FeParseArguments (
     IF NOT foundtarget THEN
         TlPrintString ( "Error: No target specified.\n" )
         AsmUsage ()
-    END
-
-    IF NOT foundencoder THEN
-        // Default is XRO.
-
-        TlCopyString (
-            &FeEncoderString[0], // dest
-            "xro", // src
-            FE_PATH_BUFFER_SIZE, // bufsize
-        )
     END
 END
 
@@ -237,37 +217,6 @@ FN TrgInitialize ()
     TlUserError ( "Unknown target specified", 0, 0, 0 )
 END
 
-EXTERN FlatEncoderInfo : AsmEncoderInfoRecord
-EXTERN XroEncoderInfo : AsmEncoderInfoRecord
-
-EncInfoRecords : ^AsmEncoderInfoRecord[8] = {
-    // &FlatEncoderInfo,
-    // &XroEncoderInfo,
-
-    NULLPTR, // MUST be here, as a sentinel
-}
-
-FN EncInitialize ()
-    
-    // Initialize the encoder.
-
-    encoder := &EncInfoRecords[0]
-
-    WHILE encoder^ != NULLPTR DO
-        IF TlCompareString ( &FeEncoderString[0], encoder^^.Name ) == 0 THEN
-            AsmEncoderInfo = encoder^
-
-            LEAVE
-        END
-
-        encoder += SIZEOF ^VOID
-    END
-
-    // TODO UNCOMMENT THIS!!
-    AsmEncoderInfo = NULLPTR
-    // TlUserError ( "Unknown encoder specified", 0, 0, 0 )
-END
-
 FN FeInitialize (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -299,10 +248,6 @@ FN FeInitialize (
     // Initialize the target.
 
     TrgInitialize ()
-
-    // Initialize the object file encoder.
-
-    EncInitialize ()
 
     // Initialize the lexer.
 
