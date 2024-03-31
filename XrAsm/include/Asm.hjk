@@ -125,6 +125,12 @@ EXTERN FN AsmCreateOperationWithConstant (
     IN constant : UWORD,
 ) : ^AsmExpressionNode
 
+EXTERN FN AsmCreateOperationLeftConstant (
+    IN operator : LexTokenSubtype,
+    IN constant : UWORD,
+    IN right : ^AsmExpressionNode,
+) : ^AsmExpressionNode
+
 EXTERN FN AsmParseAtom () : ^AsmExpressionNode
 
 EXTERN AsmCurrentSection : ^AsmSection

@@ -98,6 +98,29 @@ FN AsmCreateOperationWithConstant (
     )
 END
 
+FN AsmCreateOperationLeftConstant (
+    IN operator : LexTokenSubtype,
+    IN constant : UWORD,
+    IN right : ^AsmExpressionNode,
+) : ^AsmExpressionNode
+
+    // Helper function to create an expression node representing an operation
+    // between an existing node and a constant.
+
+    constnode := AsmCreateExpressionNode (
+        AST_CONSTANT, // type
+        &right^.Token, // token
+    )
+
+    constnode^.Body.Constant = constant
+
+    RETURN AsmCreateOperation (
+        operator, // operator
+        constnode, // left
+        right, // right
+    )
+END
+
 FN AsmCreateElement (
     IN errtoken : ^LexToken,
     IN size : UWORD,

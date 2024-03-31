@@ -312,6 +312,15 @@ XrSubtypeToOpcode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_BGE] = 0x15,
     [XR_BPE] = 0x0D,
     [XR_BPO] = 0x05,
+
+    [XR_ADDI] = 0x3C,
+    [XR_SUBI] = 0x34,
+    [XR_SLTI] = 0x2C,
+    [XR_SLTI_SIGNED] = 0x24,
+    [XR_ANDI] = 0x1C,
+    [XR_XORI] = 0x14,
+    [XR_ORI] = 0x0C,
+    [XR_LUI] = 0x04,
 }
 
 FNPTR XrInstructionMnemonicF (
@@ -364,6 +373,9 @@ FN (XrInstructionMnemonicF) XrParseBranchFormat (
     elem^.Body.Xr.RegA = reg.TypeContext
 
     AsmConsumeComma ()
+
+    // Note that here we store the expression in an "absolute" form, but
+    // the encoding stage is sure to turn it into a relative branch offset.
 
     elem^.Body.Xr.ImmExpr = AsmParseAtom ()
 
@@ -448,6 +460,23 @@ FN (XrInstructionMnemonicF) XrParseLui (
         TOKEN_RIGHTSHIFT, // operator
         elem^.Body.Xr.ImmExpr, // left
         16, // constant
+    )
+END
+
+FN (XrInstructionMnemonicF) XrParseJalr (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an JALR instruction.
+
+    elem := XrParseImmFormat ( token )
+
+    // Wrap the immediate in a right shift by 2 bits.
+
+    elem^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
+        TOKEN_RIGHTSHIFT, // operator
+        elem^.Body.Xr.ImmExpr, // left
+        2, // constant
     )
 END
 
@@ -839,14 +868,7 @@ FN XrParseMovStore (
 
         // Consume the comma.
 
-        IF NOT LexMatchToken (
-            &rbtoken, // token
-            TOKEN_COMMA, // type
-            0, // subtype
-        ) THEN
-            LexTokenError ( &rbtoken,
-                "Expected comma", 0, 0, 0 )
-        END
+        AsmConsumeComma ()
 
         // Consume the source register.
 
@@ -929,14 +951,7 @@ FN XrParseMovStore (
 
     // Consume the comma.
 
-    IF NOT LexMatchToken (
-        &rbtoken, // token
-        TOKEN_COMMA, // type
-        0, // subtype
-    ) THEN
-        LexTokenError ( &rbtoken,
-            "Expected comma", 0, 0, 0 )
-    END
+    AsmConsumeComma ()
 
     // Consume the source register.
 
@@ -969,13 +984,7 @@ FN XrParseMovStore (
 
     // Consume the comma and tmp=.
 
-    IF NOT LexMatchToken (
-        &rbtoken, // token
-        TOKEN_COMMA, // type
-        0, // subtype
-    ) THEN
-        LexTokenError ( &rbtoken, "Expected comma", 0, 0, 0 )
-    END
+    AsmConsumeComma ()
 
     IF NOT LexMatchToken (
         &rbtoken, // token
@@ -1144,9 +1153,9 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
 
     [XR_MOV] = &XrParseMov,
 
-#IF 0
     [XR_JALR] = &XrParseJalr,
 
+#IF 0
     [XR_LSH] = &XrParseRegFormat,
     [XR_RSH] = &XrParseRegFormat,
     [XR_ASH] = &XrParseRegFormat,
