@@ -27,6 +27,7 @@ ENUM LexTokenType : UBYTE
     TOKEN_COMMA,
     TOKEN_DOT,
     TOKEN_NEWLINE,
+    TOKEN_EQUALS,
 
     TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
