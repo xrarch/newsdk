@@ -13,7 +13,7 @@ END
 ENUM AsmRelocationType : UBYTE
     XLO_RELOC_NONE = 0,
 
-    XLO_RELOC_LONG = 1,
+    XLO_RELOC_PTR = 1,
 
     XLO_RELOC_XR17032_ABSJ = 2,
     XLO_RELOC_XR17032_LA = 3,

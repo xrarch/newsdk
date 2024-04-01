@@ -323,6 +323,8 @@ XrSubtypeToOpcode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_ORI] = 0x0C,
     [XR_LUI] = 0x04,
 
+    [XR_JALR] = 0x38,
+
     [XR_LSH] = 0x39,
     [XR_RSH] = 0x39,
     [XR_ASH] = 0x39,
@@ -341,6 +343,20 @@ XrSubtypeToOpcode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_DIV] = 0x31,
     [XR_DIV_SIGNED] = 0x31,
     [XR_MOD] = 0x31,
+
+    [XR_SC] = 0x31,
+    
+    [XR_MB] = 0x31,
+    [XR_WMB] = 0x31,
+    [XR_BRK] = 0x31,
+    [XR_SYS] = 0x31,
+
+    [XR_HLT] = 0x29,
+    [XR_RFE] = 0x29,
+
+    // Pseudo-instructions
+
+    [XR_NOP] = 0x39,
 }
 
 XrSubtypeToFunctionCode : UBYTE[XR_INSTRUCTION_MAX] = {
@@ -359,6 +375,20 @@ XrSubtypeToFunctionCode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_DIV] = 0xD,
     [XR_DIV_SIGNED] = 0xC,
     [XR_MOD] = 0xB,
+
+    [XR_SC] = 0x8,
+    
+    [XR_MB] = 0x3,
+    [XR_WMB] = 0x2,
+    [XR_BRK] = 0x1,
+    [XR_SYS] = 0x0,
+
+    [XR_HLT] = 0xC,
+    [XR_RFE] = 0xD,
+
+    // Pseudo-instructions
+
+    [XR_NOP] = 0x1, // OR
 }
 
 FNPTR XrInstructionMnemonicF (
@@ -380,6 +410,10 @@ FN (XrInstructionMnemonicF) XrParseJumpFormat (
 
     elem^.Body.Xr.FormatType = XR_FORMAT_JUMP
     elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
+
+    // Could cause a relocation, so note that.
+
+    elem^.RelocationType = XLO_RELOC_XR17032_ABSJ
 
     RETURN elem
 END
@@ -505,7 +539,7 @@ FN (XrInstructionMnemonicF) XrParseJalr (
     IN token : ^LexToken,
 ) : ^AsmElement
 
-    // Parse an JALR instruction.
+    // Parse a JALR instruction.
 
     elem := XrParseImmFormat ( token )
 
@@ -1408,6 +1442,324 @@ FN (XrInstructionMnemonicF) XrParseShiftImm (
     RETURN elem
 END
 
+FN (XrInstructionMnemonicF) XrParseLoadLocked (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse the LL (load locked) instruction.
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = 0x31
+    elem^.Body.Xr.FunctionCode = 0x9
+    elem^.Body.Xr.RegC = 0
+    elem^.Body.Xr.ShiftType = 0
+    elem^.Body.Xr.ShiftAmount = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegB = reg.TypeContext
+END
+
+FN (XrInstructionMnemonicF) XrParseRegNone (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse reg format instructions with no operands.
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
+    elem^.Body.Xr.FunctionCode = XrSubtypeToFunctionCode[token^.Subtype]
+    elem^.Body.Xr.RegA = 0
+    elem^.Body.Xr.RegB = 0
+    elem^.Body.Xr.RegC = 0
+    elem^.Body.Xr.ShiftType = 0
+    elem^.Body.Xr.ShiftAmount = 0
+END
+
+FN (XrInstructionMnemonicF) XrParseMfcr (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse MFCR (move from control register).
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = 0x29
+    elem^.Body.Xr.FunctionCode = 0xF
+    elem^.Body.Xr.RegB = 0
+    elem^.Body.Xr.ShiftType = 0
+    elem^.Body.Xr.ShiftAmount = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_CONTROL_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a control register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegC = reg.TypeContext
+END
+
+FN (XrInstructionMnemonicF) XrParseMtcr (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse MTCR (move to control register).
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = 0x29
+    elem^.Body.Xr.FunctionCode = 0xE
+    elem^.Body.Xr.RegA = 0
+    elem^.Body.Xr.ShiftType = 0
+    elem^.Body.Xr.ShiftAmount = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_CONTROL_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a control register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegC = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegB = reg.TypeContext
+END
+
+FN (XrInstructionMnemonicF) XrParseB (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a B pseudo-instruction.
+    // This is really BEQ ZERO, IMM
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_BRANCH
+    elem^.Body.Xr.Opcode = 0x3D // BEQ
+    elem^.Body.Xr.RegA = 0
+
+    // Note that here we store the expression in an "absolute" form, but
+    // the encoding stage is sure to turn it into a relative branch offset.
+
+    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+END
+
+FN (XrInstructionMnemonicF) XrParseRet (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a RET pseudo-instruction.
+    // This is really JALR ZERO, LR, 0
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_IMM
+    elem^.Body.Xr.Opcode = 0x38
+    elem^.Body.Xr.RegA = 0
+    elem^.Body.Xr.RegB = 31
+    elem^.Body.Xr.ImmExpr = NULLPTR
+END
+
+FN (XrInstructionMnemonicF) XrParseJr (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a JR pseudo-instruction.
+    // This is really JALR ZERO, RA, 0
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_IMM
+    elem^.Body.Xr.Opcode = 0x38
+    elem^.Body.Xr.RegA = 0
+    elem^.Body.Xr.ImmExpr = NULLPTR
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegB = reg.TypeContext
+END
+
+FN (XrInstructionMnemonicF) XrParseLi (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an LI pseudo-instruction.
+    // This is really ORI RA, ZERO, IMM
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_IMM
+    elem^.Body.Xr.Opcode = 0x0C // ORI
+    elem^.Body.Xr.RegB = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+END
+
+FN (XrInstructionMnemonicF) XrParseLa (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an LA pseudo-instruction.
+    // This is really:
+    //   LUI RA, ZERO, IMM >> 16
+    //   ORI RA, ZERO, IMM & 0xFFFF
+    //
+    // It can create a relocation, so note that on the LUI instruction.
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    AsmConsumeComma ()
+
+    immexpr := AsmParseAtom ()
+
+    // Create the LUI instruction.
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.RelocationType = XLO_RELOC_XR17032_LA
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_IMM
+    elem^.Body.Xr.Opcode = 0x04 // LUI
+    elem^.Body.Xr.RegA = reg.TypeContext
+    elem^.Body.Xr.RegB = 0
+
+    elem^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
+        TOKEN_RIGHTSHIFT, // operator
+        immexpr, // left
+        16, // constant
+    )
+
+    // Create the ORI instruction.
+
+    elem2 := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem2^.Body.Xr.FormatType = XR_FORMAT_IMM
+    elem2^.Body.Xr.Opcode = 0x0C // ORI
+    elem2^.Body.Xr.RegA = reg.TypeContext
+    elem2^.Body.Xr.RegB = 0
+
+    elem2^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
+        TOKEN_BITAND, // operator
+        immexpr, // left
+        0xFFFF, // constant
+    )
+END
+
 XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_JAL] = &XrParseJumpFormat,
     [XR_J] = &XrParseJumpFormat,
@@ -1450,28 +1802,27 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_DIV] = &XrParseDiv,
     [XR_MOD] = &XrParseRegFormat,
 
-#IF 0
     [XR_LL] = &XrParseLoadLocked,
-    [XR_SC] = &XrParseStoreConditional,
+    [XR_SC] = &XrParseRegFormat,
 
-    [XR_MB] = &XrParseNone,
-    [XR_WMB] = &XrParseNone,
-    [XR_BRK] = &XrParseNone,
-    [XR_SYS] = &XrParseNone,
+    [XR_MB] = &XrParseRegNone,
+    [XR_WMB] = &XrParseRegNone,
+    [XR_BRK] = &XrParseRegNone,
+    [XR_SYS] = &XrParseRegNone,
 
     [XR_MFCR] = &XrParseMfcr,
     [XR_MTCR] = &XrParseMtcr,
 
-    [XR_HLT] = &XrParseNone,
-    [XR_RFE] = &XrParseNone,
+    [XR_HLT] = &XrParseRegNone,
+    [XR_RFE] = &XrParseRegNone,
 
     [XR_B] = &XrParseB,
     [XR_RET] = &XrParseRet,
     [XR_JR] = &XrParseJr,
     [XR_LI] = &XrParseLi,
     [XR_LA] = &XrParseLa,
-    [XR_NOP] = &XrParseNone,
-#END
+
+    [XR_NOP] = &XrParseRegNone,
 
     [XR_LSHI] = &XrParseShiftImm,
     [XR_RSHI] = &XrParseShiftImm,

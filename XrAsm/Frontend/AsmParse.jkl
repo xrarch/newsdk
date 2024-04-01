@@ -835,6 +835,10 @@ FN (AsmDirectiveF) AsmParseDp (
     )
 
     elem^.Body.Data = expr
+
+    // Could cause a relocation, so note that.
+
+    elem^.RelocationType = XLO_RELOC_PTR
 END
 
 FN (AsmDirectiveF) AsmParseDefine (
