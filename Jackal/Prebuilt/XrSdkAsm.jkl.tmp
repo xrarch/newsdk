@@ -1108,7 +1108,7 @@ void XrAsmEmitGlobal(uint64_t _mng_emitter458, uint64_t _mng_sym459) {
     __twr_v541 = _mng_type477 + __twr_v540;
     __twr_v542 = *(uint64_t*)(__twr_v541);
     ((void (*)(uint64_t))__twr_v539)(__twr_v542);
-    __twr_v543 = (uint64_t)(&" 0\n");
+    __twr_v543 = (uint64_t)(&", 0\n");
     ((void (*)(uint64_t))__twr_v537)(__twr_v543);
     __twr_l71:;
     goto __twr_l67;

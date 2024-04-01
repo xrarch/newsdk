@@ -387,7 +387,7 @@ FN XrAsmEmitGlobal (
         IF type^.Size != TYPE_SIZE_UNINIT THEN
             XrAsmInsertString ( "    .bytes " )
             XrAsmInsertNumber ( type^.Size )
-            XrAsmInsertString ( " 0\n" )
+            XrAsmInsertString ( ", 0\n" )
         END
     
     ELSEIF type^.Subtype == TYPE_FUNCTION THEN

@@ -186,11 +186,14 @@ FN AsmInitializeLabel (
         END
 
         IF symbol^.Type != SYM_UNINITIALIZED AND
-            symbol^.Type != SYM_FORWARD_LABEL THEN
+            symbol^.Type != SYM_FORWARD_LABEL AND
+            symbol^.Visibility != LABEL_EXTERN THEN
 
             LexTokenError ( errtoken, "Expected a new label name", 0, 0, 0 )
         END
     END
+
+    symbol^.Visibility = LABEL_LOCAL
 
     IF global THEN
         IF NOT forward THEN
@@ -1069,6 +1072,9 @@ FN (AsmDirectiveF) AsmParseBytes (
     // specified byte into the current section.
 
     howmanynode := AsmParseAtom ()
+
+    AsmConsumeComma ()
+    
     whichnode := AsmParseAtom ()
 
     howmany : UWORD
