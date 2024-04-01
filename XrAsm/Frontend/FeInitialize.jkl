@@ -307,6 +307,7 @@ FN FeOutputHeaderDependencies ()
 END
 
 EXTERN FN AsmParse ()
+EXTERN FN AsmBuildData ()
 
 FN AsmAssembleProgram (
     IN argc : ULONG,
@@ -330,7 +331,7 @@ FN AsmAssembleProgram (
 
     // Phase 2: Build the section data.
 
-    // AsmBuildData ()
+    AsmBuildData ()
 
     // Open the output file.
 

@@ -1,0 +1,12 @@
+//
+// Implements the section data building phase of the assembler.
+//
+
+#INCLUDE "<inc>/Asm.hjk"
+
+FN AsmBuildData ()
+
+    // We basically want to iterate each section. For each section, we create a
+    // buffer to contain its binary data (unless it's a bss section). Then we
+    // walk the element chain and encode each element into the data buffer.
+END

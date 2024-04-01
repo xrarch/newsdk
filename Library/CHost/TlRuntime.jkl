@@ -247,7 +247,7 @@ FN TlOpenDestination (
     OUT handle : ^VOID,
 ) : TlStatus
 
-    handle = fopen ( filename, "w" )
+    handle = fopen ( filename, "wb" )
 
     IF handle == 0 THEN
         RETURN TL_COULDNT_OPEN

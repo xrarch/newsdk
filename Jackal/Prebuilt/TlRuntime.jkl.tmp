@@ -411,7 +411,7 @@ uint64_t TlOpenDestination(uint64_t _mng_filename257, uint64_t _mng_o_handle) {
     uint64_t __twr_v262;
     uint64_t __twr_v263;
     __twr_v258 = (uint64_t)(&fopen);
-    __twr_v259 = (uint64_t)(&"w");
+    __twr_v259 = (uint64_t)(&"wb");
     __twr_v260 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v258)(_mng_filename257, __twr_v259);
     _mng_handle261 = __twr_v260;
     if (_mng_handle261) { goto __twr_l32; } else { goto __twr_l33; }
