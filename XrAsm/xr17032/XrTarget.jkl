@@ -95,6 +95,7 @@ ENUM XrInstructionSubtype : LexTokenSubtype
 
     XR_SLTI_SIGNED,
     XR_SLT_SIGNED,
+    XR_DIV_SIGNED,
 
     XR_INSTRUCTION_MAX,
 END
@@ -143,9 +144,9 @@ FN (AsmTargetKeywordsF) XrRegisterKeywords ()
     LexInsertKeyword ( "jalr", TOKEN_INSTRUCTION, XR_JALR, 0 )
 
     LexInsertKeyword ( "lsh", TOKEN_INSTRUCTION, XR_LSH, 0 )
-    LexInsertKeyword ( "rsh", TOKEN_INSTRUCTION, XR_RSH, 0 )
-    LexInsertKeyword ( "ash", TOKEN_INSTRUCTION, XR_ASH, 0 )
-    LexInsertKeyword ( "ror", TOKEN_INSTRUCTION, XR_ROR, 0 )
+    LexInsertKeyword ( "rsh", TOKEN_INSTRUCTION, XR_RSH, 1 )
+    LexInsertKeyword ( "ash", TOKEN_INSTRUCTION, XR_ASH, 2 )
+    LexInsertKeyword ( "ror", TOKEN_INSTRUCTION, XR_ROR, 3 )
 
     LexInsertKeyword ( "add", TOKEN_INSTRUCTION, XR_ADD, 0 )
     LexInsertKeyword ( "sub", TOKEN_INSTRUCTION, XR_SUB, 0 )
@@ -183,9 +184,9 @@ FN (AsmTargetKeywordsF) XrRegisterKeywords ()
     LexInsertKeyword ( "nop", TOKEN_INSTRUCTION, XR_NOP, 0 )
 
     LexInsertKeyword ( "lshi", TOKEN_INSTRUCTION, XR_LSHI, 0 )
-    LexInsertKeyword ( "rshi", TOKEN_INSTRUCTION, XR_RSHI, 0 )
-    LexInsertKeyword ( "ashi", TOKEN_INSTRUCTION, XR_ASHI, 0 )
-    LexInsertKeyword ( "rori", TOKEN_INSTRUCTION, XR_RORI, 0 )
+    LexInsertKeyword ( "rshi", TOKEN_INSTRUCTION, XR_RSHI, 1 )
+    LexInsertKeyword ( "ashi", TOKEN_INSTRUCTION, XR_ASHI, 2 )
+    LexInsertKeyword ( "rori", TOKEN_INSTRUCTION, XR_RORI, 3 )
 
     // Registers
 
@@ -321,6 +322,43 @@ XrSubtypeToOpcode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_XORI] = 0x14,
     [XR_ORI] = 0x0C,
     [XR_LUI] = 0x04,
+
+    [XR_LSH] = 0x39,
+    [XR_RSH] = 0x39,
+    [XR_ASH] = 0x39,
+    [XR_ROR] = 0x39,
+
+    [XR_ADD] = 0x39,
+    [XR_SUB] = 0x39,
+    [XR_SLT] = 0x39,
+    [XR_SLT_SIGNED] = 0x39,
+    [XR_AND] = 0x39,
+    [XR_XOR] = 0x39,
+    [XR_OR] = 0x39,
+    [XR_NOR] = 0x39,
+
+    [XR_MUL] = 0x31,
+    [XR_DIV] = 0x31,
+    [XR_DIV_SIGNED] = 0x31,
+    [XR_MOD] = 0x31,
+}
+
+XrSubtypeToFunctionCode : UBYTE[XR_INSTRUCTION_MAX] = {
+    // Note that LSH, RSH, ASH, ROR share a function code of 0x8.
+
+    [XR_ADD] = 0x7,
+    [XR_SUB] = 0x6,
+    [XR_SLT] = 0x5,
+    [XR_SLT_SIGNED] = 0x4,
+    [XR_AND] = 0x3,
+    [XR_XOR] = 0x2,
+    [XR_OR] = 0x1,
+    [XR_NOR] = 0x0,
+
+    [XR_MUL] = 0xF,
+    [XR_DIV] = 0xD,
+    [XR_DIV_SIGNED] = 0xC,
+    [XR_MOD] = 0xB,
 }
 
 FNPTR XrInstructionMnemonicF (
@@ -1130,6 +1168,246 @@ FN (XrInstructionMnemonicF) XrParseMov (
     RETURN elem
 END
 
+FN (XrInstructionMnemonicF) XrParseRegFormat (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a reg format instruction.
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
+    elem^.Body.Xr.FunctionCode = XrSubtypeToFunctionCode[token^.Subtype]
+    elem^.Body.Xr.ShiftType = 0
+    elem^.Body.Xr.ShiftAmount = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegB = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegC = reg.TypeContext
+
+    // There may be a shift specifier now.
+
+    shifttok : LexToken
+
+    IF LexMatchToken (
+        &shifttok, // token
+        TOKEN_AUX, // type
+        XR_AUX_SHIFT, // subtype
+    ) THEN
+        elem^.Body.Xr.ShiftType = shifttok.TypeContext
+
+        // Now consume the shift amount.
+
+        shiftamt := AsmParseAtom ()
+
+        dumpster : ^VOID
+
+        IF NOT AsmEvaluateNode (
+            shiftamt, // node
+            OUT elem^.Body.Xr.ShiftAmount, // value
+            OUT dumpster, // refsymbol
+        ) THEN
+            LexTokenError ( &shiftamt^.Token,
+                "Incalculable expression", 0, 0, 0 )
+        END
+    END
+
+    RETURN elem
+END
+
+FN (XrInstructionMnemonicF) XrParseSlt (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an SLT [SIGNED] instruction.
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_AUX, // type
+        XR_AUX_SIGNED, // subtype
+    ) THEN
+        // It's the signed variant, so fiddle the subtype.
+
+        token^.Subtype = XR_SLT_SIGNED
+    END
+
+    RETURN XrParseRegFormat ( token )
+END
+
+FN (XrInstructionMnemonicF) XrParseDiv (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse an DIV [SIGNED] instruction.
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_AUX, // type
+        XR_AUX_SIGNED, // subtype
+    ) THEN
+        // It's the signed variant, so fiddle the subtype.
+
+        token^.Subtype = XR_DIV_SIGNED
+    END
+
+    RETURN XrParseRegFormat ( token )
+END
+
+FN (XrInstructionMnemonicF) XrParseShiftReg (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a shift reg instruction.
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = 0x39
+    elem^.Body.Xr.FunctionCode = 0x8
+    elem^.Body.Xr.ShiftType = token^.TypeContext
+    elem^.Body.Xr.ShiftAmount = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegB = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegC = reg.TypeContext
+
+    RETURN elem
+END
+
+FN (XrInstructionMnemonicF) XrParseShiftImm (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    // Parse a shift imm pseudo-instruction.
+    // This is really ADD RA, ZERO, RB xSH IMM
+
+    elem := AsmCreateElement (
+        token, // token
+        4, // size
+    )
+
+    elem^.Body.Xr.FormatType = XR_FORMAT_REG
+    elem^.Body.Xr.Opcode = 0x39
+    elem^.Body.Xr.FunctionCode = 0x7 // ADD
+    elem^.Body.Xr.ShiftType = token^.TypeContext
+    elem^.Body.Xr.ShiftAmount = 0
+    elem^.Body.Xr.RegB = 0
+
+    reg : LexToken
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegA = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    IF NOT LexMatchToken (
+        &reg, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.RegC = reg.TypeContext
+
+    AsmConsumeComma ()
+
+    // Now consume the shift amount.
+
+    shiftamt := AsmParseAtom ()
+
+    dumpster : ^VOID
+
+    IF NOT AsmEvaluateNode (
+        shiftamt, // node
+        OUT elem^.Body.Xr.ShiftAmount, // value
+        OUT dumpster, // refsymbol
+    ) THEN
+        LexTokenError ( &shiftamt^.Token,
+            "Incalculable expression", 0, 0, 0 )
+    END
+
+    RETURN elem
+END
+
 XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_JAL] = &XrParseJumpFormat,
     [XR_J] = &XrParseJumpFormat,
@@ -1155,11 +1433,10 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
 
     [XR_JALR] = &XrParseJalr,
 
-#IF 0
-    [XR_LSH] = &XrParseRegFormat,
-    [XR_RSH] = &XrParseRegFormat,
-    [XR_ASH] = &XrParseRegFormat,
-    [XR_ROR] = &XrParseRegFormat,
+    [XR_LSH] = &XrParseShiftReg,
+    [XR_RSH] = &XrParseShiftReg,
+    [XR_ASH] = &XrParseShiftReg,
+    [XR_ROR] = &XrParseShiftReg,
 
     [XR_ADD] = &XrParseRegFormat,
     [XR_SUB] = &XrParseRegFormat,
@@ -1170,9 +1447,10 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_NOR] = &XrParseRegFormat,
 
     [XR_MUL] = &XrParseRegFormat,
-    [XR_DIV] = &XrParseRegFormat,
+    [XR_DIV] = &XrParseDiv,
     [XR_MOD] = &XrParseRegFormat,
 
+#IF 0
     [XR_LL] = &XrParseLoadLocked,
     [XR_SC] = &XrParseStoreConditional,
 
@@ -1193,12 +1471,12 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
     [XR_LI] = &XrParseLi,
     [XR_LA] = &XrParseLa,
     [XR_NOP] = &XrParseNone,
+#END
 
     [XR_LSHI] = &XrParseShiftImm,
     [XR_RSHI] = &XrParseShiftImm,
     [XR_ASHI] = &XrParseShiftImm,
     [XR_RORI] = &XrParseShiftImm,
-#END
 }
 
 FN (AsmTargetParseF) XrParseInstruction (
