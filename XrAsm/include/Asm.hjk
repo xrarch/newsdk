@@ -91,10 +91,18 @@ UNION AsmExpressionBody
     Operator : AsmOperatorBody,
 END
 
+ENUM AsmWarnLevel : UWORD
+    EVAL_NO_WARNING,
+    EVAL_WARN,
+    EVAL_ERROR,
+END
+
 STRUCT AsmExpressionNode
     Token : LexToken,
 
     Body : AsmExpressionBody,
+
+    WarnLevel : AsmWarnLevel,
 
     Type : AsmExpressionNodeType,
 END
@@ -115,24 +123,28 @@ EXTERN FN AsmEvaluateNode (
 EXTERN FN AsmCreateExpressionNode (
     IN type : AsmExpressionNodeType,
     IN token : ^LexToken,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
 EXTERN FN AsmCreateOperation (
     IN operator : LexTokenSubtype,
     IN left : ^AsmExpressionNode,
     IN right : ^AsmExpressionNode,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
 EXTERN FN AsmCreateOperationWithConstant (
     IN operator : LexTokenSubtype,
     IN left : ^AsmExpressionNode,
     IN constant : UWORD,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
 EXTERN FN AsmCreateOperationLeftConstant (
     IN operator : LexTokenSubtype,
     IN constant : UWORD,
     IN right : ^AsmExpressionNode,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
 EXTERN FN AsmParseAtom () : ^AsmExpressionNode

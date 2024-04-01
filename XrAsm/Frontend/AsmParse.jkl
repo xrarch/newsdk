@@ -28,6 +28,7 @@ END
 FN AsmCreateExpressionNode (
     IN type : AsmExpressionNodeType,
     IN token : ^LexToken,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
     // Create an expression node.
@@ -44,6 +45,7 @@ FN AsmCreateExpressionNode (
     END
 
     node^.Type = type
+    node^.WarnLevel = warnlevel
 
     LexCopyToken (
         &node^.Token, // dest
@@ -57,6 +59,7 @@ FN AsmCreateOperation (
     IN operator : LexTokenSubtype,
     IN left : ^AsmExpressionNode,
     IN right : ^AsmExpressionNode,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
     // Helper function to create an expression node representing an operation
@@ -65,6 +68,7 @@ FN AsmCreateOperation (
     node := AsmCreateExpressionNode (
         AST_OPERATOR, // type
         &left^.Token, // token
+        warnlevel, // warnlevel
     )
 
     node^.Token.Subtype = operator
@@ -79,6 +83,7 @@ FN AsmCreateOperationWithConstant (
     IN operator : LexTokenSubtype,
     IN left : ^AsmExpressionNode,
     IN constant : UWORD,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
     // Helper function to create an expression node representing an operation
@@ -87,6 +92,7 @@ FN AsmCreateOperationWithConstant (
     constnode := AsmCreateExpressionNode (
         AST_CONSTANT, // type
         &left^.Token, // token
+        EVAL_NO_WARNING, // warnlevel
     )
 
     constnode^.Body.Constant = constant
@@ -95,6 +101,7 @@ FN AsmCreateOperationWithConstant (
         operator, // operator
         left, // left
         constnode, // right
+        warnlevel, // warnlevel
     )
 END
 
@@ -102,6 +109,7 @@ FN AsmCreateOperationLeftConstant (
     IN operator : LexTokenSubtype,
     IN constant : UWORD,
     IN right : ^AsmExpressionNode,
+    IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
     // Helper function to create an expression node representing an operation
@@ -110,6 +118,7 @@ FN AsmCreateOperationLeftConstant (
     constnode := AsmCreateExpressionNode (
         AST_CONSTANT, // type
         &right^.Token, // token
+        EVAL_NO_WARNING, // warnlevel
     )
 
     constnode^.Body.Constant = constant
@@ -118,6 +127,7 @@ FN AsmCreateOperationLeftConstant (
         operator, // operator
         constnode, // left
         right, // right
+        warnlevel, // warnlevel
     )
 END
 
@@ -247,6 +257,144 @@ AsmLeftOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
     },
 }
 
+FN AsmCheckSymbolCompatibility (
+    IN errtoken : ^LexToken,
+    IN sym1 : ^LexSymbol,
+    IN sym2 : ^LexSymbol,
+)
+
+    // Check compatibility between the two symbols.
+    // Neither may be extern. If they aren't, they must also be in the same
+    // section.
+
+    IF sym1^.Visibility == LABEL_EXTERN OR
+        sym2^.Visibility == LABEL_EXTERN THEN
+
+        LexTokenError ( errtoken, "Can't operate on extern labels", 0, 0, 0 )
+    END 
+
+    IF NOT sym1^.Section OR NOT sym2^.Section THEN
+        LEAVE
+    END
+
+    IF sym1^.Section != sym2^.Section THEN
+        LexTokenError ( errtoken, "Labels have incompatible sections", 0, 0, 0 )
+    END
+END
+
+FN AsmEvalLeftAndRight (
+    IN node : ^AsmExpressionNode,
+    OUT leftval : UWORD,
+    OUT rightval : UWORD,
+    OUT refsymbol : ^LexSymbol,
+) : UWORD
+
+    // Evaluate the left and right side of an expression.
+
+    IF NOT AsmEvaluateNode (
+        node^.Body.Operator.Left, // node
+        OUT leftval, // value
+        OUT refsymbol, // refsymbol
+    ) THEN
+        RETURN FALSE
+    END
+
+    rsymbol : ^LexSymbol
+
+    IF NOT AsmEvaluateNode (
+        node^.Body.Operator.Right, // node
+        OUT rightval, // value
+        OUT rsymbol, // refsymbol
+    ) THEN
+        RETURN FALSE
+    END
+
+    IF NOT refsymbol THEN
+        refsymbol = rsymbol
+    
+    ELSE
+        AsmCheckSymbolCompatibility (
+            &node^.Token, // errtoken
+            refsymbol, // sym1
+            rsymbol, // sym2
+        )
+    END
+
+    RETURN TRUE
+END
+
+FN (AsmEvalF) AsmEvalRightShift (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+    OUT refsymbol : ^LexSymbol,
+) : UWORD
+
+    left : UWORD
+    right : UWORD
+
+    IF NOT AsmEvalLeftAndRight (
+        node, // node
+        OUT left, // leftval
+        OUT right, // rightval
+        OUT refsymbol, // refsymbol
+    ) THEN
+        RETURN FALSE
+    END
+
+    IF node^.WarnLevel != EVAL_NO_WARNING THEN
+        // Check for lost bits.
+
+        mask := -1
+        mask <<= right
+        mask = ~mask
+
+        IF left & mask != left THEN
+            IF node^.WarnLevel == EVAL_ERROR THEN
+                LexTokenError ( &node^.Token,
+        "Bits are shifted off of this expression; check alignment.", 0, 0, 0 )
+            END
+        END
+    END
+
+    value = left >> right
+
+    RETURN TRUE
+END
+
+FN (AsmEvalF) AsmEvalBitAnd (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+    OUT refsymbol : ^LexSymbol,
+) : UWORD
+
+    left : UWORD
+    right : UWORD
+
+    IF NOT AsmEvalLeftAndRight (
+        node, // node
+        OUT left, // leftval
+        OUT right, // rightval
+        OUT refsymbol, // refsymbol
+    ) THEN
+        RETURN FALSE
+    END
+
+    IF node^.WarnLevel != EVAL_NO_WARNING THEN
+        // Check for lost bits.
+
+        IF left & right != left THEN
+            IF node^.WarnLevel == EVAL_ERROR THEN
+                LexTokenError ( &node^.Token,
+                    "Bits are masked off of this expression.", 0, 0, 0 )
+            END
+        END
+    END
+
+    value = left & right
+
+    RETURN TRUE
+END
+
 #MACRO AsmEvalGenerate ( name, operator ) [
     FN (AsmEvalF) name (
         IN node : ^AsmExpressionNode,
@@ -257,42 +405,13 @@ AsmLeftOperators : AsmOperator[TOKEN_SUBTYPE_MAX] = {
         left : UWORD
         right : UWORD
 
-        IF NOT AsmEvaluateNode (
-            node^.Body.Operator.Left, // node
-            OUT left, // value
+        IF NOT AsmEvalLeftAndRight (
+            node, // node
+            OUT left, // leftval
+            OUT right, // rightval
             OUT refsymbol, // refsymbol
         ) THEN
             RETURN FALSE
-        END
-
-        rsymbol : ^LexSymbol
-
-        IF NOT AsmEvaluateNode (
-            node^.Body.Operator.Right, // node
-            OUT right, // value
-            OUT rsymbol, // refsymbol
-        ) THEN
-            RETURN FALSE
-        END
-
-        IF NOT refsymbol THEN
-            refsymbol = rsymbol
-
-        ELSEIF rsymbol THEN
-            // Check for compatibility. Neither may be extern. If they aren't,
-            // they must also be in the same section.
-
-            IF refsymbol^.Visibility == LABEL_EXTERN OR
-                rsymbol^.Visibility == LABEL_EXTERN THEN
-
-                LexTokenError ( &node^.Token,
-                    "Can't operate on multiple extern labels", 0, 0, 0 )
-            END 
-
-            IF refsymbol^.Section != rsymbol^.Section THEN
-                LexTokenError ( &node^.Token,
-                    "Labels have incompatible sections", 0, 0, 0 )
-            END
         END
 
         value = left operator right
@@ -307,8 +426,6 @@ AsmEvalGenerate ( AsmEvalModulo, % )
 AsmEvalGenerate ( AsmEvalPlus, + )
 AsmEvalGenerate ( AsmEvalMinus, - )
 AsmEvalGenerate ( AsmEvalLeftShift, << )
-AsmEvalGenerate ( AsmEvalRightShift, >> )
-AsmEvalGenerate ( AsmEvalBitAnd, & )
 AsmEvalGenerate ( AsmEvalBitXor, $ )
 AsmEvalGenerate ( AsmEvalBitOr, | )
 
@@ -469,6 +586,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         atomnode = AsmCreateExpressionNode (
             AST_CONSTANT, // type
             &token, // token
+            EVAL_NO_WARNING, // warnlevel
         )
 
         atomnode^.Body.Constant = CAST token.Payload TO UWORD
@@ -498,6 +616,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         atomnode = AsmCreateExpressionNode (
             AST_LABEL, // type
             &token, // token
+            EVAL_NO_WARNING, // warnlevel
         )
 
         // If there's a dot after this, then we want a local label.
@@ -580,6 +699,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         atomnode = AsmCreateExpressionNode (
             AST_LABEL, // type
             &token, // token
+            EVAL_NO_WARNING, // warnlevel
         )
 
         atomnode^.Body.Label = symbol
@@ -612,6 +732,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         atomnode = AsmCreateExpressionNode (
             AST_OPERATOR, // type
             &token, // token
+            EVAL_NO_WARNING, // warnlevel
         )
 
         IF NOT operator^.NoRightSide THEN
@@ -669,6 +790,7 @@ FN AsmParseExpression (
         node := AsmCreateExpressionNode (
             AST_OPERATOR, // type
             &optoken, // token
+            EVAL_NO_WARNING, // warnlevel
         )
 
         node^.Body.Operator.Left = atomnode

@@ -391,6 +391,32 @@ XrSubtypeToFunctionCode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_NOP] = 0x1, // OR
 }
 
+FN XrCollectShiftAmount () : UWORD
+
+    // Collect and return a 5-bit shift amount.
+
+    shiftamt := AsmParseAtom ()
+
+    dumpster : ^VOID
+
+    val : UWORD
+
+    IF NOT AsmEvaluateNode (
+        shiftamt, // node
+        OUT val, // value
+        OUT dumpster, // refsymbol
+    ) THEN
+        LexTokenError ( &shiftamt^.Token,
+            "Incalculable expression", 0, 0, 0 )
+    END
+
+    IF val > 31 THEN
+        LexTokenError ( &shiftamt^.Token, "Shift amount must be 0-31", 0, 0, 0 )
+    END
+
+    RETURN val
+END
+
 FNPTR XrInstructionMnemonicF (
     IN token : ^LexToken,
 ) : ^AsmElement
@@ -406,7 +432,14 @@ FN (XrInstructionMnemonicF) XrParseJumpFormat (
         4, // size
     )
 
-    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+    immexpr := AsmParseAtom ()
+
+    elem^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
+        TOKEN_RIGHTSHIFT, // operator
+        immexpr, // left
+        2, // constant
+        EVAL_ERROR, // warnlevel
+    )
 
     elem^.Body.Xr.FormatType = XR_FORMAT_JUMP
     elem^.Body.Xr.Opcode = XrSubtypeToOpcode[token^.Subtype]
@@ -494,7 +527,14 @@ FN (XrInstructionMnemonicF) XrParseImmFormat (
 
     AsmConsumeComma ()
 
-    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+    immexpr := AsmParseAtom ()
+
+    elem^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
+        TOKEN_BITAND, // operator
+        immexpr, // left
+        0xFFFF, // constant
+        EVAL_ERROR, // warnlevel
+    )
 
     RETURN elem
 END
@@ -532,6 +572,7 @@ FN (XrInstructionMnemonicF) XrParseLui (
         TOKEN_RIGHTSHIFT, // operator
         elem^.Body.Xr.ImmExpr, // left
         16, // constant
+        EVAL_ERROR, // warnlevel
     )
 END
 
@@ -549,6 +590,7 @@ FN (XrInstructionMnemonicF) XrParseJalr (
         TOKEN_RIGHTSHIFT, // operator
         elem^.Body.Xr.ImmExpr, // left
         2, // constant
+        EVAL_ERROR, // warnlevel
     )
 END
 
@@ -638,18 +680,7 @@ FN XrParseMovLoad (
 
                     // Collect the shift amount.
 
-                    shiftamt := AsmParseAtom ()
-
-                    dumpster : ^VOID
-
-                    IF NOT AsmEvaluateNode (
-                        shiftamt, // node
-                        OUT elem^.Body.Xr.ShiftAmount, // value
-                        OUT dumpster, // refsymbol
-                    ) THEN
-                        LexTokenError ( &shiftamt^.Token,
-                            "Incalculable expression", 0, 0, 0 )
-                    END
+                    elem^.Body.Xr.ShiftAmount = XrCollectShiftAmount ()
                 END
 
                 // Consume the right bracket.
@@ -697,6 +728,7 @@ FN XrParseMovLoad (
                     TOKEN_RIGHTSHIFT, // operator
                     elem^.Body.Xr.ImmExpr, // left
                     1, // constant
+                    EVAL_ERROR, // warnlevel
                 )
 
             ELSEIF sizetok.Subtype == XR_AUX_LONG THEN
@@ -704,6 +736,7 @@ FN XrParseMovLoad (
                     TOKEN_RIGHTSHIFT, // operator
                     elem^.Body.Xr.ImmExpr, // left
                     2, // constant
+                    EVAL_ERROR, // warnlevel
                 )
             END
 
@@ -757,6 +790,7 @@ FN XrParseMovLoad (
         TOKEN_RIGHTSHIFT, // operator
         immexpr, // left
         16, // constant
+        EVAL_NO_WARNING, // warnlevel
     )
 
     elem^.Body.Xr.Opcode = 0x04 // LUI
@@ -778,6 +812,7 @@ FN XrParseMovLoad (
         TOKEN_BITAND, // operator
         immexpr, // left
         0xFFFF, // constant
+        EVAL_NO_WARNING, // warnlevel
     )
 
     // Set the opcode and a right shift according to the size type.
@@ -796,6 +831,7 @@ FN XrParseMovLoad (
             TOKEN_RIGHTSHIFT, // operator
             elem2^.Body.Xr.ImmExpr, // left
             1, // constant
+            EVAL_ERROR, // warnlevel
         )
 
     ELSEIF sizetok.Subtype == XR_AUX_LONG THEN
@@ -805,6 +841,7 @@ FN XrParseMovLoad (
             TOKEN_RIGHTSHIFT, // operator
             elem2^.Body.Xr.ImmExpr, // left
             2, // constant
+            EVAL_ERROR, // warnlevel
         )
     END
 END
@@ -872,18 +909,7 @@ FN XrParseMovStore (
 
                     // Collect the shift amount.
 
-                    shiftamt := AsmParseAtom ()
-
-                    dumpster : ^VOID
-
-                    IF NOT AsmEvaluateNode (
-                        shiftamt, // node
-                        OUT elem^.Body.Xr.ShiftAmount, // value
-                        OUT dumpster, // refsymbol
-                    ) THEN
-                        LexTokenError ( &shiftamt^.Token,
-                            "Incalculable expression", 0, 0, 0 )
-                    END
+                    elem^.Body.Xr.ShiftAmount = XrCollectShiftAmount ()
                 END
 
                 // Set the opcode.
@@ -908,6 +934,7 @@ FN XrParseMovStore (
                         TOKEN_RIGHTSHIFT, // operator
                         elem^.Body.Xr.ImmExpr, // left
                         1, // constant
+                        EVAL_ERROR, // warnlevel
                     )
 
                 ELSEIF sizetok^.Subtype == XR_AUX_LONG THEN
@@ -915,6 +942,7 @@ FN XrParseMovStore (
                         TOKEN_RIGHTSHIFT, // operator
                         elem^.Body.Xr.ImmExpr, // left
                         2, // constant
+                        EVAL_ERROR, // warnlevel
                     )
                 END
             END
@@ -956,14 +984,25 @@ FN XrParseMovStore (
 
                 dumpster : ^VOID
 
+                val : UWORD
+
                 IF NOT AsmEvaluateNode (
                     shortimm, // node
-                    OUT elem^.Body.Xr.RegB, // value
+                    OUT val, // value
                     OUT dumpster, // refsymbol
                 ) THEN
                     LexTokenError ( &shortimm^.Token,
                         "Incalculable expression", 0, 0, 0 )
                 END
+
+                val &= 0xFFFFFFFF
+
+                IF val > 15 AND val < 0xFFFFFFF0 THEN
+                    LexTokenError ( &shortimm^.Token,
+                        "Short imm must be in range of -16 to 15", 0, 0, 0 )
+                END
+
+                elem^.Body.Xr.RegB = val
 
                 elem^.Body.Xr.Opcode = XrImmStoreImmOpcode[sizetok^.Subtype]
                 elem^.Body.Xr.RegA = basereg
@@ -1038,14 +1077,25 @@ FN XrParseMovStore (
 
         dumpster : ^VOID
 
+        val : UWORD
+
         IF NOT AsmEvaluateNode (
             shortimm, // node
-            OUT elem2^.Body.Xr.RegB, // value
+            OUT val, // value
             OUT dumpster, // refsymbol
         ) THEN
             LexTokenError ( &shortimm^.Token,
                 "Incalculable expression", 0, 0, 0 )
         END
+
+        val &= 0xFFFFFFFF
+
+        IF val > 15 AND val < 0xFFFFFFF0 THEN
+            LexTokenError ( &shortimm^.Token,
+                "Short imm must be in range of -16 to 15", 0, 0, 0 )
+        END
+
+        elem2^.Body.Xr.RegB = val
 
         elem2^.Body.Xr.Opcode = XrImmStoreImmOpcode[sizetok^.Subtype]
 
@@ -1093,6 +1143,7 @@ FN XrParseMovStore (
         TOKEN_RIGHTSHIFT, // operator
         immexpr, // left
         16, // constant
+        EVAL_NO_WARNING, // warnlevel
     )
 
     elem^.Body.Xr.Opcode = 0x04 // LUI
@@ -1107,6 +1158,7 @@ FN XrParseMovStore (
         TOKEN_BITAND, // operator
         immexpr, // left
         0xFFFF, // constant
+        EVAL_NO_WARNING, // warnlevel
     )
 
     // Set a right shift according to the size type.
@@ -1123,6 +1175,7 @@ FN XrParseMovStore (
             TOKEN_RIGHTSHIFT, // operator
             elem2^.Body.Xr.ImmExpr, // left
             1, // constant
+            EVAL_ERROR, // warnlevel
         )
 
     ELSEIF sizetok^.Subtype == XR_AUX_LONG THEN
@@ -1132,6 +1185,7 @@ FN XrParseMovStore (
             TOKEN_RIGHTSHIFT, // operator
             elem2^.Body.Xr.ImmExpr, // left
             2, // constant
+            EVAL_ERROR, // warnlevel
         )
     END
 END
@@ -1268,18 +1322,7 @@ FN (XrInstructionMnemonicF) XrParseRegFormat (
 
         // Now consume the shift amount.
 
-        shiftamt := AsmParseAtom ()
-
-        dumpster : ^VOID
-
-        IF NOT AsmEvaluateNode (
-            shiftamt, // node
-            OUT elem^.Body.Xr.ShiftAmount, // value
-            OUT dumpster, // refsymbol
-        ) THEN
-            LexTokenError ( &shiftamt^.Token,
-                "Incalculable expression", 0, 0, 0 )
-        END
+        elem^.Body.Xr.ShiftAmount = XrCollectShiftAmount ()
     END
 
     RETURN elem
@@ -1430,14 +1473,21 @@ FN (XrInstructionMnemonicF) XrParseShiftImm (
 
     dumpster : ^VOID
 
+    val : UWORD
+
     IF NOT AsmEvaluateNode (
         shiftamt, // node
-        OUT elem^.Body.Xr.ShiftAmount, // value
+        OUT val, // value
         OUT dumpster, // refsymbol
     ) THEN
-        LexTokenError ( &shiftamt^.Token,
-            "Incalculable expression", 0, 0, 0 )
+        LexTokenError ( &shiftamt^.Token, "Incalculable expression", 0, 0, 0 )
     END
+
+    IF val > 31 THEN
+        LexTokenError ( &shiftamt^.Token, "Shift amount must be 0-31", 0, 0, 0 )
+    END
+
+    elem^.Body.Xr.ShiftAmount = val
 
     RETURN elem
 END
@@ -1693,7 +1743,14 @@ FN (XrInstructionMnemonicF) XrParseLi (
 
     AsmConsumeComma ()
 
-    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
+    immexpr := AsmParseAtom ()
+
+    elem^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
+        TOKEN_BITAND, // operator
+        immexpr, // left
+        0xFFFF, // constant
+        EVAL_ERROR, // warnlevel
+    )
 END
 
 FN (XrInstructionMnemonicF) XrParseLa (
@@ -1739,6 +1796,7 @@ FN (XrInstructionMnemonicF) XrParseLa (
         TOKEN_RIGHTSHIFT, // operator
         immexpr, // left
         16, // constant
+        EVAL_NO_WARNING, // warnlevel
     )
 
     // Create the ORI instruction.
@@ -1757,6 +1815,7 @@ FN (XrInstructionMnemonicF) XrParseLa (
         TOKEN_BITAND, // operator
         immexpr, // left
         0xFFFF, // constant
+        EVAL_NO_WARNING, // warnlevel
     )
 END
 
