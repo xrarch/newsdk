@@ -26,6 +26,8 @@ FNPTR AsmTargetParseF (
 
 FNPTR AsmTargetEncodeF (
     IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
 )
 
 FNPTR AsmTargetKeywordsF ()
@@ -39,15 +41,6 @@ STRUCT AsmTargetInfoRecord
     KeywordsFunc : AsmTargetKeywordsF,
     ConstantMask : UWORD,
     PointerSize : UWORD,
-END
-
-EXTERN AsmEncoderInfo : ^AsmEncoderInfoRecord
-
-FNPTR AsmEncoderEntryF ()
-
-STRUCT AsmEncoderInfoRecord
-    Name : ^UBYTE,
-    EntryFunc : AsmEncoderEntryF,
 END
 
 // fileblock stuff

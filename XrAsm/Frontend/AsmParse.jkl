@@ -743,9 +743,14 @@ FN (AsmDirectiveF) AsmParseSection (
         // Initialize the section structure.
 
         TlInitializeList ( &section^.ElementListHead )
+        TlInitializeList ( &section^.RelocationListHead )
+
+        section^.Name = symbol^.Name
 
         section^.FileOffset = 0
         section^.MemoryOffset = 0
+
+        section^.DataBuffer = NULLPTR
 
         TlInsertAtTailList (
             &AsmSectionListHead, // head

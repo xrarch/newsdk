@@ -48,11 +48,15 @@ STRUCT AsmElement
 END
 
 STRUCT AsmSection
+    Name : ^UBYTE,
+
     SectionListEntry : TlListEntry,
 
     ElementListHead : TlListEntry,
 
     RelocationListHead : TlListEntry,
+
+    DataBuffer : ^UBYTE,
 
     // Current offsets. File offset increases monotonically and reflects the
     // placement of the data within the file. Memory offset can be set by .org
@@ -134,6 +138,8 @@ EXTERN FN AsmCreateOperationLeftConstant (
 EXTERN FN AsmParseAtom () : ^AsmExpressionNode
 
 EXTERN AsmCurrentSection : ^AsmSection
+
+EXTERN AsmSectionListHead : TlListEntry
 
 #MACRO AsmAdvanceSection ( bytes ) [
     AsmCurrentSection^.FileOffset += (bytes)

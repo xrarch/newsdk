@@ -4,9 +4,110 @@
 
 #INCLUDE "<inc>/Asm.hjk"
 
+FNPTR AsmDataEncodeF (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+AsmDataEncode : AsmDataEncodeF[TOKEN_SUBTYPE_MAX] = {
+
+}
+
+FN AsmIsSectionBss (
+    IN section : ^AsmSection,
+) : UWORD
+
+    // We tell this by if the final 3 characters of the name are b, s, s.
+
+    len := TlMeasureString ( section^.Name )
+
+    IF len < 3 THEN
+        RETURN FALSE
+    END
+
+    IF section^.Name[len - 3] == 'b' AND
+        section^.Name[len - 2] == 's' AND
+        section^.Name[len - 1] == 's' THEN
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
+FN AsmBuildDataForSection (
+    IN section : ^AsmSection,
+)
+
+    // Check if this is a bss section.
+    // We tell this by if the final 3 characters of the name are b, s, s.
+
+    IF AsmIsSectionBss ( section ) THEN
+        // Don't bother, there are no contents.
+
+        LEAVE
+    END
+
+    // Allocate the buffer.
+
+    status := TlBumpAlloc (
+        section^.FileOffset, // bytes
+        OUT section^.DataBuffer, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate section buffer", 0, 0, 0 )
+    END
+
+    buf := section^.DataBuffer
+
+    // Walk the element chain.
+
+    head := &section^.ElementListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        elem := CONTAINEROF listentry TO AsmElement.Entry
+
+        // Dispatch based on the token's subtype to figure out how to encode
+        // this element.
+
+        IF elem^.ErrorToken.Type == TOKEN_DIRECTIVE THEN
+            AsmDataEncode[elem^.ErrorToken.Subtype] (
+                elem, // element
+                section, // section
+                &buf[elem^.FileOffset], // dataptr
+            )
+
+        ELSEIF elem^.ErrorToken.Type == TOKEN_INSTRUCTION THEN
+            // Call the target code to encode it.
+
+            AsmTargetInfo^.EncodeFunc (
+                elem, // element
+                section, // section
+                &buf[elem^.FileOffset], // dataptr
+            )
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
 FN AsmBuildData ()
 
     // We basically want to iterate each section. For each section, we create a
     // buffer to contain its binary data (unless it's a bss section). Then we
     // walk the element chain and encode each element into the data buffer.
+
+    head := &AsmSectionListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+        AsmBuildDataForSection ( section )
+
+        listentry = listentry^.Next
+    END
 END
