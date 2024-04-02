@@ -819,6 +819,58 @@ FN AsmParseExpression (
     RETURN atomnode
 END
 
+FN AsmFillSectionFlags (
+    IN section : ^AsmSection,
+)
+
+    // Deduce the section flags from the name of the section.
+    // This might be a little goofy but it's fine!
+
+    // Start by setting the flags to MAP since we only generate sections that
+    // contain data.
+
+    section^.SectionFlags = XLO_SECTION_MAP
+
+    len := TlMeasureString ( section^.Name )
+
+    // Check if the name ends with B, S, S.
+
+    IF len < 3 THEN
+        // It can't.
+
+        LEAVE
+    END
+
+    IF section^.Name[len - 3] == 'b' AND
+        section^.Name[len - 2] == 's' AND
+        section^.Name[len - 1] == 's' THEN
+
+        // Cool. Indicate this.
+
+        section^.SectionFlags |= XLO_SECTION_ZERO
+
+        LEAVE
+    END
+
+    // Check if the name ends with T, E, X, T.
+
+    IF len < 4 THEN
+        // It can't.
+
+        LEAVE
+    END
+
+    IF section^.Name[len - 4] == 't' AND
+        section^.Name[len - 3] == 'e' AND
+        section^.Name[len - 2] == 'x' AND
+        section^.Name[len - 1] == 't' THEN
+
+        // Cool. Indicate this.
+
+        section^.SectionFlags |= XLO_SECTION_CODE
+    END
+END
+
 FNPTR AsmDirectiveF (
     IN errtoken : ^LexToken,
 )
@@ -881,6 +933,8 @@ FN (AsmDirectiveF) AsmParseSection (
             &AsmSectionListHead, // head
             &section^.SectionListEntry, // entry
         )
+
+        AsmFillSectionFlags ( section )
     END
 
     AsmCurrentSection = section
@@ -1074,7 +1128,7 @@ FN (AsmDirectiveF) AsmParseBytes (
     howmanynode := AsmParseAtom ()
 
     AsmConsumeComma ()
-    
+
     whichnode := AsmParseAtom ()
 
     howmany : UWORD

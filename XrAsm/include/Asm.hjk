@@ -23,6 +23,10 @@ ENUM AsmRelocationType : UBYTE
     XLO_RELOC_MAX,
 END
 
+#DEFINE XLO_SECTION_ZERO 1
+#DEFINE XLO_SECTION_CODE 2
+#DEFINE XLO_SECTION_MAP 4
+
 #INCLUDE "../xr17032/XrInstruction.hjk"
 
 UNION AsmElementBody
@@ -64,6 +68,8 @@ STRUCT AsmSection
 
     FileOffset : UWORD,
     MemoryOffset : UWORD,
+
+    SectionFlags : ULONG,
 END
 
 STRUCT AsmRelocation
