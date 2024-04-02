@@ -827,7 +827,7 @@ FN AsmFillSectionFlags (
     // This might be a little goofy but it's fine!
 
     // Start by setting the flags to MAP since we only generate sections that
-    // contain data.
+    // take up address space.
 
     section^.SectionFlags = XLO_SECTION_MAP
 
