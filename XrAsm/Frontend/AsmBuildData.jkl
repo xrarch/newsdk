@@ -65,6 +65,9 @@ FN AsmBuildDataForSection (
                 section, // section
                 &buf[elem^.FileOffset], // dataptr
             )
+
+        ELSE
+            TlInternalError ( "Unknown element type", elem^.ErrorToken.Type, 0, 0 )
         END
 
         listentry = listentry^.Next

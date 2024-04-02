@@ -3110,9 +3110,9 @@ FN (JklValueNumberF) XrValueNumber (
     // recompute large constants too much.
 
     // We rarely have to generate constants on XR/17032, and when we do, we'd
-    // better reuse them. Always TRUE.
+    // better reuse them.
 
-    RETURN TRUE
+    RETURN constant > 0xFFFF
 END
 
 FN (JklTargetF) XrCompile ()
