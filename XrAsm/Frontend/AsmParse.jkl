@@ -1099,12 +1099,71 @@ FN (AsmDirectiveF) AsmParseDefine (
     END
 END
 
+FN AsmParseStandardPath (
+    IN stdpath : ^TlDynamicBuffer,
+    IN fullpath : ^TlDynamicBuffer,
+    IN errtoken : ^LexToken,
+)
+
+    // XXX Stolen from XrBuildTool for XrAsm and hacked up.
+
+    // Parse a standard path string into the dynamic buffer.
+    // A standard path string has one of the following prefixes:
+    //
+    //   NONE    Relative to the current config file.
+
+    stdpathstr := stdpath^.Buffer
+
+    IF stdpathstr[0] == 0 THEN
+        LexTokenError ( errtoken, "Empty path string", 0, 0, 0 )
+    END
+
+    IF stdpathstr[0] == '/' THEN
+        LexTokenError ( errtoken,
+            "Expected a relative path, found an absolute path", 0, 0, 0 )
+    END
+
+    count := stdpath^.Count
+
+    // Must be a relative path.
+
+    TlCopyParentPath (
+        &LexCurrentStream^.FileBlock^.FilePath[0], // srcpath
+        fullpath, // destpath
+    )
+
+    IF NOT fullpath^.Count THEN
+        TlInsertDynamicBuffer (
+            fullpath, // array
+            '.', // byte
+        )
+
+        TlInsertDynamicBuffer (
+            fullpath, // array
+            '/', // byte
+        )
+
+    ELSEIF fullpath^.Buffer[fullpath^.Count - 1] != '/' THEN
+        TlInsertDynamicBuffer (
+            fullpath, // array
+            '/', // byte
+        )
+    END
+
+    TlCopyIntoDynamicBuffer (
+        fullpath, // array
+        stdpathstr, // srcbuf
+        count, // length
+    )
+END
+
 FN (AsmDirectiveF) AsmParseIncBin (
     IN errtoken : ^LexToken,
 )
 
     // Parse the INCBIN directive, which encodes a binary file directly into the
-    // current section.
+    // current section. The path is relative to the current source file's parent
+    // directory.
 
     token : LexToken
 
@@ -1121,10 +1180,35 @@ FN (AsmDirectiveF) AsmParseIncBin (
 
     string := CAST token.Payload TO ^LexInternedString
 
+    // First bump allocate a dynamic buffer to hold the full path.
+
+    fullpath : ^TlDynamicBuffer
+
+    status := TlBumpAlloc (
+        SIZEOF TlDynamicBuffer, // bytes
+        OUT fullpath, // fullpath
+    )
+
+    IF status THEN
+        LexTokenError ( &token, "Failed to allocate full path buffer", 0, 0, 0 )
+    END
+
+    TlInitializeDynamicBuffer ( fullpath )
+
+    // Now build the full path.
+
+    AsmParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        fullpath, // fullpath
+        &token, // errtoken
+    )
+
+    // Finally, stat the file and build the element.
+
     stat : TlStatRecord
 
-    status := TlStatFile (
-        string^.DynamicBuffer.Buffer, // path
+    status = TlStatFile (
+        fullpath^.Buffer, // path
         &stat, // statrecord
     )
 
@@ -1137,7 +1221,7 @@ FN (AsmDirectiveF) AsmParseIncBin (
         stat.SizeInBytes, // size
     )
 
-    elem^.Body.IncBin.Path = string^.DynamicBuffer.Buffer
+    elem^.Body.IncBin.Path = fullpath^.Buffer
     elem^.Body.IncBin.Size = stat.SizeInBytes
 END
 
