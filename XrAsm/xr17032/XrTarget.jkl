@@ -532,14 +532,7 @@ FN (XrInstructionMnemonicF) XrParseImmFormat (
 
     AsmConsumeComma ()
 
-    immexpr := AsmParseAtom ()
-
-    elem^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
-        TOKEN_BITAND, // operator
-        immexpr, // left
-        0xFFFF, // constant
-        EVAL_ERROR, // warnlevel
-    )
+    elem^.Body.Xr.ImmExpr = AsmParseAtom ()
 
     RETURN elem
 END
@@ -1972,13 +1965,66 @@ FN (XrInstructionEncodeF) XrEncodeBranch (
     XrWriteInstructionWord ( dataptr, inst )
 END
 
+FN (XrInstructionEncodeF) XrEncodeImm (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Build an IMM format instruction word.
+
+    inst : ULONG
+    inst |= instruction^.Body.Xr.Opcode
+    inst |= (instruction^.Body.Xr.RegA & 31) << 6
+    inst |= (instruction^.Body.Xr.RegB & 31) << 11
+
+    val := 0
+    refsymbol : ^LexSymbol = NULLPTR
+
+    IF instruction^.Body.Xr.ImmExpr THEN
+        AsmEvaluateNodeMustWork (
+            instruction^.Body.Xr.ImmExpr, // node
+            OUT val, // value
+            OUT refsymbol, // refsymbol
+        )
+    END
+
+    IF instruction^.RelocationType AND refsymbol THEN
+        // Add a relocation.
+
+        TlInternalError ( "TODO add relocation", 0, 0, 0 )
+    END
+
+    inst |= val << 16
+
+    XrWriteInstructionWord ( dataptr, inst )
+END
+
+FN (XrInstructionEncodeF) XrEncodeReg (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Build a REG format instruction word.
+
+    inst : ULONG
+    inst |= instruction^.Body.Xr.Opcode
+    inst |= (instruction^.Body.Xr.RegA & 31) << 6
+    inst |= (instruction^.Body.Xr.RegB & 31) << 11
+    inst |= (instruction^.Body.Xr.RegC & 31) << 16
+    inst |= instruction^.Body.Xr.ShiftAmount << 21
+    inst |= instruction^.Body.Xr.ShiftType << 26
+    inst |= instruction^.Body.Xr.FunctionCode << 28
+
+    XrWriteInstructionWord ( dataptr, inst )
+END
+
 XrInstructionEncode : XrInstructionEncodeF[XR_FORMAT_MAX] = {
     [XR_FORMAT_JUMP] = &XrEncodeJump,
     [XR_FORMAT_BRANCH] = &XrEncodeBranch,
-#IF 0
     [XR_FORMAT_IMM] = &XrEncodeImm,
     [XR_FORMAT_REG] = &XrEncodeReg,
-#END 0
 }
 
 FN (AsmTargetEncodeF) XrEncodeInstruction (
