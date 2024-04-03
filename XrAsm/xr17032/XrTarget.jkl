@@ -12,10 +12,18 @@ EXTERN FN (AsmTargetParseF) XrParseInstruction (
     IN token : ^LexToken,
 )
 
+// FORWARD
+EXTERN FN (AsmTargetEncodeF) XrEncodeInstruction (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
 PUBLIC XrTargetInfo : AsmTargetInfoRecord = {
     [Name] = "xr17032",
     [KeywordsFunc] = &XrRegisterKeywords,
     [ParseFunc] = &XrParseInstruction,
+    [EncodeFunc] = &XrEncodeInstruction,
     [ConstantMask] = 0xFFFFFFFF,
     [PointerSize] = 4,
 }
@@ -401,14 +409,11 @@ FN XrCollectShiftAmount () : UWORD
 
     val : UWORD
 
-    IF NOT AsmEvaluateNode (
+    AsmEvaluateNodeMustWork (
         shiftamt, // node
         OUT val, // value
         OUT dumpster, // refsymbol
-    ) THEN
-        LexTokenError ( &shiftamt^.Token,
-            "Incalculable expression", 0, 0, 0 )
-    END
+    )
 
     IF val > 31 THEN
         LexTokenError ( &shiftamt^.Token, "Shift amount must be 0-31", 0, 0, 0 )
@@ -986,14 +991,11 @@ FN XrParseMovStore (
 
                 val : UWORD
 
-                IF NOT AsmEvaluateNode (
+                AsmEvaluateNodeMustWork (
                     shortimm, // node
                     OUT val, // value
                     OUT dumpster, // refsymbol
-                ) THEN
-                    LexTokenError ( &shortimm^.Token,
-                        "Incalculable expression", 0, 0, 0 )
-                END
+                )
 
                 val &= 0xFFFFFFFF
 
@@ -1079,14 +1081,11 @@ FN XrParseMovStore (
 
         val : UWORD
 
-        IF NOT AsmEvaluateNode (
+        AsmEvaluateNodeMustWork (
             shortimm, // node
             OUT val, // value
             OUT dumpster, // refsymbol
-        ) THEN
-            LexTokenError ( &shortimm^.Token,
-                "Incalculable expression", 0, 0, 0 )
-        END
+        )
 
         val &= 0xFFFFFFFF
 
@@ -1469,25 +1468,7 @@ FN (XrInstructionMnemonicF) XrParseShiftImm (
 
     // Now consume the shift amount.
 
-    shiftamt := AsmParseAtom ()
-
-    dumpster : ^VOID
-
-    val : UWORD
-
-    IF NOT AsmEvaluateNode (
-        shiftamt, // node
-        OUT val, // value
-        OUT dumpster, // refsymbol
-    ) THEN
-        LexTokenError ( &shiftamt^.Token, "Incalculable expression", 0, 0, 0 )
-    END
-
-    IF val > 31 THEN
-        LexTokenError ( &shiftamt^.Token, "Shift amount must be 0-31", 0, 0, 0 )
-    END
-
-    elem^.Body.Xr.ShiftAmount = val
+    elem^.Body.Xr.ShiftAmount = XrCollectShiftAmount ()
 
     RETURN elem
 END
@@ -1898,4 +1879,119 @@ FN (AsmTargetParseF) XrParseInstruction (
     // instruction mnemonic.
 
     XrInstructionMnemonics[token^.Subtype] ( token )
+END
+
+FNPTR XrInstructionEncodeF (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+#MACRO XrWriteInstructionWord ( dataptr, inst ) [
+    dataptr[0] = inst
+    dataptr[1] = inst >> 8
+    dataptr[2] = inst >> 16
+    dataptr[3] = inst >> 24
+]
+
+FN (XrInstructionEncodeF) XrEncodeJump (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Build a JUMP format instruction word.
+
+    inst : ULONG
+    inst |= instruction^.Body.Xr.Opcode
+
+    val : UWORD
+    refsymbol : ^LexSymbol
+
+    AsmEvaluateNodeMustWork (
+        instruction^.Body.Xr.ImmExpr, // node
+        OUT val, // value
+        OUT refsymbol, // refsymbol
+    )
+
+    IF instruction^.RelocationType AND refsymbol THEN
+        // Add a relocation.
+
+        TlInternalError ( "TODO add relocation", 0, 0, 0 )
+    END
+
+    inst |= val << 3
+
+    XrWriteInstructionWord ( dataptr, inst )
+END
+
+FN (XrInstructionEncodeF) XrEncodeBranch (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Build a BRANCH format instruction word.
+
+    inst : ULONG
+    inst |= instruction^.Body.Xr.Opcode
+    inst |= (instruction^.Body.Xr.RegA & 31) << 6
+
+    val : UWORD
+    refsymbol : ^LexSymbol
+
+    AsmEvaluateNodeMustWork (
+        instruction^.Body.Xr.ImmExpr, // node
+        OUT val, // value
+        OUT refsymbol, // refsymbol
+    )
+
+    IF refsymbol AND
+        refsymbol^.Section != section THEN
+
+        LexTokenError ( &instruction^.ErrorToken,
+            "Can't relative branch to another section", 0, 0, 0 )
+    END
+
+    // Turn the value into a relative branch offset by subtracting the offset to
+    // this instruction.
+
+    val -= instruction^.MemoryOffset
+
+    // Check alignment.
+
+    IF val & 3 THEN
+        LexTokenError ( &instruction^.ErrorToken,
+            "Unaligned branch offset", 0, 0, 0 )
+    END
+
+    val >>= 2
+
+    inst |= val << 11
+
+    XrWriteInstructionWord ( dataptr, inst )
+END
+
+XrInstructionEncode : XrInstructionEncodeF[XR_FORMAT_MAX] = {
+    [XR_FORMAT_JUMP] = &XrEncodeJump,
+    [XR_FORMAT_BRANCH] = &XrEncodeBranch,
+#IF 0
+    [XR_FORMAT_IMM] = &XrEncodeImm,
+    [XR_FORMAT_REG] = &XrEncodeReg,
+#END 0
+}
+
+FN (AsmTargetEncodeF) XrEncodeInstruction (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Encode the instruction.
+
+    XrInstructionEncode[instruction^.Body.Xr.FormatType] (
+        instruction, // instruction
+        section, // section
+        dataptr, // dataptr
+    )
 END

@@ -270,15 +270,15 @@ FN AsmCheckSymbolCompatibility (
     // Neither may be extern. If they aren't, they must also be in the same
     // section.
 
+    IF NOT sym1 OR NOT sym2 THEN
+        LEAVE
+    END
+
     IF sym1^.Visibility == LABEL_EXTERN OR
         sym2^.Visibility == LABEL_EXTERN THEN
 
         LexTokenError ( errtoken, "Can't operate on extern labels", 0, 0, 0 )
     END 
-
-    IF NOT sym1^.Section OR NOT sym2^.Section THEN
-        LEAVE
-    END
 
     IF sym1^.Section != sym2^.Section THEN
         LexTokenError ( errtoken, "Labels have incompatible sections", 0, 0, 0 )
@@ -347,9 +347,7 @@ FN (AsmEvalF) AsmEvalRightShift (
     IF node^.WarnLevel != EVAL_NO_WARNING THEN
         // Check for lost bits.
 
-        mask := -1
-        mask <<= right
-        mask = ~mask
+        mask : UWORD = -1 << right
 
         IF left & mask != left THEN
             IF node^.WarnLevel == EVAL_ERROR THEN
@@ -554,6 +552,12 @@ FN AsmEvaluateNode (
         value = node^.Body.Label^.MemoryOffset
         refsymbol = node^.Body.Label
 
+        IF refsymbol^.Visibility != LABEL_EXTERN AND
+            NOT refsymbol^.Section THEN
+
+            refsymbol = NULLPTR
+        END
+
         RETURN TRUE
     END
 
@@ -565,6 +569,21 @@ FN AsmEvaluateNode (
     END
 
     TlInternalError ( "Weird node type", node^.Type, 0, 0 )
+END
+
+FN AsmEvaluateNodeMustWork (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+    OUT refsymbol : ^LexSymbol,
+)
+
+    IF NOT AsmEvaluateNode (
+        node, // node
+        OUT value, // value
+        OUT refsymbol, // refsymbol
+    ) THEN
+        LexTokenError ( &node^.Token, "Incalculable expression", 0, 0, 0 )
+    END
 END
 
 // FORWARD
@@ -1184,6 +1203,14 @@ FN (AsmDirectiveF) AsmParseGlobal (
         LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
     END
 
+    IF symbol^.Visibility != LABEL_LOCAL THEN
+        LexTokenError ( &token, "Expected a local label", 0, 0, 0 )
+    END
+
+    IF NOT symbol^.Section THEN
+        LexTokenError ( &token, "Expected a real label", 0, 0, 0 )
+    END
+
     symbol^.Visibility = LABEL_GLOBAL
 END
 
@@ -1207,6 +1234,14 @@ FN (AsmDirectiveF) AsmParseExport (
 
     IF symbol^.Type != SYM_LABEL THEN
         LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+    END
+
+    IF symbol^.Visibility != LABEL_LOCAL THEN
+        LexTokenError ( &token, "Expected a local label", 0, 0, 0 )
+    END
+
+    IF NOT symbol^.Section THEN
+        LexTokenError ( &token, "Expected a real label", 0, 0, 0 )
     END
 
     symbol^.Visibility = LABEL_EXPORT

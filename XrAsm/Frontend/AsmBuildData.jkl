@@ -10,8 +10,193 @@ FNPTR AsmDataEncodeF (
     IN dataptr : ^UBYTE,
 )
 
-AsmDataEncode : AsmDataEncodeF[TOKEN_SUBTYPE_MAX] = {
+FN (AsmDataEncodeF) AsmEncodeDb (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
 
+    val : UWORD
+    dumpster : ^VOID
+
+    AsmEvaluateNodeMustWork (
+        element^.Body.Data, // node
+        OUT val, // value
+        OUT dumpster, // refsymbol
+    )
+
+    dataptr[0] = val
+END
+
+FN (AsmDataEncodeF) AsmEncodeDi (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    val : UWORD
+    dumpster : ^VOID
+
+    AsmEvaluateNodeMustWork (
+        element^.Body.Data, // node
+        OUT val, // value
+        OUT dumpster, // refsymbol
+    )
+
+    dataptr[0] = val
+    dataptr[1] = val >> 8
+END
+
+FN (AsmDataEncodeF) AsmEncodeDl (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    val : UWORD
+    dumpster : ^VOID
+
+    AsmEvaluateNodeMustWork (
+        element^.Body.Data, // node
+        OUT val, // value
+        OUT dumpster, // refsymbol
+    )
+
+    dataptr[0] = val
+    dataptr[1] = val >> 8
+    dataptr[2] = val >> 16
+    dataptr[3] = val >> 24
+END
+
+FN (AsmDataEncodeF) AsmEncodeDq (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+#IF ( == BITS 64 )
+    val : UWORD
+    refsymbol : ^LexSymbol
+
+    AsmEvaluateNodeMustWork (
+        element^.Body.Data, // node
+        OUT val, // value
+        OUT refsymbol, // refsymbol
+    )
+
+    dataptr[0] = val
+    dataptr[1] = val >> 8
+    dataptr[2] = val >> 16
+    dataptr[3] = val >> 24
+    dataptr[4] = val >> 32
+    dataptr[5] = val >> 40
+    dataptr[6] = val >> 48
+    dataptr[7] = val >> 56
+
+    IF element^.RelocationType AND refsymbol THEN
+        // Add a relocation.
+
+        TlInternalError ( "TODO add relocation", 0, 0, 0 )
+    END
+
+#ELSE
+    LexTokenError ( &element^.ErrorToken,
+        "DQ only supported on 64 bit builds", 0, 0, 0 )
+#END
+
+END
+
+FN (AsmDataEncodeF) AsmEncodeDp (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    IF AsmTargetInfo^.PointerSize == 8 THEN
+        AsmEncodeDq (
+            element, // element
+            section, // section
+            dataptr, // dataptr
+        )
+
+    ELSE
+        AsmEncodeDl (
+            element, // element
+            section, // section
+            dataptr, // dataptr
+        )
+    END
+END
+
+FN (AsmDataEncodeF) AsmEncodeIncBin (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Encode a file directly into the section data.
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        element^.Body.IncBin.Path, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        // Note that we stat'd it earlier so this shouldn't be possible.
+
+        TlInternalError ( "Failed to open incbin file", 0, 0, 0 )
+    END
+
+    // Now read the file contents directly into the buffer.
+
+    TlReadFile (
+        handle, // handle
+        element^.Body.IncBin.Size, // bytes
+        dataptr, // buffer
+    )
+
+    // Close the file.
+
+    TlClose ( handle )
+END
+
+FN (AsmDataEncodeF) AsmEncodeBytes (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    TlFillMemoryWithByte (
+        dataptr, // ptr
+        element^.Body.BytesChunk.Count, // sz
+        element^.Body.BytesChunk.Byte, // byte
+    )
+END
+
+FN (AsmDataEncodeF) AsmEncodeDs (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    TlCopyMemory (
+        dataptr, // dest
+        element^.Body.String^.Buffer, // src
+        element^.Body.String^.Count - 1, // sz
+    )
+END
+
+AsmDataEncode : AsmDataEncodeF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_DB] = &AsmEncodeDb,
+    [TOKEN_DI] = &AsmEncodeDi,
+    [TOKEN_DL] = &AsmEncodeDl,
+    [TOKEN_DQ] = &AsmEncodeDq,
+    [TOKEN_DP] = &AsmEncodeDp,
+    [TOKEN_INCBIN] = &AsmEncodeIncBin,
+    [TOKEN_BYTES] = &AsmEncodeBytes,
+    [TOKEN_DS] = &AsmEncodeDs,
 }
 
 FN AsmBuildDataForSection (

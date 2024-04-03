@@ -126,6 +126,12 @@ EXTERN FN AsmEvaluateNode (
     OUT refsymbol : ^LexSymbol,
 ) : UWORD
 
+EXTERN FN AsmEvaluateNodeMustWork (
+    IN node : ^AsmExpressionNode,
+    OUT value : UWORD,
+    OUT refsymbol : ^LexSymbol,
+)
+
 EXTERN FN AsmCreateExpressionNode (
     IN type : AsmExpressionNodeType,
     IN token : ^LexToken,

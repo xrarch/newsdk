@@ -3,6 +3,8 @@ ENUM XrInstructionFormatType : UBYTE
     XR_FORMAT_BRANCH,
     XR_FORMAT_IMM,
     XR_FORMAT_REG,
+
+    XR_FORMAT_MAX,
 END
 
 STRUCT XrInstructionBody
