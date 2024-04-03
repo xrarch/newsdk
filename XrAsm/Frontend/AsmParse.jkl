@@ -193,18 +193,22 @@ FN AsmInitializeLabel (
         END
     END
 
-    symbol^.Visibility = LABEL_LOCAL
-
     IF global THEN
         IF NOT forward THEN
             AsmLastLabel = symbol
         END
 
-        IF symbol^.Type == SYM_UNINITIALIZED THEN
+        IF symbol^.Type == SYM_UNINITIALIZED OR
+            symbol^.Visibility == LABEL_EXTERN THEN
+
             // Create a local label scope.
 
             symbol^.LocalLabelScope = LexCreateSymbolTable ( NULLPTR )
         END
+    END
+
+    IF symbol^.Visibility == LABEL_EXTERN THEN
+        symbol^.Visibility = LABEL_LOCAL
     END
 
     IF forward THEN

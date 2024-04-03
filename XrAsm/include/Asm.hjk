@@ -75,6 +75,7 @@ END
 STRUCT AsmRelocation
     Entry : TlListEntry,
 
+    Section : ^AsmSection,
     Offset : UWORD,
 
     Type : AsmRelocationType,
@@ -159,11 +160,19 @@ EXTERN FN AsmCreateOperationLeftConstant (
     IN warnlevel : AsmWarnLevel,
 ) : ^AsmExpressionNode
 
+EXTERN FN AsmAddRelocation (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN symbol : ^LexSymbol,
+)
+
 EXTERN FN AsmParseAtom () : ^AsmExpressionNode
 
 EXTERN AsmCurrentSection : ^AsmSection
 
 EXTERN AsmSectionListHead : TlListEntry
+
+EXTERN AsmExternalFixupListHead : TlListEntry
 
 #MACRO AsmAdvanceSection ( bytes ) [
     AsmCurrentSection^.FileOffset += (bytes)

@@ -1,0 +1,28 @@
+//
+// Implements an XLO (XR/SDK Linkable Object) encoder for the assembler.
+//
+
+#INCLUDE "<inc>/Asm.hjk"
+
+FN AsmEncodeFile ()
+
+    // TEMP: Iterate over the sections and dump their data directly to the file
+    //       for testing.
+
+    head := &AsmSectionListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+        IF section^.DataBuffer THEN
+            TlWriteFile (
+                FeOutputFileHandle, // handle
+                section^.FileOffset, // size
+                section^.DataBuffer, // buffer
+            )
+        END
+
+        listentry = listentry^.Next
+    END
+END

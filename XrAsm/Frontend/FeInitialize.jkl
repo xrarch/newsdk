@@ -308,6 +308,7 @@ END
 
 EXTERN FN AsmParse ()
 EXTERN FN AsmBuildData ()
+EXTERN FN AsmEncodeFile ()
 
 FN AsmAssembleProgram (
     IN argc : ULONG,
@@ -346,7 +347,7 @@ FN AsmAssembleProgram (
 
     // Phase 3: Encode the output file.
 
-    // AsmEncoderInfo^.EntryFunc ()
+    AsmEncodeFile ()
 
     // Output header dependencies to a text file, in order of when they were
     // encountered.

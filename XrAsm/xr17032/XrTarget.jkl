@@ -1895,7 +1895,7 @@ FN (XrInstructionEncodeF) XrEncodeJump (
 
     // Build a JUMP format instruction word.
 
-    inst : ULONG
+    inst : ULONG = 0
     inst |= instruction^.Body.Xr.Opcode
 
     val : UWORD
@@ -1910,7 +1910,11 @@ FN (XrInstructionEncodeF) XrEncodeJump (
     IF instruction^.RelocationType AND refsymbol THEN
         // Add a relocation.
 
-        TlInternalError ( "TODO add relocation", 0, 0, 0 )
+        AsmAddRelocation (
+            instruction, // element
+            section, // section
+            refsymbol, // symbol
+        )
     END
 
     inst |= val << 3
@@ -1926,7 +1930,7 @@ FN (XrInstructionEncodeF) XrEncodeBranch (
 
     // Build a BRANCH format instruction word.
 
-    inst : ULONG
+    inst : ULONG = 0
     inst |= instruction^.Body.Xr.Opcode
     inst |= (instruction^.Body.Xr.RegA & 31) << 6
 
@@ -1973,7 +1977,7 @@ FN (XrInstructionEncodeF) XrEncodeImm (
 
     // Build an IMM format instruction word.
 
-    inst : ULONG
+    inst : ULONG = 0
     inst |= instruction^.Body.Xr.Opcode
     inst |= (instruction^.Body.Xr.RegA & 31) << 6
     inst |= (instruction^.Body.Xr.RegB & 31) << 11
@@ -1992,7 +1996,11 @@ FN (XrInstructionEncodeF) XrEncodeImm (
     IF instruction^.RelocationType AND refsymbol THEN
         // Add a relocation.
 
-        TlInternalError ( "TODO add relocation", 0, 0, 0 )
+        AsmAddRelocation (
+            instruction, // element
+            section, // section
+            refsymbol, // symbol
+        )
     END
 
     inst |= val << 16
@@ -2008,7 +2016,7 @@ FN (XrInstructionEncodeF) XrEncodeReg (
 
     // Build a REG format instruction word.
 
-    inst : ULONG
+    inst : ULONG = 0
     inst |= instruction^.Body.Xr.Opcode
     inst |= (instruction^.Body.Xr.RegA & 31) << 6
     inst |= (instruction^.Body.Xr.RegB & 31) << 11

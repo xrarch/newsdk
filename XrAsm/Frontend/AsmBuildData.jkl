@@ -4,6 +4,53 @@
 
 #INCLUDE "<inc>/Asm.hjk"
 
+PUBLIC AsmExternalFixupListHead : TlListEntry
+
+FN AsmAddRelocation (
+    IN element : ^AsmElement,
+    IN section : ^AsmSection,
+    IN symbol : ^LexSymbol,
+)
+
+    // Add a relocation to the relevant section's relocation list, or to the
+    // "global" extern fixup list.
+
+    // Create the relocation record.
+
+    reloc : ^AsmRelocation
+
+    status := TlBumpAlloc (
+        SIZEOF AsmRelocation, // bytes
+        OUT reloc, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate relocation record", 0, 0, 0 )
+    END
+
+    reloc^.Section = section
+    reloc^.Offset = element^.FileOffset
+    reloc^.Type = element^.RelocationType
+
+    IF symbol^.Visibility == LABEL_EXTERN THEN
+        // Add to the fixup list.
+
+        TlInsertAtTailList (
+            &AsmExternalFixupListHead, // head
+            &reloc^.Entry, // entry
+        )
+
+    ELSE
+        // Add to the relocation list for the *target symbol's section*, not
+        // the section which contains the bytes that need to be fixed up.
+
+        TlInsertAtTailList (
+            &symbol^.Section^.RelocationListHead, // head
+            &reloc^.Entry, // entry
+        )
+    END
+END
+
 FNPTR AsmDataEncodeF (
     IN element : ^AsmElement,
     IN section : ^AsmSection,
@@ -54,18 +101,28 @@ FN (AsmDataEncodeF) AsmEncodeDl (
 )
 
     val : UWORD
-    dumpster : ^VOID
+    refsymbol : ^LexSymbol
 
     AsmEvaluateNodeMustWork (
         element^.Body.Data, // node
         OUT val, // value
-        OUT dumpster, // refsymbol
+        OUT refsymbol, // refsymbol
     )
 
     dataptr[0] = val
     dataptr[1] = val >> 8
     dataptr[2] = val >> 16
     dataptr[3] = val >> 24
+
+    IF element^.RelocationType AND refsymbol THEN
+        // Add a relocation.
+
+        AsmAddRelocation (
+            element, // element
+            section, // section
+            refsymbol, // symbol
+        )
+    END
 END
 
 FN (AsmDataEncodeF) AsmEncodeDq (
@@ -96,7 +153,11 @@ FN (AsmDataEncodeF) AsmEncodeDq (
     IF element^.RelocationType AND refsymbol THEN
         // Add a relocation.
 
-        TlInternalError ( "TODO add relocation", 0, 0, 0 )
+        AsmAddRelocation (
+            element, // element
+            section, // section
+            refsymbol, // symbol
+        )
     END
 
 #ELSE
@@ -264,6 +325,8 @@ FN AsmBuildData ()
     // We basically want to iterate each section. For each section, we create a
     // buffer to contain its binary data (unless it's a bss section). Then we
     // walk the element chain and encode each element into the data buffer.
+
+    TlInitializeList ( &AsmExternalFixupListHead )
 
     head := &AsmSectionListHead
     listentry := head^.Next
