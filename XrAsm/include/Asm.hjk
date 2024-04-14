@@ -21,11 +21,15 @@ ENUM AsmRelocationType : UBYTE
     XLO_RELOC_XR17032_FAR_LONG = 5,
 END
 
+#DEFINE XLO_ARCHITECTURE_XR17032 1
+
 #DEFINE XLO_SECTION_ZERO 1
 #DEFINE XLO_SECTION_CODE 2
 #DEFINE XLO_SECTION_MAP 4
 
 #DEFINE XLO_FILE_FRAGMENT 1
+
+#DEFINE XLO_MAGIC_NUMBER 0x6174737F
 
 STRUCT PACKED XloHeader
     Magic : ULONG,
@@ -131,6 +135,7 @@ STRUCT AsmSection
     ElementListHead : TlListEntry,
 
     RelocationListHead : TlListEntry,
+    RelocationCount : UWORD,
 
     DataBuffer : ^UBYTE,
 
@@ -243,8 +248,16 @@ EXTERN FN AsmParseAtom () : ^AsmExpressionNode
 EXTERN AsmCurrentSection : ^AsmSection
 
 EXTERN AsmSectionListHead : TlListEntry
+EXTERN AsmSectionCount : UWORD
+
+EXTERN AsmSymbolListHead : TlListEntry
+EXTERN AsmSymbolCount : UWORD
+
+EXTERN AsmExternListHead : TlListEntry
+EXTERN AsmExternCount : UWORD
 
 EXTERN AsmExternalFixupListHead : TlListEntry
+EXTERN AsmExternalFixupCount : UWORD
 
 #MACRO AsmAdvanceSection ( bytes ) [
     AsmCurrentSection^.FileOffset += (bytes)

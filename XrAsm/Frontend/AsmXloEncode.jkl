@@ -4,25 +4,44 @@
 
 #INCLUDE "<inc>/Asm.hjk"
 
+AsmStringTable : TlDynamicBuffer
+
+FN AsmAddString (
+    IN str : ^UBYTE,
+) : UWORD
+
+    // Add the string to the string table and return the offset.
+
+    offset := AsmStringTable.Count
+
+    TlCopyIntoDynamicBuffer (
+        &AsmStringTable, // array
+        str, // srcbuf
+        TlMeasureString ( str ) + 1, // length (plus null terminator)
+    )
+
+    RETURN offset
+END
+
 FN AsmEncodeFile ()
 
-    // TEMP: Iterate over the sections and dump their data directly to the file
-    //       for testing.
+    // Encode the assembled data into an XLO format object file.
 
-    head := &AsmSectionListHead
-    listentry := head^.Next
+    // First initialize the dynamic buffers we'll use for the various parts of
+    // the object file.
 
-    WHILE listentry != head DO
-        section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+    TlInitializeDynamicBuffer ( &AsmStringTable )
 
-        IF section^.DataBuffer THEN
-            TlWriteFile (
-                FeOutputFileHandle, // handle
-                section^.FileOffset, // size
-                section^.DataBuffer, // buffer
-            )
-        END
+    // Now initialize easy bits of the object header.
 
-        listentry = listentry^.Next
-    END
+    header : XloHeaderExtended
+
+    header.Hdr.Magic = XLO_MAGIC_NUMBER
+    header.Hdr.TargetArchitecture = AsmTargetInfo^.ArchitectureCode
+    header.Hdr.ImportTableOffset = 0xABABABAB
+    header.Hdr.Flags = XLO_FILE_FRAGMENT
+    header.Hdr.Timestamp = TlCurrentEpochTime ()
+    header.Hdr.ImportCount = 0
+
+    // 
 END

@@ -7,6 +7,13 @@
 PUBLIC AsmCurrentSection : ^AsmSection = NULLPTR
 
 PUBLIC AsmSectionListHead : TlListEntry
+PUBLIC AsmSectionCount := 0
+
+PUBLIC AsmSymbolListHead : TlListEntry
+PUBLIC AsmSymbolCount := 0
+
+PUBLIC AsmExternListHead : TlListEntry
+PUBLIC AsmExternCount := 0
 
 AsmLastLabel : ^LexSymbol = NULLPTR
 
@@ -637,6 +644,21 @@ FN AsmParseAtom () : ^AsmExpressionNode
             symbol^.Type != SYM_FORWARD_LABEL THEN
 
             LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+
+        ELSEIF symbol^.Visibility == LABEL_EXTERN AND
+            NOT symbol^.Used THEN
+
+            // This is the first usage of this extern symbol, so add it to the
+            // extern list.
+
+            symbol^.Used = TRUE
+
+            TlInsertAtTailList (
+                &AsmExternListHead, // head
+                &symbol^.SymbolListEntry, // entry
+            )
+
+            AsmExternCount += 1
         END
 
         atomnode = AsmCreateExpressionNode (
@@ -947,6 +969,8 @@ FN (AsmDirectiveF) AsmParseSection (
 
         section^.Name = symbol^.Name
 
+        section^.RelocationCount = 0
+
         section^.FileOffset = 0
         section^.MemoryOffset = 0
 
@@ -958,6 +982,8 @@ FN (AsmDirectiveF) AsmParseSection (
         )
 
         AsmFillSectionFlags ( section )
+
+        AsmSectionCount += 1
     END
 
     AsmCurrentSection = section
@@ -1300,6 +1326,15 @@ FN (AsmDirectiveF) AsmParseGlobal (
     END
 
     symbol^.Visibility = LABEL_GLOBAL
+
+    // Add to the symbol list.
+
+    TlInsertAtTailList (
+        &AsmSymbolListHead, // head
+        &symbol^.SymbolListEntry, // entry
+    )
+
+    AsmSymbolCount += 1
 END
 
 FN (AsmDirectiveF) AsmParseExport (
@@ -1333,6 +1368,15 @@ FN (AsmDirectiveF) AsmParseExport (
     END
 
     symbol^.Visibility = LABEL_EXPORT
+
+    // Add to the symbol list.
+
+    TlInsertAtTailList (
+        &AsmSymbolListHead, // head
+        &symbol^.SymbolListEntry, // entry
+    )
+
+    AsmSymbolCount += 1
 END
 
 FN (AsmDirectiveF) AsmParseExtern (
@@ -1577,6 +1621,8 @@ FN AsmParse ()
     // Instructions: TOKEN_INSTRUCTION [arguments ...]
 
     TlInitializeList ( &AsmSectionListHead )
+    TlInitializeList ( &AsmSymbolListHead )
+    TlInitializeList ( &AsmExternListHead )
 
     WHILE AsmParseElement () DO
         // Keep going...

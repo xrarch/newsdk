@@ -883,6 +883,7 @@ FN LexNextToken (
         symbol^.LocalLabelScope = NULLPTR
         symbol^.FileOffset = 0
         symbol^.MemoryOffset = 0
+        symbol^.Used = FALSE
 
         TlCopyMemory (
             symbol^.Name, // dest

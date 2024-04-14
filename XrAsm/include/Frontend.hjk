@@ -41,6 +41,7 @@ STRUCT AsmTargetInfoRecord
     KeywordsFunc : AsmTargetKeywordsF,
     ConstantMask : UWORD,
     PointerSize : UWORD,
+    ArchitectureCode : UWORD,
 END
 
 // fileblock stuff

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <time.h>
 
 void TlPrintString (uint8_t *str) {
     fprintf(stderr, "%s", str);
@@ -178,4 +179,8 @@ void TlSetTerminationHandler (uint64_t handler) {
 
 uint64_t TlSystem (uint8_t *cmdline) {
     return system((char *)cmdline);
+}
+
+uint64_t TlCurrentEpochTime () {
+    return (uint64_t)time(0);
 }

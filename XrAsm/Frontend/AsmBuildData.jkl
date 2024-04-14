@@ -5,6 +5,7 @@
 #INCLUDE "<inc>/Asm.hjk"
 
 PUBLIC AsmExternalFixupListHead : TlListEntry
+PUBLIC AsmExternalFixupCount := 0
 
 FN AsmAddRelocation (
     IN element : ^AsmElement,
@@ -40,6 +41,8 @@ FN AsmAddRelocation (
             &reloc^.Entry, // entry
         )
 
+        AsmExternalFixupCount += 1
+
     ELSE
         // Add to the relocation list for the *target symbol's section*, not
         // the section which contains the bytes that need to be fixed up.
@@ -48,6 +51,8 @@ FN AsmAddRelocation (
             &symbol^.Section^.RelocationListHead, // head
             &reloc^.Entry, // entry
         )
+
+        symbol^.Section^.RelocationCount += 1
     END
 END
 

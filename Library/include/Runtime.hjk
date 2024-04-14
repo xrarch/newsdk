@@ -517,3 +517,9 @@ EXTERN FN TlReleaseSemaphore (
 EXTERN FN TlSystem (
     IN cmdline : ^UBYTE,
 ) : UWORD
+
+
+// time stuff
+
+
+EXTERN FN TlCurrentEpochTime () : UWORD

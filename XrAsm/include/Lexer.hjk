@@ -164,6 +164,8 @@ STRUCT LexSymbol
 
     // Parser private stuff in a symbol.
 
+    SymbolListEntry : TlListEntry,
+
     LocalLabelScope : ^TlSymbolTable,
 
     Section : ^AsmSection,
@@ -173,6 +175,7 @@ STRUCT LexSymbol
 
     Type : LexSymbolType,
     Visibility : AsmLabelVisibility,
+    Used : UBYTE,
 END
 
 STRUCT LexMacro
