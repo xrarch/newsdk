@@ -1,5 +1,7 @@
 #INCLUDE "<inc>/Lexer.hjk"
 
+#INCLUDE "../xr17032/XrInstruction.hjk"
+
 STRUCT AsmIncBinBody
     Path : ^UBYTE,
     Size : UWORD,
@@ -102,8 +104,6 @@ STRUCT PACKED XloRelocEntry
     Type : UBYTE,
     SectionIndex : UBYTE,
 END
-
-#INCLUDE "../xr17032/XrInstruction.hjk"
 
 UNION AsmElementBody
     Data : ^AsmExpressionNode,
