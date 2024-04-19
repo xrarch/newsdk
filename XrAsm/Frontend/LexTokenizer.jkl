@@ -38,7 +38,6 @@ PUBLIC LexCharTreatment : LexCharBehavior[256] = {
     ['%'] = CHAR_COALESCE,
     ['.'] = CHAR_COALESCE,
     ['@'] = CHAR_COALESCE,
-    ['$'] = CHAR_COALESCE,
 
     // Since CHAR_NORMAL is the first field in the enum, it is guaranteed to
     // be zero in value, so we don't have to explicitly set all the other
