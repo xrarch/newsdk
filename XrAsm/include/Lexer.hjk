@@ -173,6 +173,8 @@ STRUCT LexSymbol
     FileOffset : UWORD,
     MemoryOffset : UWORD,
 
+    Index : ULONG,
+
     Type : LexSymbolType,
     Visibility : AsmLabelVisibility,
     Used : UBYTE,

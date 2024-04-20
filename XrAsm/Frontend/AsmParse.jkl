@@ -651,7 +651,16 @@ FN AsmParseAtom () : ^AsmExpressionNode
             // This is the first usage of this extern symbol, so add it to the
             // extern list.
 
+            IF AsmExternCount == 65536 THEN
+                // N.B. This maximum is due to the ExternCount field of the XLO
+                //      header being 16 bits wide.
+
+                LexTokenError ( &token,
+                    "Extern count exceeded maximum (65536)", 0, 0, 0 )
+            END
+
             symbol^.Used = TRUE
+            symbol^.Index = AsmExternCount
 
             TlInsertAtTailList (
                 &AsmExternListHead, // head
@@ -975,6 +984,16 @@ FN (AsmDirectiveF) AsmParseSection (
         section^.MemoryOffset = 0
 
         section^.DataBuffer = NULLPTR
+
+        IF AsmSectionCount == 256 THEN
+            // N.B. This maximum is due to the SectionCount field of the XLO
+            //      header being 8 bits wide.
+
+            LexTokenError ( errtoken,
+                "Maximum section count (255) exceeded", 0, 0, 0 )
+        END
+
+        section^.Index = AsmSectionCount
 
         TlInsertAtTailList (
             &AsmSectionListHead, // head
@@ -1586,7 +1605,7 @@ FN AsmParseElement () : UWORD
         RETURN FALSE
 
     ELSEIF token.Type == TOKEN_NEWLINE THEN
-        // Skip. Newline tokens are just to terminate expressions.
+        // Skip. Newline tokens exist just to terminate expressions.
 
         RETURN TRUE
 

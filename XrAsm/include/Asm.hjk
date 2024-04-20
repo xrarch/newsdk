@@ -150,6 +150,8 @@ STRUCT AsmSection
     MemoryOffset : UWORD,
 
     SectionFlags : ULONG,
+
+    Index : UBYTE,
 END
 
 STRUCT AsmRelocation
