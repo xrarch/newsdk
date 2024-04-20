@@ -154,6 +154,13 @@ FN BtRemoveDagNode (
     // Decrement DAG node count.
 
     BtNodeCount -= 1
+
+    IF NOT BtNodeCount THEN
+        // The DAG has become empty. Signal the semaphore to ensure that nobody
+        // gets hung waiting for a leaf node.
+
+        TlReleaseSemaphore ( BtLeafSemaphore )
+    END
 END
 
 BtDepsLineBuffer : UBYTE[FE_PATH_BUFFER_SIZE]

@@ -72,6 +72,7 @@ extern uint64_t TlCreateSemaphore(uint64_t _mng_initialvalue119);
 extern void TlAcquireSemaphore(uint64_t _mng_semaphore120);
 extern void TlReleaseSemaphore(uint64_t _mng_semaphore121);
 extern uint64_t TlSystem(uint64_t _mng_cmdline122);
+extern uint64_t TlCurrentEpochTime();
 extern uint64_t FeInputFile[32];
 extern uint64_t FeInputFileHandle;
 extern uint64_t FeIsMacroArgument(uint64_t _mng_arg123);
