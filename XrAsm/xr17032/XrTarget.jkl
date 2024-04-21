@@ -1913,7 +1913,8 @@ FN (XrInstructionEncodeF) XrEncodeJump (
         // Add a relocation.
 
         AsmAddRelocation (
-            instruction, // element
+            instruction^.FileOffset, // offset
+            instruction^.RelocationType, // relocationtype
             section, // section
             refsymbol, // symbol
         )
@@ -1999,7 +2000,8 @@ FN (XrInstructionEncodeF) XrEncodeImm (
         // Add a relocation.
 
         AsmAddRelocation (
-            instruction, // element
+            instruction^.FileOffset, // offset
+            instruction^.RelocationType, // relocationtype
             section, // section
             refsymbol, // symbol
         )

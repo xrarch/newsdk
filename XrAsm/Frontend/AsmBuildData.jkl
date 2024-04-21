@@ -8,7 +8,8 @@ PUBLIC AsmExternalFixupListHead : TlListEntry
 PUBLIC AsmExternalFixupCount := 0
 
 FN AsmAddRelocation (
-    IN element : ^AsmElement,
+    IN offset : UWORD,
+    IN relocationtype : AsmRelocationType,
     IN section : ^AsmSection,
     IN symbol : ^LexSymbol,
 )
@@ -30,8 +31,8 @@ FN AsmAddRelocation (
     END
 
     reloc^.Section = section
-    reloc^.Offset = element^.FileOffset
-    reloc^.Type = element^.RelocationType
+    reloc^.Offset = offset
+    reloc^.Type = relocationtype
     reloc^.Symbol = symbol
 
     IF symbol^.Visibility == LABEL_EXTERN THEN
@@ -124,7 +125,8 @@ FN (AsmDataEncodeF) AsmEncodeDl (
         // Add a relocation.
 
         AsmAddRelocation (
-            element, // element
+            element^.FileOffset, // offset
+            element^.RelocationType, // relocationtype
             section, // section
             refsymbol, // symbol
         )
@@ -160,7 +162,8 @@ FN (AsmDataEncodeF) AsmEncodeDq (
         // Add a relocation.
 
         AsmAddRelocation (
-            element, // element
+            element^.FileOffset, // offset
+            element^.RelocationType, // relocationtype
             section, // section
             refsymbol, // symbol
         )

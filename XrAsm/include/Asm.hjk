@@ -272,7 +272,8 @@ EXTERN FN AsmCreateOperationLeftConstant (
 ) : ^AsmExpressionNode
 
 EXTERN FN AsmAddRelocation (
-    IN element : ^AsmElement,
+    IN offset : UWORD,
+    IN relocationtype : AsmRelocationType,
     IN section : ^AsmSection,
     IN symbol : ^LexSymbol,
 )
