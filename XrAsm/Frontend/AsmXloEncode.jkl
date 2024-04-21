@@ -93,8 +93,6 @@ FN AsmEncodeFile ()
 
             section^.RelocationTable = NULLPTR
 
-            TlPrintString ( "section table 1\n" )
-
             // Fill in the parts of the section table entry that we can do now,
             // i.e., everything except for the file offset.
 
@@ -129,8 +127,6 @@ FN AsmEncodeFile ()
                 offset += SIZEOF XloRelocEntry * section^.RelocationCount
 
                 // Fill in the relocation table.
-
-                TlPrintString ( "reloc table 1\n" )
 
                 j := 0
 
@@ -178,8 +174,6 @@ FN AsmEncodeFile ()
 
         // Fill in the table.
 
-        TlPrintString ( "symbol table 1\n" )
-
         i := 0
 
         head := &AsmSymbolListHead
@@ -222,8 +216,6 @@ FN AsmEncodeFile ()
 
         // Fill in the table.
 
-        TlPrintString ( "extern table 1\n" )
-
         i := 0
 
         head := &AsmExternListHead
@@ -264,8 +256,6 @@ FN AsmEncodeFile ()
 
         offset += SIZEOF XloRelocEntry * AsmExternalFixupCount
 
-        TlPrintString ( "extern fix table 1\n" )
-
         // Fill in the table.
 
         i := 0
@@ -285,8 +275,6 @@ FN AsmEncodeFile ()
             i += 1
         END
     END
-
-    TlPrintString ( "str table 1\n" )
 
     // Insert bytes in the string table until it is target aligned in size.
 
@@ -309,8 +297,6 @@ FN AsmEncodeFile ()
     header.Hdr.HeadLength = offset
 
     // Finally, fill in the data offsets in the section table.
-
-    TlPrintString ( "section table 2\n" )
 
     IF AsmSectionCount THEN
         i := 0
