@@ -11,6 +11,8 @@ AsmVisibilityToType : UBYTE[LABEL_VIS_MAX] = {
     [LABEL_EXPORT] = XLO_SYMBOL_EXPORT,
 }
 
+AsmSixteenZeroes : UBYTE[16]
+
 FN AsmAddString (
     IN str : ^UBYTE,
 ) : UWORD
@@ -276,15 +278,6 @@ FN AsmEncodeFile ()
         END
     END
 
-    // Insert bytes in the string table until it is target aligned in size.
-
-    WHILE AsmStringTable.Count & (AsmTargetInfo^.ObjectFileAlignment - 1) DO
-        TlInsertDynamicBuffer (
-            &AsmStringTable, // array
-            0, // byte
-        )
-    END
-
     // Now record the string table and bump the offset.
 
     header.Hdr.StringTableOffset = offset
@@ -292,9 +285,15 @@ FN AsmEncodeFile ()
 
     offset += AsmStringTable.Count
 
-    // And record the head length, since it is now known.
+    // Record the head length, since it is now known.
 
     header.Hdr.HeadLength = offset
+
+    // Calculate padding required by target between head and first section.
+
+    diff := AsmFileAlign ( offset ) - offset
+
+    offset += diff
 
     // Finally, fill in the data offsets in the section table.
 
@@ -406,6 +405,16 @@ FN AsmEncodeFile ()
     // Output the section contents.
 
     IF AsmSectionCount THEN
+        IF diff THEN
+            // Output padding.
+
+            TlWriteFile (
+                FeOutputFileHandle, // handle
+                diff, // bytes
+                &AsmSixteenZeroes[0], // buffer
+            )
+        END
+
         i := 0
 
         head := &AsmSectionListHead
