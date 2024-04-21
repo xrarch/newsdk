@@ -156,6 +156,8 @@ ENUM AsmLabelVisibility : UBYTE
     LABEL_GLOBAL,
     LABEL_EXPORT,
     LABEL_EXTERN,
+
+    LABEL_VIS_MAX,
 END
 
 STRUCT LexSymbol

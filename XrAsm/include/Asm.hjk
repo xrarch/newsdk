@@ -1,5 +1,14 @@
 #INCLUDE "<inc>/Lexer.hjk"
 
+#MACRO AsmAlign ( x ) [
+    (((x) + 7) & ~7)
+]
+
+#MACRO AsmFileAlign ( x ) [
+    (((x) + (AsmTargetInfo^.ObjectFileAlignment - 1)) &
+        ~(AsmTargetInfo^.ObjectFileAlignment - 1))
+]
+
 #INCLUDE "../xr17032/XrInstruction.hjk"
 
 STRUCT AsmIncBinBody
@@ -32,11 +41,16 @@ END
 #DEFINE XLO_SECTION_CODE 2
 #DEFINE XLO_SECTION_MAP 4
 
+#DEFINE XLO_SYMBOL_GLOBAL 1
+#DEFINE XLO_SYMBOL_EXPORT 2
+
 #DEFINE XLO_FILE_FRAGMENT 1
 
 #DEFINE XLO_MAGIC_NUMBER 0x6174737F
 
 STRUCT PACKED XloHeader
+    // N.B. This structure MUST be 64-bit aligned in size.
+
     Magic : ULONG,
     SymbolTableOffset : ULONG,
     SymbolCount : ULONG,
@@ -49,12 +63,14 @@ STRUCT PACKED XloHeader
     Timestamp : ULONG,
     SectionTableOffset : ULONG,
     ExternTableOffset : ULONG,
-    ExternCount : UINT,
-    SectionCount : UBYTE,
-    ImportCount : UBYTE,
+    ExternCount : ULONG,
+    SectionCount : UINT,
+    ImportCount : UINT,
 END
 
 STRUCT PACKED XloHeaderExtended
+    // N.B. This structure MUST be 64-bit aligned in size.
+
     Hdr : XloHeader,
 
     UnresolvedFixupTableOffset : ULONG,
@@ -62,6 +78,7 @@ STRUCT PACKED XloHeaderExtended
 END
 
 STRUCT PACKED XloSectionHeader
+    // N.B. This structure MUST be 64-bit aligned in size.
 
 #IF ( == BITS 64 )
     VirtualAddress : UQUAD,
@@ -79,6 +96,8 @@ STRUCT PACKED XloSectionHeader
 END
 
 STRUCT PACKED XloSymbolEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
     SectionIndex : UBYTE,
     Type : UBYTE,
     Flags : UBYTE,
@@ -88,6 +107,8 @@ STRUCT PACKED XloSymbolEntry
 END
 
 STRUCT PACKED XloExternEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
     NameOffset : ULONG,
     Padding1 : ULONG,
     Padding2 : ULONG,
@@ -95,6 +116,8 @@ STRUCT PACKED XloExternEntry
 END
 
 STRUCT PACKED XloImportEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
     NameOffset : ULONG,
     ExpectedTimestamp : ULONG,
     FixupTableOffset : ULONG,
@@ -102,6 +125,8 @@ STRUCT PACKED XloImportEntry
 END
 
 STRUCT PACKED XloRelocEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
     SectionOffset : ULONG,
     ExternIndex : UINT,
     Type : UBYTE,
@@ -140,6 +165,8 @@ STRUCT AsmSection
     RelocationListHead : TlListEntry,
     RelocationCount : UWORD,
 
+    RelocationTable : ^XloRelocEntry,
+
     DataBuffer : ^UBYTE,
 
     // Current offsets. File offset increases monotonically and reflects the
@@ -156,6 +183,8 @@ END
 
 STRUCT AsmRelocation
     Entry : TlListEntry,
+
+    Symbol : ^LexSymbol,
 
     Section : ^AsmSection,
     Offset : UWORD,

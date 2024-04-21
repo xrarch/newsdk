@@ -6,6 +6,11 @@
 
 AsmStringTable : TlDynamicBuffer
 
+AsmVisibilityToType : UBYTE[LABEL_VIS_MAX] = {
+    [LABEL_GLOBAL] = XLO_SYMBOL_GLOBAL,
+    [LABEL_EXPORT] = XLO_SYMBOL_EXPORT,
+}
+
 FN AsmAddString (
     IN str : ^UBYTE,
 ) : UWORD
@@ -37,11 +42,402 @@ FN AsmEncodeFile ()
     header : XloHeaderExtended
 
     header.Hdr.Magic = XLO_MAGIC_NUMBER
+    header.Hdr.SymbolCount = AsmSymbolCount
     header.Hdr.TargetArchitecture = AsmTargetInfo^.ArchitectureCode
     header.Hdr.ImportTableOffset = 0xABABABAB
     header.Hdr.Flags = XLO_FILE_FRAGMENT
     header.Hdr.Timestamp = TlCurrentEpochTime ()
     header.Hdr.ImportCount = 0
+    header.Hdr.ExternCount = AsmExternCount
+    header.Hdr.SectionCount = AsmSectionCount
+    header.UnresolvedFixupCount = AsmExternalFixupCount
 
-    // 
+    // Initialize the "current file offset" to point to the end of the header.
+
+    offset := SIZEOF XloHeaderExtended
+
+    // Create the section table.
+
+    sectiontable : ^XloSectionHeader = NULLPTR
+
+    IF AsmSectionCount THEN
+        status := TlBumpAlloc (
+            SIZEOF XloSectionHeader * AsmSectionCount, // bytes
+            OUT sectiontable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create section table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.SectionTableOffset = offset
+
+        offset += SIZEOF XloSectionHeader * AsmSectionCount
+
+        // We loop over the sections twice. This first time, we create the
+        // relocation tables for the sections. The second time, later, we fill
+        // in the section table.
+        //
+        //  1. Create the relocation tables for the sections.
+        //  2. Fill in the section table.
+
+        i := 0
+
+        head := &AsmSectionListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+            section^.RelocationTable = NULLPTR
+
+            TlPrintString ( "section table 1\n" )
+
+            // Fill in the parts of the section table entry that we can do now,
+            // i.e., everything except for the file offset.
+
+#IF ( == BITS 64 )
+            sectiontable[i].VirtualAddress = 0
+#ELSE
+            sectiontable[i].VirtualAddress = 0
+            sectiontable[i].Reserved = 0
+#END
+            sectiontable[i].NameOffset = AsmAddString ( section^.Name )
+            sectiontable[i].DataLength = section^.FileOffset
+            sectiontable[i].RelocTableOffset = 0
+            sectiontable[i].RelocCount = section^.RelocationCount
+            sectiontable[i].Flags = section^.SectionFlags
+
+            // Now create the relocation table.
+
+            IF section^.RelocationCount THEN
+                status = TlBumpAlloc (
+                    SIZEOF XloRelocEntry * section^.RelocationCount, // bytes
+                    OUT section^.RelocationTable, // ptr
+                )
+
+                IF status THEN
+                    TlInternalError ( "Failed to create reloc table", 0, 0, 0 )
+                END
+
+                // Record and bump the offset.
+
+                sectiontable[i].RelocTableOffset = offset
+
+                offset += SIZEOF XloRelocEntry * section^.RelocationCount
+
+                // Fill in the relocation table.
+
+                TlPrintString ( "reloc table 1\n" )
+
+                j := 0
+
+                rhead := &section^.RelocationListHead
+                rlistentry := rhead^.Next
+
+                WHILE rlistentry != rhead DO
+                    reloc := CONTAINEROF rlistentry TO AsmRelocation.Entry
+
+                    section^.RelocationTable[j].SectionOffset = reloc^.Offset
+                    section^.RelocationTable[j].ExternIndex = 0
+                    section^.RelocationTable[j].Type = reloc^.Type
+                    section^.RelocationTable[j].SectionIndex =
+                        reloc^.Section^.Index
+
+                    rlistentry = rlistentry^.Next
+                    j += 1
+                END
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Create the global and exported symbol table.
+
+    symboltable : ^XloSymbolEntry = NULLPTR
+
+    IF AsmSymbolCount THEN
+        status := TlBumpAlloc (
+            SIZEOF XloSymbolEntry * AsmSymbolCount, // bytes
+            OUT symboltable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create symbol table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.SymbolTableOffset = offset
+
+        offset += SIZEOF XloSymbolEntry * AsmSymbolCount
+
+        // Fill in the table.
+
+        TlPrintString ( "symbol table 1\n" )
+
+        i := 0
+
+        head := &AsmSymbolListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            symbol := CONTAINEROF listentry TO LexSymbol.SymbolListEntry
+
+            symboltable[i].SectionIndex = symbol^.Section^.Index
+            symboltable[i].Type = AsmVisibilityToType[symbol^.Visibility]
+            symboltable[i].Flags = 0
+            symboltable[i].Padding = 0
+            symboltable[i].SectionOffset = symbol^.MemoryOffset
+            symboltable[i].NameOffset = AsmAddString ( symbol^.Name )
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Create the extern symbol table.
+
+    externtable : ^XloExternEntry = NULLPTR
+
+    IF AsmExternCount THEN
+        status := TlBumpAlloc (
+            SIZEOF XloExternEntry * AsmExternCount, // bytes
+            OUT externtable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create extern table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.ExternTableOffset = offset
+
+        offset += SIZEOF XloExternEntry * AsmExternCount
+
+        // Fill in the table.
+
+        TlPrintString ( "extern table 1\n" )
+
+        i := 0
+
+        head := &AsmExternListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            symbol := CONTAINEROF listentry TO LexSymbol.SymbolListEntry
+
+            symbol^.Index = i
+
+            externtable[i].NameOffset = AsmAddString ( symbol^.Name )
+            externtable[i].Padding1 = 0
+            externtable[i].Padding2 = 0
+            externtable[i].Padding3 = 0
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Create the extern fixup table.
+
+    externfixtable : ^XloRelocEntry = NULLPTR
+
+    IF AsmExternalFixupCount THEN
+        status := TlBumpAlloc (
+            SIZEOF XloRelocEntry * AsmExternalFixupCount, // bytes
+            OUT externfixtable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create externfix table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.UnresolvedFixupTableOffset = offset
+
+        offset += SIZEOF XloRelocEntry * AsmExternalFixupCount
+
+        TlPrintString ( "extern fix table 1\n" )
+
+        // Fill in the table.
+
+        i := 0
+
+        head := &AsmExternalFixupListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            reloc := CONTAINEROF listentry TO AsmRelocation.Entry
+
+            externfixtable[i].SectionOffset = reloc^.Offset
+            externfixtable[i].ExternIndex = reloc^.Symbol^.Index
+            externfixtable[i].Type = reloc^.Type
+            externfixtable[i].SectionIndex = reloc^.Section^.Index
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    TlPrintString ( "str table 1\n" )
+
+    // Insert bytes in the string table until it is target aligned in size.
+
+    WHILE AsmStringTable.Count & (AsmTargetInfo^.ObjectFileAlignment - 1) DO
+        TlInsertDynamicBuffer (
+            &AsmStringTable, // array
+            0, // byte
+        )
+    END
+
+    // Now record the string table and bump the offset.
+
+    header.Hdr.StringTableOffset = offset
+    header.Hdr.StringTableSize = AsmStringTable.Count
+
+    offset += AsmStringTable.Count
+
+    // And record the head length, since it is now known.
+
+    header.Hdr.HeadLength = offset
+
+    // Finally, fill in the data offsets in the section table.
+
+    TlPrintString ( "section table 2\n" )
+
+    IF AsmSectionCount THEN
+        i := 0
+
+        head := &AsmSectionListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+            IF NOT (section^.SectionFlags & XLO_SECTION_ZERO) THEN
+                sectiontable[i].FileOffset = offset
+
+                offset += section^.FileOffset
+            
+            ELSE
+                sectiontable[i].FileOffset = 0xABABABAB
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Now output all of these binary structures to the object file.
+
+    // Output the header.
+
+    TlWriteFile (
+        FeOutputFileHandle, // handle
+        SIZEOF XloHeaderExtended, // bytes
+        &header, // buffer
+    )
+
+    IF sectiontable THEN
+        // Output the section table.
+
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            SIZEOF XloSectionHeader * AsmSectionCount, // bytes
+            sectiontable, // buffer
+        )
+
+        // Output the relocation tables.
+
+        i := 0
+
+        head := &AsmSectionListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+            IF section^.RelocationTable THEN
+                TlWriteFile (
+                    FeOutputFileHandle, // handle
+                    SIZEOF XloRelocEntry * section^.RelocationCount, // bytes
+                    section^.RelocationTable, // buffer
+                )
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    IF symboltable THEN
+        // Output the symbol table.
+
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            SIZEOF XloSymbolEntry * AsmSymbolCount, // bytes
+            symboltable, // buffer
+        )
+    END
+
+    IF externtable THEN
+        // Output the extern table.
+
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            SIZEOF XloExternEntry * AsmExternCount, // bytes
+            externtable, // buffer
+        )
+    END
+
+    IF externfixtable THEN
+        // Output the extern fixup table.
+
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            SIZEOF XloRelocEntry * AsmExternalFixupCount, // bytes
+            externfixtable, // buffer
+        )
+    END
+
+    IF AsmStringTable.Count THEN
+        // Output the string table.
+
+        TlWriteFile (
+            FeOutputFileHandle, // handle
+            AsmStringTable.Count, // bytes
+            AsmStringTable.Buffer, // buffer
+        )
+    END
+
+    // Output the section contents.
+
+    IF AsmSectionCount THEN
+        i := 0
+
+        head := &AsmSectionListHead
+        listentry := head^.Next
+
+        WHILE listentry != head DO
+            section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+            IF NOT (section^.SectionFlags & XLO_SECTION_ZERO) THEN
+                TlWriteFile (
+                    FeOutputFileHandle, // handle
+                    section^.FileOffset, // bytes
+                    section^.DataBuffer, // buffer
+                )
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
 END

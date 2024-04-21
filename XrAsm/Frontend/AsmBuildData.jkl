@@ -32,6 +32,7 @@ FN AsmAddRelocation (
     reloc^.Section = section
     reloc^.Offset = element^.FileOffset
     reloc^.Type = element^.RelocationType
+    reloc^.Symbol = symbol
 
     IF symbol^.Visibility == LABEL_EXTERN THEN
         // Add to the fixup list.
@@ -269,6 +270,12 @@ FN AsmBuildDataForSection (
     IN section : ^AsmSection,
 )
 
+    // First, figure out the alignment up to 64 bits.
+
+    diff := AsmFileAlign ( section^.FileOffset ) - section^.FileOffset
+
+    section^.FileOffset += diff
+
     // Check if this is a bss section.
 
     IF section^.SectionFlags & XLO_SECTION_ZERO THEN
@@ -322,6 +329,14 @@ FN AsmBuildDataForSection (
         END
 
         listentry = listentry^.Next
+    END
+
+    // Zero out the alignment space.
+
+    WHILE diff DO
+        buf[section^.FileOffset - diff] = 0
+
+        diff -= 1
     END
 END
 

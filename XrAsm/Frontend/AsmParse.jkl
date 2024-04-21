@@ -216,6 +216,14 @@ FN AsmInitializeLabel (
 
     IF symbol^.Visibility == LABEL_EXTERN THEN
         symbol^.Visibility = LABEL_LOCAL
+
+        IF symbol^.Used THEN
+            // Remove from the extern list.
+
+            TlRemoveEntryList ( &symbol^.SymbolListEntry )
+
+            AsmExternCount -= 1
+        END
     END
 
     IF forward THEN
@@ -660,7 +668,6 @@ FN AsmParseAtom () : ^AsmExpressionNode
             END
 
             symbol^.Used = TRUE
-            symbol^.Index = AsmExternCount
 
             TlInsertAtTailList (
                 &AsmExternListHead, // head
