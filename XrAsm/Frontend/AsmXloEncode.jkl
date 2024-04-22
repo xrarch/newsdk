@@ -428,7 +428,9 @@ FN AsmEncodeFile ()
         WHILE listentry != head DO
             section := CONTAINEROF listentry TO AsmSection.SectionListEntry
 
-            IF NOT (section^.SectionFlags & XLO_SECTION_ZERO) THEN
+            IF NOT (section^.SectionFlags & XLO_SECTION_ZERO) AND
+                section^.FileOffset THEN
+
                 TlWriteFile (
                     FeOutputFileHandle, // handle
                     section^.FileOffset, // bytes
