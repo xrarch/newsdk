@@ -34,6 +34,11 @@ FN AsmEncodeFile ()
 
     // Encode the assembled data into an XLO format object file.
 
+    i : UWORD
+    status : TlStatus
+    head : ^TlListEntry
+    listentry : ^TlListEntry
+
     // First initialize the dynamic buffers we'll use for the various parts of
     // the object file.
 
@@ -63,7 +68,7 @@ FN AsmEncodeFile ()
     sectiontable : ^XloSectionHeader = NULLPTR
 
     IF AsmSectionCount THEN
-        status := TlBumpAlloc (
+        status = TlBumpAlloc (
             SIZEOF XloSectionHeader * AsmSectionCount, // bytes
             OUT sectiontable, // ptr
         )
@@ -85,10 +90,10 @@ FN AsmEncodeFile ()
         //  1. Create the relocation tables for the sections.
         //  2. Fill in the section table.
 
-        i := 0
+        i = 0
 
-        head := &AsmSectionListHead
-        listentry := head^.Next
+        head = &AsmSectionListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             section := CONTAINEROF listentry TO AsmSection.SectionListEntry
@@ -159,7 +164,7 @@ FN AsmEncodeFile ()
     symboltable : ^XloSymbolEntry = NULLPTR
 
     IF AsmSymbolCount THEN
-        status := TlBumpAlloc (
+        status = TlBumpAlloc (
             SIZEOF XloSymbolEntry * AsmSymbolCount, // bytes
             OUT symboltable, // ptr
         )
@@ -176,10 +181,10 @@ FN AsmEncodeFile ()
 
         // Fill in the table.
 
-        i := 0
+        i = 0
 
-        head := &AsmSymbolListHead
-        listentry := head^.Next
+        head = &AsmSymbolListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             symbol := CONTAINEROF listentry TO LexSymbol.SymbolListEntry
@@ -201,7 +206,7 @@ FN AsmEncodeFile ()
     externtable : ^XloExternEntry = NULLPTR
 
     IF AsmExternCount THEN
-        status := TlBumpAlloc (
+        status = TlBumpAlloc (
             SIZEOF XloExternEntry * AsmExternCount, // bytes
             OUT externtable, // ptr
         )
@@ -218,10 +223,10 @@ FN AsmEncodeFile ()
 
         // Fill in the table.
 
-        i := 0
+        i = 0
 
-        head := &AsmExternListHead
-        listentry := head^.Next
+        head = &AsmExternListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             symbol := CONTAINEROF listentry TO LexSymbol.SymbolListEntry
@@ -243,7 +248,7 @@ FN AsmEncodeFile ()
     externfixtable : ^XloRelocEntry = NULLPTR
 
     IF AsmExternalFixupCount THEN
-        status := TlBumpAlloc (
+        status = TlBumpAlloc (
             SIZEOF XloRelocEntry * AsmExternalFixupCount, // bytes
             OUT externfixtable, // ptr
         )
@@ -260,10 +265,10 @@ FN AsmEncodeFile ()
 
         // Fill in the table.
 
-        i := 0
+        i = 0
 
-        head := &AsmExternalFixupListHead
-        listentry := head^.Next
+        head = &AsmExternalFixupListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             reloc := CONTAINEROF listentry TO AsmRelocation.Entry
@@ -298,10 +303,10 @@ FN AsmEncodeFile ()
     // Finally, fill in the data offsets in the section table.
 
     IF AsmSectionCount THEN
-        i := 0
+        i = 0
 
-        head := &AsmSectionListHead
-        listentry := head^.Next
+        head = &AsmSectionListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             section := CONTAINEROF listentry TO AsmSection.SectionListEntry
@@ -341,10 +346,10 @@ FN AsmEncodeFile ()
 
         // Output the relocation tables.
 
-        i := 0
+        i = 0
 
-        head := &AsmSectionListHead
-        listentry := head^.Next
+        head = &AsmSectionListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             section := CONTAINEROF listentry TO AsmSection.SectionListEntry
@@ -415,10 +420,10 @@ FN AsmEncodeFile ()
             )
         END
 
-        i := 0
+        i = 0
 
-        head := &AsmSectionListHead
-        listentry := head^.Next
+        head = &AsmSectionListHead
+        listentry = head^.Next
 
         WHILE listentry != head DO
             section := CONTAINEROF listentry TO AsmSection.SectionListEntry
