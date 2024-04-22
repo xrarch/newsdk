@@ -1,0 +1,25 @@
+//
+// Linker initialization.
+//
+
+#INCLUDE "<inc>/Linker.h"
+
+LnkBinaryName : ^UBYTE = NULLPTR
+
+FN LnkUsage ()
+    TlPrintString ( "Usage: " )
+    TlPrintString ( LnkBinaryName )
+    TlPrintString ( "\n" )
+
+    TlErrorExit ()
+END
+
+FN LnkMain (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Link stuff.
+
+    LnkBinaryName = &argv[0][0]
+END

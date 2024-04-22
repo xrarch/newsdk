@@ -1,0 +1,14 @@
+TARGET "XrLink"
+	FILE "<bld>/xrlink.exe"
+	
+	INCDIR "../Library/include"
+	SOURCES "../Library"
+
+	INCDIR "./include"
+	SOURCES "./Linker"
+
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		SOURCES "./Linker/CHost"
+		SOURCES "../Library/CHost"
+	#END
+END
