@@ -1,0 +1,109 @@
+The linker must support the following capabilities:
+  - Accept XLO (XR/SDK Linkable Object) files.
+  - Dump information about XLO files.
+  - Statically link XLO files.
+  - Dynamically link XLO files.
+  - Arbitrarily relocate the sections of XLO files just prior to output time.
+    Including the ability to relocate them to be page-aligned in memory w/o
+    forcing page alignment in the file data.
+  - Perform various types of info stripping.
+  - Emit flat binary, XLO, and FXF (Fox32 eXecutable Format).
+
+An outline of its operation:
+
+Init:
+  - Read the linker command from the first argument, or print a help list.
+  - Dispatch to the command's handler.
+
+Info:
+  - Load the file into memory and validate its contents.
+  - Iterate the tables to print the specified info to the console.
+
+Link:
+Syntax: xrlink.exe
+          link
+          outputfile
+          input1 [input2 ...]
+          [-d input1 [input2 ...]]
+          [-move:section1=expr,section2=expr,...] XOR [-base:addr] XOR [-mappedbase:addr]
+          [-keepglobals]
+          [-striprelocs]
+          [-nostubs]
+          [-fragment]
+          [-bin]
+
+  - Load each statically linked file into memory and validate their contents.
+    Ensure architecture types match.
+
+  - For each section in each file, figure out what its offset will be in the
+    matching final section. Then iterate them all again to relocate them by
+    that offset. Then iterate them a third and final time to merge their
+    contents and relocation tables onto the final matching sections (making
+    sure to update the relocation entries as appropriate).
+
+  - Iterate the symbol tables of each file. Merge each non-local symbol into a
+    hash table which forms the contents of the final symbol table. If there's a
+    symbol conflict, print an error diagnostic and exit. Offset the symbol
+    values by the offset of the section in which they reside.
+
+  - Iterate the extern tables of each file. Check for a matching symbol in the
+    merged symbol hash table. If one is found, mark the extern with a pointer
+    to that symbol. If not found, add to a merged extern hash table.
+
+  - Load each dynamically linked file into memory and validate their contents.
+    Forbid dynamic linking with the FXF and BIN output formats.
+    Ensure architecture types match.
+
+  - Iterate the symbol tables of each dynamic object. For each EXPORT symbol,
+    look up the symbol name in the merged extern hash table. If one is found,
+    mark the extern with a pointer to the symbol and a flag indicating that it
+    is external.
+
+  - If any unresolved externs remain and -fragment wasnt specified in the
+    command line, print a diagnostic and exit.
+
+  - Iterate the unresolved fixup tables of the statically linked objects. Each
+    fixup that referenced a dynamically linked symbol is placed into a list
+    anchored under that imported object. Unless -nostubs was specified, imported
+    fixups that consist of a "call" type relocation will be "redirected" to a
+    jump instruction inserted at the tail of the text section, in order to
+    minimize COW faults when these fixups are performed at load time. Each fixup
+    that referenced an unresolved extern is placed into a global list.
+
+  - If BIN, perform all relocations and extern fixups and then dump the sections
+    directly in order to the binary file. Exit.
+
+  - Build, in memory, all of the structures that will be in the final output
+    file:
+
+      1. The header.
+      2. The section table (sans LOCALs and GLOBALs, unless -keepglobals was
+         specified).
+      3. The relocation tables.
+      4. The symbol table.
+      5. The extern table (including any resolved imported externs).
+      6. The import table.
+      7. The imported fixup tables.
+      8. The unresolved fixup table.
+      9. The string table.
+
+  - If a -mappedbase expression was specified, we can now relocate the sections
+    such that they are virtually contiguous once mapped from a file with the
+    following algorithm:
+
+    vaddr := base + (headersize % pagesize)
+
+    for all sections 's':
+        s.vaddr = vaddr
+
+        vaddr = vaddr + s.size
+
+        if vaddr % pagesize != 0:
+            vaddr += pagesize
+
+    Following this relocation, the sections can be mapped rounded down to the
+    previous page size, for a length up to the following page size, without
+    having to be physically page aligned within the file.
+
+  - Perform all relocations and extern fixups and write the contents of the
+    final object file.
