@@ -93,7 +93,7 @@ Syntax: xrlink.exe
 
     vaddr := base + (headersize % pagesize)
 
-    for all sections 's':
+    for all sections 's' in order within the file:
         s.vaddr = vaddr
 
         vaddr = vaddr + s.size
