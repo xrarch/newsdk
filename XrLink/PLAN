@@ -7,7 +7,7 @@ The linker must support the following capabilities:
     Including the ability to relocate them to be page-aligned in memory w/o
     forcing page alignment in the file data.
   - Perform various types of info stripping.
-  - Emit flat binary, XLO, and FXF (Fox32 eXecutable Format).
+  - Emit flat binary and XLO.
 
 An outline of its operation:
 
@@ -51,7 +51,7 @@ Syntax: xrlink.exe
     to that symbol. If not found, add to a merged extern hash table.
 
   - Load each dynamically linked file into memory and validate their contents.
-    Forbid dynamic linking with the FXF and BIN output formats.
+    Forbid dynamic linking with the BIN output format.
     Ensure architecture types match.
 
   - Iterate the symbol tables of each dynamic object. For each EXPORT symbol,
@@ -79,7 +79,7 @@ Syntax: xrlink.exe
       1. The header.
       2. The section table (sans LOCALs and GLOBALs, unless -keepglobals was
          specified).
-      3. The relocation tables.
+      3. The relocation tables (unless -striprelocs was specified).
       4. The symbol table.
       5. The extern table (including any resolved imported externs).
       6. The import table.
