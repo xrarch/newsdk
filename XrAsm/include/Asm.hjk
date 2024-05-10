@@ -44,6 +44,9 @@ END
 #DEFINE XLO_SYMBOL_GLOBAL 1
 #DEFINE XLO_SYMBOL_EXPORT 2
 
+#DEFINE XLO_EXTERN_UNRESOLVED 1
+#DEFINE XLO_EXTERN_IMPORTED 2
+
 #DEFINE XLO_FILE_FRAGMENT 1
 
 #DEFINE XLO_MAGIC_NUMBER 0x6174737F
@@ -110,7 +113,9 @@ STRUCT PACKED XloExternEntry
     // N.B. This structure MUST be 32-bit aligned in size.
 
     NameOffset : ULONG,
-    Padding1 : ULONG,
+    Type : UBYTE,
+    Padding : UBYTE,
+    ImportIndex : UINT,
     Padding2 : ULONG,
     Padding3 : ULONG,
 END

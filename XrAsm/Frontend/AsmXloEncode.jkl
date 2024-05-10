@@ -234,7 +234,9 @@ FN AsmEncodeFile ()
             symbol^.Index = i
 
             externtable[i].NameOffset = AsmAddString ( symbol^.Name )
-            externtable[i].Padding1 = 0
+            externtable[i].Type = XLO_EXTERN_UNRESOLVED
+            externtable[i].Padding = 0
+            externtable[i].ImportIndex = 0
             externtable[i].Padding2 = 0
             externtable[i].Padding3 = 0
 

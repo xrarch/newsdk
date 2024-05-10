@@ -97,7 +97,7 @@ Syntax: xrlink.exe
     for all sections 's' in order within the file:
         s.vaddr = vaddr
 
-        vaddr = vaddr + s.size
+        vaddr += s.size
 
         if vaddr % pagesize != 0:
             vaddr += pagesize
