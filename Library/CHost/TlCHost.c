@@ -182,6 +182,9 @@ void TlSetTerminationHandler (uint64_t handler) {
 }
 
 uint64_t TlSystem (uint8_t *cmdline) {
+    // Use popen() instead of system() because system takes a big lock in most
+    // libc implementations which KILLS our build tool's concurrency
+
     FILE *file = popen((char *)cmdline, "w");
 
     if (!file) {
