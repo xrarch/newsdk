@@ -182,7 +182,13 @@ void TlSetTerminationHandler (uint64_t handler) {
 }
 
 uint64_t TlSystem (uint8_t *cmdline) {
-    return system((char *)cmdline);
+    FILE *file = popen((char *)cmdline, "w");
+
+    if (!file) {
+        abort();
+    }
+
+    return pclose(file);
 }
 
 uint64_t TlCurrentEpochTime () {
