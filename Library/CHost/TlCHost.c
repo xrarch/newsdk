@@ -19,6 +19,10 @@ void TlPrintNumber (uint64_t num) {
     fprintf(stderr, "%lld", num);
 }
 
+void TlPrintHex (uint64_t num) {
+    fprintf(stderr, "%llx", num);
+}
+
 void TlPrintCharacter (uint8_t byte) {
     fprintf(stderr, "%c", byte);
 }

@@ -1,0 +1,164 @@
+//
+// Linker info dumping commands.
+//
+
+#INCLUDE "<inc>/Linker.hjk"
+
+LnkArchitectureCodeToName : ^UBYTE[XLO_ARCHITECTURE_MAX] = {
+    [XLO_ARCHITECTURE_XR17032] = "xr17032",
+    [XLO_ARCHITECTURE_FOX32] = "fox32",
+    [XLO_ARCHITECTURE_APHELION] = "aphelion",
+    [XLO_ARCHITECTURE_AMD64] = "amd64",
+}
+
+LnkFlagToName : ^UBYTE[32] = {
+    [0] = "FRAGMENT",
+}
+
+LnkSectionFlagToName : ^UBYTE[32] = {
+    [0] = "ZERO",
+    [1] = "CODE",
+    [2] = "MAP",
+}
+
+FN LnkDumpInfo (
+    IN filename : ^UBYTE,
+)
+
+    buf := LnkLoadXloFile ( filename )
+
+    header := CAST buf TO ^XloHeader
+
+    TlPrintString ( "DateStamp     " )
+    TlPrintHex ( header^.Timestamp )
+    TlPrintString ( "\n" )
+
+    TlPrintString ( "Architecture  " )
+
+    IF header^.TargetArchitecture < XLO_ARCHITECTURE_MAX AND
+        LnkArchitectureCodeToName[header^.TargetArchitecture] THEN
+        
+        TlPrintString ( LnkArchitectureCodeToName[header^.TargetArchitecture] )
+
+    ELSE
+        TlPrintString ( "Unknown" )
+    END
+
+    TlPrintString ( "\n" )
+
+    TlPrintString ( "Head Length   " )
+    TlPrintNumber ( header^.HeadLength )
+    TlPrintString ( "\n" )
+
+    TlPrintString ( "Flags         " )
+
+    flags := header^.Flags
+    i := 0
+    printed := FALSE
+
+    WHILE flags AND i < 32 DO
+        IF flags & 1 THEN
+            IF printed THEN
+                TlPrintString ( " | " )
+            END
+
+            IF LnkFlagToName[i] THEN
+                TlPrintString ( LnkFlagToName[i] )
+            
+            ELSE
+                TlPrintString ( "FLAG" )
+                TlPrintNumber ( i )
+            END
+
+            printed = TRUE
+        END
+
+        i += 1
+        flags >>= 1
+    END
+
+    TlPrintString ( "\n\nSections:\n" )
+
+    i = 0
+    section := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
+    stringtab := buf + header^.StringTableOffset
+
+    WHILE i < header^.SectionCount DO
+        TlPrintString ( stringtab + section^.NameOffset )
+        TlPrintString ( ":\n" )
+
+        TlPrintString ( "  Size     " )
+        TlPrintNumber ( section^.DataLength )
+        TlPrintString ( " bytes\n" )
+
+        TlPrintString ( "  Address  0x" )
+        TlPrintHex ( section^.VirtualAddress )
+        TlPrintString ( "\n" )
+
+        TlPrintString ( "  Offset   0x" )
+        TlPrintHex ( section^.FileOffset )
+        TlPrintString ( "\n" )
+
+        TlPrintString ( "  Flags    " )
+
+        j := 0
+        printed = FALSE
+        flags = section^.Flags
+
+        WHILE flags AND j < 32 DO
+            IF flags & 1 THEN
+                IF printed THEN
+                    TlPrintString ( " | " )
+                END
+
+                IF LnkSectionFlagToName[j] THEN
+                    TlPrintString ( LnkSectionFlagToName[j] )
+                
+                ELSE
+                    TlPrintString ( "FLAG" )
+                    TlPrintNumber ( j )
+                END
+
+                printed = TRUE
+            END
+
+            j += 1
+            flags >>= 1
+        END
+
+        TlPrintString ( "\n\n" )
+
+        section += SIZEOF XloSectionHeader
+        i += 1
+    END
+END
+
+FN LnkDumpSymbols (
+    IN filename : ^UBYTE,
+)
+
+END
+
+FN LnkDumpExterns (
+    IN filename : ^UBYTE,
+)
+
+END
+
+FN LnkDumpRelocs (
+    IN filename : ^UBYTE,
+)
+
+END
+
+FN LnkDumpFixups (
+    IN filename : ^UBYTE,
+)
+
+END
+
+FN LnkDumpImports (
+    IN filename : ^UBYTE,
+)
+
+END

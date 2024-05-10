@@ -44,7 +44,8 @@ Syntax: xrlink.exe
   - Iterate the symbol tables of each file. Merge each non-local symbol into a
     hash table which forms the contents of the final symbol table. If there's a
     symbol conflict, print an error diagnostic and exit. Offset the symbol
-    values by the offset of the section in which they reside.
+    values by the offset of the section in which they reside. Symbols are
+    insertion sorted in the list by increasing value within their section.
 
   - Iterate the extern tables of each file. Check for a matching symbol in the
     merged symbol hash table. If one is found, mark the extern with a pointer

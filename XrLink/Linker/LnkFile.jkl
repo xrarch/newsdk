@@ -1,0 +1,68 @@
+//
+// Implements support routines for loading and validating an XLO object.
+//
+
+#INCLUDE "<inc>/Linker.hjk"
+
+FN LnkLoadXloFile (
+    IN filename : ^UBYTE,
+) : ^UBYTE
+
+    // First, open the object file.
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        filename, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlPrintString ( "Failed to open object file '" )
+        TlPrintString ( filename )
+        TlPrintString ( "'\n" )
+
+        TlErrorExit ()
+    END
+
+    // Now stat the file to acquire the size.
+
+    statrecord : TlStatRecord
+
+    IF TlStatFile (
+        filename, // path
+        &statrecord, // statrecord
+    ) THEN
+        TlInternalError ( "Failed to stat object file", 0, 0, 0 )
+    END
+
+    // Allocate a buffer to contain the file contents.
+
+    ptr : ^UBYTE
+
+    status = TlAlloc (
+        statrecord.SizeInBytes, // bytes
+        OUT ptr, // ptr
+    )
+
+    // Read the file.
+
+    TlReadFile (
+        handle, // handle
+        statrecord.SizeInBytes, // bytes
+        ptr, // buffer
+    )
+
+    // Now basically validate the header.
+
+    header := CAST ptr TO ^XloHeader
+
+    IF header^.Magic != XLO_MAGIC_NUMBER THEN
+        TlPrintString ( filename )
+        TlPrintString ( ": Not a valid XLO object file\n" )
+
+        TlErrorExit ()
+    END
+
+    RETURN ptr
+END

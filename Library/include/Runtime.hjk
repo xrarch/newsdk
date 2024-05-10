@@ -97,6 +97,10 @@ EXTERN FN TlPrintNumber (
     IN num : UWORD,
 )
 
+EXTERN FN TlPrintHex (
+    IN num : UWORD,
+)
+
 EXTERN FN TlPrintCharacter (
     IN byte : UBYTE,
 )

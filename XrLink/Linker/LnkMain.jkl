@@ -2,14 +2,21 @@
 // Linker initialization.
 //
 
-#INCLUDE "<inc>/Linker.h"
+#INCLUDE "<inc>/Linker.hjk"
 
 LnkBinaryName : ^UBYTE = NULLPTR
 
 FN LnkUsage ()
     TlPrintString ( "Usage: " )
     TlPrintString ( LnkBinaryName )
-    TlPrintString ( "\n" )
+    TlPrintString ( " [command] [options ...]\n" )
+
+    TlPrintString ( "  info <imagename>: Print miscellaneous information about the image file.\n" )
+    TlPrintString ( "  symbols <imagename>: Dump the symbol table.\n" )
+    TlPrintString ( "  externs <imagename>: Dump the extern table.\n" )
+    TlPrintString ( "  relocs <imagename>: Dump the relocation table for each section.\n" )
+    TlPrintString ( "  fixups <imagename>: Dump the fixup table.\n" )
+    TlPrintString ( "  imports <imagename>: Dump the import table.\n" )
 
     TlErrorExit ()
 END
@@ -22,4 +29,32 @@ FN LnkMain (
     // Link stuff.
 
     LnkBinaryName = &argv[0][0]
+
+    IF argc < 3 THEN
+        LnkUsage ()
+    END
+
+    cmd := argv[1]
+
+    IF TlCompareString ( cmd, "info" ) == 0 THEN
+        LnkDumpInfo ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "symbols" ) == 0 THEN
+        LnkDumpSymbols ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "externs" ) == 0 THEN
+        LnkDumpExterns ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "relocs" ) == 0 THEN
+        LnkDumpRelocs ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "fixups" ) == 0 THEN
+        LnkDumpFixups ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "imports" ) == 0 THEN
+        LnkDumpImports ( argv[2] )
+
+    ELSE
+        LnkUsage ()
+    END
 END
