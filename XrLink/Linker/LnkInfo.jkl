@@ -1,5 +1,6 @@
 //
-// Linker info dumping commands.
+// Implementation of linker info dumping commands.
+// Dumps more info than me at 3 AM after eight Diet Dr Peppers.
 //
 
 #INCLUDE "<inc>/Linker.hjk"
