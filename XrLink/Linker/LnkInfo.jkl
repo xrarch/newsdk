@@ -137,18 +137,153 @@ FN LnkDumpSymbols (
     IN filename : ^UBYTE,
 )
 
+    buf := LnkLoadXloFile ( filename )
+
+    header := CAST buf TO ^XloHeader
+
+    i := 0
+    symbol := CAST buf + header^.SymbolTableOffset TO ^XloSymbolEntry
+    stringtab := buf + header^.StringTableOffset
+    sectiontab := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
+
+    WHILE i < header^.SymbolCount DO
+        IF symbol^.Type == XLO_SYMBOL_GLOBAL THEN
+            TlPrintString ( "G " )
+
+        ELSEIF symbol^.Type == XLO_SYMBOL_EXPORT THEN
+            TlPrintString ( "E ")
+        
+        ELSE
+            TlPrintString ( "? " )
+        END
+
+        section := &sectiontab[symbol^.SectionIndex]
+
+        TlPrintHex ( symbol^.SectionOffset )
+        TlPrintString ( " " )
+        TlPrintString ( stringtab + section^.NameOffset )
+        TlPrintString ( " " )
+        TlPrintString ( stringtab + symbol^.NameOffset )
+        TlPrintString ( "\n" )
+
+        symbol += SIZEOF XloSymbolEntry
+        i += 1
+    END
 END
 
 FN LnkDumpExterns (
     IN filename : ^UBYTE,
 )
 
+    buf := LnkLoadXloFile ( filename )
+
+    header := CAST buf TO ^XloHeader
+
+    i := 0
+    extern := CAST buf + header^.ExternTableOffset TO ^XloExternEntry
+    stringtab := buf + header^.StringTableOffset
+
+    WHILE i < header^.ExternCount DO
+        TlPrintString ( stringtab + extern^.NameOffset )
+        TlPrintString ( "\n" )
+
+        extern += SIZEOF XloExternEntry
+        i += 1
+    END
 END
+
+XloRelocTypeNames : ^UBYTE[XLO_RELOC_MAX] = {
+    [XLO_RELOC_PTR] = "PTR",
+
+    [XLO_RELOC_XR17032_ABSJ] = "XR17032_ABSJ",
+    [XLO_RELOC_XR17032_LA] = "XR17032_LA",
+    [XLO_RELOC_XR17032_FAR_INT] = "XR17032_FAR_INT",
+    [XLO_RELOC_XR17032_FAR_LONG] = "XR17032_FAR_LONG",
+}
 
 FN LnkDumpRelocs (
     IN filename : ^UBYTE,
 )
 
+    buf := LnkLoadXloFile ( filename )
+
+    header := CAST buf TO ^XloHeader
+
+    i := 0
+    section := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
+    stringtab := buf + header^.StringTableOffset
+    externtab := CAST buf + header^.ExternTableOffset TO ^XloExternEntry
+
+    j : UWORD
+    reloc : ^XloRelocEntry
+
+    IF header^.Flags & XLO_FILE_FRAGMENT THEN
+        extheader := CAST buf TO ^XloHeaderExtended
+
+        TlPrintString ( "EXTERN:\n" )
+
+        j = 0
+        reloc =
+            CAST buf + extheader^.UnresolvedFixupTableOffset TO ^XloRelocEntry
+
+        WHILE j < extheader^.UnresolvedFixupCount DO
+            TlPrintHex ( reloc^.SectionOffset )
+            TlPrintString ( " " )
+            TlPrintString ( stringtab + section[reloc^.SectionIndex].NameOffset )
+            TlPrintString ( " " )
+            TlPrintString ( stringtab + externtab[reloc^.ExternIndex].NameOffset )
+            TlPrintString ( " " )
+
+            IF reloc^.Type < XLO_RELOC_MAX AND
+                XloRelocTypeNames[reloc^.Type] THEN
+
+                TlPrintString ( XloRelocTypeNames[reloc^.Type] )
+
+            ELSE
+                TlPrintString ( "UnknownType" )
+            END
+
+
+            TlPrintString ( "\n" )
+
+            reloc += SIZEOF XloRelocEntry
+            j += 1
+        END
+
+        TlPrintString ( "\n" )
+    END
+
+    WHILE i < header^.SectionCount DO
+        TlPrintString ( stringtab + section^.NameOffset )
+        TlPrintString ( ":\n" )
+
+        j = 0
+        reloc = CAST buf + section^.RelocTableOffset TO ^XloRelocEntry
+
+        WHILE j < section^.RelocCount DO
+            TlPrintHex ( reloc^.SectionOffset )
+            TlPrintString ( " " )
+
+            IF reloc^.Type < XLO_RELOC_MAX AND
+                XloRelocTypeNames[reloc^.Type] THEN
+
+                TlPrintString ( XloRelocTypeNames[reloc^.Type] )
+
+            ELSE
+                TlPrintString ( "UnknownType" )
+            END
+
+            TlPrintString ( "\n" )
+
+            reloc += SIZEOF XloRelocEntry
+            j += 1
+        END
+
+        TlPrintString ( "\n" )
+
+        section += SIZEOF XloSectionHeader
+        i += 1
+    END
 END
 
 FN LnkDumpFixups (
