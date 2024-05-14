@@ -28,6 +28,26 @@ EXTERN FN LnkLoadXloFile (
     IN filename : ^UBYTE,
 ) : ^UBYTE
 
+EXTERN FN LnkAddStaticObject (
+    IN filename : ^UBYTE,
+)
+
+EXTERN FN LnkAddDynamicObject (
+    IN filename : ^UBYTE,
+)
+
+EXTERN FN LnkLinkObject ()
+
+EXTERN LnkOutputName : ^UBYTE
+EXTERN LnkKeepGlobals : UWORD
+EXTERN LnkStripRelocs : UWORD
+EXTERN LnkCreateStubs : UWORD
+EXTERN LnkCreateFragment : UWORD
+EXTERN LnkCreateBin : UWORD
+EXTERN LnkBaseAddress : UWORD
+EXTERN LnkMoveExpression : ^UBYTE
+EXTERN LnkMappedBase : UWORD
+
 // XLO stuff.
 
 ENUM XloRelocationType : UBYTE

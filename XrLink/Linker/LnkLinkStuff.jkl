@@ -1,0 +1,36 @@
+//
+// Link stuff.
+//
+
+#INCLUDE "<inc>/Linker.hjk"
+
+FN LnkAddStaticObject (
+    IN filename : ^UBYTE,
+)
+
+    // Load the static object.
+
+    buf := LnkLoadXloFile ( filename )
+
+    // Insert in list and other structures.
+
+    // ...
+END
+
+FN LnkAddDynamicObject (
+    IN filename : ^UBYTE,
+)
+
+    // Load the dynamic object.
+
+    buf := LnkLoadXloFile ( filename )
+
+    // Insert in list and other structures.
+
+    // ...
+END
+
+FN LnkLinkObject ()
+
+    // Link the final object.
+END

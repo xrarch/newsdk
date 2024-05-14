@@ -9,16 +9,135 @@ LnkBinaryName : ^UBYTE = NULLPTR
 FN LnkUsage ()
     TlPrintString ( "Usage: " )
     TlPrintString ( LnkBinaryName )
-    TlPrintString ( " [command] [options ...]\n" )
+    TlPrintString ( " <command> <options ...>\n" )
 
+    TlPrintString ( "\nCommands:\n" )
     TlPrintString ( "  info <imagename>: Print miscellaneous information about the image file.\n" )
     TlPrintString ( "  symbols <imagename>: Dump the symbol table.\n" )
     TlPrintString ( "  externs <imagename>: Dump the extern table.\n" )
     TlPrintString ( "  relocs <imagename>: Dump the relocation table for each section.\n" )
     TlPrintString ( "  fixups <imagename>: Dump the fixup table.\n" )
     TlPrintString ( "  imports <imagename>: Dump the import table.\n" )
+    TlPrintString ( "  link <outputname> [objects ...] [-d <shared libs ...>]\n" )
+    TlPrintString ( "   [-move:section1=expr,section2=expr,...] XOR [-base:addr] XOR [-mapbase:addr]\n" )
+    TlPrintString ( "   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin]\n" )
 
     TlErrorExit ()
+END
+
+PUBLIC LnkOutputName : ^UBYTE = NULLPTR
+PUBLIC LnkKeepGlobals := FALSE
+PUBLIC LnkStripRelocs := FALSE
+PUBLIC LnkCreateStubs := TRUE
+PUBLIC LnkCreateFragment := FALSE
+PUBLIC LnkCreateBin := FALSE
+PUBLIC LnkBaseAddress := 0
+PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
+PUBLIC LnkMappedBase := FALSE
+
+FN LnkLinkStuff (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Parse the link command line and then link stuff.
+
+    static := TRUE
+    foundoutput := FALSE
+
+    i := 2
+
+    WHILE i < argc DO
+        IF argv[i][0] == '-' THEN
+            // It's an option.
+
+            IF TlCompareString ( argv[i], "-keepglobals" ) == 0 THEN
+                LnkKeepGlobals = TRUE
+
+            ELSEIF TlCompareString ( argv[i], "-striprelocs" ) == 0 THEN
+                LnkStripRelocs = TRUE
+
+            ELSEIF TlCompareString ( argv[i], "-nostubs" ) == 0 THEN
+                LnkCreateStubs = FALSE
+
+            ELSEIF TlCompareString ( argv[i], "-fragment" ) == 0 THEN
+                LnkCreateFragment = TRUE
+
+            ELSEIF TlCompareString ( argv[i], "-bin" ) == 0 THEN
+                LnkCreateBin = TRUE
+
+            ELSEIF TlCompareString ( argv[i], "-d" ) == 0 THEN
+                static = FALSE
+
+            ELSEIF TlCompareStringWithMax ( argv[i], "-move:", 6 ) == 0 THEN
+                IF LnkMappedBase OR LnkBaseAddress THEN
+                    LnkUsage ()
+                END
+
+                LnkMoveExpression = &argv[i][6]
+
+            ELSEIF TlCompareStringWithMax ( argv[i], "-base:", 6 ) == 0 THEN
+                IF LnkMoveExpression OR LnkMappedBase THEN
+                    LnkUsage ()
+                END
+
+                IF NOT TlStringToNumber (
+                    &argv[i][6], // src
+                    -1, // bufsize
+                    OUT LnkBaseAddress, // num
+                ) THEN
+                    LnkUsage ()
+                END
+
+            ELSEIF TlCompareStringWithMax ( argv[i], "-mappedbase:", 12 ) == 0 THEN
+                IF LnkMoveExpression OR LnkBaseAddress THEN
+                    LnkUsage ()
+                END
+
+                IF NOT TlStringToNumber (
+                    &argv[i][12], // src
+                    -1, // bufsize
+                    OUT LnkBaseAddress, // num
+                ) THEN
+                    LnkUsage ()
+                END
+
+                LnkMappedBase = TRUE
+
+            ELSE
+                LnkUsage ()
+            END
+
+        ELSE
+            // It's an object file name.
+
+            IF NOT foundoutput THEN
+                // It's the output file.
+
+                LnkOutputName = argv[i]
+
+                foundoutput = TRUE
+
+            ELSEIF static THEN
+                // It's one of the statically linked objects.
+
+                LnkAddStaticObject ( argv[i] )
+
+            ELSE
+                // It's a dynamic library.
+
+                LnkAddDynamicObject ( argv[i] )
+            END
+        END
+
+        i += 1
+    END
+
+    IF NOT LnkOutputName THEN
+        LnkUsage ()
+    END
+
+    LnkLinkObject ()
 END
 
 FN LnkMain (
@@ -26,9 +145,9 @@ FN LnkMain (
     IN argv : ^^UBYTE,
 )
 
-    // Link stuff.
+    // Dispatch to the correct command.
 
-    LnkBinaryName = &argv[0][0]
+    LnkBinaryName = argv[0]
 
     IF argc < 3 THEN
         LnkUsage ()
@@ -53,6 +172,9 @@ FN LnkMain (
 
     ELSEIF TlCompareString ( cmd, "imports" ) == 0 THEN
         LnkDumpImports ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "link" ) == 0 THEN
+        LnkLinkStuff ( argc, argv )
 
     ELSE
         LnkUsage ()

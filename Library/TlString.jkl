@@ -99,6 +99,9 @@ FN TlStringToNumber (
             ELSEIF byte >= 'A' AND byte <= 'F' THEN
                 num += src^ - 'A'
 
+            ELSEIF byte >= 'a' AND byte <= 'f' THEN
+                num += src^ - 'a'
+
             ELSE
                 RETURN FALSE
             END

@@ -211,7 +211,7 @@ FN LnkDumpRelocs (
     header := CAST buf TO ^XloHeader
 
     i := 0
-    section := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
+    sectiontab := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
     stringtab := buf + header^.StringTableOffset
     externtab := CAST buf + header^.ExternTableOffset TO ^XloExternEntry
 
@@ -230,7 +230,7 @@ FN LnkDumpRelocs (
         WHILE j < extheader^.UnresolvedFixupCount DO
             TlPrintHex ( reloc^.SectionOffset )
             TlPrintString ( " " )
-            TlPrintString ( stringtab + section[reloc^.SectionIndex].NameOffset )
+            TlPrintString ( stringtab + sectiontab[reloc^.SectionIndex].NameOffset )
             TlPrintString ( " " )
             TlPrintString ( stringtab + externtab[reloc^.ExternIndex].NameOffset )
             TlPrintString ( " " )
@@ -255,14 +255,16 @@ FN LnkDumpRelocs (
     END
 
     WHILE i < header^.SectionCount DO
-        TlPrintString ( stringtab + section^.NameOffset )
+        TlPrintString ( stringtab + sectiontab[i].NameOffset )
         TlPrintString ( ":\n" )
 
         j = 0
-        reloc = CAST buf + section^.RelocTableOffset TO ^XloRelocEntry
+        reloc = CAST buf + sectiontab[i].RelocTableOffset TO ^XloRelocEntry
 
-        WHILE j < section^.RelocCount DO
+        WHILE j < sectiontab[i].RelocCount DO
             TlPrintHex ( reloc^.SectionOffset )
+            TlPrintString ( " " )
+            TlPrintString ( stringtab + sectiontab[reloc^.SectionIndex].NameOffset )
             TlPrintString ( " " )
 
             IF reloc^.Type < XLO_RELOC_MAX AND
@@ -282,7 +284,6 @@ FN LnkDumpRelocs (
 
         TlPrintString ( "\n" )
 
-        section += SIZEOF XloSectionHeader
         i += 1
     END
 END
@@ -291,10 +292,12 @@ FN LnkDumpFixups (
     IN filename : ^UBYTE,
 )
 
+    TlInternalError ( "TODO fixups dumping deferred until there are object files with fixups", 0, 0, 0 )
 END
 
 FN LnkDumpImports (
     IN filename : ^UBYTE,
 )
 
+    TlInternalError ( "TODO imports dumping deferred until there are object files with imports", 0, 0, 0 )
 END
