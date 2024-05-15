@@ -35,10 +35,16 @@ PUBLIC LnkBaseAddress := 0
 PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
 PUBLIC LnkMappedBase := FALSE
 
+EXTERN FN LnkInitializeDatabase ()
+
 FN LnkLinkStuff (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
 )
+
+    // Initialize the linker database.
+
+    LnkInitializeDatabase ()
 
     // Parse the link command line and then link stuff.
 

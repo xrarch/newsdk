@@ -4,6 +4,8 @@
 
 #INCLUDE "<inc>/Linker.hjk"
 
+LnkArchitectureType := 0
+
 FN LnkLoadXloFile (
     IN filename : ^UBYTE,
 ) : ^UBYTE
@@ -60,6 +62,16 @@ FN LnkLoadXloFile (
     IF header^.Magic != XLO_MAGIC_NUMBER THEN
         TlPrintString ( filename )
         TlPrintString ( ": Not a valid XLO object file\n" )
+
+        TlErrorExit ()
+    END
+
+    IF NOT LnkArchitectureType THEN
+        LnkArchitectureType = header^.TargetArchitecture
+
+    ELSEIF LnkArchitectureType != header^.TargetArchitecture THEN
+        TlPrintString ( filename )
+        TlPrintString ( ": Incompatible architecture type\n" )
 
         TlErrorExit ()
     END

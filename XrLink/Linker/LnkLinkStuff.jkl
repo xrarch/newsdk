@@ -4,33 +4,89 @@
 
 #INCLUDE "<inc>/Linker.hjk"
 
+LnkObjectListHead : TlListEntry
+LnkLibListHead : TlListEntry
+
+STRUCT LnkObject
+    Entry : TlListEntry,
+
+    Data : ^UBYTE,
+END
+
+STRUCT LnkLibrary
+    Entry : TlListEntry,
+
+    Data : ^UBYTE,
+END
+
 FN LnkAddStaticObject (
     IN filename : ^UBYTE,
 )
 
+    // Allocate an object block.
+
+    object : ^LnkObject
+
+    status := TlBumpAlloc (
+        SIZEOF LnkObject, // bytes
+        OUT object, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate object block", 0, 0, 0 )
+    END
+
     // Load the static object.
 
-    buf := LnkLoadXloFile ( filename )
+    object^.Data = LnkLoadXloFile ( filename )
 
-    // Insert in list and other structures.
+    // Insert in list.
 
-    // ...
+    TlInsertAtTailList (
+        &LnkObjectListHead, // head
+        &object^.Entry, // entry
+    )
 END
 
 FN LnkAddDynamicObject (
     IN filename : ^UBYTE,
 )
 
-    // Load the dynamic object.
+    // Allocate a library block.
 
-    buf := LnkLoadXloFile ( filename )
+    library : ^LnkLibrary
 
-    // Insert in list and other structures.
+    status := TlBumpAlloc (
+        SIZEOF LnkLibrary, // bytes
+        OUT library, // ptr
+    )
 
-    // ...
+    IF status THEN
+        TlInternalError ( "Failed to allocate library block", 0, 0, 0 )
+    END
+
+    // Load the dynamic library.
+
+    library^.Data = LnkLoadXloFile ( filename )
+
+    // Insert in list.
+
+    TlInsertAtTailList (
+        &LnkLibListHead, // head
+        &library^.Entry, // entry
+    )
 END
 
 FN LnkLinkObject ()
 
     // Link the final object.
+
+END
+
+FN LnkInitializeDatabase ()
+
+    // Initialize the linker database.
+
+    TlInitializeList ( &LnkObjectListHead )
+    TlInitializeList ( &LnkLibListHead )
 END
