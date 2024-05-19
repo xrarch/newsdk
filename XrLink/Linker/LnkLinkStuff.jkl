@@ -6,17 +6,36 @@
 
 LnkObjectListHead : TlListEntry
 LnkLibListHead : TlListEntry
+LnkSectionTable : TlHashTable
 
 STRUCT LnkObject
     Entry : TlListEntry,
 
+    Path : ^UBYTE,
     Data : ^UBYTE,
 END
 
 STRUCT LnkLibrary
     Entry : TlListEntry,
 
+    Path : ^UBYTE,
     Data : ^UBYTE,
+END
+
+STRUCT LnkSection
+    Entry : TlHashTableEntry,
+
+    Name : ^UBYTE,
+    Size : UWORD,
+    Flags : UWORD,
+END
+
+FN LnkFindSection (
+    IN name : ^UBYTE,
+    IN flags : ^UWORD,
+) : ^LnkSection
+
+    // 
 END
 
 FN LnkAddStaticObject (
@@ -24,6 +43,7 @@ FN LnkAddStaticObject (
 )
 
     // Allocate an object block.
+    // N.B. filename must be in permanent memory.
 
     object : ^LnkObject
 
@@ -39,6 +59,7 @@ FN LnkAddStaticObject (
     // Load the static object.
 
     object^.Data = LnkLoadXloFile ( filename )
+    object^.Path = filename
 
     // Insert in list.
 
@@ -53,6 +74,7 @@ FN LnkAddDynamicObject (
 )
 
     // Allocate a library block.
+    // N.B. filename must be in permanent memory.
 
     library : ^LnkLibrary
 
@@ -68,6 +90,7 @@ FN LnkAddDynamicObject (
     // Load the dynamic library.
 
     library^.Data = LnkLoadXloFile ( filename )
+    library^.Path = filename
 
     // Insert in list.
 
@@ -89,4 +112,5 @@ FN LnkInitializeDatabase ()
 
     TlInitializeList ( &LnkObjectListHead )
     TlInitializeList ( &LnkLibListHead )
+    TlInitializeHashTable ( &LnkSectionTable )
 END
