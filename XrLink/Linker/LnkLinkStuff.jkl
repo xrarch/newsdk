@@ -4,9 +4,53 @@
 
 #INCLUDE "<inc>/Linker.hjk"
 
+#IF ( == BITS 32 )
+
+#MACRO LnkEncodeExternLink ( extern, ptr ) [
+    extern^.Padding2 = CAST ptr TO UWORD
+]
+
+#MACRO LnkFetchExternLinkToSymbol ( extern ) [
+    CAST extern^.Padding2 TO ^LnkSymbol
+]
+
+#MACRO LnkFetchExternLinkToExtern ( extern ) [
+    CAST extern^.Padding2 TO ^LnkExtern
+]
+
+#ELSE
+
+// This is necessary since the extern table entries are not necessarily UQUAD
+// aligned, and we will run on 64-bit architectures w/ alignment restrictions
+// (such as Aphelion).
+
+#MACRO LnkEncodeExternLink ( extern, ptr ) [
+    extern^.Padding2 = (CAST ptr TO UWORD) & 0xFFFFFFFF
+    extern^.Padding3 = (CAST ptr TO UWORD) >> 32
+]
+
+#MACRO LnkFetchExternLinkToSymbol ( extern ) [
+    CAST extern^.Padding2 | (extern^.Padding3 << 32) TO ^LnkSymbol
+]
+
+#MACRO LnkFetchExternLinkToExtern ( extern ) [
+    CAST extern^.Padding2 | (extern^.Padding3 << 32) TO ^LnkExtern
+]
+
+#END
+
 LnkObjectListHead : TlListEntry
 LnkLibListHead : TlListEntry
 LnkSectionTable : TlHashTable
+LnkSymbolTable : TlHashTable
+LnkExternTable : TlHashTable
+
+LnkSectionCount := 0
+LnkSymbolCount := 0
+LnkExternCount := 0
+LnkUnresolvedCount := 0
+
+LnkIndexedSectionArray : ^LnkSection[256]
 
 STRUCT LnkObject
     Entry : TlListEntry,
@@ -25,17 +69,99 @@ END
 STRUCT LnkSection
     Entry : TlHashTableEntry,
 
-    Name : ^UBYTE,
+    RelocationListHead : TlListEntry,
+
     Size : UWORD,
     Flags : UWORD,
+    Index : UWORD,
+    Pen : UWORD,
+
+    Data : ^UBYTE,
+END
+
+STRUCT LnkRelocation
+    Entry : TlListEntry,
+
+    Section : ^LnkSection,
+    SectionOffset : UWORD,
+    Type : UWORD,
+END
+
+STRUCT LnkSymbol
+    Entry : TlHashTableEntry,
+
+    Section : ^LnkSection,
+    SectionOffset : UWORD,
+    Type : UWORD,
+    Index : UWORD,
+
+    SourceObject : ^LnkObject,
+END
+
+STRUCT LnkExtern
+    Entry : TlHashTableEntry,
+
+    SourceObject : ^LnkObject,
+
+    Library : ^LnkLibrary,
+    Symbol : ^XloSymbolEntry,
 END
 
 FN LnkFindSection (
     IN name : ^UBYTE,
-    IN flags : ^UWORD,
+    IN flags : UWORD,
+    IN objectname : ^UBYTE,
 ) : ^LnkSection
 
-    // 
+    // Find or create a matching section.
+
+    created : UBYTE
+
+    section := CAST TlLookupOrAllocateEntryHashTable (
+        &LnkSectionTable, // hashtable
+        SIZEOF LnkSection, // entrysize
+        name, // key
+        OUT created, // created
+    ) TO ^LnkSection
+
+    IF created THEN
+        // Initialize the section structure.
+
+        IF LnkSectionCount == 256 THEN
+            TlPrintString ( objectname )
+            TlPrintString ( ": " )
+            TlPrintString ( name )
+            TlPrintString ( ": Maximum section count exceeded\n" )
+
+            TlErrorExit ()
+        END
+
+        section^.Size = 0
+        section^.Flags = flags
+        section^.Index = LnkSectionCount
+        section^.Pen = 0
+        section^.Data = NULLPTR
+
+        TlInitializeList ( &section^.RelocationListHead )
+
+        LnkIndexedSectionArray[LnkSectionCount] = section
+    
+        LnkSectionCount += 1
+
+    ELSE
+        // Check that the section matches.
+
+        IF flags != section^.Flags THEN
+            TlPrintString ( objectname )
+            TlPrintString ( ": Mismatched section '" )
+            TlPrintString ( name )
+            TlPrintString ( "'\n" )
+
+            TlErrorExit ()
+        END
+    END
+
+    RETURN section
 END
 
 FN LnkAddStaticObject (
@@ -60,6 +186,17 @@ FN LnkAddStaticObject (
 
     object^.Data = LnkLoadXloFile ( filename )
     object^.Path = filename
+
+    // Sanity check the header.
+
+    header := CAST object^.Data TO ^XloHeader
+
+    IF NOT (header^.Flags & XLO_FILE_FRAGMENT) THEN
+        TlPrintString ( filename )
+        TlPrintString ( ": Can't link non-fragment objects\n" )
+
+        TlErrorExit ()
+    END
 
     // Insert in list.
 
@@ -92,6 +229,17 @@ FN LnkAddDynamicObject (
     library^.Data = LnkLoadXloFile ( filename )
     library^.Path = filename
 
+    // Sanity check the header.
+
+    header := CAST library^.Data TO ^XloHeader
+
+    IF header^.Flags & XLO_FILE_FRAGMENT THEN
+        TlPrintString ( filename )
+        TlPrintString ( ": Can't dynamically link with fragment\n" )
+
+        TlErrorExit ()
+    END
+
     // Insert in list.
 
     TlInsertAtTailList (
@@ -100,10 +248,641 @@ FN LnkAddDynamicObject (
     )
 END
 
+FNPTR LnkRelocF (
+    IN ptr : ^VOID,
+    IN value : UWORD,
+)
+
+FN (LnkRelocF) LnkPerformRelocPtr (
+    IN ptr : ^VOID,
+    IN value : UWORD,
+)
+
+    IF LnkArchitectureInTokyo == 32 THEN
+        // Update 32-bit pointer.
+
+        data := CAST ptr TO ^ULONG
+
+        data^ += value
+
+        LEAVE
+    END
+
+    // Must be 64.
+
+#IF ( == BITS 64 )
+    data := CAST ptr TO ^UQUAD
+
+    data^ += value
+
+#ELSE
+    // This should have been rejected earlier.
+
+    TlInternalError ( "64 bit relocation on 32 bit linker build", 0, 0, 0 )
+#END
+
+END
+
+FN (LnkRelocF) LnkPerformRelocXrAbsj (
+    IN ptr : ^VOID,
+    IN value : UWORD,
+)
+
+    // Relocate XR17032 absolute jump.
+    // The pointer is the base of the jump instruction.
+
+    IF value & 3 THEN
+        TlInternalError ( "Unaligned XR_ABSJ offset", value, 0, 0 )
+    END
+
+    IF ptr & 3 THEN
+        TlInternalError ( "Unaligned XR_ABSJ ptr", CAST ptr TO UWORD, 0, 0 )
+    END
+
+    instptr := CAST ptr TO ^ULONG
+    inst := instptr^
+
+    // Isolate the jump target.
+
+    oldvalue := inst >> 3
+
+    // Add the offset.
+
+    oldvalue += value >> 2
+
+    // Re-encode the instruction with the new jump target and the original
+    // jump opcode.
+
+    instptr^ = (oldvalue << 3) | (inst & 0x7)
+END
+
+FN (LnkRelocF) LnkPerformRelocXrLa (
+    IN ptr : ^VOID,
+    IN value : UWORD,
+)
+
+    // Relocate XR17032 LA pseudo-instruction.
+    // The pointer is the base of the instruction pair.
+    // The first instruction loads the upper 16 bits and the second instruction
+    // loads the lower 16 bits.
+
+    IF value & 3 THEN
+        TlInternalError ( "Unaligned XR_LA offset", value, 0, 0 )
+    END
+
+    IF ptr & 3 THEN
+        TlInternalError ( "Unaligned XR_LA ptr", CAST ptr TO UWORD, 0, 0 )
+    END
+
+    instptr := CAST ptr TO ^ULONG
+    
+    insthi := instptr[0]
+    instlo := instptr[1]
+
+    // Isolate the old value.
+
+    oldvalue := (insthi & 0xFFFF0000) | (instlo >> 16)
+
+    // Add the offset.
+
+    oldvalue += value
+
+    // Re-encode the instructions with the new value and the original opcodes.
+
+    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
+    instptr[1] = (oldvalue << 16) | (instlo & 0xFFFF)
+END
+
+FN (LnkRelocF) LnkPerformRelocXrFarInt (
+    IN ptr : ^VOID,
+    IN value : UWORD,
+)
+
+    // Relocate XR17032 "far int" pseudo-instructions.
+    // The pointer is the base of the instruction pair.
+    // The first instruction loads the upper 16 bits and the second instruction
+    // loads the lower 16 bits, shifted right by 1.
+
+    IF value & 3 THEN
+        TlInternalError ( "Unaligned XR_FAR_INT offset", value, 0, 0 )
+    END
+
+    IF ptr & 3 THEN
+        TlInternalError ( "Unaligned XR_FAR_INT ptr", CAST ptr TO UWORD, 0, 0 )
+    END
+
+    instptr := CAST ptr TO ^ULONG
+    
+    insthi := instptr[0]
+    instlo := instptr[1]
+
+    // Isolate the old value.
+
+    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
+
+    // Add the offset.
+
+    oldvalue += value
+
+    // Re-encode the instructions with the new value and the original opcodes.
+
+    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
+    instptr[1] = ((oldvalue << 16) >> 1) | (instlo & 0xFFFF)
+END
+
+FN (LnkRelocF) LnkPerformRelocXrFarLong (
+    IN ptr : ^VOID,
+    IN value : UWORD,
+)
+
+    // Relocate XR17032 "far long" pseudo-instructions.
+    // The pointer is the base of the instruction pair.
+    // The first instruction loads the upper 16 bits and the second instruction
+    // loads the lower 16 bits, shifted right by 2.
+
+    IF value & 3 THEN
+        TlInternalError ( "Unaligned XR_FAR_LONG offset", value, 0, 0 )
+    END
+
+    IF ptr & 3 THEN
+        TlInternalError ( "Unaligned XR_FAR_LONG ptr", CAST ptr TO UWORD, 0, 0 )
+    END
+
+    instptr := CAST ptr TO ^ULONG
+    
+    insthi := instptr[0]
+    instlo := instptr[1]
+
+    // Isolate the old value.
+
+    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
+
+    // Add the offset.
+
+    oldvalue += value
+
+    // Re-encode the instructions with the new value and the original opcodes.
+
+    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
+    instptr[1] = ((oldvalue << 16) >> 2) | (instlo & 0xFFFF)
+END
+
+LnkPerformRelocationTable : LnkRelocF[] = {
+    [XLO_RELOC_PTR] = &LnkPerformRelocPtr,
+
+    [XLO_RELOC_XR17032_ABSJ] = &LnkPerformRelocXrAbsj,
+    [XLO_RELOC_XR17032_LA] = &LnkPerformRelocXrLa,
+    [XLO_RELOC_XR17032_FAR_INT] = &LnkPerformRelocXrFarInt,
+    [XLO_RELOC_XR17032_FAR_LONG] = &LnkPerformRelocXrFarLong,
+}
+
+FN LnkRelocateInternalSection (
+    IN section : ^XloSectionHeader,
+    IN sectiontable : ^XloSectionHeader,
+    IN base : ^VOID,
+    IN offset : UWORD,
+)
+
+    // Relocate a section by the provided offset.
+
+    reloc := CAST base + section^.RelocTableOffset TO ^XloRelocEntry
+    count := section^.RelocCount
+
+    WHILE count DO
+        targetsection := &sectiontable[reloc^.SectionIndex]
+
+        LnkPerformRelocationTable[reloc^.Type] (
+            base + targetsection^.FileOffset + reloc^.SectionOffset, // ptr
+            offset, // value
+        )
+
+        count -= 1
+        reloc += SIZEOF XloRelocEntry
+    END
+END
+
+FN LnkAllocateStorage ()
+
+    // Allocate storage for each of the sections in each of the objects.
+    // We also relocate the section by its offset.
+
+    listhead := &LnkObjectListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        object := CONTAINEROF listentry TO LnkObject.Entry
+        
+        header := CAST object^.Data TO ^XloHeader
+
+        sectiontable :=
+            CAST header + header^.SectionTableOffset TO ^XloSectionHeader
+
+        stringtable := CAST header + header^.StringTableOffset TO ^UBYTE
+
+        i := 0
+
+        WHILE i < header^.SectionCount DO
+            section := &sectiontable[i]
+            sectionname := stringtable + section^.NameOffset
+
+            IF section^.VirtualAddress != 0 THEN
+                TlPrintString ( object^.Path )
+                TlPrintString ( ": Section with non-zero base '" )
+                TlPrintString ( sectionname )
+                TlPrintString ( "'\n" )
+                TlErrorExit ()
+            END
+
+            // Find the final section.
+
+            lnksection := LnkFindSection (
+                sectionname, // name
+                section^.Flags, // flags
+                object^.Path, // objectname
+            )
+
+            // Cache the index of the final section.
+
+            section^.NameOffset = lnksection^.Index
+
+            // Stash the offset of this section from the base of the matching
+            // final section in the VirtualAddress field of its header.
+
+            section^.VirtualAddress = lnksection^.Size
+
+            // Increment the size of the final section.
+
+            lnksection^.Size += section^.DataLength
+
+            // Run down the relocation table to offset all references to
+            // this section by the byte count we've determined.
+            // Don't bother if the offset is zero.
+
+            IF section^.VirtualAddress THEN
+                LnkRelocateInternalSection (
+                    section, // section
+                    sectiontable, // sectiontable
+                    header, // base
+                    section^.VirtualAddress, // offset
+                )
+            END
+
+            i += 1
+        END
+
+        // While we're here, accumulate a count of all symbols.
+
+        LnkSymbolCount += header^.SymbolCount
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkMergeSections ()
+
+    // Merge the relocation tables and contents of the sections.
+
+    status : TlStatus
+
+    listhead := &LnkObjectListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        object := CONTAINEROF listentry TO LnkObject.Entry
+        
+        header := CAST object^.Data TO ^XloHeader
+
+        sectiontable :=
+            CAST header + header^.SectionTableOffset TO ^XloSectionHeader
+
+        i := 0
+
+        WHILE i < header^.SectionCount DO
+            section := &sectiontable[i]
+
+            // Find the final section using the cached index.
+
+            lnksection := LnkIndexedSectionArray[section^.NameOffset]
+
+            IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
+                IF NOT lnksection^.Data AND lnksection^.Size THEN
+                    // We need to allocate the data buffer.
+
+                    status = TlBumpAlloc (
+                        lnksection^.Size, // bytes
+                        OUT lnksection^.Data, // ptr
+                    )
+
+                    IF status THEN
+                        TlInternalError (
+                            "Failed to allocate section contents", 0, 0, 0 )
+                    END
+                END
+
+                IF section^.DataLength THEN
+                    // Copy our data into the final section.
+
+                    TlCopyMemory (
+                        lnksection^.Data + lnksection^.Pen, // dest
+                        header + section^.FileOffset, // src
+                        section^.DataLength, // sz
+                    )
+
+                    lnksection^.Pen += section^.DataLength
+                END
+            END
+
+            IF section^.RelocCount THEN
+                // Copy our relocations into the final section.
+
+                reloctable :=
+                    CAST header + section^.RelocTableOffset TO ^XloRelocEntry
+
+                j := 0
+
+                WHILE j < section^.RelocCount DO
+                    reloc := &reloctable[j]
+
+                    lnkreloc : ^LnkRelocation
+
+                    status = TlBumpAlloc (
+                        SIZEOF LnkRelocation, // bytes
+                        OUT lnkreloc, // ptr
+                    )
+
+                    IF status THEN
+                        TlInternalError (
+                            "Failed to allocate relocation", 0, 0, 0 )
+                    END
+
+                    // Create the relocation structure.
+
+                    targetsection := &sectiontable[reloc^.SectionIndex]
+
+                    // Make sure to increment the offset by the offset of the
+                    // target section from the base of the final section.
+
+                    lnkreloc^.SectionOffset =
+                        reloc^.SectionOffset + targetsection^.VirtualAddress
+
+                    // Store a pointer to the final section.
+
+                    lnkreloc^.Section =
+                        LnkIndexedSectionArray[targetsection^.NameOffset]
+
+                    // Copy the relocation type.
+
+                    lnkreloc^.Type = reloc^.Type
+
+                    // Insert in the final section's relocation list.
+
+                    TlInsertAtTailList (
+                        &lnksection^.RelocationListHead, // head
+                        &lnkreloc^.Entry, // entry
+                    )
+
+                    j += 1
+                END
+            END
+
+            i += 1
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkMergeSymbolTables ()
+
+    // Merge the symbol tables together.
+
+    listhead := &LnkObjectListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        object := CONTAINEROF listentry TO LnkObject.Entry
+        
+        header := CAST object^.Data TO ^XloHeader
+
+        symboltable :=
+            CAST header + header^.SymbolTableOffset TO ^XloSymbolEntry
+
+        sectiontable :=
+            CAST header + header^.SectionTableOffset TO ^XloSectionHeader
+
+        stringtable := CAST header + header^.StringTableOffset TO ^UBYTE
+
+        i := 0
+
+        WHILE i < header^.SymbolCount DO
+            symbol := &symboltable[i]
+
+            section := &sectiontable[symbol^.SectionIndex]
+
+            created : UBYTE
+
+            lnksymbol := CAST TlLookupOrAllocateEntryHashTable (
+                &LnkSymbolTable, // hashtable
+                SIZEOF LnkSymbol, // entrysize
+                stringtable + symbol^.NameOffset, // key
+                OUT created, // created
+            ) TO ^LnkSymbol
+
+            IF NOT created THEN
+                // There's a symbol collision!
+
+                TlPrintString ( "Symbol '" )
+                TlPrintString ( stringtable + symbol^.NameOffset )
+                TlPrintString ( "' defined in both:\n " )
+                TlPrintString ( lnksymbol^.SourceObject^.Path )
+                TlPrintString ( "\n " )
+                TlPrintString ( object^.Path )
+                TlPrintString ( "\n" )
+
+                TlErrorExit ()
+            END
+
+            // Initialize the symbol structure.
+
+            lnksymbol^.SourceObject = object
+            
+            lnksymbol^.Section = LnkIndexedSectionArray[section^.NameOffset]
+            
+            // Make sure the symbol value is offset by the offset of the
+            // original section.
+
+            lnksymbol^.SectionOffset =
+                symbol^.SectionOffset + section^.VirtualAddress
+
+            lnksymbol^.Type = symbol^.Type
+
+            i += 1
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkResolveExterns ()
+
+    // Resolve the outstanding externs for each object file.
+
+    listhead := &LnkObjectListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        object := CONTAINEROF listentry TO LnkObject.Entry
+        
+        header := CAST object^.Data TO ^XloHeader
+
+        externtable :=
+            CAST header + header^.ExternTableOffset TO ^XloExternEntry
+
+        stringtable := CAST header + header^.StringTableOffset TO ^UBYTE
+
+        i := 0
+
+        WHILE i < header^.ExternCount DO
+            extern := &externtable[i]
+
+            // Look up the extern's name in the combined symbol table.
+
+            symbol := CAST TlLookupHashTable (
+                &LnkSymbolTable, // hashtable
+                stringtable + extern^.NameOffset, // key
+            ) TO ^LnkSymbol
+
+            IF symbol THEN
+                // Resolved! Record that.
+
+                extern^.Type = XLO_EXTERN_RESOLVED
+
+                LnkEncodeExternLink ( extern, symbol )
+
+            ELSE
+                // Not resolved (yet). Place into the global extern hash table.
+
+                created : UBYTE
+
+                lnkextern := CAST TlLookupOrAllocateEntryHashTable (
+                    &LnkExternTable, // hashtable
+                    SIZEOF LnkExtern, // entrysize
+                    stringtable + extern^.NameOffset, // key
+                    OUT created, // created
+                ) TO ^LnkExtern
+
+                IF created THEN
+                    // Initialize.
+
+                    lnkextern^.SourceObject = object
+                    lnkextern^.Library = NULLPTR
+                    lnkextern^.Symbol = NULLPTR
+
+                    LnkExternCount += 1
+                    LnkUnresolvedCount += 1
+                END
+
+                LnkEncodeExternLink ( extern, lnkextern )
+            END
+
+            i += 1
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkBindExports ()
+
+    // Bind the exported symbols of the dynamic libraries to any relevant
+    // outstanding externs.
+
+    listhead := &LnkLibListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        library := CONTAINEROF listentry TO LnkLibrary.Entry
+        
+        header := CAST library^.Data TO ^XloHeader
+
+        symboltable :=
+            CAST header + header^.SymbolTableOffset TO ^XloSymbolEntry
+
+        stringtable := CAST header + header^.StringTableOffset TO ^UBYTE
+
+        i := 0
+
+        WHILE i < header^.SymbolCount DO
+            symbol := &symboltable[i]
+
+            IF symbol^.Type == XLO_SYMBOL_EXPORT THEN
+                // Look it up in the extern hash table.
+
+                lnkextern := CAST TlLookupHashTable (
+                    &LnkExternTable, // hashtable
+                    stringtable + symbol^.NameOffset, // key
+                ) TO ^LnkExtern
+
+                IF lnkextern AND NOT lnkextern^.Library THEN
+                    // Woo! Got one.
+
+                    lnkextern^.Library = library
+                    lnkextern^.Symbol = symbol
+
+                    LnkUnresolvedCount -= 1
+                END
+            END
+
+            i += 1
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkDieCuzOfUnresolvedExterns ()
+
+    // Print all of the unresolved symbols and die.
+
+    TlPrintString ( "Failed to resolve the following externs:\n" )
+
+    listhead := &LnkExternTable.OrderedListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnkextern := CONTAINEROF listentry TO LnkExtern.Entry.OrderedEntry
+
+        IF NOT lnkextern^.Library THEN
+            TlPrintString ( " " )
+            TlPrintString ( lnkextern^.SourceObject^.Path )
+            TlPrintString ( ": " )
+            TlPrintString ( lnkextern^.Entry.Key )
+            TlPrintString ( "\n" )
+        END
+
+        listentry = listentry^.Next
+    END
+
+    TlErrorExit ()
+END
+
 FN LnkLinkObject ()
 
     // Link the final object.
 
+    LnkAllocateStorage ()
+
+    LnkMergeSections ()
+
+    LnkMergeSymbolTables ()
+
+    LnkResolveExterns ()
+
+    LnkBindExports ()
+
+    IF LnkUnresolvedCount AND NOT LnkCreateFragment THEN
+        LnkDieCuzOfUnresolvedExterns ()
+    END
 END
 
 FN LnkInitializeDatabase ()
@@ -111,6 +890,12 @@ FN LnkInitializeDatabase ()
     // Initialize the linker database.
 
     TlInitializeList ( &LnkObjectListHead )
+
     TlInitializeList ( &LnkLibListHead )
+
     TlInitializeHashTable ( &LnkSectionTable )
+
+    TlInitializeHashTable ( &LnkSymbolTable )
+
+    TlInitializeHashTable ( &LnkExternTable )
 END

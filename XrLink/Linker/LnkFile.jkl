@@ -4,7 +4,15 @@
 
 #INCLUDE "<inc>/Linker.hjk"
 
-LnkArchitectureType := 0
+PUBLIC LnkArchitectureType := 0
+PUBLIC LnkArchitectureInTokyo := 0
+
+LnkArchitectureBitTable : UWORD[XLO_ARCHITECTURE_MAX] = {
+    [XLO_ARCHITECTURE_XR17032] = 32,
+    [XLO_ARCHITECTURE_FOX32] = 32,
+    [XLO_ARCHITECTURE_APHELION] = 64,
+    [XLO_ARCHITECTURE_AMD64] = 64,
+}
 
 FN LnkLoadXloFile (
     IN filename : ^UBYTE,
@@ -68,6 +76,31 @@ FN LnkLoadXloFile (
 
     IF NOT LnkArchitectureType THEN
         LnkArchitectureType = header^.TargetArchitecture
+
+        IF header^.TargetArchitecture >= XLO_ARCHITECTURE_MAX THEN
+            TlPrintString ( filename )
+            TlPrintString ( ": Unknown architecture type\n" )
+
+            TlErrorExit ()
+        END
+
+        LnkArchitectureInTokyo = LnkArchitectureBitTable[LnkArchitectureType]
+
+        IF NOT LnkArchitectureInTokyo THEN
+            TlPrintString ( filename )
+            TlPrintString ( ": Unknown architecture type\n" )
+            
+            TlErrorExit ()
+        END
+
+#IF ( == BITS 32 )
+        IF LnkArchitectureInTokyo == 64 THEN
+            TlPrintString ( filename )
+            TlPrintString ( ": Can't link 64-bit architecture with 32-bit linker build\n" )
+
+            TlErrorExit ()
+        END
+#END
 
     ELSEIF LnkArchitectureType != header^.TargetArchitecture THEN
         TlPrintString ( filename )

@@ -50,6 +50,7 @@ FN LnkLinkStuff (
 
     static := TRUE
     foundoutput := FALSE
+    dynamicadded := FALSE
 
     i := 2
 
@@ -133,6 +134,8 @@ FN LnkLinkStuff (
                 // It's a dynamic library.
 
                 LnkAddDynamicObject ( argv[i] )
+
+                dynamicadded = TRUE
             END
         END
 
@@ -140,6 +143,24 @@ FN LnkLinkStuff (
     END
 
     IF NOT LnkOutputName THEN
+        // Must supply an output name.
+
+        LnkUsage ()
+    END
+
+    IF NOT LnkArchitectureType THEN
+        LEAVE
+    END
+
+    IF LnkCreateBin AND dynamicadded THEN
+        // Can't add dynamic libraries if -bin specified.
+
+        LnkUsage ()
+    END
+
+    IF LnkCreateBin AND LnkCreateFragment THEN
+        // Can't generate fragment if -bin specified.
+
         LnkUsage ()
     END
 
