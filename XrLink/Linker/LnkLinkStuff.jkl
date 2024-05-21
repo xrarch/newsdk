@@ -42,6 +42,7 @@
 LnkObjectListHead : TlListEntry
 LnkLibListHead : TlListEntry
 LnkUnresolvedFixupList : TlListEntry
+LnkSpecialRelocationList : TlListEntry
 LnkSectionTable : TlHashTable
 LnkSymbolTable : TlHashTable
 LnkExternTable : TlHashTable
@@ -95,13 +96,16 @@ STRUCT LnkRelocation
     Extern : ^LnkExtern,
 END
 
+#DEFINE LNK_SYMBOL_BASE 1
+#DEFINE LNK_SYMBOL_SIZE 2
+#DEFINE LNK_SYMBOL_END 3
+
 STRUCT LnkSymbol
     Entry : TlHashTableEntry,
 
     Section : ^LnkSection,
     SectionOffset : UWORD,
     Type : UWORD,
-    Index : UWORD,
 
     SourceObject : ^LnkObject,
 END
@@ -680,6 +684,153 @@ FN LnkMergeSections ()
     END
 END
 
+FN LnkCreateSpecialSymbol (
+    IN section : ^LnkSection,
+    IN name : ^UBYTE,
+    IN type : UWORD,
+)
+
+    // Helper function to create a special symbol.
+
+    lnksymbol : ^LnkSymbol
+
+    status := TlBumpAlloc (
+        SIZEOF LnkSymbol, // bytes
+        OUT lnksymbol, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate special symbol", 0, 0, 0 )
+    END
+
+    lnksymbol^.SourceObject =
+        CONTAINEROF LnkObjectListHead.Next TO LnkObject.Entry
+    
+    lnksymbol^.Section = section
+
+    lnksymbol^.SectionOffset = type
+
+    lnksymbol^.Type = XLO_SYMBOL_SPECIAL
+
+    TlInsertHashTable (
+        &LnkSymbolTable, // hashtable
+        &lnksymbol^.Entry, // entry
+        name, // key
+    )
+END
+
+FN LnkCreateSpecialSymbols ()
+    
+    // Create special symbols for each section.
+    // These consist of:
+    //
+    // _[section]: The base of the section.
+    // _[section]_size: The size of the section.
+    // _[section]_end: The end of the section.
+
+    symnamearray : ^TlDynamicBuffer
+
+    status := TlBumpAlloc (
+        SIZEOF TlDynamicBuffer, // bytes
+        OUT symnamearray, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate special sym names", 0, 0, 0 )
+    END
+
+    TlInitializeDynamicBuffer ( symnamearray )
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        sectionname := lnksection^.Entry.Key
+        sectionnamelen := TlMeasureString ( sectionname )
+
+        TlInsertDynamicBuffer (
+            symnamearray, // array
+            '_', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            symnamearray, // array
+            sectionname, // srcbuf
+            sectionnamelen, // length
+        )
+
+        TlInsertDynamicBuffer (
+            symnamearray, // array
+            0, // byte
+        )
+
+        basename :=
+            &symnamearray^.Buffer[symnamearray^.Count - sectionnamelen - 2]
+
+        TlInsertDynamicBuffer (
+            symnamearray, // array
+            '_', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            symnamearray, // array
+            sectionname, // srcbuf
+            sectionnamelen, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            symnamearray, // array
+            "_size", // srcbuf
+            6, // length (plus null terminator)
+        )
+
+        sizename :=
+            &symnamearray^.Buffer[symnamearray^.Count - sectionnamelen - 7]
+
+        TlInsertDynamicBuffer (
+            symnamearray, // array
+            '_', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            symnamearray, // array
+            sectionname, // srcbuf
+            sectionnamelen, // length
+        )
+
+        TlCopyIntoDynamicBuffer (
+            symnamearray, // array
+            "_end", // srcbuf
+            5, // length (plus null terminator)
+        )
+
+        endname :=
+            &symnamearray^.Buffer[symnamearray^.Count - sectionnamelen - 6]
+
+        LnkCreateSpecialSymbol (
+            lnksection, // section
+            basename, // name
+            LNK_SYMBOL_BASE, // type
+        )
+
+        LnkCreateSpecialSymbol (
+            lnksection, // section
+            sizename, // name
+            LNK_SYMBOL_SIZE, // type
+        )
+
+        LnkCreateSpecialSymbol (
+            lnksection, // section
+            endname, // name
+            LNK_SYMBOL_END, // type
+        )
+
+        listentry = listentry^.Next
+    END
+END
+
 FN LnkMergeSymbolTables ()
 
     // Merge the symbol tables together.
@@ -984,38 +1135,70 @@ FN LnkResolveFixupTable ()
             
                 lnksymbol := LnkFetchExternLinkToSymbol ( extern )
 
-                // Perform the fixup to bind the extern.
+                IF lnksymbol^.Type != XLO_SYMBOL_SPECIAL THEN
+                    // Perform the fixup to bind the extern.
 
-                LnkPerformRelocationTable[fixup^.Type] (
-                    lnksection^.Data +
-                    section^.VirtualAddress +
-                    fixup^.SectionOffset, // ptr
-                    lnksymbol^.SectionOffset, // value
-                )
+                    LnkPerformRelocationTable[fixup^.Type] (
+                        lnksection^.Data +
+                        section^.VirtualAddress +
+                        fixup^.SectionOffset, // ptr
+                        lnksymbol^.SectionOffset, // value
+                    )
 
-                // Create new relocation.
+                    // Create new relocation.
 
-                status = TlBumpAlloc (
-                    SIZEOF LnkRelocation, // bytes
-                    OUT lnkreloc, // ptr
-                )
+                    status = TlBumpAlloc (
+                        SIZEOF LnkRelocation, // bytes
+                        OUT lnkreloc, // ptr
+                    )
 
-                IF status THEN
-                    TlInternalError (
-                        "Failed to allocate relocation", 0, 0, 0 )
+                    IF status THEN
+                        TlInternalError (
+                            "Failed to allocate relocation", 0, 0, 0 )
+                    END
+
+                    lnkreloc^.SectionOffset =
+                        section^.VirtualAddress + fixup^.SectionOffset
+
+                    lnkreloc^.Section = lnksection
+
+                    lnkreloc^.Type = fixup^.Type
+
+                    TlInsertAtTailList (
+                        &lnksymbol^.Section^.RelocationListHead, // head
+                        &lnkreloc^.Entry, // entry
+                    
+                    )
+
+                ELSE
+                    // This was a special symbol, so create a special deferred
+                    // relocation, which is only used internally by the linker
+                    // after section parameters are fully known.
+
+                    status = TlBumpAlloc (
+                        SIZEOF LnkRelocation, // bytes
+                        OUT lnkreloc, // ptr
+                    )
+
+                    IF status THEN
+                        TlInternalError (
+                            "Failed to allocate relocation", 0, 0, 0 )
+                    END
+
+                    lnkreloc^.SectionOffset =
+                        section^.VirtualAddress + fixup^.SectionOffset
+
+                    lnkreloc^.Section = lnksection
+
+                    lnkreloc^.Extern = CAST lnksymbol TO ^LnkExtern
+
+                    lnkreloc^.Type = fixup^.Type
+
+                    TlInsertAtTailList (
+                        &LnkSpecialRelocationList, // head
+                        &lnkreloc^.Entry, // entry
+                    )
                 END
-
-                lnkreloc^.SectionOffset =
-                    section^.VirtualAddress + fixup^.SectionOffset
-
-                lnkreloc^.Section = lnksection
-
-                lnkreloc^.Type = fixup^.Type
-
-                TlInsertAtTailList (
-                    &lnksymbol^.Section^.RelocationListHead, // head
-                    &lnkreloc^.Entry, // entry
-                )
 
             ELSE
                 lnkextern := LnkFetchExternLinkToExtern ( extern )
@@ -1488,6 +1671,39 @@ FN LnkPerformRelocations ()
 
         listentry = listentry^.Next
     END
+
+    // Now perform all of the special relocations which could not have been done
+    // earlier since we didn't understand how the sections would be laid out
+    // yet.
+
+    listhead = &LnkSpecialRelocationList
+    listentry = listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnkreloc := CONTAINEROF listentry TO LnkRelocation.Entry
+
+        symbol := CAST lnkreloc^.Extern TO ^LnkSymbol
+
+        value : UWORD
+
+        IF symbol^.SectionOffset == LNK_SYMBOL_BASE THEN
+            value = symbol^.Section^.VirtualAddress
+
+        ELSEIF symbol^.SectionOffset == LNK_SYMBOL_SIZE THEN
+            value = symbol^.Section^.Size + symbol^.Section^.DynamicData.Count
+
+        ELSEIF symbol^.SectionOffset == LNK_SYMBOL_END THEN
+            value = symbol^.Section^.VirtualAddress +
+                symbol^.Section^.Size + symbol^.Section^.DynamicData.Count
+        END
+
+        LnkPerformRelocationTable[lnkreloc^.Type] (
+            lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
+            value, // value
+        )
+
+        listentry = listentry^.Next
+    END
 END
 
 FN LnkOutputBinary ()
@@ -1552,6 +1768,8 @@ FN LnkLinkObject ()
 
     LnkMergeSections ()
 
+    LnkCreateSpecialSymbols ()
+
     LnkMergeSymbolTables ()
 
     LnkResolveExterns ()
@@ -1580,6 +1798,8 @@ FN LnkInitializeDatabase ()
     TlInitializeList ( &LnkLibListHead )
 
     TlInitializeList ( &LnkUnresolvedFixupList )
+
+    TlInitializeList ( &LnkSpecialRelocationList )
 
     TlInitializeHashTable ( &LnkSectionTable )
 

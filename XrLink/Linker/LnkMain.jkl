@@ -149,7 +149,9 @@ FN LnkLinkStuff (
     END
 
     IF NOT LnkArchitectureType THEN
-        LEAVE
+        // No static objects.
+
+        LnkUsage ()
     END
 
     IF LnkCreateBin AND dynamicadded THEN
