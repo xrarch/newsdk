@@ -1,0 +1,3 @@
+- Test the dynamic linking functionality (such as jump stub generation) since it
+  is completely untested currently due to having no dynamically linked
+  environment to run it in yet.

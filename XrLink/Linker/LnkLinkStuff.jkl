@@ -45,6 +45,7 @@ LnkUnresolvedFixupList : TlListEntry
 LnkSectionTable : TlHashTable
 LnkSymbolTable : TlHashTable
 LnkExternTable : TlHashTable
+LnkJumpStubSection : ^LnkSection
 
 LnkSectionCount := 0
 LnkSymbolCount := 0
@@ -82,6 +83,7 @@ STRUCT LnkSection
     Pen : UWORD,
 
     Data : ^UBYTE,
+    DynamicData : TlDynamicBuffer,
 END
 
 STRUCT LnkRelocation
@@ -112,6 +114,10 @@ STRUCT LnkExtern
     Library : ^LnkLibrary,
     Symbol : ^XloSymbolEntry,
     Address : UWORD,
+
+    JumpStubOffset : UWORD,
+
+    HasJumpStub : UBYTE,
 END
 
 FN LnkFindSection (
@@ -152,9 +158,17 @@ FN LnkFindSection (
 
         TlInitializeList ( &section^.RelocationListHead )
 
+        TlInitializeDynamicBuffer ( &section^.DynamicData )
+
         LnkIndexedSectionArray[LnkSectionCount] = section
     
         LnkSectionCount += 1
+
+        IF NOT LnkJumpStubSection AND flags & XLO_SECTION_CODE THEN
+            // The stub section is the first code section found.
+
+            LnkJumpStubSection = section
+        END
 
     ELSE
         // Check that the section matches.
@@ -444,6 +458,10 @@ LnkPerformRelocationTable : LnkRelocF[] = {
     [XLO_RELOC_XR17032_LA] = &LnkPerformRelocXrLa,
     [XLO_RELOC_XR17032_FAR_INT] = &LnkPerformRelocXrFarInt,
     [XLO_RELOC_XR17032_FAR_LONG] = &LnkPerformRelocXrFarLong,
+}
+
+LnkCreateJumpStub : UBYTE[XLO_RELOC_MAX] = {
+    [XLO_RELOC_XR17032_ABSJ] = TRUE,
 }
 
 FN LnkRelocateInternalSection (
@@ -787,6 +805,7 @@ FN LnkResolveExterns ()
                     lnkextern^.SourceObject = object
                     lnkextern^.Library = NULLPTR
                     lnkextern^.Symbol = NULLPTR
+                    lnkextern^.HasJumpStub = FALSE
 
                     LnkExternCount += 1
                     LnkUnresolvedCount += 1
@@ -857,6 +876,61 @@ FN LnkBindExports ()
         listentry = listentry^.Next
     END
 END
+
+FNPTR LnkCreateStubF (
+    IN lnkextern : ^LnkExtern,
+)
+
+FN (LnkCreateStubF) LnkCreateXr17032Stub (
+    IN lnkextern : ^LnkExtern,
+)
+
+    // Create a jump stub for XR/17032.
+    // This is just a single  J [ADDR]  instruction appended to the end of the
+    // jump stub section.
+
+    inst : ULONG[1]
+
+    inst[0] = 0x6 // J opcode
+    inst[0] |= (lnkextern^.Address >> 2) << 3
+
+    TlCopyIntoDynamicBuffer (
+        &LnkJumpStubSection^.DynamicData, // array
+        &inst[0], // srcbuf
+        4, // length
+    )
+
+    // Create the import fixup that fixes up the jump stub if the dynamic
+    // library is relocated.
+
+    lnkreloc : ^LnkRelocation
+
+    status := TlBumpAlloc (
+        SIZEOF LnkRelocation, // bytes
+        OUT lnkreloc, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate relocation", 0, 0, 0 )
+    END
+
+    lnkreloc^.Extern = lnkextern
+
+    lnkreloc^.SectionOffset = lnkextern^.JumpStubOffset
+
+    lnkreloc^.Section = LnkJumpStubSection
+
+    lnkreloc^.Type = XLO_RELOC_XR17032_ABSJ
+
+    TlInsertAtTailList (
+        &lnkextern^.Library^.FixupListHead, // head
+        &lnkreloc^.Entry, // entry
+    )
+END
+
+LnkCreateStubTable : LnkCreateStubF[XLO_ARCHITECTURE_MAX] = {
+    [XLO_ARCHITECTURE_XR17032] = &LnkCreateXr17032Stub,
+}
 
 FN LnkResolveFixupTable ()
 
@@ -949,40 +1023,100 @@ FN LnkResolveFixupTable ()
                 IF lnkextern^.Library THEN
                     // Case 2: Resolved in dynamic library.
 
-                    // Perform the fixup to bind the extern.
+                    IF LnkCreateJumpStub[fixup^.Type] AND LnkCreateStubs THEN
+                        // We need to use a jump stub.
 
-                    LnkPerformRelocationTable[fixup^.Type] (
-                        lnksection^.Data +
-                        section^.VirtualAddress +
-                        fixup^.SectionOffset, // ptr
-                        lnkextern^.Address, // value
-                    )
+                        IF NOT lnkextern^.HasJumpStub THEN
+                            // Create the jump stub.
 
-                    // Create an import fixup.
+                            IF NOT LnkJumpStubSection THEN
+                                TlPrintString ( "No code section for stubs\n" )
+                                TlErrorExit ()
+                            END
 
-                    status = TlBumpAlloc (
-                        SIZEOF LnkRelocation, // bytes
-                        OUT lnkreloc, // ptr
-                    )
+                            lnkextern^.JumpStubOffset =
+                                LnkJumpStubSection^.Size +
+                                LnkJumpStubSection^.DynamicData.Count
 
-                    IF status THEN
-                        TlInternalError (
-                            "Failed to allocate relocation", 0, 0, 0 )
+                            lnkextern^.HasJumpStub = TRUE
+
+                            // Call the architecture-specific junk to actually
+                            // encode it. Also creates the import fixup.
+
+                            LnkCreateStubTable[LnkArchitectureType] (
+                                lnkextern, // lnkextern
+                            )
+                        END
+
+                        // Perform the fixup to redirect to the jump stub.
+
+                        LnkPerformRelocationTable[fixup^.Type] (
+                            lnksection^.Data +
+                            section^.VirtualAddress +
+                            fixup^.SectionOffset, // ptr
+                            lnkextern^.JumpStubOffset, // value
+                        )
+
+                        // Create a relocation referencing the jump stub.
+
+                        status = TlBumpAlloc (
+                            SIZEOF LnkRelocation, // bytes
+                            OUT lnkreloc, // ptr
+                        )
+
+                        IF status THEN
+                            TlInternalError (
+                                "Failed to allocate relocation", 0, 0, 0 )
+                        END
+
+                        lnkreloc^.SectionOffset =
+                            section^.VirtualAddress + fixup^.SectionOffset
+
+                        lnkreloc^.Section = lnksection
+
+                        lnkreloc^.Type = fixup^.Type
+
+                        TlInsertAtTailList (
+                            &LnkJumpStubSection^.RelocationListHead, // head
+                            &lnkreloc^.Entry, // entry
+                        )
+
+                    ELSE
+                        // Perform the fixup to bind the extern.
+
+                        LnkPerformRelocationTable[fixup^.Type] (
+                            lnksection^.Data +
+                            section^.VirtualAddress +
+                            fixup^.SectionOffset, // ptr
+                            lnkextern^.Address, // value
+                        )
+
+                        // Create an import fixup.
+
+                        status = TlBumpAlloc (
+                            SIZEOF LnkRelocation, // bytes
+                            OUT lnkreloc, // ptr
+                        )
+
+                        IF status THEN
+                            TlInternalError (
+                                "Failed to allocate relocation", 0, 0, 0 )
+                        END
+
+                        lnkreloc^.Extern = lnkextern
+
+                        lnkreloc^.SectionOffset =
+                            section^.VirtualAddress + fixup^.SectionOffset
+
+                        lnkreloc^.Section = lnksection
+
+                        lnkreloc^.Type = fixup^.Type
+
+                        TlInsertAtTailList (
+                            &lnkextern^.Library^.FixupListHead, // head
+                            &lnkreloc^.Entry, // entry
+                        )
                     END
-
-                    lnkreloc^.Extern = lnkextern
-
-                    lnkreloc^.SectionOffset =
-                        section^.VirtualAddress + fixup^.SectionOffset
-
-                    lnkreloc^.Section = lnksection
-
-                    lnkreloc^.Type = fixup^.Type
-
-                    TlInsertAtTailList (
-                        &lnkextern^.Library^.FixupListHead, // head
-                        &lnkreloc^.Entry, // entry
-                    )
 
                 ELSE
                     // Case 3: Not resolved. Insert in unresolved fixup list.
@@ -1060,7 +1194,7 @@ FN LnkAssignSectionBases (
 
         lnksection^.VirtualAddress = base
 
-        base += lnksection^.Size
+        base += (lnksection^.Size + lnksection^.DynamicData.Count)
 
         listentry = listentry^.Next
     END
@@ -1070,7 +1204,12 @@ FN LnkAssignMappedBases (
     IN base : UWORD,
 )
 
-    // Assign a page-aligned mapped base to each section.
+    // Assign a page-aligned mapped base to each section such that
+    //
+    // Following this relocation, the sections can be mapped rounded down to the
+    // previous page size, for a length up to the following page size, without
+    // having to be physically page aligned within the file, which saves a lot
+    // of bytes on disk (especially on Aphelion... 16K pages!)
 
     listhead := &LnkSectionTable.OrderedListHead
     listentry := listhead^.Next
@@ -1082,7 +1221,7 @@ FN LnkAssignMappedBases (
 
         lnksection^.VirtualAddress = base
 
-        base += lnksection^.Size
+        base += (lnksection^.Size + lnksection^.DynamicData.Count)
 
         IF base & LnkArchitecturePageMask THEN
             base += (LnkArchitecturePageMask + 1)
@@ -1166,7 +1305,8 @@ FN LnkEvaluateExpr ()
                     TlErrorExit ()
                 END
 
-                base += (refsection^.VirtualAddress + refsection^.Size)
+                base += (refsection^.VirtualAddress +
+                    refsection^.Size + refsection^.DynamicData.Count)
 
             ELSEIF atomstr[0] == '#' THEN
                 // The size of a section.
@@ -1184,7 +1324,7 @@ FN LnkEvaluateExpr ()
                     TlErrorExit ()
                 END
 
-                base += refsection^.Size
+                base += (refsection^.Size + refsection^.DynamicData.Count)
 
             ELSEIF atomstr[0] == '%' AND atomstr[1] == 0 THEN
                 // Alignment to page size.
@@ -1231,9 +1371,6 @@ FN LnkEvaluateExpr ()
 
         expr += 1
     END
-
-    TlPrintHex ( base )
-    TlPrintString ( "\n" )
 
     lnksection^.VirtualAddress = base
 END
@@ -1384,11 +1521,21 @@ FN LnkOutputBinary ()
         lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
 
         IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
-            TlWriteFile (
-                handle, // handle
-                lnksection^.Size, // bytes
-                lnksection^.Data, // buffer
-            )
+            IF lnksection^.Size THEN
+                TlWriteFile (
+                    handle, // handle
+                    lnksection^.Size, // bytes
+                    lnksection^.Data, // buffer
+                )
+            END
+
+            IF lnksection^.DynamicData.Count THEN
+                TlWriteFile (
+                    handle, // handle
+                    lnksection^.DynamicData.Count, // bytes
+                    lnksection^.DynamicData.Buffer, // buffer
+                )
+            END
         END
 
         listentry = listentry^.Next
