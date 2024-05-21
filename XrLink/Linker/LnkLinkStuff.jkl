@@ -1400,6 +1400,8 @@ FN LnkAssignMappedBases (
     listhead := &LnkSectionTable.OrderedListHead
     listentry := listhead^.Next
 
+    sawbss := FALSE
+
     base += LnkHeadLength & LnkArchitecturePageMask
 
     WHILE listentry != listhead DO
@@ -1409,6 +1411,14 @@ FN LnkAssignMappedBases (
             // We can reset the alignment for bss.
 
             base &= ~LnkArchitecturePageMask
+
+            sawbss = TRUE
+        
+        ELSEIF sawbss THEN
+            TlPrintString (
+                "mappedbase requires BSS sections to be at the end\n" )
+
+            TlErrorExit ()
         END
 
         lnksection^.VirtualAddress = base
