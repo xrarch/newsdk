@@ -1387,12 +1387,15 @@ FN LnkAssignMappedBases (
     IN base : UWORD,
 )
 
-    // Assign a page-aligned mapped base to each section such that
+    // Assign a page-aligned mapped base to each section.
     //
     // Following this relocation, the sections can be mapped rounded down to the
     // previous page size, for a length up to the following page size, without
     // having to be physically page aligned within the file, which saves a lot
     // of bytes on disk (especially on Aphelion... 16K pages!)
+    //
+    // Note that this does require that the zeroed bss sections are all placed
+    // at the end.
 
     listhead := &LnkSectionTable.OrderedListHead
     listentry := listhead^.Next
@@ -1401,6 +1404,12 @@ FN LnkAssignMappedBases (
 
     WHILE listentry != listhead DO
         lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        IF lnksection^.Flags & XLO_SECTION_ZERO THEN
+            // We can reset the alignment for bss.
+
+            base &= ~LnkArchitecturePageMask
+        END
 
         lnksection^.VirtualAddress = base
 
@@ -1760,6 +1769,13 @@ FN LnkOutputBinary ()
     TlClose ( handle )
 END
 
+FN LnkOutputXlo ()
+
+    // Output an XLO executable.
+
+
+END
+
 FN LnkLinkObject ()
 
     // Link the final object.
@@ -1787,6 +1803,8 @@ FN LnkLinkObject ()
 
         LEAVE
     END
+
+    LnkOutputXlo ()
 END
 
 FN LnkInitializeDatabase ()
