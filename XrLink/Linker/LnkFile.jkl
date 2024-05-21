@@ -6,12 +6,20 @@
 
 PUBLIC LnkArchitectureType := 0
 PUBLIC LnkArchitectureInTokyo := 0
+PUBLIC LnkArchitecturePageMask := 0
 
 LnkArchitectureBitTable : UWORD[XLO_ARCHITECTURE_MAX] = {
     [XLO_ARCHITECTURE_XR17032] = 32,
     [XLO_ARCHITECTURE_FOX32] = 32,
     [XLO_ARCHITECTURE_APHELION] = 64,
     [XLO_ARCHITECTURE_AMD64] = 64,
+}
+
+LnkArchitecturePageMaskTable : UWORD[XLO_ARCHITECTURE_MAX] = {
+    [XLO_ARCHITECTURE_XR17032] = 0xFFF,
+    [XLO_ARCHITECTURE_FOX32] = 0xFFF,
+    [XLO_ARCHITECTURE_APHELION] = 0x3FFF,
+    [XLO_ARCHITECTURE_AMD64] = 0xFFF,
 }
 
 FN LnkLoadXloFile (
@@ -83,6 +91,9 @@ FN LnkLoadXloFile (
 
             TlErrorExit ()
         END
+
+        LnkArchitecturePageMask =
+            LnkArchitecturePageMaskTable[LnkArchitectureType]
 
         LnkArchitectureInTokyo = LnkArchitectureBitTable[LnkArchitectureType]
 

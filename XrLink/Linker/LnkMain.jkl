@@ -164,6 +164,18 @@ FN LnkLinkStuff (
         LnkUsage ()
     END
 
+    IF LnkCreateFragment AND dynamicadded THEN
+        // Can't add dynamic libraries if generating a fragment.
+
+        LnkUsage ()
+    END
+
+    IF LnkCreateBin AND LnkMappedBase THEN
+        // Can't do mappedbase if binary output.
+
+        LnkUsage ()
+    END
+
     LnkLinkObject ()
 END
 

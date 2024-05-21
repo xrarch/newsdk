@@ -493,10 +493,20 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
 
     // Add this to the target's object list.
 
-    TlInsertAtTailList (
-        &pdc^.Target^.ObjectListHead, // head
-        &dagnode^.ObjectListEntry, // entry
-    )
+    IF filename[0] == '_' THEN
+        // Insert at the front if it starts with an underscore.
+
+        TlInsertAtHeadList (
+            &pdc^.Target^.ObjectListHead, // head
+            &dagnode^.ObjectListEntry, // entry
+        )
+
+    ELSE
+        TlInsertAtTailList (
+            &pdc^.Target^.ObjectListHead, // head
+            &dagnode^.ObjectListEntry, // entry
+        )
+    END
 
     // Now we have these paths, check the existence of the dep file.
 
@@ -764,6 +774,18 @@ FN (BtDagActionF) BtBuildJkl (
         &cmdline, // array
         dagnode^.Target^.IncludePaths.Buffer, // srcbuf
         dagnode^.Target^.IncludePaths.Count, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " libdir=", // srcbuf
+        8, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        dagnode^.Target^.LibPaths.Buffer, // srcbuf
+        dagnode^.Target^.LibPaths.Count, // length
     )
 
     TlCopyIntoDynamicBuffer (
@@ -1085,8 +1107,8 @@ FN (BtDagActionF) BtBuildS (
 
     TlCopyIntoDynamicBuffer (
         &cmdline, // array
-        dagnode^.TmpPath.Buffer, // srcbuf
-        dagnode^.TmpPath.Count - 1, // length
+        dagnode^.SrcPath.Buffer, // srcbuf
+        dagnode^.SrcPath.Count - 1, // length
     )
 
     TlInsertDynamicBuffer (

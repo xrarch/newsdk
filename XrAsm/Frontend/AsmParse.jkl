@@ -1423,7 +1423,9 @@ FN (AsmDirectiveF) AsmParseExtern (
 
     symbol := CAST token.Payload TO ^LexSymbol
 
-    IF symbol^.Type != SYM_UNINITIALIZED THEN
+    IF symbol^.Type != SYM_UNINITIALIZED AND
+        symbol^.Type != SYM_FORWARD_LABEL THEN
+
         LexTokenError ( &token, "Expected a new label name", 0, 0, 0 )
     END
 
@@ -1493,9 +1495,6 @@ FN (AsmDirectiveF) AsmParseAlign (
     newoff := oldoff + (howmany - 1) & ~(howmany - 1)
     diff := newoff - oldoff
 
-    AsmCurrentSection^.MemoryOffset = newoff
-    AsmCurrentSection^.FileOffset += diff
-
     IF diff THEN
         elem := AsmCreateElement (
             errtoken, // token
@@ -1507,6 +1506,9 @@ FN (AsmDirectiveF) AsmParseAlign (
         elem^.Body.BytesChunk.Count = diff
         elem^.Body.BytesChunk.Byte = 0
     END
+
+    AsmCurrentSection^.MemoryOffset = newoff
+    AsmCurrentSection^.FileOffset += diff
 END
 
 AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {

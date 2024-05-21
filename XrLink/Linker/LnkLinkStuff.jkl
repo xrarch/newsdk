@@ -41,6 +41,7 @@
 
 LnkObjectListHead : TlListEntry
 LnkLibListHead : TlListEntry
+LnkUnresolvedFixupList : TlListEntry
 LnkSectionTable : TlHashTable
 LnkSymbolTable : TlHashTable
 LnkExternTable : TlHashTable
@@ -49,6 +50,7 @@ LnkSectionCount := 0
 LnkSymbolCount := 0
 LnkExternCount := 0
 LnkUnresolvedCount := 0
+LnkHeadLength := 0
 
 LnkIndexedSectionArray : ^LnkSection[256]
 
@@ -64,6 +66,8 @@ STRUCT LnkLibrary
 
     Path : ^UBYTE,
     Data : ^UBYTE,
+
+    FixupListHead : TlListEntry,
 END
 
 STRUCT LnkSection
@@ -71,6 +75,7 @@ STRUCT LnkSection
 
     RelocationListHead : TlListEntry,
 
+    VirtualAddress : UWORD,
     Size : UWORD,
     Flags : UWORD,
     Index : UWORD,
@@ -85,6 +90,7 @@ STRUCT LnkRelocation
     Section : ^LnkSection,
     SectionOffset : UWORD,
     Type : UWORD,
+    Extern : ^LnkExtern,
 END
 
 STRUCT LnkSymbol
@@ -105,6 +111,7 @@ STRUCT LnkExtern
 
     Library : ^LnkLibrary,
     Symbol : ^XloSymbolEntry,
+    Address : UWORD,
 END
 
 FN LnkFindSection (
@@ -141,6 +148,7 @@ FN LnkFindSection (
         section^.Index = LnkSectionCount
         section^.Pen = 0
         section^.Data = NULLPTR
+        section^.VirtualAddress = 0
 
         TlInitializeList ( &section^.RelocationListHead )
 
@@ -228,6 +236,8 @@ FN LnkAddDynamicObject (
 
     library^.Data = LnkLoadXloFile ( filename )
     library^.Path = filename
+
+    TlInitializeList ( &library^.FixupListHead )
 
     // Sanity check the header.
 
@@ -810,10 +820,14 @@ FN LnkBindExports ()
 
         stringtable := CAST header + header^.StringTableOffset TO ^UBYTE
 
+        sectiontable :=
+            CAST header + header^.SectionTableOffset TO ^XloSectionHeader
+
         i := 0
 
         WHILE i < header^.SymbolCount DO
             symbol := &symboltable[i]
+            section := &sectiontable[symbol^.SectionIndex]
 
             IF symbol^.Type == XLO_SYMBOL_EXPORT THEN
                 // Look it up in the extern hash table.
@@ -827,9 +841,175 @@ FN LnkBindExports ()
                     // Woo! Got one.
 
                     lnkextern^.Library = library
+                    
                     lnkextern^.Symbol = symbol
+                    
+                    lnkextern^.Address =
+                        section^.VirtualAddress + symbol^.SectionOffset
 
                     LnkUnresolvedCount -= 1
+                END
+            END
+
+            i += 1
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkResolveFixupTable ()
+
+    // For each object, we now need to iterate its unresolved fixup table and
+    // figure out the nature of each fixup.
+    //
+    // 1. If it pointed to an extern that we resolved "internally", we have to
+    //    perform the relocation to replace the placeholder zeroes with the
+    //    address of the symbol it was resolved to. We then need to create a new
+    //    relocation for that.
+    //
+    // 2. If it pointed to an extern that we resolved "externally", i.e. in a
+    //    dynamic library, we have to create an import fixup for placement in
+    //    the library import's fixup table.
+    //
+    // 3. If it was unresolved, just place it in an unresolved fixup list.
+
+    status : TlStatus
+
+    lnkreloc : ^LnkRelocation
+
+    listhead := &LnkObjectListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        object := CONTAINEROF listentry TO LnkObject.Entry
+        
+        header := CAST object^.Data TO ^XloHeaderExtended
+
+        externtable :=
+            CAST header + header^.Hdr.ExternTableOffset TO ^XloExternEntry
+
+        stringtable := CAST header + header^.Hdr.StringTableOffset TO ^UBYTE
+
+        fixuptable :=
+            CAST header + header^.UnresolvedFixupTableOffset TO ^XloRelocEntry
+
+        sectiontable :=
+            CAST header + header^.Hdr.SectionTableOffset TO ^XloSectionHeader
+
+        i := 0
+
+        WHILE i < header^.UnresolvedFixupCount DO
+            fixup := &fixuptable[i]
+            extern := &externtable[fixup^.ExternIndex]
+            section := &sectiontable[fixup^.SectionIndex]
+            lnksection := LnkIndexedSectionArray[section^.NameOffset]
+
+            IF extern^.Type == XLO_EXTERN_RESOLVED THEN
+                // Case 1: Resolved internally.
+            
+                lnksymbol := LnkFetchExternLinkToSymbol ( extern )
+
+                // Perform the fixup to bind the extern.
+
+                LnkPerformRelocationTable[fixup^.Type] (
+                    lnksection^.Data +
+                    section^.VirtualAddress +
+                    fixup^.SectionOffset, // ptr
+                    lnksymbol^.SectionOffset, // value
+                )
+
+                // Create new relocation.
+
+                status = TlBumpAlloc (
+                    SIZEOF LnkRelocation, // bytes
+                    OUT lnkreloc, // ptr
+                )
+
+                IF status THEN
+                    TlInternalError (
+                        "Failed to allocate relocation", 0, 0, 0 )
+                END
+
+                lnkreloc^.SectionOffset =
+                    section^.VirtualAddress + fixup^.SectionOffset
+
+                lnkreloc^.Section = lnksection
+
+                lnkreloc^.Type = fixup^.Type
+
+                TlInsertAtTailList (
+                    &lnksymbol^.Section^.RelocationListHead, // head
+                    &lnkreloc^.Entry, // entry
+                )
+
+            ELSE
+                lnkextern := LnkFetchExternLinkToExtern ( extern )
+
+                IF lnkextern^.Library THEN
+                    // Case 2: Resolved in dynamic library.
+
+                    // Perform the fixup to bind the extern.
+
+                    LnkPerformRelocationTable[fixup^.Type] (
+                        lnksection^.Data +
+                        section^.VirtualAddress +
+                        fixup^.SectionOffset, // ptr
+                        lnkextern^.Address, // value
+                    )
+
+                    // Create an import fixup.
+
+                    status = TlBumpAlloc (
+                        SIZEOF LnkRelocation, // bytes
+                        OUT lnkreloc, // ptr
+                    )
+
+                    IF status THEN
+                        TlInternalError (
+                            "Failed to allocate relocation", 0, 0, 0 )
+                    END
+
+                    lnkreloc^.Extern = lnkextern
+
+                    lnkreloc^.SectionOffset =
+                        section^.VirtualAddress + fixup^.SectionOffset
+
+                    lnkreloc^.Section = lnksection
+
+                    lnkreloc^.Type = fixup^.Type
+
+                    TlInsertAtTailList (
+                        &lnkextern^.Library^.FixupListHead, // head
+                        &lnkreloc^.Entry, // entry
+                    )
+
+                ELSE
+                    // Case 3: Not resolved. Insert in unresolved fixup list.
+
+                    status = TlBumpAlloc (
+                        SIZEOF LnkRelocation, // bytes
+                        OUT lnkreloc, // ptr
+                    )
+
+                    IF status THEN
+                        TlInternalError (
+                            "Failed to allocate relocation", 0, 0, 0 )
+                    END
+
+                    lnkreloc^.Extern = lnkextern
+
+                    lnkreloc^.SectionOffset =
+                        section^.VirtualAddress + fixup^.SectionOffset
+
+                    lnkreloc^.Section = lnksection
+
+                    lnkreloc^.Type = fixup^.Type
+
+                    TlInsertAtTailList (
+                        &LnkUnresolvedFixupList, // head
+                        &lnkreloc^.Entry, // entry
+                    )
                 END
             END
 
@@ -866,6 +1046,357 @@ FN LnkDieCuzOfUnresolvedExterns ()
     TlErrorExit ()
 END
 
+FN LnkAssignSectionBases (
+    IN base : UWORD,
+)
+
+    // Assign a simple consecutive base to each section.
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        lnksection^.VirtualAddress = base
+
+        base += lnksection^.Size
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkAssignMappedBases (
+    IN base : UWORD,
+)
+
+    // Assign a page-aligned mapped base to each section.
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    base += LnkHeadLength & LnkArchitecturePageMask
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        lnksection^.VirtualAddress = base
+
+        base += lnksection^.Size
+
+        IF base & LnkArchitecturePageMask THEN
+            base += (LnkArchitecturePageMask + 1)
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+LnkSectionName : UBYTE[256]
+LnkExprStr : UBYTE[256]
+LnkAtomStr : UBYTE[256]
+
+FN LnkEvaluateExpr ()
+
+    // Evaluate a component of the move expression of the following form:
+    //
+    // atom+atom+atom+...
+    //
+    // An atom can either be a constant number, or one of the following:
+    //
+    // [section name]: The base of a section.
+    // @[section name]: The end of a section.
+    // #[section name]: The size of a section.
+    // %: Alignment to a page size.
+
+    lnksection := CAST TlLookupHashTable (
+        &LnkSectionTable, // hashtable
+        &LnkSectionName[0], // key
+    ) TO ^LnkSection
+
+    IF NOT lnksection THEN
+        TlPrintString ( "move: " )
+        TlPrintString ( &LnkSectionName[0] )
+        TlPrintString ( ": no such section\n" )
+
+        TlErrorExit ()
+    END
+
+    expr := &LnkExprStr[0]
+    pen := 0
+    base := 0
+    atomstr := &LnkAtomStr[0]
+
+    WHILE TRUE DO
+        IF expr^ == '+' OR expr^ == 0 THEN
+            atomstr[pen] = 0
+
+            refsection : ^LnkSection
+
+            IF atomstr[0] >= '0' AND atomstr[0] <= '9' THEN
+                // Constant value.
+
+                val : UWORD
+
+                IF NOT TlStringToNumber (
+                    atomstr, // src
+                    256, // bufsize
+                    OUT val, // num
+                ) THEN
+                    TlPrintString ( "Move expression syntax error\n" )
+
+                    TlErrorExit ()
+                END
+
+                base += val
+
+            ELSEIF atomstr[0] == '@' THEN
+                // The end of a section.
+
+                refsection = CAST TlLookupHashTable (
+                    &LnkSectionTable, // hashtable
+                    &atomstr[1], // key
+                ) TO ^LnkSection
+
+                IF NOT refsection THEN
+                    TlPrintString ( "move: " )
+                    TlPrintString ( &atomstr[1] )
+                    TlPrintString ( ": no such section\n" )
+
+                    TlErrorExit ()
+                END
+
+                base += (refsection^.VirtualAddress + refsection^.Size)
+
+            ELSEIF atomstr[0] == '#' THEN
+                // The size of a section.
+
+                refsection = CAST TlLookupHashTable (
+                    &LnkSectionTable, // hashtable
+                    &atomstr[1], // key
+                ) TO ^LnkSection
+
+                IF NOT refsection THEN
+                    TlPrintString ( "move: " )
+                    TlPrintString ( &atomstr[1] )
+                    TlPrintString ( ": no such section\n" )
+
+                    TlErrorExit ()
+                END
+
+                base += refsection^.Size
+
+            ELSEIF atomstr[0] == '%' AND atomstr[1] == 0 THEN
+                // Alignment to page size.
+
+                base += LnkArchitecturePageMask
+                base &= ~LnkArchitecturePageMask
+
+            ELSE
+                // The base of a section.
+
+                refsection = CAST TlLookupHashTable (
+                    &LnkSectionTable, // hashtable
+                    atomstr, // key
+                ) TO ^LnkSection
+
+                IF NOT refsection THEN
+                    TlPrintString ( "move: " )
+                    TlPrintString ( atomstr )
+                    TlPrintString ( ": no such section\n" )
+
+                    TlErrorExit ()
+                END
+
+                base += refsection^.VirtualAddress
+            END
+
+            pen = 0
+
+            IF expr^ == 0 THEN
+                BREAK
+            END
+
+        ELSE
+            IF pen >= 255 THEN
+                TlPrintString ( "Move expression atom too long\n" )
+
+                TlErrorExit ()
+            END
+
+            atomstr[pen] = expr^
+
+            pen += 1
+        END
+
+        expr += 1
+    END
+
+    TlPrintHex ( base )
+    TlPrintString ( "\n" )
+
+    lnksection^.VirtualAddress = base
+END
+
+FN LnkEvaluateMoveExpression (
+    IN expr : ^UBYTE,
+)
+
+    // Evaluate the "move expression", which is a string of the following form:
+    //
+    // [section name]=expr,[section name]=expr,...
+
+    collectingsection := TRUE
+    pen := 0
+
+    WHILE TRUE DO
+        IF expr^ == ',' OR expr^ == 0 THEN
+            IF collectingsection THEN
+                TlPrintString ( "Move expression syntax error\n" )
+
+                TlErrorExit ()
+            END
+
+            LnkExprStr[pen] = 0
+
+            LnkEvaluateExpr ()
+
+            collectingsection = TRUE
+
+            pen = 0
+
+            IF expr^ == 0 THEN
+                BREAK
+            END
+
+        ELSEIF expr^ == '=' THEN
+            IF NOT collectingsection THEN
+                TlPrintString ( "Move expression syntax error\n" )
+
+                TlErrorExit ()
+            END
+
+            LnkSectionName[pen] = 0
+
+            collectingsection = FALSE
+
+            pen = 0
+
+        ELSE
+            IF pen >= 255 THEN
+                TlPrintString ( "Move expression string too long\n" )
+
+                TlErrorExit ()
+            END
+
+            IF collectingsection THEN
+                LnkSectionName[pen] = expr^
+
+            ELSE
+                LnkExprStr[pen] = expr^
+            END
+
+            pen += 1
+        END
+
+        expr += 1
+    END
+END
+
+FN LnkPerformRelocations ()
+
+    // Perform the final section relocations before emission.
+
+    IF LnkBaseAddress THEN
+        // A simple base address was provided.
+
+        LnkAssignSectionBases ( LnkBaseAddress )
+
+    ELSEIF LnkMappedBase THEN
+        // A mappedbase was provided.
+
+        LnkAssignMappedBases ( LnkMappedBase )
+
+    ELSEIF LnkMoveExpression THEN
+        // A move expression was provided.
+
+        LnkEvaluateMoveExpression ( LnkMoveExpression )
+
+    ELSE
+        LEAVE
+    END
+
+    // Now iterate the relocation tables for each section and perform the
+    // relocations to move them to their base address.
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        relochead := &lnksection^.RelocationListHead
+        relocentry := relochead^.Next
+
+        WHILE relocentry != relochead DO
+            lnkreloc := CONTAINEROF relocentry TO LnkRelocation.Entry
+
+            LnkPerformRelocationTable[lnkreloc^.Type] (
+                lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
+                lnksection^.VirtualAddress, // value
+            )
+
+            relocentry = relocentry^.Next
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkOutputBinary ()
+
+    // Output a flat binary file.
+
+    // First perform the final section relocations.
+
+    LnkPerformRelocations ()
+
+    // Now dump the sections in sequence to the file.
+
+    handle : ^VOID
+
+    status := TlOpenDestination (
+        LnkOutputName, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlPrintString ( LnkOutputName )
+        TlPrintString ( ": failed to open\n" )
+
+        TlErrorExit ()
+    END
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
+            TlWriteFile (
+                handle, // handle
+                lnksection^.Size, // bytes
+                lnksection^.Data, // buffer
+            )
+        END
+
+        listentry = listentry^.Next
+    END
+
+    TlClose ( handle )
+END
+
 FN LnkLinkObject ()
 
     // Link the final object.
@@ -883,6 +1414,14 @@ FN LnkLinkObject ()
     IF LnkUnresolvedCount AND NOT LnkCreateFragment THEN
         LnkDieCuzOfUnresolvedExterns ()
     END
+
+    LnkResolveFixupTable ()
+
+    IF LnkCreateBin THEN
+        LnkOutputBinary ()
+
+        LEAVE
+    END
 END
 
 FN LnkInitializeDatabase ()
@@ -892,6 +1431,8 @@ FN LnkInitializeDatabase ()
     TlInitializeList ( &LnkObjectListHead )
 
     TlInitializeList ( &LnkLibListHead )
+
+    TlInitializeList ( &LnkUnresolvedFixupList )
 
     TlInitializeHashTable ( &LnkSectionTable )
 
