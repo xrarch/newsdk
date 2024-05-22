@@ -53,8 +53,14 @@ LnkSymbolCount := 0
 LnkExternCount := 0
 LnkUnresolvedCount := 0
 LnkHeadLength := 0
+LnkLibraryCount := 0
+LnkUnresolvedFixupCount := 0
 
 LnkIndexedSectionArray : ^LnkSection[256]
+
+#MACRO LnkFileAlign ( x ) [
+    (((x) + LnkObjectFileAlignmentMask) & ~LnkObjectFileAlignmentMask)
+]
 
 STRUCT LnkObject
     Entry : TlListEntry,
@@ -66,16 +72,24 @@ END
 STRUCT LnkLibrary
     Entry : TlListEntry,
 
+    RuntimePath : ^UBYTE,
     Path : ^UBYTE,
     Data : ^UBYTE,
 
+    FixupTable : ^XloRelocEntry,
+
     FixupListHead : TlListEntry,
+    FixupCount : UWORD,
+    Index : UWORD,
 END
 
 STRUCT LnkSection
     Entry : TlHashTableEntry,
 
     RelocationListHead : TlListEntry,
+    RelocationCount : UWORD,
+
+    RelocationTable : ^XloRelocEntry,
 
     VirtualAddress : UWORD,
     Size : UWORD,
@@ -119,6 +133,8 @@ STRUCT LnkExtern
     Symbol : ^XloSymbolEntry,
     Address : UWORD,
 
+    Index : UWORD,
+
     JumpStubOffset : UWORD,
 
     HasJumpStub : UBYTE,
@@ -159,6 +175,7 @@ FN LnkFindSection (
         section^.Pen = 0
         section^.Data = NULLPTR
         section^.VirtualAddress = 0
+        section^.RelocationCount = 0
 
         TlInitializeList ( &section^.RelocationListHead )
 
@@ -250,10 +267,42 @@ FN LnkAddDynamicObject (
         TlInternalError ( "Failed to allocate library block", 0, 0, 0 )
     END
 
+    // Libraries have a link time and runtime path, separated by a comma:
+    //
+    // [runtime]:[link time]
+    //
+    // The link time path is used to locate the dynamic library to bind with.
+    // The runtime path is used by the dynamic linker at load time to find the
+    // dynamic library in the system.
+    //
+    // If there is no comma, the runtime path is the final component of the
+    // link time path. Lets find out.
+
+    i := 0
+
+    WHILE TRUE DO
+        IF filename[i] == ':' THEN
+            filename[i] = 0
+
+            library^.Path = &filename[i + 1]
+            library^.RuntimePath = &filename[0]
+
+            BREAK
+
+        ELSEIF filename[i] == 0 THEN
+            library^.Path = filename
+            library^.RuntimePath = TlGetFileName ( filename )
+        END
+
+        i += 1
+    END
+
     // Load the dynamic library.
 
-    library^.Data = LnkLoadXloFile ( filename )
-    library^.Path = filename
+    library^.Data = LnkLoadXloFile ( library^.Path )
+
+    library^.FixupCount = 0
+    library^.Index = LnkLibraryCount
 
     TlInitializeList ( &library^.FixupListHead )
 
@@ -267,6 +316,8 @@ FN LnkAddDynamicObject (
 
         TlErrorExit ()
     END
+
+    LnkLibraryCount += 1
 
     // Insert in list.
 
@@ -562,10 +613,6 @@ FN LnkAllocateStorage ()
             i += 1
         END
 
-        // While we're here, accumulate a count of all symbols.
-
-        LnkSymbolCount += header^.SymbolCount
-
         listentry = listentry^.Next
     END
 END
@@ -672,6 +719,8 @@ FN LnkMergeSections ()
                         &lnksection^.RelocationListHead, // head
                         &lnkreloc^.Entry, // entry
                     )
+
+                    lnksection^.RelocationCount += 1
 
                     j += 1
                 END
@@ -888,12 +937,19 @@ FN LnkMergeSymbolTables ()
             lnksymbol^.Section = LnkIndexedSectionArray[section^.NameOffset]
             
             // Make sure the symbol value is offset by the offset of the
-            // original section.
+            // original section, which has been stashed in the VirtualAddress
+            // field of the original section header.
 
             lnksymbol^.SectionOffset =
                 symbol^.SectionOffset + section^.VirtualAddress
 
             lnksymbol^.Type = symbol^.Type
+
+            IF symbol^.Type == XLO_SYMBOL_EXPORT OR
+                LnkKeepGlobals OR LnkCreateFragment THEN
+
+                LnkSymbolCount += 1
+            END
 
             i += 1
         END
@@ -957,6 +1013,7 @@ FN LnkResolveExterns ()
                     lnkextern^.Library = NULLPTR
                     lnkextern^.Symbol = NULLPTR
                     lnkextern^.HasJumpStub = FALSE
+                    lnkextern^.Index = LnkExternCount
 
                     LnkExternCount += 1
                     LnkUnresolvedCount += 1
@@ -1077,6 +1134,8 @@ FN (LnkCreateStubF) LnkCreateXr17032Stub (
         &lnkextern^.Library^.FixupListHead, // head
         &lnkreloc^.Entry, // entry
     )
+
+    lnkextern^.Library^.FixupCount += 1
 END
 
 LnkCreateStubTable : LnkCreateStubF[XLO_ARCHITECTURE_MAX] = {
@@ -1167,8 +1226,9 @@ FN LnkResolveFixupTable ()
                     TlInsertAtTailList (
                         &lnksymbol^.Section^.RelocationListHead, // head
                         &lnkreloc^.Entry, // entry
-                    
                     )
+
+                    lnksymbol^.Section^.RelocationCount += 1
 
                 ELSE
                     // This was a special symbol, so create a special deferred
@@ -1264,6 +1324,8 @@ FN LnkResolveFixupTable ()
                             &lnkreloc^.Entry, // entry
                         )
 
+                        LnkJumpStubSection^.RelocationCount += 1
+
                     ELSE
                         // Perform the fixup to bind the extern.
 
@@ -1299,6 +1361,8 @@ FN LnkResolveFixupTable ()
                             &lnkextern^.Library^.FixupListHead, // head
                             &lnkreloc^.Entry, // entry
                         )
+
+                        lnkextern^.Library^.FixupCount += 1
                     END
 
                 ELSE
@@ -1327,6 +1391,8 @@ FN LnkResolveFixupTable ()
                         &LnkUnresolvedFixupList, // head
                         &lnkreloc^.Entry, // entry
                     )
+
+                    LnkUnresolvedFixupCount += 1
                 END
             END
 
@@ -1420,6 +1486,9 @@ FN LnkAssignMappedBases (
 
             TlErrorExit ()
         END
+
+        TlPrintHex ( base )
+        TlPrintString ( "\n" )
 
         lnksection^.VirtualAddress = base
 
@@ -1646,15 +1715,15 @@ FN LnkPerformRelocations ()
 
     // Perform the final section relocations before emission.
 
-    IF LnkBaseAddress THEN
+    IF LnkMappedBase THEN
+        // A mappedbase was provided.
+
+        LnkAssignMappedBases ( LnkBaseAddress )
+
+    ELSEIF LnkBaseAddress THEN
         // A simple base address was provided.
 
         LnkAssignSectionBases ( LnkBaseAddress )
-
-    ELSEIF LnkMappedBase THEN
-        // A mappedbase was provided.
-
-        LnkAssignMappedBases ( LnkMappedBase )
 
     ELSEIF LnkMoveExpression THEN
         // A move expression was provided.
@@ -1779,11 +1848,629 @@ FN LnkOutputBinary ()
     TlClose ( handle )
 END
 
+LnkStringTable : TlDynamicBuffer
+LnkSixteenZeroes : UBYTE[16]
+
+FN LnkAddString (
+    IN str : ^UBYTE,
+) : UWORD
+
+    // Add the string to the string table and return the offset.
+
+    offset := LnkStringTable.Count
+
+    TlCopyIntoDynamicBuffer (
+        &LnkStringTable, // array
+        str, // srcbuf
+        TlMeasureString ( str ) + 1, // length (plus null terminator)
+    )
+
+    RETURN offset
+END
+
 FN LnkOutputXlo ()
 
-    // Output an XLO executable.
+    // Output the linked executable to an XLO format file.
 
+    i : UWORD
+    j : UWORD
+    status : TlStatus
+    head : ^TlListEntry
+    listentry : ^TlListEntry
+    rhead : ^TlListEntry
+    rlistentry : ^TlListEntry
+    lnkreloc : ^LnkRelocation
+    lnksection : ^LnkSection
 
+    // Initialize the string table buffer.
+
+    TlInitializeDynamicBuffer ( &LnkStringTable )
+
+    // Now initialize easy bits of the object header, and set the others to
+    // 0xABABABAB to easily tell if something is left uninitialized.
+
+    header : XloHeaderExtended
+
+    header.Hdr.Magic = XLO_MAGIC_NUMBER
+    header.Hdr.SymbolTableOffset = 0xABABABAB
+    header.Hdr.SymbolCount = LnkSymbolCount
+    header.Hdr.StringTableOffset = 0xABABABAB
+    header.Hdr.StringTableSize = 0xABABABAB
+    header.Hdr.TargetArchitecture = LnkArchitectureType
+    header.Hdr.HeadLength = 0xABABABAB
+    header.Hdr.ImportTableOffset = 0xABABABAB
+    header.Hdr.Flags = 0
+    header.Hdr.Timestamp = TlCurrentEpochTime ()
+    header.Hdr.SectionTableOffset = 0xABABABAB
+    header.Hdr.ExternTableOffset = 0xABABABAB
+    header.Hdr.ExternCount = LnkExternCount
+    header.Hdr.SectionCount = LnkSectionCount
+    header.Hdr.ImportCount = LnkLibraryCount
+    header.UnresolvedFixupTableOffset = 0xABABABAB
+    header.UnresolvedFixupCount = LnkUnresolvedFixupCount
+
+    offset : UWORD
+
+    IF LnkCreateFragment THEN
+        header.Hdr.Flags = XLO_FILE_FRAGMENT
+
+        offset = SIZEOF XloHeaderExtended
+
+    ELSE
+        offset = SIZEOF XloHeader
+    END
+
+    // Create the section table.
+
+    sectiontable : ^XloSectionHeader = NULLPTR
+
+    IF LnkSectionCount THEN
+        status = TlBumpAlloc (
+            SIZEOF XloSectionHeader * LnkSectionCount, // bytes
+            OUT sectiontable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create section table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.SectionTableOffset = offset
+
+        offset += SIZEOF XloSectionHeader * LnkSectionCount
+
+        i = 0
+
+        head = &LnkSectionTable.OrderedListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+            lnksection^.RelocationTable = NULLPTR
+
+            // Fill in the parts of the section table entry that we can do now,
+            // i.e., everything except for the file offset and virtual address.
+
+#IF ( == BITS 64 )
+            sectiontable[i].VirtualAddress = 0
+#ELSE
+            sectiontable[i].VirtualAddress = 0
+            sectiontable[i].Reserved = 0
+#END
+            sectiontable[i].NameOffset = LnkAddString ( lnksection^.Entry.Key )
+
+            sectiontable[i].DataLength =
+                lnksection^.Size + lnksection^.DynamicData.Count
+
+            sectiontable[i].RelocTableOffset = 0xABABABAB
+
+            sectiontable[i].RelocCount = lnksection^.RelocationCount
+
+            sectiontable[i].Flags = lnksection^.Flags
+
+            // Now create the relocation table.
+
+            IF lnksection^.RelocationCount AND NOT LnkStripRelocs THEN
+                status = TlBumpAlloc (
+                    SIZEOF XloRelocEntry * lnksection^.RelocationCount, // bytes
+                    OUT lnksection^.RelocationTable, // ptr
+                )
+
+                IF status THEN
+                    TlInternalError ( "Failed to create reloc table", 0, 0, 0 )
+                END
+
+                // Record and bump the offset.
+
+                sectiontable[i].RelocTableOffset = offset
+
+                offset += SIZEOF XloRelocEntry * lnksection^.RelocationCount
+
+                // Fill in the relocation table.
+
+                j = 0
+
+                rhead = &lnksection^.RelocationListHead
+                rlistentry = rhead^.Next
+
+                WHILE rlistentry != rhead DO
+                    lnkreloc = CONTAINEROF rlistentry TO LnkRelocation.Entry
+
+                    lnksection^.RelocationTable[j].SectionOffset =
+                        lnkreloc^.SectionOffset
+
+                    lnksection^.RelocationTable[j].ExternIndex = 0
+
+                    lnksection^.RelocationTable[j].Type = lnkreloc^.Type
+
+                    lnksection^.RelocationTable[j].SectionIndex =
+                        lnkreloc^.Section^.Index
+
+                    rlistentry = rlistentry^.Next
+                    j += 1
+                END
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Create the global and exported symbol table.
+
+    symboltable : ^XloSymbolEntry = NULLPTR
+
+    IF LnkSymbolCount THEN
+        status = TlBumpAlloc (
+            SIZEOF XloSymbolEntry * LnkSymbolCount, // bytes
+            OUT symboltable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create symbol table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.SymbolTableOffset = offset
+
+        offset += SIZEOF XloSymbolEntry * LnkSymbolCount
+
+        // Fill in the table.
+
+        i = 0
+
+        head = &LnkSymbolTable.OrderedListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnksymbol := CONTAINEROF listentry TO LnkSymbol.Entry.OrderedEntry
+
+            IF lnksymbol^.Type != XLO_SYMBOL_SPECIAL AND
+                (lnksymbol^.Type != XLO_SYMBOL_GLOBAL OR
+                LnkCreateFragment OR LnkKeepGlobals) THEN
+
+                symboltable[i].SectionIndex = lnksymbol^.Section^.Index
+                symboltable[i].Type = lnksymbol^.Type
+                symboltable[i].Flags = 0
+                symboltable[i].Padding = 0
+                symboltable[i].SectionOffset = lnksymbol^.SectionOffset
+                symboltable[i].NameOffset =
+                    LnkAddString ( lnksymbol^.Entry.Key )
+
+                i += 1
+            END
+
+            listentry = listentry^.Next
+        END
+    END
+
+    // Create the extern symbol table.
+
+    externtable : ^XloExternEntry = NULLPTR
+
+    IF LnkExternCount THEN
+        status = TlBumpAlloc (
+            SIZEOF XloExternEntry * LnkExternCount, // bytes
+            OUT externtable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create extern table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.ExternTableOffset = offset
+
+        offset += SIZEOF XloExternEntry * LnkExternCount
+
+        // Fill in the table.
+
+        i = 0
+
+        head = &LnkExternTable.OrderedListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnkextern := CONTAINEROF listentry TO LnkExtern.Entry.OrderedEntry
+
+            externtable[i].NameOffset = LnkAddString ( lnkextern^.Entry.Key )
+            externtable[i].Type = XLO_EXTERN_UNRESOLVED
+            externtable[i].Padding = 0
+            externtable[i].ImportIndex = 0
+            externtable[i].Padding2 = 0
+            externtable[i].Padding3 = 0
+
+            IF lnkextern^.Library THEN
+                externtable[i].Type = XLO_EXTERN_IMPORTED
+                externtable[i].ImportIndex = lnkextern^.Library^.Index
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Create the extern fixup table.
+
+    externfixtable : ^XloRelocEntry = NULLPTR
+
+    IF LnkUnresolvedFixupCount THEN
+        status = TlBumpAlloc (
+            SIZEOF XloRelocEntry * LnkUnresolvedFixupCount, // bytes
+            OUT externfixtable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create externfix table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.UnresolvedFixupTableOffset = offset
+
+        offset += SIZEOF XloRelocEntry * LnkUnresolvedFixupCount
+
+        // Fill in the table.
+
+        i = 0
+
+        head = &LnkUnresolvedFixupList
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnkreloc = CONTAINEROF listentry TO LnkRelocation.Entry
+
+            externfixtable[i].SectionOffset = lnkreloc^.SectionOffset
+            externfixtable[i].ExternIndex = lnkreloc^.Extern^.Index
+            externfixtable[i].Type = lnkreloc^.Type
+            externfixtable[i].SectionIndex = lnkreloc^.Section^.Index
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Create the import table.
+
+    importtable : ^XloImportEntry = NULLPTR
+
+    IF LnkLibraryCount THEN
+        status = TlBumpAlloc (
+            SIZEOF XloImportEntry * LnkLibraryCount, // bytes
+            OUT importtable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to create import table", 0, 0, 0 )
+        END
+
+        // Record and bump the offset.
+
+        header.Hdr.ImportTableOffset = offset
+
+        offset += SIZEOF XloImportEntry * LnkLibraryCount
+
+        // Fill in the table.
+
+        i = 0
+
+        head = &LnkLibListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            library := CONTAINEROF listentry TO LnkLibrary.Entry
+
+            libheader := CAST library^.Data TO ^XloHeader
+
+            library^.FixupTable = NULLPTR
+
+            importtable[i].NameOffset = LnkAddString ( library^.RuntimePath )
+            importtable[i].ExpectedTimestamp = libheader^.Timestamp
+            importtable[i].FixupTableOffset = 0xABABABAB
+            importtable[i].FixupCount = library^.FixupCount
+
+            // Now create the relocation table.
+
+            IF library^.FixupCount THEN
+                status = TlBumpAlloc (
+                    SIZEOF XloRelocEntry * library^.FixupCount, // bytes
+                    OUT library^.FixupTable, // ptr
+                )
+
+                IF status THEN
+                    TlInternalError ( "Failed to create fixup table", 0, 0, 0 )
+                END
+
+                // Record and bump the offset.
+
+                importtable[i].FixupTableOffset = offset
+
+                offset += SIZEOF XloRelocEntry * library^.FixupCount
+
+                // Fill in the fixup table.
+
+                j = 0
+
+                rhead = &library^.FixupListHead
+                rlistentry = rhead^.Next
+
+                WHILE rlistentry != rhead DO
+                    lnkreloc = CONTAINEROF rlistentry TO LnkRelocation.Entry
+
+                    library^.FixupTable[j].SectionOffset =
+                        lnkreloc^.SectionOffset
+
+                    library^.FixupTable[j].ExternIndex =
+                        lnkreloc^.Extern^.Index
+
+                    library^.FixupTable[j].Type = lnkreloc^.Type
+
+                    library^.FixupTable[j].SectionIndex =
+                        lnkreloc^.Section^.Index
+
+                    rlistentry = rlistentry^.Next
+                    j += 1
+                END
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Now record the string table and bump the offset.
+
+    header.Hdr.StringTableOffset = offset
+    header.Hdr.StringTableSize = LnkStringTable.Count
+
+    offset += LnkStringTable.Count
+
+    // Record the head length, since it is now known.
+
+    header.Hdr.HeadLength = offset
+
+    // Calculate padding required by target between head and first section.
+
+    diff := LnkFileAlign ( offset ) - offset
+
+    offset += diff
+
+    LnkHeadLength = offset
+
+    // Now perform the final section relocations.
+
+    LnkPerformRelocations ()
+
+    // And fill in the data offsets in the section table.
+
+    IF LnkSectionCount THEN
+        i = 0
+
+        head = &LnkSectionTable.OrderedListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+            sectiontable[i].VirtualAddress = lnksection^.VirtualAddress
+
+            IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
+                sectiontable[i].FileOffset = offset
+
+                offset += lnksection^.Size + lnksection^.DynamicData.Count
+            
+            ELSE
+                sectiontable[i].FileOffset = 0xABABABAB
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    // Now output all of these binary structures to the object file.
+
+    handle : ^VOID
+
+    status = TlOpenDestination (
+        LnkOutputName, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlPrintString ( LnkOutputName )
+        TlPrintString ( ": failed to open\n" )
+
+        TlErrorExit ()
+    END
+
+    // Output the header.
+
+    IF LnkCreateFragment THEN
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloHeaderExtended, // bytes
+            &header, // buffer
+        )
+    ELSE
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloHeader, // bytes
+            &header, // buffer
+        )
+    END
+
+    IF sectiontable THEN
+        // Output the section table.
+
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloSectionHeader * LnkSectionCount, // bytes
+            sectiontable, // buffer
+        )
+
+        // Output the relocation tables.
+
+        i = 0
+
+        head = &LnkSectionTable.OrderedListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+            IF lnksection^.RelocationTable THEN
+                TlWriteFile (
+                    handle, // handle
+                    SIZEOF XloRelocEntry * lnksection^.RelocationCount, // bytes
+                    lnksection^.RelocationTable, // buffer
+                )
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    IF symboltable THEN
+        // Output the symbol table.
+
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloSymbolEntry * LnkSymbolCount, // bytes
+            symboltable, // buffer
+        )
+    END
+
+    IF externtable THEN
+        // Output the extern table.
+
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloExternEntry * LnkExternCount, // bytes
+            externtable, // buffer
+        )
+    END
+
+    IF externfixtable THEN
+        // Output the extern fixup table.
+
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloRelocEntry * LnkUnresolvedFixupCount, // bytes
+            externfixtable, // buffer
+        )
+    END
+
+    IF importtable THEN
+        // Output the import table.
+
+        TlWriteFile (
+            handle, // handle
+            SIZEOF XloImportEntry * LnkLibraryCount, // bytes
+            importtable, // buffer
+        )
+
+        // Output the fixup tables.
+
+        i = 0
+
+        head = &LnkLibListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            library := CONTAINEROF listentry TO LnkLibrary.Entry
+
+            IF library^.FixupTable THEN
+                TlWriteFile (
+                    handle, // handle
+                    SIZEOF XloRelocEntry * library^.FixupCount, // bytes
+                    library^.FixupTable, // buffer
+                )
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
+
+    IF LnkStringTable.Count THEN
+        // Output the string table.
+
+        TlWriteFile (
+            handle, // handle
+            LnkStringTable.Count, // bytes
+            LnkStringTable.Buffer, // buffer
+        )
+    END
+
+    // Output the section contents.
+
+    IF LnkSectionCount THEN
+        IF diff THEN
+            // Output padding.
+
+            TlWriteFile (
+                handle, // handle
+                diff, // bytes
+                &LnkSixteenZeroes[0], // buffer
+            )
+        END
+
+        i = 0
+
+        head = &LnkSectionTable.OrderedListHead
+        listentry = head^.Next
+
+        WHILE listentry != head DO
+            lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+            IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
+                IF lnksection^.Size THEN
+                    TlWriteFile (
+                        handle, // handle
+                        lnksection^.Size, // bytes
+                        lnksection^.Data, // buffer
+                    )
+                END
+
+                IF lnksection^.DynamicData.Count THEN
+                    TlWriteFile (
+                        handle, // handle
+                        lnksection^.DynamicData.Count, // bytes
+                        lnksection^.DynamicData.Buffer, // buffer
+                    )
+                END
+            END
+
+            listentry = listentry^.Next
+            i += 1
+        END
+    END
 END
 
 FN LnkLinkObject ()
@@ -1807,6 +2494,10 @@ FN LnkLinkObject ()
     END
 
     LnkResolveFixupTable ()
+
+    IF LnkUnresolvedFixupCount AND NOT LnkCreateFragment THEN
+        TlInternalError ( "Unresolved fixups in non-fragment", 0, 0, 0 )
+    END
 
     IF LnkCreateBin THEN
         LnkOutputBinary ()

@@ -142,6 +142,8 @@ FN LnkLinkStuff (
         i += 1
     END
 
+    // Reject illegal combinations of arguments.
+
     IF NOT LnkOutputName THEN
         // Must supply an output name.
 
@@ -149,25 +151,22 @@ FN LnkLinkStuff (
     END
 
     IF NOT LnkArchitectureType THEN
-        // No static objects.
+        // No static objects were supplied.
 
         LnkUsage ()
     END
 
-    IF LnkCreateBin AND dynamicadded THEN
-        // Can't add dynamic libraries if -bin specified.
+    IF LnkCreateBin AND (dynamicadded OR LnkCreateFragment) THEN
+        // Can't add dynamic libraries or create fragment if -bin specified.
 
         LnkUsage ()
     END
 
-    IF LnkCreateBin AND LnkCreateFragment THEN
-        // Can't generate fragment if -bin specified.
+    IF LnkCreateFragment AND (dynamicadded OR
+        LnkMappedBase OR LnkMoveExpression OR LnkBaseAddress) THEN
 
-        LnkUsage ()
-    END
-
-    IF LnkCreateFragment AND dynamicadded THEN
-        // Can't add dynamic libraries if generating a fragment.
+        // Can't add dynamic libraries or relocate sections if generating a
+        // fragment.
 
         LnkUsage ()
     END
@@ -177,6 +176,8 @@ FN LnkLinkStuff (
 
         LnkUsage ()
     END
+
+    // Now call the linker.
 
     LnkLinkObject ()
 END

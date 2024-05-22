@@ -141,17 +141,20 @@ FN RtlStringToNumber (
 
         IF base == 16 THEN
             IF byte >= '0' AND byte <= '9' THEN
-                num += src^ - '0'
+                num += byte - '0'
             
             ELSEIF byte >= 'A' AND byte <= 'F' THEN
-                num += src^ - 'A'
+                num += byte - 'A' + 10
+
+            ELSEIF byte >= 'a' AND byte <= 'f' THEN
+                num += byte - 'a' + 10
 
             ELSE
                 RETURN FALSE
             END
 
         ELSEIF byte >= '0' AND byte <= '9' THEN
-            num += src^ - '0'
+            num += byte - '0'
         
         ELSE
             RETURN FALSE

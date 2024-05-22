@@ -175,3 +175,4 @@ END
 EXTERN LnkArchitectureType : UWORD
 EXTERN LnkArchitectureInTokyo : UWORD
 EXTERN LnkArchitecturePageMask : UWORD
+EXTERN LnkObjectFileAlignmentMask : UWORD

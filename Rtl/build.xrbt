@@ -1,0 +1,21 @@
+#IF ( NOT ( STRCMP ARCHITECTURE "CHost" ) )
+
+TARGET "Rtl"
+	#IF ( STRCMP ARCHITECTURE "xr17032" )
+		FILE "obj/xr17032/Rtl.lib"
+		SOURCES "./src/xr17032"
+	#END
+
+	#IF ( STRCMP ARCHITECTURE "fox32" )
+		FILE "obj/fox32/Rtl.lib"
+		SOURCES "./src/fox32"
+	#END
+
+	LINKOPT "-fragment"
+
+	INCDIR "./Headers"
+
+	SOURCES "./src"
+END
+
+#END

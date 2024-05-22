@@ -7,6 +7,7 @@
 PUBLIC LnkArchitectureType := 0
 PUBLIC LnkArchitectureInTokyo := 0
 PUBLIC LnkArchitecturePageMask := 0
+PUBLIC LnkObjectFileAlignmentMask := 0
 
 LnkArchitectureBitTable : UWORD[XLO_ARCHITECTURE_MAX] = {
     [XLO_ARCHITECTURE_XR17032] = 32,
@@ -112,6 +113,13 @@ FN LnkLoadXloFile (
             TlErrorExit ()
         END
 #END
+
+        IF LnkArchitectureInTokyo == 64 THEN
+            LnkObjectFileAlignmentMask = 7
+
+        ELSE
+            LnkObjectFileAlignmentMask = 3
+        END
 
     ELSEIF LnkArchitectureType != header^.TargetArchitecture THEN
         TlPrintString ( filename )

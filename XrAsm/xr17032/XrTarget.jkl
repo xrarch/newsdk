@@ -1736,7 +1736,7 @@ FN (XrInstructionMnemonicF) XrParseLa (
     // Parse an LA pseudo-instruction.
     // This is really:
     //   LUI RA, ZERO, IMM >> 16
-    //   ORI RA, ZERO, IMM & 0xFFFF
+    //   ORI RA, RA, IMM & 0xFFFF
     //
     // It can create a relocation, so note that on the LUI instruction.
 
@@ -1785,7 +1785,7 @@ FN (XrInstructionMnemonicF) XrParseLa (
     elem2^.Body.Xr.FormatType = XR_FORMAT_IMM
     elem2^.Body.Xr.Opcode = 0x0C // ORI
     elem2^.Body.Xr.RegA = reg.TypeContext
-    elem2^.Body.Xr.RegB = 0
+    elem2^.Body.Xr.RegB = reg.TypeContext
 
     elem2^.Body.Xr.ImmExpr = AsmCreateOperationWithConstant (
         TOKEN_BITAND, // operator

@@ -1,12 +1,12 @@
-;
-; Implements optimized string and memory manipulation routines for Jackal RTL.
-;
+//
+// Implements optimized string and memory manipulation routines for Jackal RTL.
+//
 
 .section text
 
-;a0 - ptr
-;a1 - size
-;a2 - ulong
+// a0 - ptr
+// a1 - size
+// a2 - ulong
 RtlFillMemoryWithUlong:
 .global RtlFillMemoryWithUlong
     beq  a1, .b1done
@@ -38,9 +38,9 @@ RtlFillMemoryWithUlong:
     bne  t1, .fu
 
 .fdone:
-    ;ptr is now aligned
+    // ptr is now aligned
 
-    rshi t1, a1, 6 ;do 64 bytes each loop
+    rshi t1, a1, 6 // do 64 bytes each loop
 
     beq  t1, .b64done
 
@@ -69,7 +69,7 @@ RtlFillMemoryWithUlong:
 .b64done:
     andi t1, a1, 63
 
-    rshi t1, t1, 2 ;do 4 bytes each loop
+    rshi t1, t1, 2 // do 4 bytes each loop
 
     beq  t1, .b4done
 
@@ -81,7 +81,7 @@ RtlFillMemoryWithUlong:
     bne  t1, .b4
 
 .b4done:
-    andi t1, a1, 3 ;do 1 byte each loop
+    andi t1, a1, 3 // do 1 byte each loop
 
     beq  t1, .b1done
 
@@ -97,9 +97,9 @@ RtlFillMemoryWithUlong:
 .b1done:
     ret
 
-;a0 - dest
-;a1 - src
-;a2 - sz
+// a0 - dest
+// a1 - src
+// a2 - sz
 RtlCopyBytes:
 .global RtlCopyBytes
     beq  a2, .zerosize
@@ -138,7 +138,7 @@ RtlCopyBytes:
     beq  t1, .aligned32
 
 .aligned16:
-    rshi t0, a2, 6 ;do 64 bytes each loop
+    rshi t0, a2, 6 // do 64 bytes each loop
 
     beq  t0, .copy16_by_64done
 
@@ -234,7 +234,7 @@ RtlCopyBytes:
     b    .copy_last_bytes
 
 .aligned32:
-    rshi t0, a2, 6 ;do 64 bytes each loop
+    rshi t0, a2, 6 // do 64 bytes each loop
 
     beq  t0, .copy32_by_64done
 
@@ -290,7 +290,7 @@ RtlCopyBytes:
     b    .copy_last_bytes
 
 .unaligned:
-    rshi t0, a2, 5 ;do 32 bytes each loop
+    rshi t0, a2, 5 // do 32 bytes each loop
 
     beq  t0, .copy8_by_32done
 
@@ -381,7 +381,7 @@ RtlCopyBytes:
     bne  t0, .copy8_by_32
 
 .copy8_by_32done:
-    andi t0, a2, 31 ;do 1 byte each loop
+    andi t0, a2, 31 // do 1 byte each loop
 
 .copy_last_bytes:
     beq  t0, .done

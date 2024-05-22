@@ -1223,19 +1223,6 @@ FN (BtDagActionF) BtLinkExecutable (
             )
         END
 
-        IF dagnode^.Target^.LinkPaths.Count THEN
-            TlInsertDynamicBuffer (
-                &cmdline, // array
-                ' '
-            )
-
-            TlCopyIntoDynamicBuffer (
-                &cmdline, // array
-                dagnode^.Target^.LinkPaths.Buffer, // srcbuf
-                dagnode^.Target^.LinkPaths.Count, // length
-            )
-        END
-
         head := &dagnode^.Target^.ObjectListHead
         listentry := head^.Next
 
@@ -1254,6 +1241,19 @@ FN (BtDagActionF) BtLinkExecutable (
             )
 
             listentry = listentry^.Next
+        END
+
+        IF dagnode^.Target^.LinkPaths.Count THEN
+            TlInsertDynamicBuffer (
+                &cmdline, // array
+                ' '
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                dagnode^.Target^.LinkPaths.Buffer, // srcbuf
+                dagnode^.Target^.LinkPaths.Count, // length
+            )
         END
 
         IF dagnode^.Target^.DyLinkPaths.Count THEN
