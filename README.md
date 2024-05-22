@@ -8,6 +8,8 @@ Expect only very gradual progress on this.
 
 To initially build the Jackal compiler, type `./bootstrap.sh` to cause the "precompiled" C files to be built into the initial compiler at `./bin/jkl.exe`. The custom build system will also be built.
 
+Typing `./buildall.sh [desired multithread count]` will then do a "proper" build of all of the tools.
+
 Subsequent compilations of the tools can be performed as:
 
 ```
