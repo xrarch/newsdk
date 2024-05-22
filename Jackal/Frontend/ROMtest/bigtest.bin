@@ -1,0 +1,6961 @@
+//
+// Parses a Jackal program and constructs an abstract syntax tree.
+//
+
+//
+// Try to keep this not too tightly coupled with the rest of the Jackal
+// compiler because this runtime library will likely be extricated later in
+// order to reuse these things for the other self-hosted tools.
+//
+
+ENUM TlStatus : UWORD
+    TL_SUCCESS,
+    TL_NO_MEMORY,
+    TL_COULDNT_OPEN,
+END
+
+#IF ( == BITS 64 )
+
+#DEFINE TL_MACHINE_WORD_MAX 0xFFFFFFFFFFFFFFFF
+#DEFINE TL_MACHINE_WORD_WIDTH 64
+#DEFINE TL_MACHINE_WORD_SIZE 8
+
+#ELSEIF ( == BITS 32 )
+
+#DEFINE TL_MACHINE_WORD_MAX 0xFFFFFFFF
+#DEFINE TL_MACHINE_WORD_WIDTH 32
+#DEFINE TL_MACHINE_WORD_SIZE 4
+
+#ELSE
+
+#ERROR ( STRCAT "[BLD] Bad bitness: " BITS )
+
+#END
+
+#MACRO TlInitializeList ( head ) [
+    listhead := (head)
+
+    listhead^.Prev = listhead
+    listhead^.Next = listhead
+]
+
+#MACRO TlInsertAtTailList ( head, entry ) [
+    listhead := (head)
+    listentry := (entry)
+    last := listhead^.Prev
+
+    listentry^.Prev = last
+    listentry^.Next = listhead
+    last^.Next = listentry
+    listhead^.Prev = listentry
+]
+
+#MACRO TlInsertAtHeadList ( head, entry ) [
+    listhead := (head)
+    listentry := (entry)
+    first := listhead^.Next
+
+    listentry^.Next = first
+    listentry^.Prev = listhead
+    first^.Prev = (entry)
+    listhead^.Next = (entry)
+]
+
+#MACRO TlRemoveEntryList ( entry ) [
+    listentry := (entry)
+
+    prev := listentry^.Prev
+    next := listentry^.Next
+    prev^.Next = next
+    next^.Prev = prev
+]
+
+STRUCT TlListEntry
+    Next : ^TlListEntry,
+    Prev : ^TlListEntry,
+END
+
+EXTERN FN TlInitialize ()
+
+EXTERN FN TlMeasureString (
+    IN str : ^UBYTE,
+) : UWORD
+
+EXTERN FN TlFillMemoryWithByte (
+    IN ptr : ^VOID,
+    IN sz : UWORD,
+    IN byte : UWORD,
+)
+
+EXTERN FN TlCopyMemory (
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN sz : UWORD,
+)
+
+EXTERN FN TlPrintString (
+    IN str : ^UBYTE,
+)
+
+EXTERN FN TlPrintNumber (
+    IN num : UWORD,
+)
+
+EXTERN FN TlPrintCharacter (
+    IN byte : UBYTE,
+)
+
+EXTERN FN TlInternalError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+EXTERN FN TlUserError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+EXTERN FN TlErrorExit ()
+
+EXTERN FN TlBumpAlloc (
+    IN bytes : UWORD,
+    OUT ptr : ^VOID,
+) : TlStatus
+
+EXTERN FN TlAlloc (
+    IN bytes : UWORD,
+    OUT ptr : ^VOID,
+) : TlStatus
+
+EXTERN FN TlFree (
+    IN ptr : ^VOID,
+)
+
+EXTERN FN TlCompareString (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+) : UWORD
+
+EXTERN FN TlCompareStringWithMax (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : UWORD,
+) : UWORD
+
+EXTERN FN TlCopyString (
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+)
+
+EXTERN FN TlOpenSource (
+    IN filename : ^UBYTE,
+    OUT handle : ^VOID,
+) : TlStatus
+
+EXTERN FN TlOpenDestination (
+    IN filename : ^UBYTE,
+    OUT handle : ^VOID,
+) : TlStatus
+
+EXTERN FN TlClose (
+    IN handle : ^VOID,
+)
+
+EXTERN FN TlReadFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+    IN buffer : ^VOID,
+) : UWORD
+
+EXTERN FN TlWriteFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+    IN buffer : ^VOID,
+) : UWORD
+
+EXTERN TlHeapHits : UWORD
+EXTERN TlBumpBytesUsed : UWORD
+EXTERN TlBumpHits : UWORD
+
+
+// hash table stuff
+
+
+#DEFINE TL_HASH_SIZE 97
+
+STRUCT TlHashTable
+    OrderedListHead : TlListEntry,
+    BucketHeads : TlListEntry[TL_HASH_SIZE],
+END
+
+STRUCT TlHashTableEntry
+    HashEntry : TlListEntry,
+    OrderedEntry : TlListEntry,
+
+    HashTable : ^TlHashTable,
+
+    Key : ^UBYTE,
+END
+
+FNPTR TlHashTableEnumeratorF (
+    IN entry : ^TlHashTableEntry,
+)
+
+EXTERN FN TlInitializeHashTable (
+    IN hashtable : ^TlHashTable,
+)
+
+EXTERN FN TlSummarizeHashTable (
+    IN hashtable : ^TlHashTable,
+)
+
+EXTERN FN TlInsertHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
+)
+
+EXTERN FN TlLookupOrInsertHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entry : ^TlHashTableEntry,
+    IN key : ^UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlLookupOrAllocateEntryHashTable (
+    IN hashtable : ^TlHashTable,
+    IN entrysize : UWORD,
+    IN key : ^UBYTE,
+    OUT created : UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlLookupHashTable (
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlRemoveHashTable (
+    IN entry : ^TlHashTableEntry,
+)
+
+EXTERN FN TlEnumerateHashTable (
+    IN hashtable : ^TlHashTable,
+    IN enumfunc : TlHashTableEnumeratorF,
+)
+
+EXTERN FN TlLookupHashTableByHash (
+    IN hashtable : ^TlHashTable,
+    IN key : ^UBYTE,
+    IN hash : UWORD,
+) : ^TlHashTableEntry
+
+EXTERN FN TlHashString (
+    IN str : ^UBYTE,
+) : UWORD
+
+
+// symbol table stuff
+
+
+STRUCT TlSymbolTable
+    PrevScope : ^TlSymbolTable, // previous in the scope stack
+    HashTable : TlHashTable,
+    DeleteRoutine : TlHashTableEnumeratorF,
+END
+
+EXTERN FN TlInitializeSymbolTable (
+    IN symboltable : ^TlSymbolTable,
+    IN outerscope : ^TlSymbolTable,
+    IN deletefunc : TlHashTableEnumeratorF,
+)
+
+EXTERN FN TlCreateSymbolTable (
+    IN outerscope : ^TlSymbolTable,
+    IN deletefunc : TlHashTableEnumeratorF,
+) : ^TlSymbolTable
+
+EXTERN FN TlDeleteSymbolTable (
+    IN symboltable : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN TlLookupSymbolTable (
+    IN symboltable : ^TlSymbolTable,
+    IN name : ^UBYTE,
+) : ^TlHashTableEntry
+
+EXTERN FN TlInsertSymbolTable (
+    IN symboltable : ^TlSymbolTable,
+    IN entry : ^TlHashTableEntry,
+    IN name : ^UBYTE,
+)
+
+EXTERN FN TlRemoveSymbolTable (
+    IN entry : ^TlHashTableEntry,
+)
+
+
+// dynamic buffer stuff
+
+
+#DEFINE TL_DYNAMIC_BUFFER_INITIAL 64
+
+STRUCT TlDynamicBuffer
+    Count : UWORD,
+    BufferSize : UWORD,
+    Buffer : ^UBYTE,
+
+    InitialBuffer : UBYTE[TL_DYNAMIC_BUFFER_INITIAL]
+END
+
+EXTERN FN TlInitializeDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+)
+
+EXTERN FN TlUninitializeDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+)
+
+EXTERN FN TlInsertDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN byte : UBYTE,
+)
+
+EXTERN FN TlCopyIntoDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN srcbuf : ^UBYTE,
+    IN length : UWORD,
+)
+
+EXTERN FN TlInsertNumberDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN number : UWORD,
+    IN base : UBYTE,
+)
+
+EXTERN FN TlPopDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+) : UWORD
+
+
+// path stuff
+
+
+EXTERN FN TlMatchPath (
+    IN path : ^UBYTE,
+    IN pathset : ^UBYTE,
+    IN resultingpath : ^TlDynamicBuffer,
+    OUT handle : ^VOID,
+) : UWORD
+
+EXTERN FN TlCopyParentPath (
+    IN srcpath : ^UBYTE,
+    IN destpath : ^TlDynamicBuffer,
+)
+
+
+// zone stuff
+
+
+#DEFINE TL_ZONE_GROW_BY 32
+
+STRUCT TlZone
+    BlockSize : UWORD,
+    FreeListHead : ^TlZoneBlockHeader,
+END
+
+STRUCT TlZoneBlockHeader
+    FreeListNext : ^TlZoneBlockHeader,
+END
+
+EXTERN FN TlInitializeZone (
+    IN zone : ^TlZone,
+    IN blocksize : UWORD,
+)
+
+EXTERN FN TlAllocateFromZone (
+    IN zone : ^TlZone,
+) : ^VOID
+
+EXTERN FN TlFreeToZone (
+    IN zone : ^TlZone,
+    IN block : ^VOID,
+)
+
+
+// math stuff
+
+
+EXTERN FN TlIsPowerOfTwo (
+    IN constant : UWORD,
+) : UWORD
+
+EXTERN FN TlPunchValue (
+    IN ptr : ^UBYTE,
+    IN value : UWORD,
+    IN bytes : UWORD,
+)
+
+#DEFINE FE_PATH_BUFFER_SIZE 256
+
+EXTERN FN JklCompileProgram (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+FNPTR JklTargetF ()
+
+FNPTR JklValueNumberF (
+    IN constant : UWORD,
+) : UBYTE
+
+EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
+
+EXTERN FeInputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+EXTERN FeOutputFile : UBYTE[FE_PATH_BUFFER_SIZE]
+
+EXTERN FeInputFileHandle : ^VOID
+EXTERN FeOutputFileHandle : ^VOID
+
+EXTERN JklTargetInfo : ^JklTargetInfoRecord
+
+ENUM JklPrimitiveType : UBYTE
+    PRIM_TYPE_VOID,
+
+    // The order that these are declared in determines the type compatibility,
+    // such that a primitive type is only compatible with the same or a larger
+    // type.
+
+    PRIM_TYPE_SIGNED, // signed types bottom
+
+    PRIM_TYPE_BYTE,
+    PRIM_TYPE_INT,
+    PRIM_TYPE_LONG,
+    PRIM_TYPE_QUAD,
+
+    PRIM_TYPE_SIGNED_MAX, // signed types top
+
+    PRIM_TYPE_UNSIGNED, // signed types bottom
+
+    PRIM_TYPE_UBYTE,
+    PRIM_TYPE_UINT,
+    PRIM_TYPE_ULONG,
+    PRIM_TYPE_UQUAD,
+
+    PRIM_TYPE_UNSIGNED_MAX, // unsigned types top
+
+    PRIM_TYPE_POINTER,
+
+    PRIM_TYPE_MAX, // MUST be at the end
+END
+
+EXTERN JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX]
+
+STRUCT JklTargetInfoRecord
+    Name : ^UBYTE,
+    EntryFunc : JklTargetF,
+    ValueNumberConstantFunc : JklValueNumberF,
+    LirInfo : ^LirTargetInfoRecord,
+    ConstantMask : UWORD,
+    FoldStackAddr : UBYTE,
+    StackAlignment : UBYTE,
+    PointerAlignment : UBYTE,
+    PointerSize : UBYTE,
+    CodeAlignment : UBYTE,
+    PrimitiveAlignment : UBYTE[PRIM_TYPE_MAX],
+    PrimitiveSize : UBYTE[PRIM_TYPE_MAX],
+    SupportedTypes : UBYTE[PRIM_TYPE_MAX],
+    LargestPrimitive : JklPrimitiveType,
+    LargestSignedPrimitive : JklPrimitiveType,
+END
+
+// fileblock stuff
+
+STRUCT FeFileBlock
+    Entry : TlHashTableEntry, // must be at the start
+
+    FilePath : UBYTE[FE_PATH_BUFFER_SIZE],
+    IncludeName : UBYTE[FE_PATH_BUFFER_SIZE],
+END
+
+EXTERN FN FeIsMacroArgument (
+    IN arg : ^UBYTE,
+) : ^UBYTE
+
+EXTERN FN FeCreateFileBlock (
+    IN includename : ^UBYTE,
+    OUT created : UBYTE,
+) : ^FeFileBlock
+
+EXTERN FN FeCopyPathFileBlock (
+    IN fileblock : ^FeFileBlock,
+    IN filepath : ^UBYTE,
+)
+
+#DEFINE LEX_PUTBACK_STACK_DEPTH 256
+#DEFINE LEX_BUFFER_SIZE 16384
+#DEFINE LEX_DIRECTIVE_MAX 64
+
+ENUM LexTokenType : UBYTE
+    TOKEN_ANY,
+
+    TOKEN_STATEMENT, // subtype is a statement type
+    TOKEN_PTYPE, // subtype is a primitive type
+    TOKEN_OPER, // subtype is operator type
+    TOKEN_VALUE, // some kind of primitive value (NULL, NULLPTR, TRUE, FALSE)
+    TOKEN_ARGSPEC, // argument specifier (IN, OUT)
+    TOKEN_DECL, // declarator
+    TOKEN_OTHER, // anything else (THEN, DO, )
+    TOKEN_ASSIGN, // assignment operators
+    TOKEN_TERMINATOR, // block terminators (ELSE, ELSEIF, END)
+
+    TOKEN_RPAREN,
+    TOKEN_RBRACKET,
+    TOKEN_COLON,
+    TOKEN_LBRACE,
+    TOKEN_RBRACE,
+    TOKEN_COMMA,
+    TOKEN_SIZEOF,
+    TOKEN_OFFSETOF,
+
+    TOKEN_IDENTIFIER, // payload is a symbol table entry pointer
+    TOKEN_STRING, // payload is a pointer to a LexStringContents structure
+    TOKEN_NUMBER, // payload is the number value
+
+    TOKEN_VIRTUAL,
+
+    TOKEN_EOF,
+    TOKEN_TYPE_MAX, // MUST be at the end
+END
+
+ENUM LexTokenSubtype : UBYTE
+    TOKEN_SUBTYPE_ANY,
+
+    TOKEN_AND,         // operator
+    TOKEN_BREAK,       // statement
+    TOKEN_BYTE,        // type
+    TOKEN_CAST,        // operator
+    TOKEN_CONTAINEROF, // operator
+    TOKEN_CONTINUE,    // statement
+    TOKEN_DO,          // other
+    TOKEN_ELSE,        // terminator
+    TOKEN_ELSEIF,      // terminator
+    TOKEN_END,         // terminator
+    TOKEN_ENUM,        // declarator
+    TOKEN_EXTERN,      // declarator
+    TOKEN_FALSE,       // value
+    TOKEN_FN,          // declarator
+    TOKEN_FNPTR,       // declarator
+    TOKEN_GOTO,        // statement
+    TOKEN_IF,          // statement
+    TOKEN_IN,          // argspec
+    TOKEN_INT,         // type
+    TOKEN_LEAVE,       // statement
+    TOKEN_LONG,        // type
+    TOKEN_NOT,         // operator
+    TOKEN_NULLPTR,     // value
+    TOKEN_OR,          // operator
+    TOKEN_OUT,         // argspec
+    TOKEN_PACKED,      // other
+    TOKEN_PUBLIC,      // declarator
+    TOKEN_RETURN,      // statement
+    TOKEN_SIZEOFVALUE, // operator
+    TOKEN_STRUCT,      // declarator
+    TOKEN_THEN,        // other
+    TOKEN_TO,          // other
+    TOKEN_TRUE,        // value
+    TOKEN_TYPE,        // declarator
+    TOKEN_UBYTE,       // type
+    TOKEN_UINT,        // type
+    TOKEN_ULONG,       // type
+    TOKEN_UNION,       // declarator
+    TOKEN_VOID,        // type
+    TOKEN_WHILE,       // statement
+    TOKEN_BARRIER,     // statement
+    TOKEN_EXPORT,      // declarator
+    TOKEN_PRIVATE,     // declarator
+    TOKEN_UQUAD,       // type
+    TOKEN_QUAD,        // type
+
+    TOKEN_UWORD,       // type
+    TOKEN_WORD,        // type
+
+    TOKEN_EQUIV,       // operator
+    TOKEN_NOTEQUIV,    // operator
+    TOKEN_BITAND,      // operator
+    TOKEN_BITOR,       // operator
+    TOKEN_LESSTHAN,    // operator
+    TOKEN_GREATERTHAN, // operator
+    TOKEN_LTEQ,        // operator
+    TOKEN_GTEQ,        // operator
+    TOKEN_PLUS,        // operator
+    TOKEN_MINUS,       // operator
+    TOKEN_DIVIDE,      // operator
+    TOKEN_MODULO,      // operator
+    TOKEN_DOT,         // operator
+    TOKEN_LABEL,       // statement
+    TOKEN_BITXOR,      // operator
+    TOKEN_LEFTSHIFT,   // operator
+    TOKEN_RIGHTSHIFT,  // operator
+    TOKEN_BITNOT,      // operator
+    TOKEN_MUL,         // operator
+    TOKEN_VARARG,      // argspec
+
+    TOKEN_LBRACKET,    // operator
+    TOKEN_CARET,       // operator
+    TOKEN_LPAREN,      // operator
+
+    TOKEN_EQUALS,      // assign
+    TOKEN_PLUSEQUALS,  // assign
+    TOKEN_MINUSEQUALS, // assign
+    TOKEN_MULEQUALS,   // assign
+    TOKEN_DIVEQUALS,   // assign
+    TOKEN_MODEQUALS,   // assign
+    TOKEN_ANDEQUALS,   // assign
+    TOKEN_OREQUALS,    // assign
+    TOKEN_XOREQUALS,   // assign
+    TOKEN_LSHEQUALS,   // assign
+    TOKEN_RSHEQUALS,   // assign
+
+    TOKEN_ADDROF, // virtual (to distinguish from bitwise AND)
+
+    TOKEN_IDENTIFIER_NEW,
+    TOKEN_IDENTIFIER_FOUND,
+
+    TOKEN_SUBTYPE_MAX, // MUST be at the end of the token subtypes
+END
+
+ENUM LexCharBehavior : UBYTE
+    CHAR_NORMAL, // guaranteed to be zero
+    CHAR_SPLIT,
+    CHAR_COALESCE,
+    CHAR_WHITESPACE,
+    CHAR_EOF,
+END
+
+FNPTR LexGetCharacterF () : UBYTE
+
+STRUCT LexInternedString
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    DynamicBuffer : TlDynamicBuffer,
+    Section : ^LexSection,
+
+    // Include a context word for the code generator.
+    // The code generator will probably fill this in with a label name, for its
+    // own convenience in reusing the string.
+
+    CodeGenContext : ^VOID,
+END
+
+STRUCT LexToken
+    // NOTE: There's an assumption that a pointer for the host architecture of
+    // the compiler is large enough to contain the biggest integer that is
+    // directly representable by the set of target architectures. I.e., a 32-bit
+    // host will be able to build for any of the 32-bit architectures, and its
+    // 32-bit Payload pointer will be large enough to store 32-bit integers. A
+    // 64-bit host will be able to build for any of the 32-bit architectures,
+    // plus the 64-bit architectures, and its pointer will be large enough to
+    // store 64-bit integers here.
+
+    Payload : ^VOID,
+    FileBlock : ^FeFileBlock,
+
+    LineNumber : ULONG,
+    LinePosition : ULONG,
+
+    Type : LexTokenType,
+    Subtype : LexTokenSubtype,
+    TypeContext : UBYTE,
+END
+
+STRUCT LexStream
+    Previous : ^LexStream,
+    FileBlock : ^FeFileBlock,
+    FileHandle : ^VOID,
+
+    Buffer : ^UBYTE,
+    BufferSize : ULONG,
+    ValidLength : ULONG,
+    BufferPosition : ULONG,
+
+    LineNumber : ULONG,
+    LinePosition : ULONG,
+
+    Macro : ^LexMacro,
+    LastWasNewline : UBYTE,
+
+    LastScope : ^TlSymbolTable,
+    LastMacroScope : ^TlSymbolTable,
+
+    Backslash : UBYTE,
+    InString : UBYTE,
+    InLiteral : UBYTE,
+    Putback : UBYTE,
+    CoalescePutback : UBYTE,
+END
+
+ENUM LexSymbolType : UBYTE
+    SYM_UNINITIALIZED,
+    SYM_VAR,
+    SYM_LABEL,
+    SYM_TYPE,
+    SYM_CONSTANT,
+
+    // The "forward" types signify a symbol that has been used before it was
+    // defined, in a context where it was okay to do so. In fact, it's okay to
+    // never declare these as long as they weren't referenced in the source
+    // program.
+
+    SYM_FORWARD_LABEL,
+    SYM_FORWARD_TYPE,
+END
+
+STRUCT LexSymbol
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Name : ^UBYTE,
+    Section : ^LexSection,
+
+    // Parser private stuff in a symbol.
+
+    Next : ^LexSymbol,
+    Prev : ^LexSymbol,
+
+    NextFunction : ^LexSymbol,
+
+    Value : UWORD,
+
+    // Unfortunately the initial value has to be a void pointer; it's actually a
+    // pointer to an AST node, or in the case of a function, an IR block.
+
+    InitialValue : ^VOID,
+
+    SemanticType : ^LexSemanticType,
+
+    IrContext : ^VOID,
+    StackOffset : UWORD,
+
+    TrgContext : ^VOID,
+
+    Flags : ULONG,
+    Type : LexSymbolType,
+    StackAllocated : UBYTE,
+    ParameterType : UBYTE,
+END
+
+ENUM LexSemanticSubtype : UBYTE
+    TYPE_PRIMITIVE,
+    TYPE_ARRAY,
+    TYPE_POINTER,
+    TYPE_NAMED,
+    TYPE_FUNCTION,
+    TYPE_COMPOUND,
+END
+
+STRUCT LexSemanticTypePrimitiveBody
+    Type : JklPrimitiveType,
+    Inducible : UBYTE,
+END
+
+STRUCT LexSemanticTypeArrayBody
+    // The base points to the "underlying type". I.e., "array of [base]".
+
+    Base : ^LexSemanticType,
+    Bound : UWORD,
+    ElementSize : UWORD,
+    HasBound : UBYTE,
+
+    // This "parent" link is only used at type parsing time.
+
+    Parent : ^LexSemanticType,
+END
+
+STRUCT LexSemanticTypePointerBody
+    // The base points to the "underlying type". I.e., "pointer to [base]".
+
+    Base : ^LexSemanticType,
+END
+
+STRUCT LexSemanticTypeNamedBody
+    // The type is named, so it has an associated symbol.
+
+    Symbol : ^LexSymbol,
+END
+
+ENUM LexFunctionArgumentTypes : UBYTE
+    ARG_NULL,
+    ARG_IN,
+    ARG_OUT,
+END
+
+STRUCT LexFunctionArgument
+    Next : ^LexFunctionArgument,
+
+    Token : LexToken,
+
+    Symbol : ^LexSymbol,
+    InOut : LexFunctionArgumentTypes,
+END
+
+STRUCT LexSemanticTypeFunctionBody
+    // The type is a function, so it has an argument list and a return type.
+
+    ArgListHead : ^LexFunctionArgument,
+    ReturnType : ^LexSemanticType,
+    FuncScope : ^TlSymbolTable,
+    FnPtrType : ^LexSemanticType,
+    VarArgTable : ^LexSymbol,
+    VarArgCount : ^LexSymbol,
+    VarTable : ^LexSymbol,
+    BodyBlock : ^VOID, // actually a PrsBlock
+    ArgCount : ULONG,
+    IsVarArg : UBYTE,
+    IsFnPtr : UBYTE,
+END
+
+STRUCT LexSemanticTypeCompoundBody
+    FieldScope : ^TlSymbolTable,
+
+    IsPacked : UBYTE,
+END
+
+UNION LexSemanticTypeBody
+    Primitive : LexSemanticTypePrimitiveBody,
+    Array : LexSemanticTypeArrayBody,
+    Pointer : LexSemanticTypePointerBody,
+    Named : LexSemanticTypeNamedBody,
+    Function : LexSemanticTypeFunctionBody,
+    Compound : LexSemanticTypeCompoundBody,
+END
+
+STRUCT LexSemanticType
+    Body : LexSemanticTypeBody,
+    Size : UWORD,
+    Subtype : LexSemanticSubtype,
+    MinimumAlignment : UBYTE,
+    CachedIsDeclarable : UBYTE,
+    CachedIsValue : UBYTE,
+END
+
+STRUCT LexMacro
+    Entry : TlHashTableEntry, // MUST be at the beginning
+
+    NameToken : LexToken, // for error reporting
+    Contents : TlDynamicBuffer,
+    Name : UBYTE[LEX_DIRECTIVE_MAX],
+
+    ResumeScope : ^TlSymbolTable,
+    ResumeMacroScope : ^TlSymbolTable,
+
+    ArgListHead : ^LexMacroArgument,
+    IsFunctionMacro : UBYTE,
+    IsArgumentMacro : UBYTE,
+END
+
+STRUCT LexMacroArgument
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Next : ^LexMacroArgument,
+
+    Name : UBYTE[LEX_DIRECTIVE_MAX],
+END
+
+STRUCT LexAsmBlock
+    Next : ^LexAsmBlock,
+    Section : ^LexSection,
+
+    Token : LexToken,
+    Contents : TlDynamicBuffer,
+END
+
+STRUCT LexSectionStackElement
+    Prev : ^LexSectionStackElement,
+    Section : ^LexSection,
+END
+
+STRUCT LexSection
+    Entry : TlHashTableEntry, // MUST be at the beginning
+    Name : UBYTE[LEX_DIRECTIVE_MAX],
+    Next : ^LexSection,
+
+    InternedStringHashTable : TlHashTable,
+
+    // Include a context word for the code generator.
+
+    ForwardDynamicBuffer : TlDynamicBuffer,
+    DynamicBuffer : TlDynamicBuffer,
+
+    CodeGenContext : ^VOID,
+END
+
+EXTERN FN LexLookupSection (
+    IN name : ^UBYTE,
+) : ^LexSection
+
+EXTERN FN LexPushSection (
+    IN section : ^LexSection,
+)
+
+EXTERN FN LexPopSection () : UBYTE
+
+EXTERN LexNextSymbolSection : ^LexSection
+EXTERN LexCurrentSection : ^LexSection
+EXTERN LexSectionListHead : ^LexSection
+
+EXTERN LexDefaultSection : LexSection
+EXTERN LexTextSection : LexSection
+EXTERN LexDataSection : LexSection
+EXTERN LexBssSection : LexSection
+
+EXTERN LexCharTreatment : LexCharBehavior[256]
+
+EXTERN LexCurrentStream : ^LexStream
+EXTERN LexCurrentMacroScope : ^TlSymbolTable
+EXTERN LexRootScope : ^TlSymbolTable
+EXTERN LexCurrentScope : ^TlSymbolTable
+EXTERN LexFalseCount : ULONG
+
+EXTERN LexMacroDepth : ULONG
+
+EXTERN LexAsmBlockListHead : ^LexAsmBlock
+
+EXTERN FN LexInitialize ()
+
+EXTERN FN LexCreateSymbolTable (
+    IN outerscope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN LexInitializeSectionStuff ()
+
+EXTERN FN LexInitializePreprocessor ()
+
+EXTERN FN LexDefineMacroFromArgumentString (
+    IN arg : ^UBYTE,
+)
+
+EXTERN FN LexExpandMacro (
+    IN macro : ^LexMacro,
+    IN token : ^LexToken,
+)
+
+EXTERN FN LexInitializeStreamZone ()
+
+EXTERN FN LexInitializeStream (
+    IN stream : ^LexStream,
+    IN macro : ^LexMacro,
+)
+
+EXTERN FN LexUninitializeStream (
+    IN stream : ^LexStream,
+)
+
+EXTERN FN LexAllocateStream () : ^LexStream
+
+EXTERN FN LexFreeStream (
+    IN stream : ^LexStream,
+)
+
+EXTERN FN LexPushStream (
+    IN stream : ^LexStream,
+)
+
+EXTERN FN LexPopStream () : ^LexStream
+
+EXTERN FN LexInitializeFileStream (
+    IN stream : ^LexStream,
+    IN fileblock : ^FeFileBlock,
+    IN handle : ^VOID,
+)
+
+EXTERN FN LexCreateFileStream (
+    IN fileblock : ^FeFileBlock,
+    IN handle : ^VOID,
+) : ^LexStream
+
+EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
+
+EXTERN FN LexParseDirective ()
+
+EXTERN FN LexEnterScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN LexResetScope (
+    IN scope : ^TlSymbolTable,
+) : ^TlSymbolTable
+
+EXTERN FN LexLeaveScope ()
+
+EXTERN FN LexEnterOverlayScope (
+    IN scope : ^TlSymbolTable,
+)
+
+EXTERN FN LexExitOverlayScope ()
+
+EXTERN FN LexEnterMacroFreeZone ()
+
+EXTERN FN LexLeaveMacroFreeZone ()
+
+EXTERN FN LexCopyToken (
+    IN dest : ^LexToken,
+    IN src : ^LexToken,
+)
+
+EXTERN FN LexGetToken (
+    IN token : ^LexToken,
+)
+
+EXTERN FN LexPutbackToken (
+    IN token : ^LexToken,
+)
+
+EXTERN FN LexMatchToken (
+    IN token : ^LexToken,
+    IN type : LexTokenType,
+    IN subtype : LexTokenSubtype,
+) : UBYTE
+
+EXTERN FN LexStreamError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+EXTERN FN LexTokenError (
+    IN token : ^LexToken,
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+EXTERN FN LexCrunchNumber (
+    IN token : ^LexToken,
+    IN buffer : ^UBYTE,
+) : UWORD
+
+EXTERN FN PrsProgram ()
+
+EXTERN FN PrsInitialize ()
+
+EXTERN PrsGlobalListHead : ^LexSymbol
+
+EXTERN PrsFunctionListHead : ^LexSymbol
+
+#DEFINE VAR_FLAG_EXTERN 1
+#DEFINE VAR_FLAG_PUBLIC 2
+#DEFINE VAR_FLAG_EXPORT 4
+
+#DEFINE TYPE_SIZE_UNINIT 0xFFFFFFFF
+
+ENUM PrsAstType : UBYTE
+    AST_IDENTIFIER,
+    AST_ASSIGN,
+    AST_OPERATOR,
+    AST_CONSTANT,
+    AST_STRING,
+    AST_INITIALIZER,
+    AST_BREAK,
+    AST_RETURN,
+    AST_WHILE,
+    AST_LABEL,
+    AST_GOTO,
+    AST_CONTINUE,
+    AST_IF,
+    AST_BARRIER,
+
+    AST_MAX, // MUST be at the end
+END
+
+STRUCT PrsBlock
+    StatementListHead : ^PrsAstNode,
+    StatementListTail : ^PrsAstNode,
+    StatementCount : ULONG,
+    LabelCount : ULONG,
+END
+
+STRUCT PrsAstAssign
+    Left : ^PrsAstNode,
+    Right : ^PrsAstNode,
+END
+
+STRUCT PrsAstOperator
+    Left : ^PrsAstNode,
+    Right : ^PrsAstNode,
+    OperatorSpecific : ^VOID,
+    VarArgCount : ULONG,
+END
+
+STRUCT PrsAstConstant
+    Value : UWORD,
+END
+
+STRUCT PrsAstStatement
+    StatementSpecific : ^VOID,
+END
+
+STRUCT PrsAstWhile
+    Conditional : ^PrsAstNode,
+    BodyBlock : ^PrsBlock,
+END
+
+STRUCT PrsIfCase
+    Next : ^PrsIfCase,
+
+    Conditional : ^PrsAstNode,
+    BodyBlock : ^PrsBlock,
+END
+
+STRUCT PrsAstIf
+    CaseListHead : ^PrsIfCase,
+    CaseListTail : ^PrsIfCase,
+    ElseBlock : ^PrsBlock,
+END
+
+STRUCT PrsAstInitializer
+    ByteArray : ^UBYTE,
+    BpArray : ^^PrsAstNode,
+    Size : UWORD,
+END
+
+UNION PrsAstBody
+    Assign : PrsAstAssign,
+    Operator : PrsAstOperator,
+    Constant : PrsAstConstant,
+    Statement : PrsAstStatement,
+    While : PrsAstWhile,
+    If : PrsAstIf,
+    Initializer : PrsAstInitializer,
+END
+
+STRUCT PrsAstNode
+    Token : LexToken,
+
+    Next : ^PrsAstNode,
+
+    Type : PrsAstType,
+    Body : PrsAstBody,
+
+    CachedSemanticType : ^LexSemanticType,
+END
+
+EXTERN FN PrsEvaluateType (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+PUBLIC PrsGlobalListHead : ^LexSymbol = NULLPTR
+PrsGlobalListTail : ^LexSymbol = NULLPTR
+
+PUBLIC PrsFunctionListHead : ^LexSymbol = NULLPTR
+PrsFunctionListTail : ^LexSymbol = NULLPTR
+
+PrsCurrentBlock : ^PrsBlock = NULLPTR
+PrsCurrentFunction : ^LexSemanticType = NULLPTR
+
+PrsBlockStack : TlDynamicBuffer
+
+PrsStringType : ^LexSemanticType = NULLPTR
+PrsNullPtrType : ^LexSemanticType = NULLPTR
+PrsConstantType : ^LexSemanticType = NULLPTR
+PrsVarArgType : ^LexSemanticType = NULLPTR
+
+ENUM PrsBlockType : UBYTE
+    BLOCK_NULL,
+
+    // Controls the behavior of the terminator keywords.
+
+    BLOCK_PLAIN_BODY, // END is legal to terminate the block.
+    BLOCK_IF_BODY, // ELSEIF, ELSE, and END are legal to terminate the block.
+
+    // Nothing is legal to terminate the block. The lexer pushes this when it
+    // expands a macro and pops it when the macro is empty.
+
+    BLOCK_MACRO_BODY,
+END
+
+PrsWhileDepth : ULONG = 0
+
+FNPTR PrsOperatorF (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+FNPTR PrsOperatorEvalF (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+STRUCT PrsOperatorRecord
+    ParseFunc : PrsOperatorF,
+    EvalFunc : PrsOperatorEvalF,
+    Precedence : ULONG,
+    NoRightSide : UBYTE,
+END
+
+// FORWARD
+EXTERN PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+EXTERN PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX]
+
+FNPTR PrsDeclaratorF () : ^LexSymbol
+
+// FORWARD
+EXTERN PrsDeclarators : PrsDeclaratorF[TOKEN_SUBTYPE_MAX]
+
+FNPTR PrsStatementF (
+    IN token : ^LexToken,
+)
+
+// FORWARD
+EXTERN FN PrsExpression (
+    IN minprecedence : UWORD,
+) : ^PrsAstNode
+
+// FORWARD
+EXTERN FN PrsType (
+    IN type : ^LexSemanticType,
+    IN depth : UWORD,
+)
+
+// FORWARD
+EXTERN PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX]
+
+FN PrsCreateType () : ^LexSemanticType
+
+    // Create a type.
+
+    type : ^LexSemanticType
+
+    status := TlBumpAlloc (
+        SIZEOF LexSemanticType, // bytes
+        OUT type, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create type", 0, 0, 0 )
+    END
+
+    type^.CachedIsDeclarable = FALSE
+    type^.CachedIsValue = FALSE
+    type^.Size = TYPE_SIZE_UNINIT
+    type^.MinimumAlignment = 0
+
+    RETURN type
+END
+
+FN PrsEnterMacro ()
+
+    // The lexer calls this when it enters a macro.
+    // Pushing this to the block stack ensures that the scope can't leave the
+    // macro scope.
+
+    TlInsertDynamicBuffer (
+        &PrsBlockStack, // array
+        BLOCK_MACRO_BODY, // byte
+    )
+END
+
+FN PrsLeaveMacro () : UBYTE
+
+    // The lexer calls this when it leaves a macro.
+
+    byte := TlPopDynamicBuffer ( &PrsBlockStack )
+
+    RETURN byte == BLOCK_MACRO_BODY
+END
+
+FN PrsCreateAstNode (
+    IN type : PrsAstType,
+    IN token : ^LexToken,
+) : ^PrsAstNode
+
+    // Create an AST node.
+
+    node : ^PrsAstNode
+
+    status := TlBumpAlloc (
+        SIZEOF PrsAstNode, // bytes
+        OUT node, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create AST node", 0, 0, 0 )
+    END
+
+    node^.Type = type
+
+    node^.CachedSemanticType = NULLPTR
+
+    LexCopyToken (
+        &node^.Token, // dest
+        token, // src
+    )
+
+    RETURN node
+END
+
+FN PrsInsertNodeIntoBlock (
+    IN block : ^PrsBlock,
+    IN node : ^PrsAstNode,
+)
+
+    // Insert the node into the given block.
+
+    node^.Next = NULLPTR
+
+    IF NOT block^.StatementListTail THEN
+        block^.StatementListHead = node
+
+    ELSE
+        block^.StatementListTail^.Next = node
+    END
+
+    block^.StatementListTail = node
+END
+
+FN PrsPrintType (
+    IN type : ^LexSemanticType,
+)
+
+    // Debug function that recursively prints a type.
+
+    TlPrintString ( "Subtype: " )
+    TlPrintNumber ( type^.Subtype )
+    TlPrintString ( "\n" )
+
+    IF type^.Subtype == TYPE_PRIMITIVE THEN
+        TlPrintString ( "Primitive type: " )
+        TlPrintNumber ( type^.Body.Primitive.Type )
+        TlPrintString ( "\n" )
+
+    ELSEIF type^.Subtype == TYPE_NAMED THEN
+        TlPrintString ( "Type name: " )
+        TlPrintString ( type^.Body.Named.Symbol^.Name )
+        TlPrintString ( "\n" )
+
+    ELSEIF type^.Subtype == TYPE_POINTER THEN
+        TlPrintString ( "Pointer to:\n" )
+        PrsPrintType ( type^.Body.Pointer.Base )
+
+    ELSEIF type^.Subtype == TYPE_ARRAY THEN
+        TlPrintString ( "Array with bound: " )
+
+        IF type^.Body.Array.HasBound THEN
+            TlPrintNumber ( type^.Body.Array.Bound )
+            TlPrintString ( ", of:\n" )
+
+        ELSE
+            TlPrintString ( "Boundless, of:\n" )
+        END
+
+        PrsPrintType ( type^.Body.Array.Base )
+    END
+END
+
+FN PrsIsLvalue (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Return whether the node is a valid l-value or not.
+
+    IF node^.Type == AST_IDENTIFIER THEN
+        symbol := CAST node^.Token.Payload TO ^LexSymbol
+
+        IF symbol^.SemanticType^.Subtype == TYPE_ARRAY THEN
+            // Arrays aren't directly valid as l-values.
+
+            RETURN FALSE
+        END
+
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_OPERATOR THEN
+        IF node^.Token.Subtype == TOKEN_LBRACKET THEN
+            // Array references are l-values.
+
+            RETURN TRUE
+        END
+
+        IF node^.Token.Subtype == TOKEN_CARET THEN
+            // Pointer derefs are l-values.
+
+            RETURN TRUE
+        END
+
+        IF node^.Token.Subtype == TOKEN_DOT THEN
+            // Compound type references are l-values.
+
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN PrsIsCompileTime (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Evaluates whether the value of a node can be known at compile time.
+
+    // Skip casts, they shouldn't hurt this.
+
+    WHILE node^.Type == AST_OPERATOR AND node^.Token.Subtype == TOKEN_CAST DO
+        node = node^.Body.Operator.Left
+    END
+
+    IF node^.Type == AST_CONSTANT THEN
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_STRING THEN
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_INITIALIZER THEN
+        RETURN TRUE
+    END
+
+    IF node^.Type == AST_OPERATOR AND node^.Token.Subtype == TOKEN_ADDROF THEN
+        left := node^.Body.Operator.Left
+
+        IF left^.Type == AST_IDENTIFIER THEN
+            RETURN TRUE
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN PrsFieldSequence (
+    OUT offset : UWORD,
+) : ^LexSemanticType
+
+    // Parse a sequence of the form StructName.FieldName.FieldName... and return
+    // the resulting final offset and type.
+
+    idtoken : LexToken
+
+    IF NOT LexMatchToken (
+        &idtoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+        LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+    END
+
+    symbol := CAST idtoken.Payload TO ^LexSymbol
+
+    IF symbol^.Type != SYM_TYPE THEN
+        LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+    END
+
+    type := symbol^.SemanticType
+    structtype := type
+
+    IF NOT LexMatchToken (
+        &idtoken, // token
+        TOKEN_OPER, // type
+        TOKEN_DOT, // subtype
+    ) THEN
+        LexTokenError ( &idtoken, "Expected a dot", 0, 0, 0 )
+    END
+
+    finaloffset : UWORD = 0
+
+    WHILE TRUE DO
+        WHILE type^.Subtype == TYPE_NAMED DO
+            IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                // Forward declared type that we don't know anything about yet.
+
+                LexTokenError ( &idtoken,
+                    "Illegal use of undeclared destination type", 0, 0, 0 )
+            END
+
+            type = type^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF type^.Subtype != TYPE_COMPOUND THEN
+            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        END
+
+        LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        LexExitOverlayScope ()
+
+        IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &idtoken, "Non-existent field name", 0, 0, 0 )
+        END
+
+        symbol = CAST idtoken.Payload TO ^LexSymbol
+
+        finaloffset += symbol^.Value
+
+        type = symbol^.SemanticType
+
+        IF NOT LexMatchToken (
+            &idtoken, // token
+            TOKEN_OPER, // type
+            TOKEN_DOT, // subtype
+        ) THEN
+            // No more field names, we done.
+
+            BREAK
+        END
+    END
+
+    offset = finaloffset
+
+    RETURN structtype
+END
+
+FN PrsCheckType (
+    IN errtoken : ^LexToken,
+    IN type1 : ^LexSemanticType,
+    IN type2 : ^LexSemanticType,
+    IN errstring : ^UBYTE,
+    IN equivalence : UBYTE,
+) : UBYTE
+
+    // Compare the two types. type1 is taken to be a "destination" type and
+    // type2 is a "source" type. If equivalence is TRUE, then exact equivalence
+    // is tested rather than assignment compatibility. Returns TRUE if there is
+    // an implicit cast.
+
+    // TODO fix to use vararg LexTokenError
+
+    IF type1 == type2 THEN
+        // They're identical, literally the same type object.
+
+        RETURN FALSE
+    END
+
+    // First strip away any names.
+
+    WHILE type1^.Subtype == TYPE_NAMED DO
+        IF type1^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared destination type", 0, 0, 0 )
+        END
+
+        type1 = type1^.Body.Named.Symbol^.SemanticType
+    END
+
+    WHILE type2^.Subtype == TYPE_NAMED DO
+        IF type2^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared source type", 0, 0, 0 )
+        END
+
+        type2 = type2^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type1 == type2 THEN
+        // They're identical, literally the same type object.
+
+        RETURN FALSE
+    END
+
+    IF type1^.Subtype != type2^.Subtype THEN
+        // Not the same type of type.
+
+        TlPrintString ( errstring )
+        LexTokenError ( errtoken, "Incompatible types", 0, 0, 0 )
+    END
+
+    IF type1^.Subtype == TYPE_PRIMITIVE THEN
+        // Both types are primitive.
+
+        primtype1 := type1^.Body.Primitive.Type
+        primtype2 := type2^.Body.Primitive.Type
+
+        IF primtype1 == primtype2 THEN
+            // They're the same, that's fine.
+
+            RETURN FALSE
+        END
+
+        IF equivalence THEN
+            // We're checking for exact equivalence.
+
+            IF primtype1 != primtype2 THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Primitive types not equivalent", 0, 0, 0 )
+            END
+        END
+
+        IF type2^.Body.Primitive.Inducible THEN
+            // If the source type is inducible, then it's fine.
+
+            RETURN TRUE
+        END
+
+        // Check that we aren't crossing from unsigned to signed.
+
+        IF primtype1 > PRIM_TYPE_SIGNED AND
+            primtype1 < PRIM_TYPE_SIGNED_MAX THEN
+
+            IF primtype2 > PRIM_TYPE_UNSIGNED AND
+                primtype2 < PRIM_TYPE_UNSIGNED_MAX THEN
+
+                // We are, so we aren't compatible.
+
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Implicit cast from unsigned to signed type", 0, 0, 0 )
+            END
+
+        ELSEIF primtype2 > PRIM_TYPE_SIGNED AND
+            primtype2 < PRIM_TYPE_SIGNED_MAX THEN
+
+            // We're crossing from signed to unsigned, which isn't compatible.
+
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Implicit cast from signed to unsigned type", 0, 0, 0 )
+        END
+
+        RETURN TRUE
+    END
+
+    IF type1^.Subtype == TYPE_POINTER THEN
+        // Both types are pointers. If one is a pointer to void, this is legal.
+
+        type1base := type1^.Body.Pointer.Base
+
+        IF NOT equivalence AND
+            type1base^.Subtype == TYPE_PRIMITIVE AND
+            type1base^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+
+            RETURN FALSE
+        END
+
+        type2base := type2^.Body.Pointer.Base
+
+        IF NOT equivalence AND
+            type2base^.Subtype == TYPE_PRIMITIVE AND
+            type2base^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+            
+            RETURN FALSE
+        END
+
+        IF type1base^.Subtype == TYPE_FUNCTION AND
+            type2base^.Subtype == TYPE_FUNCTION THEN
+
+            // Function pointers are only compatible if it's the same FNPTR.
+
+            IF type1base^.Body.Function.IsFnPtr THEN
+                IF type2base^.Body.Function.FnPtrType != type1base THEN
+                    TlPrintString ( errstring )
+                    LexTokenError ( errtoken,
+                        "Not the same function pointer type", 0, 0, 0 )
+                END
+
+            ELSEIF type2base^.Body.Function.IsFnPtr THEN
+                IF type1base^.Body.Function.FnPtrType != type2base THEN
+                    TlPrintString ( errstring )
+                    LexTokenError ( errtoken,
+                        "Not the same function pointer type", 0, 0, 0 )
+                END
+
+            ELSEIF type1base^.Body.Function.FnPtrType !=
+                type2base^.Body.Function.FnPtrType THEN
+
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Not the same function pointer type", 0, 0, 0 )
+            END
+
+            RETURN FALSE
+        END
+
+        // Recursively check the types they point to.
+
+        PrsCheckType (
+            errtoken, // errtoken
+            type1base, // type1
+            type2base, // type2
+            errstring, // errstring
+            equivalence, // equivalence
+        )
+
+        RETURN FALSE
+    END
+
+    IF type1^.Subtype == TYPE_COMPOUND THEN
+        // Compound types are only compatible if they're the same type.
+
+        IF type1 != type2 THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Incompatible compound types", 0, 0, 0 )
+        END
+
+        RETURN FALSE
+    END
+
+    IF type1^.Subtype == TYPE_ARRAY THEN
+        // Both types are arrays.
+
+        IF type1^.Body.Array.HasBound != type2^.Body.Array.HasBound THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Array type bound differs", 0, 0, 0 )
+        END
+
+        IF type1^.Body.Array.HasBound THEN
+            IF type1^.Body.Array.Bound != type2^.Body.Array.Bound THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken, "Array type bound differs", 0, 0, 0 )
+            END
+        END
+
+        // Recursively check the base types.
+
+        PrsCheckType (
+            errtoken, // errtoken
+            type1^.Body.Array.Base, // type1
+            type2^.Body.Array.Base, // type2
+            errstring, // errstring
+            equivalence, // equivalence
+        )
+
+        RETURN FALSE
+    END
+
+    IF type1^.Subtype == TYPE_FUNCTION THEN
+        // Function types are only compatible if they're structurally the same
+        // type.
+
+        // First check the easy stuff.
+
+        // Check FNPTR type.
+
+        IF type1^.Body.Function.FnPtrType != type2^.Body.Function.FnPtrType THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Not the same FNPTR type", 0, 0, 0 )
+        END
+
+        // Check return value types.
+
+        IF type1^.Body.Function.ReturnType THEN
+            IF NOT type2^.Body.Function.ReturnType THEN
+                TlPrintString ( errstring )
+                LexTokenError ( errtoken,
+                    "Incompatible return value types", 0, 0, 0 )
+            END
+
+            PrsCheckType (
+                errtoken, // errtoken
+                type1^.Body.Function.ReturnType, // type1
+                type2^.Body.Function.ReturnType, // type2
+                errstring, // errstring
+                TRUE, // equivalence
+            )
+
+        ELSEIF type2^.Body.Function.ReturnType THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken,
+                "Incompatible return value types", 0, 0, 0 )
+        END
+
+        // Check vararg-ness.
+
+        IF type1^.Body.Function.IsVarArg != type2^.Body.Function.IsVarArg THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Not the same varargness", 0, 0, 0 )
+        END
+
+        // Check argument count.
+
+        IF type1^.Body.Function.ArgCount != type2^.Body.Function.ArgCount THEN
+            TlPrintString ( errstring )
+            LexTokenError ( errtoken, "Wrong argument count", 0, 0, 0 )
+        END
+
+        // Check each argument for type and name equivalence.
+
+        arg1 := type1^.Body.Function.ArgListHead
+        arg2 := type2^.Body.Function.ArgListHead
+
+        WHILE arg1 DO
+            IF TlCompareString ( arg1^.Symbol^.Name, arg2^.Symbol^.Name ) THEN
+                TlPrintString ( errstring )
+                LexTokenError ( &arg2^.Token,
+                    "Argument name mismatch", 0, 0, 0 )
+            END
+
+            PrsCheckType (
+                &arg2^.Token, // errtoken
+                arg1^.Symbol^.SemanticType, // type1
+                arg2^.Symbol^.SemanticType, // type2
+                errstring, // errstring
+                TRUE, // equivalence
+            )
+
+            arg1 = arg1^.Next
+            arg2 = arg2^.Next
+        END
+
+        RETURN FALSE
+    END
+
+    TlInternalError ( "PrsCheckType Unreachable", 0, 0, 0 )
+
+    RETURN FALSE
+END
+
+FN PrsAtom () : ^PrsAstNode
+
+    // Parse an atom. This is an "atomic" part of an expression, such as a
+    // single constant number or identifier.
+
+    atomnode : ^PrsAstNode
+
+    token : LexToken
+
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_NUMBER THEN
+        // This is a constant number.
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        atomnode^.Body.Constant.Value = CAST token.Payload TO UWORD
+
+    ELSEIF token.Type == TOKEN_IDENTIFIER THEN
+        // This is an identifier. The symbol pointer and stuff stay in the token
+        // payload.
+
+        IF token.Subtype == TOKEN_IDENTIFIER_NEW THEN
+            LexTokenError ( &token, "Use of undeclared symbol.", 0, 0, 0 )
+        END
+
+        symbol := CAST token.Payload TO ^LexSymbol
+
+        IF symbol^.Type == SYM_CONSTANT THEN
+            // This is a constant.
+
+            atomnode = PrsCreateAstNode (
+                AST_CONSTANT,
+                &token, // token
+            )
+
+            atomnode^.Body.Constant.Value = symbol^.Value
+
+        ELSEIF symbol^.Type == SYM_VAR THEN
+            atomnode = PrsCreateAstNode (
+                AST_IDENTIFIER, // type
+                &token, // token
+            )
+
+        ELSE
+            LexTokenError ( &token, "Expected a variable.", 0, 0, 0 )
+        END
+
+    ELSEIF token.Type == TOKEN_STRING THEN
+        // This is a literal string. The value of the string stays in the
+        // token payload.
+
+        atomnode = PrsCreateAstNode (
+            AST_STRING,
+            &token, // token
+        )
+
+    ELSEIF token.Type == TOKEN_OPER AND token.Subtype == TOKEN_LPAREN THEN
+        // This is a parenthesized expression.
+
+        atomnode = PrsExpression ( 0 )
+
+        // Collect the right parenthesis.
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right parenthesis.", 0, 0, 0 )
+        END
+
+    ELSEIF token.Type == TOKEN_OPER THEN
+        // This must be a left-operator. Look it up in the table.
+        // The operator type stays as the subtype of the token.
+
+        operator := &PrsLeftOperators[token.Subtype]
+
+        IF NOT operator^.Precedence THEN
+            LexTokenError ( &token, "Expected a left operator.", 0, 0, 0 )
+        END
+
+        atomnode = PrsCreateAstNode (
+            AST_OPERATOR, // type
+            &token, // token
+        )
+
+        IF NOT operator^.NoRightSide THEN
+            // Actually the left side but who's checking.
+
+            atomnode^.Body.Operator.Left = PrsExpression ( operator^.Precedence )
+        END
+
+        IF operator^.ParseFunc THEN
+            operator^.ParseFunc (
+                operator, // operator
+                atomnode, // node
+            )
+        END
+
+    ELSEIF token.Type == TOKEN_VALUE THEN
+        // This is a primitive value, such as NULLPTR, TRUE, or FALSE.
+        // The value type stays as the subtype of the token.
+
+        IF token.Subtype == TOKEN_TRUE THEN
+            atomnode = PrsCreateAstNode (
+                AST_CONSTANT,
+                &token, // token
+            )
+
+            atomnode^.Body.Constant.Value = 1
+
+        ELSEIF token.Subtype == TOKEN_FALSE OR
+            token.Subtype == TOKEN_NULLPTR THEN
+
+            atomnode = PrsCreateAstNode (
+                AST_CONSTANT,
+                &token, // token
+            )
+
+            atomnode^.Body.Constant.Value = 0
+        END
+
+    ELSEIF token.Type == TOKEN_SIZEOF THEN
+        // We have to create a constant containing the size of the type.
+
+        type := PrsCreateType ()
+
+        PrsType (
+            type, // type
+            0, // depth
+        )
+
+        // Skip the names.
+
+        WHILE type^.Subtype == TYPE_NAMED DO
+            IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                // Forward declared type that we don't know anything about yet.
+
+                LexTokenError ( &token,
+                    "Illegal use of undeclared type", 0, 0, 0 )
+            END
+
+            type = type^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF type^.Size == TYPE_SIZE_UNINIT THEN
+            LexTokenError ( &token,
+                "Can't take the size of this type", 0, 0, 0 )
+        END
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        atomnode^.Body.Constant.Value = type^.Size
+
+    ELSEIF token.Type == TOKEN_OFFSETOF THEN
+        // We have to create a constant containing the offset of the field in
+        // the given struct. Syntax is OFFSETOF StructName.FieldName.
+
+        offset : UWORD
+
+        PrsFieldSequence (
+            OUT offset, // offset
+        )
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        atomnode^.Body.Constant.Value = offset
+
+    ELSE
+        LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
+    END
+
+    RETURN atomnode
+END
+
+FN PrsExpression (
+    IN minprecedence : UWORD,
+) : ^PrsAstNode
+
+    // Parse a expression. Pays attention to precedence.
+
+    atomnode := PrsAtom ()
+
+    optoken : LexToken
+
+    WHILE LexMatchToken (
+        &optoken, // token
+        TOKEN_OPER, // type
+        0, // subtype
+    ) DO
+        operator := &PrsOperators[optoken.Subtype]
+
+        IF NOT operator^.Precedence THEN
+            // This must have been a left operator, which we didn't expect.
+
+            LexTokenError ( &optoken, "Unexpected left operator", 0, 0, 0 )
+        END
+
+        IF operator^.Precedence < minprecedence THEN
+            // Put the operator token back.
+
+            LexPutbackToken ( &optoken )
+
+            BREAK
+        END
+
+        node := PrsCreateAstNode (
+            AST_OPERATOR, // type
+            &optoken, // token
+        )
+
+        node^.Body.Operator.Left = atomnode
+
+        IF NOT operator^.NoRightSide THEN
+            node^.Body.Operator.Right = PrsExpression (
+                operator^.Precedence + 1, // minprecedence
+            )
+        END
+
+        IF operator^.ParseFunc THEN
+            operator^.ParseFunc (
+                operator, // operator
+                node, // node
+            )
+        END
+
+        atomnode = node
+    END
+
+    RETURN atomnode
+END
+
+FN PrsCheckConstant (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN value : UWORD,
+)
+
+    // Make sure the value fits in the type.
+
+    IF type^.Subtype != TYPE_PRIMITIVE THEN
+        LEAVE
+    END
+
+    value &= JklTargetInfo^.ConstantMask
+
+    masked := value & JklPrimitiveTypeMasks[type^.Body.Primitive.Type]
+
+    IF masked != value THEN
+        LexTokenError ( errtoken, "Constant doesn't fit in type", 0, 0, 0 )
+    END
+END
+
+// FORWARD
+EXTERN FN PrsParseInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+) : ^PrsAstNode
+
+FN PrsParseArrayInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+)
+
+    // Parse the array initializer into the byte array.
+    //
+    // An array initializer's fields are of one of the following forms:
+    //
+    // INITIALIZER,
+    // [INDEX] = INITIALIZER,
+
+    basetype := type^.Body.Array.Base
+
+    // First strip away any type names.
+
+    WHILE basetype^.Subtype == TYPE_NAMED DO
+        basetype = basetype^.Body.Named.Symbol^.SemanticType
+    END
+
+    elementsize := type^.Body.Array.ElementSize
+    bound := type^.Body.Array.Bound
+    index := 0
+    offset := 0
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            // Set new index.
+
+            expr := PrsExpression ( 0 )
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_RBRACKET, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+            END
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_ASSIGN, // type
+                TOKEN_EQUALS, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+            END
+
+            IF expr^.Type != AST_CONSTANT THEN
+                LexTokenError ( &expr^.Token,
+                    "Expected a constant value", 0, 0, 0 )
+            END
+
+            index = expr^.Body.Constant.Value
+
+            IF index >= bound THEN
+                LexTokenError ( &expr^.Token,
+                    "Index exceeds array bound", 0, 0, 0 )
+            END
+
+            offset = index * elementsize
+        END
+
+        IF index >= bound THEN
+            LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
+        END
+
+        // Parse the initializer for this element.
+
+        PrsParseInitializer (
+            &token, // errtoken
+            basetype, // type
+            &bytearray[offset], // bytearray
+            &bparray[offset], // bparray
+        )
+
+        index += 1
+        offset += elementsize
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+        END
+    END
+END
+
+FN PrsParseStructInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+)
+
+    // Parse the struct initializer into the byte array.
+    //
+    // A struct initializer's fields are of the following form:
+    //
+    // [FIELD_NAME] = INITIALIZER,
+
+    fieldscope := type^.Body.Compound.FieldScope
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a left bracket", 0, 0, 0 )
+        END
+
+        LexEnterOverlayScope ( fieldscope )
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &token, "Non-existent field name", 0, 0, 0 )
+        END
+
+        fieldsymbol := CAST token.Payload TO ^LexSymbol
+
+        LexExitOverlayScope ()
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RBRACKET, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+        END
+
+        offset := fieldsymbol^.Value
+
+        striptype := fieldsymbol^.SemanticType
+
+        // First strip away any type names.
+
+        WHILE striptype^.Subtype == TYPE_NAMED DO
+            striptype = striptype^.Body.Named.Symbol^.SemanticType
+        END
+
+        PrsParseInitializer (
+            &token, // errtoken
+            striptype, // type
+            &bytearray[offset], // bytearray
+            &bparray[offset], // bparray
+        )
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACE, // type
+            0, // subtype
+        ) THEN
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+        END
+    END
+END
+
+FN PrsParseInitializer (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+    IN bytearray : ^UBYTE,
+    IN bparray : ^^PrsAstNode,
+) : ^PrsAstNode
+
+    // Parse an initializer. This is either of the form { ... } or it's an
+    // expression, depending on the type of value we're initializing.
+
+    bracetoken : LexToken
+
+    IF type^.Subtype != TYPE_ARRAY AND type^.Subtype != TYPE_COMPOUND THEN
+        // Gotta be an expression initializer. Make sure there's not a brace.
+
+        IF LexMatchToken (
+            &bracetoken, // token
+            TOKEN_LBRACE, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &bracetoken,
+                "Illegal initializer, expected expression", 0, 0, 0 )
+        END
+
+        expr := PrsExpression ( 0 )
+
+        IF expr^.Type == AST_CONSTANT THEN
+            // Check that the constant fits in the type.
+
+            PrsCheckConstant (
+                &expr^.Token, // errtoken
+                type, // type
+                expr^.Body.Constant.Value, // value
+            )
+        END
+
+        IF NOT bytearray THEN
+            RETURN expr
+        END
+
+        IF NOT PrsIsCompileTime ( expr ) THEN
+            LexTokenError ( &expr^.Token,
+                "Expected a compile time value", 0, 0, 0 )
+        END
+
+        IF expr^.Type == AST_CONSTANT THEN
+            // Punch the constant into the byte array.
+
+            TlPunchValue (
+                bytearray, // ptr
+                expr^.Body.Constant.Value, // value
+                type^.Size, // bytes
+            )
+
+        ELSE
+            IF type^.Size < JklTargetInfo^.PointerSize THEN
+                LexTokenError ( &expr^.Token,
+                    "This field is smaller than a pointer", 0, 0, 0 )
+            END
+
+            // Add to the backpatch array.
+
+            bparray^ = expr
+        END
+
+        RETURN NULLPTR
+    END
+
+    // Gotta be a fancy array or struct initializer.
+
+    IF NOT LexMatchToken (
+        &bracetoken, // token
+        TOKEN_LBRACE, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &bracetoken, "Expected initializer", 0, 0, 0 )
+    END
+
+    IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+        LexTokenError ( &bracetoken,
+            "Can't initialize a boundless array", 0, 0, 0 )
+    END
+
+    node : ^PrsAstNode = NULLPTR
+
+    IF NOT bytearray THEN
+        status := TlBumpAlloc (
+            (type^.Size + 7) & ~7, // bytes
+            OUT bytearray, // ptr
+        )
+
+        IF status THEN
+            LexTokenError ( errtoken,
+                "Failed to allocate initializer byte array", type^.Size, 0, 0 )
+        END
+
+        status = TlBumpAlloc (
+            ((type^.Size + 7) & ~7) * SIZEOF ^PrsAstNode, // bytes
+            OUT bparray, // ptr
+        )
+
+        IF status THEN
+            LexTokenError ( errtoken,
+                "Failed to allocate initializer bp array", type^.Size, 0, 0 )
+        END
+
+        node = PrsCreateAstNode (
+            AST_INITIALIZER, // type
+            errtoken, // token
+        )
+
+        node^.Body.Initializer.ByteArray = bytearray
+        node^.Body.Initializer.BpArray = bparray
+        node^.Body.Initializer.Size = type^.Size
+
+        // Make sure that any uninitialized locations are zeroed.
+
+        TlFillMemoryWithByte (
+            bytearray, // ptr
+            (type^.Size + 7) & ~7, // sz
+            0, // byte
+        )
+
+        TlFillMemoryWithByte (
+            bparray, // ptr
+            ((type^.Size + 7) & ~7) * SIZEOF ^PrsAstNode, // sz
+            0, // byte
+        )
+    END
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        PrsParseArrayInitializer (
+            errtoken, // errtoken
+            type, // type
+            bytearray, // bytearray
+            bparray, // bparray
+        )
+
+    ELSE
+        PrsParseStructInitializer (
+            errtoken, // errtoken
+            type, // type
+            bytearray, // bytearray
+            bparray, // bparray
+        )
+    END
+
+    RETURN node
+END
+
+FN PrsEvaluateType (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Evaluate the type that will be produced by an AST expression.
+
+    // We can memo-ize this by stashing the result in the node and returning
+    // that in the future.
+
+    IF node^.CachedSemanticType THEN
+        RETURN node^.CachedSemanticType
+    END
+
+    type : ^LexSemanticType
+
+    IF node^.Type == AST_IDENTIFIER THEN
+        // Get the type from the symbol.
+
+        symbol := CAST node^.Token.Payload TO ^LexSymbol
+
+        type = symbol^.SemanticType
+    
+    ELSEIF node^.Type == AST_STRING THEN
+        // Use the default pre-prepared string type, which is pointer to UBYTE.
+
+        type = PrsStringType
+
+    ELSEIF node^.Type == AST_CONSTANT THEN
+        IF node^.Token.Type == TOKEN_VALUE AND
+            node^.Token.Subtype == TOKEN_NULLPTR THEN
+
+            // Use the default pre-prepared null pointer type, which is just a
+            // pointer to VOID.
+
+            type = PrsNullPtrType
+
+        ELSE
+            // Use the default pre-prepared constant type, which is the largest
+            // signed primitive type for the target (i.e. LONG for 32-bits, QUAD
+            // for 64-bits), and is "inducible", a special property that lets it
+            // implicitly cast to any other primitive type.
+
+            type = PrsConstantType
+        END
+
+    ELSEIF node^.Type == AST_OPERATOR THEN
+        type = PrsOperators[node^.Token.Subtype].EvalFunc (
+            node, // node
+        )
+
+    ELSE
+        TlInternalError (
+            "PrsEvaluateType Inappropriate AST type", node^.Type, 0, 0 )
+    END
+
+    // Skip any names.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( &node^.Token,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    node^.CachedSemanticType = type
+
+    RETURN type
+END
+
+FN PrsTypeIsDeclarable (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : UBYTE
+
+    // Returns TRUE if the type can be directly declarable, FALSE otherwise.
+
+    IF type^.CachedIsDeclarable THEN
+        RETURN TRUE
+    END
+
+    originaltype := type
+
+    // Skip past all the names first.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type^.Subtype == TYPE_FUNCTION THEN
+        // Functions are not directly declarable.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_PRIMITIVE AND
+        type^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+
+        // VOID types are not directly declarable.
+
+        RETURN FALSE
+    END
+
+    originaltype^.CachedIsDeclarable = TRUE
+
+    RETURN TRUE
+END
+
+FN PrsTypeIsValue (
+    IN errtoken : ^LexToken,
+    IN type : ^LexSemanticType,
+) : UBYTE
+
+    // Returns TRUE if the type represents some kind of datum, FALSE otherwise.
+
+    IF type^.CachedIsValue THEN
+        RETURN TRUE
+    END
+
+    originaltype := type
+
+    // Skip past all the names first.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( errtoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF type^.Subtype == TYPE_FUNCTION THEN
+        // Functions are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_COMPOUND THEN
+        // Compound types (STRUCT and UNION) are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        // Arrays are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    IF type^.Subtype == TYPE_PRIMITIVE AND
+        type^.Body.Primitive.Type == PRIM_TYPE_VOID THEN
+
+        // VOID types are not directly usable as values.
+
+        RETURN FALSE
+    END
+
+    originaltype^.CachedIsValue = TRUE
+
+    RETURN TRUE
+END
+
+FN PrsCheckNodeIsValue (
+    IN node : ^PrsAstNode,
+)
+
+    // Check if an AST node evaluates to a value type, and error if not.
+
+    type := PrsEvaluateType ( node )
+
+    IF NOT PrsTypeIsValue (
+        &node^.Token, // errtoken
+        type, // type
+    ) THEN
+        LexTokenError ( &node^.Token,
+            "This type is not directly usable as a value", 0, 0, 0 )
+    END
+END
+
+FN PrsHasSideEffect (
+    IN node : ^PrsAstNode,
+) : UBYTE
+
+    // Return whether the AST node has a side effect.
+    // We only expect expression nodes here.
+
+    IF node^.Type == AST_OPERATOR AND
+        node^.Token.Subtype == TOKEN_LPAREN THEN
+
+        // Function calls may have side effects.
+
+        RETURN TRUE
+    END
+
+    RETURN FALSE
+END
+
+FN PrsType (
+    IN type : ^LexSemanticType,
+    IN depth : UWORD,
+)
+
+    // Parse the type into the provided type structure.
+
+    typetoken : LexToken
+
+    LexGetToken ( &typetoken )
+
+    IF typetoken.Type == TOKEN_PTYPE THEN
+        // It's a primitive type, that was easy!
+
+        IF NOT JklTargetInfo^.SupportedTypes[typetoken.TypeContext] THEN
+            LexTokenError ( &typetoken,
+                "This primitive type is not supported on this target", 0, 0, 0 )
+        END
+
+        type^.Subtype = TYPE_PRIMITIVE
+        type^.Body.Primitive.Type = typetoken.TypeContext
+        type^.Body.Primitive.Inducible = FALSE
+
+        type^.MinimumAlignment =
+            JklTargetInfo^.PrimitiveAlignment[typetoken.TypeContext]
+
+        type^.Size =
+            JklTargetInfo^.PrimitiveSize[typetoken.TypeContext]
+
+    ELSEIF typetoken.Type == TOKEN_OPER AND typetoken.Subtype == TOKEN_CARET THEN
+        // It's a pointer type! Allocate a base type.
+
+        basetype := PrsCreateType ()
+
+        // Parse the base type into it.
+
+        PrsType (
+            basetype, // type
+            depth + 1, // depth
+        )
+
+        type^.Subtype = TYPE_POINTER
+        type^.Body.Pointer.Base = basetype
+        type^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+        type^.Size = JklTargetInfo^.PointerSize
+
+    ELSEIF typetoken.Type == TOKEN_IDENTIFIER THEN
+        // It's a named type!
+
+        symbol := CAST typetoken.Payload TO ^LexSymbol
+
+        IF typetoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+            // This symbol has already appeared, so verify that it's a type.
+
+            IF symbol^.Type != SYM_TYPE AND
+                symbol^.Type != SYM_FORWARD_TYPE THEN
+
+                // Nope, that's bad :(
+
+                LexTokenError ( &typetoken, "Symbol isn't a type", 0, 0, 0 )
+            END
+
+        ELSE
+            // This is a new type, so forward declare it for now.
+
+            symbol^.Type = SYM_FORWARD_TYPE
+        END
+
+        type^.Subtype = TYPE_NAMED
+        type^.Body.Named.Symbol = symbol
+
+    ELSE
+        // Type didn't match with anything we expected.
+
+        LexTokenError ( &typetoken,
+            "Type must be primitive, pointer, or named.", 0, 0, 0 )
+    END
+
+    IF depth THEN
+        // We don't collect the array components if the type is nested at all.
+
+        LEAVE
+    END
+
+    // Collect array components, if any exist. This has to be done in a manner
+    // such that the type structure we were passed in becomes the head of a
+    // chain of array types, where the tail of the chain contains the original
+    // type.
+
+    IF NOT LexMatchToken (
+        NULLPTR, // token
+        TOKEN_OPER, // type
+        TOKEN_LBRACKET, // subtype
+    ) THEN
+        // No array components.
+
+        LEAVE
+    END
+
+    dimensions := 1
+    boundless := FALSE
+
+    // There are array components, so firstly we need to allocate a base type
+    // and move whatever we created for this type into it.
+
+    basetype := PrsCreateType ()
+
+    TlCopyMemory (
+        basetype, // dest
+        type, // src
+        SIZEOF LexSemanticType, // sz
+    )
+
+    skippedtype := basetype
+
+    WHILE skippedtype^.Subtype == TYPE_NAMED DO
+        IF skippedtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexTokenError ( &typetoken,
+                "Illegal use of undeclared type", 0, 0, 0 )
+        END
+
+        skippedtype = skippedtype^.Body.Named.Symbol^.SemanticType
+    END
+
+    IF NOT PrsTypeIsDeclarable (
+        &typetoken, // errtoken
+        skippedtype, // type
+    ) THEN
+        LexTokenError ( &typetoken,
+            "This type is not directly declarable", 0, 0, 0 )
+    END
+
+    IF skippedtype^.Size == TYPE_SIZE_UNINIT THEN
+        LexTokenError ( &typetoken,
+            "This type is not suitable as a base for an array", 0, 0, 0 )
+    END
+
+    elementalign := skippedtype^.MinimumAlignment
+    size := skippedtype^.Size
+
+    // Make sure the size of the array elements is aligned to the minimum
+    // alignment of the element type.
+
+    size += elementalign - 1
+    size &= ~(elementalign - 1)
+
+    arraytype := type
+    arraytype^.Size = TYPE_SIZE_UNINIT
+
+    arraytail : ^LexSemanticType = NULLPTR
+
+    WHILE TRUE DO
+        arraytype^.Subtype = TYPE_ARRAY
+        arraytype^.MinimumAlignment = elementalign
+
+        IF arraytail THEN
+            arraytail^.Body.Array.Base = arraytype
+        END
+
+        arraytype^.Body.Array.Parent = arraytail
+
+        arraytail = arraytype
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_RBRACKET, // type
+            0, // subtype
+        ) THEN
+            // The array is boundless.
+
+            IF dimensions > 1 THEN
+                LexTokenError ( &typetoken,
+                    "Boundless arrays can't be multidimensional.", 0, 0, 0 )
+            END
+
+            boundless = TRUE
+
+            arraytype^.Body.Array.HasBound = FALSE
+
+        ELSE
+            boundnode := PrsExpression ( 0 )
+
+            IF boundnode^.Type != AST_CONSTANT THEN
+                LexTokenError ( &typetoken,
+                    "Expected a constant array bound", 0, 0, 0 )
+            END
+
+            IF boundnode^.Body.Constant.Value == 0 THEN
+                LexTokenError ( &typetoken,
+                    "Array bound must not be zero", 0, 0, 0 )
+            END
+
+            arraytype^.Body.Array.Bound = boundnode^.Body.Constant.Value
+            arraytype^.Body.Array.HasBound = TRUE
+
+            rbrackettoken : LexToken
+
+            IF NOT LexMatchToken (
+                &rbrackettoken, // token
+                TOKEN_RBRACKET, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &rbrackettoken,
+                    "Array type must be terminated by right bracket.", 0, 0, 0 )
+            END
+        END
+
+        IF NOT LexMatchToken (
+            NULLPTR, // token
+            TOKEN_OPER, // type
+            TOKEN_LBRACKET, // subtype
+        ) THEN
+            // No more array components.
+
+            BREAK
+        END
+
+        IF boundless THEN
+            LexTokenError ( &typetoken,
+                "Boundless arrays can't be multidimensional.", 0, 0, 0 )
+        END
+
+        dimensions += 1
+
+        arraytype = PrsCreateType ()
+    END
+
+    arraytail^.Body.Array.Base = basetype
+
+    IF NOT boundless THEN
+        // Walk the chain of array types from the tail up to set the sizes.
+
+        walkptr := arraytail
+
+        WHILE walkptr DO
+            walkptr^.Body.Array.ElementSize = size
+
+            size *= walkptr^.Body.Array.Bound
+
+            walkptr^.Size = size
+
+            walkptr = walkptr^.Body.Array.Parent
+        END
+    END
+END
+
+FN PrsFoundSymbol (
+    IN token : ^LexToken,
+    IN symbol : ^LexSymbol,
+    IN flags : ULONG,
+    IN global : UBYTE,
+    IN newtype : ^LexSemanticType,
+)
+
+    // A symbol is being declared. Check for override and make sure stuff is
+    // legal and whatever. This is its own function because it is common between
+    // function and variable declarations.
+
+    IF token^.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        // This symbol has already appeared, so we want to find out if this is
+        // a valid override.
+
+        IF symbol^.Type != SYM_VAR THEN
+            // This symbol isn't the expected type.
+
+            LexTokenError ( token, "Symbol name already in use.", 0, 0, 0 )
+        END
+
+        IF flags & VAR_FLAG_EXTERN THEN
+            // This is an attempt at an extern declaration. Externs can't
+            // override anything.
+
+            LexTokenError ( token, "Symbol already declared.", 0, 0, 0 )
+        END
+
+        IF NOT (symbol^.Flags & VAR_FLAG_EXTERN) THEN
+            // Can only override externs.
+
+            LexTokenError ( token, "Symbol already declared.", 0, 0, 0 )
+        END
+
+        IF NOT global THEN
+            // Can't override externs from local scope.
+
+            LexTokenError ( token,
+                "Can't override extern from local scope.", 0, 0, 0 )
+        END
+
+        PrsCheckType (
+            token, // errtoken
+            symbol^.SemanticType, // type1
+            newtype, // type2
+            "Can't override: ", // errstring
+            TRUE, // equivalence
+        )
+
+        IF global THEN
+            // Add a dummy extern entry after us so that a forward decl still
+            // appears in the expected spot. This is kind of hacky and is mostly
+            // for the benefit of the C transpiler backend.
+
+            dummyextern : ^LexSymbol
+
+            status := TlBumpAlloc (
+                SIZEOF LexSymbol,
+                OUT dummyextern, // ptr
+            )
+
+            TlCopyMemory (
+                dummyextern, // dest
+                symbol, // src
+                SIZEOF LexSymbol, // sz
+            )
+
+            // Add the dummy after us and remove ourselves.
+
+            dummyextern^.Prev = symbol^.Prev
+            dummyextern^.Next = symbol^.Next
+
+            IF PrsGlobalListTail == symbol THEN
+                PrsGlobalListTail = dummyextern
+            ELSE
+                symbol^.Next^.Prev = dummyextern
+            END
+
+            p := symbol^.Prev
+
+            IF p THEN
+                p^.Next = dummyextern
+            ELSE // no prev means we were the head
+                PrsGlobalListHead = dummyextern
+            END
+
+            // Re-add at tail.
+
+            tail := PrsGlobalListTail
+
+            symbol^.Next = NULLPTR
+            symbol^.Prev = tail
+
+            IF tail THEN
+                tail^.Next = symbol
+
+            ELSE
+                PrsGlobalListHead = symbol
+            END
+
+            PrsGlobalListTail = symbol
+        END
+
+    ELSE
+        // Initialize the symbol.
+
+        symbol^.Type = SYM_VAR
+
+        IF global THEN
+            // Add it to the list of globals, at the tail.
+
+            tail := PrsGlobalListTail
+
+            symbol^.Next = NULLPTR
+            symbol^.Prev = tail
+
+            IF tail THEN
+                tail^.Next = symbol
+
+            ELSE
+                PrsGlobalListHead = symbol
+            END
+
+            PrsGlobalListTail = symbol
+        END
+    END
+
+    symbol^.Flags = flags
+
+    symbol^.SemanticType = newtype
+
+    // We should see if there's a pending section override from the lexer, and
+    // do it now if so.
+
+    IF LexNextSymbolSection THEN
+        // There was a single-symbol section override via SECTION directive.
+
+        symbol^.Section = LexNextSymbolSection
+        LexNextSymbolSection = NULLPTR
+
+    ELSE
+        symbol^.Section = LexCurrentSection
+    END
+END
+
+FN PrsVariableDeclaration (
+    IN token : ^LexToken,
+    IN flags : ULONG,
+    IN global : UBYTE,
+) : ^LexSymbol
+
+    // Parse a variable declaration of one of the following forms:
+    //
+    //  name : type = initial
+    //  name : = initial
+    //  name : type
+    //
+    // The colon has already been consumed (that's how the caller knew this is a
+    // declaration and not an assignment).
+    // Non-extern declarations may override extern declarations.
+    // Extern declarations must not have an initial value, just a name and type.
+    // The passed in token contains the relevant symbol already.
+    // For local declarations, we should generate an AST assignment node.
+    // For globals, we should just associate the initial value with the symbol,
+    // and add the symbol to a list of globals for the whole program. The
+    // initial value AST node is interpreted in the next phase of the compiler.
+
+    symbol := CAST token^.Payload TO ^LexSymbol
+
+    // Now we have to check if the next token is an equals sign. If so, the type
+    // is inferred. Otherwise, we have to put the token back and parse the type.
+
+    type : ^LexSemanticType = NULLPTR
+
+    hasinitializer := TRUE
+
+    IF NOT LexMatchToken (
+        NULLPTR, // token
+        TOKEN_ASSIGN, // type
+        TOKEN_EQUALS, // subtype
+    ) THEN
+        // The type is explicit. Parse that now.
+
+        type = PrsCreateType ()
+
+        PrsType (
+            type, // type
+            0, // depth
+        )
+
+        IF NOT PrsTypeIsDeclarable (
+            token, // errtoken
+            type, // type
+        ) THEN
+            LexTokenError ( token,
+                "This type is not directly declarable", 0, 0, 0 )
+        END
+
+        eqtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &eqtoken, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            // This variable is uninitialized.
+
+            hasinitializer = FALSE
+        END
+    END
+
+    initialnode : ^PrsAstNode = NULLPTR
+
+    IF hasinitializer THEN
+        IF flags & VAR_FLAG_EXTERN THEN
+            LexTokenError ( token,
+                "EXTERN declarations must not have an initializer.", 0, 0, 0 )
+        END
+
+        // Parse the initializer.
+
+        IF NOT type THEN
+            // If the type was implicit, evaluate the type of the initial value.
+
+            initialnode = PrsExpression ( 0 )
+
+            type = PrsEvaluateType ( initialnode )
+
+            IF NOT PrsTypeIsValue (
+                &initialnode^.Token, // errtoken
+                type, // type
+            ) THEN
+                LexTokenError ( &initialnode^.Token,
+                    "This type is not directly usable as a value", 0, 0, 0 )
+            END
+            
+        ELSE
+            striptype := type
+
+            // First strip away any type names.
+
+            WHILE striptype^.Subtype == TYPE_NAMED DO
+                IF striptype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                    // Forward declared type that we don't know anything about
+                    // yet.
+
+                    LexTokenError ( &initialnode^.Token,
+                        "Illegal use of undeclared type", 0, 0, 0 )
+                END
+
+                striptype = striptype^.Body.Named.Symbol^.SemanticType
+            END
+
+            initialnode = PrsParseInitializer (
+                token, // errtoken
+                striptype, // type
+                NULLPTR, // bytearray
+                NULLPTR, // bparray
+            )
+
+            IF initialnode^.Type != AST_INITIALIZER THEN
+                // It's not a fancy array/struct initializer, so check the
+                // expression against the explicit type, and emit an error if
+                // it's a constant and is too large for the type.
+
+                initialtype := PrsEvaluateType ( initialnode )
+
+                PrsCheckType (
+                    &initialnode^.Token, // errtoken
+                    type, // type1
+                    initialtype, // type2
+                    "Initial value doesn't match explicit type: ", // errstring
+                    FALSE, // equivalence
+                )
+            END
+        END
+    END
+
+    IF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
+        LexTokenError ( token,
+            "Can't declare a boundless array", 0, 0, 0 )
+    END
+
+    // Do general declaration processing of the symbol.
+
+    PrsFoundSymbol (
+        token, // token
+        symbol, // symbol
+        flags, // flags
+        global, // global
+        type, // newtype
+    )
+
+    IF NOT global THEN
+        IF hasinitializer THEN
+            // Create an AST node for the assignment of the initial value.
+
+            idnode := PrsCreateAstNode (
+                AST_IDENTIFIER, // type
+                token, // token
+            )
+
+            asgnnode := PrsCreateAstNode (
+                AST_ASSIGN, // type
+                token, // token
+            )
+
+            asgnnode^.Token.Subtype = TOKEN_EQUALS
+
+            asgnnode^.Body.Assign.Left = idnode
+            asgnnode^.Body.Assign.Right = initialnode
+
+            // We can place it directly in the statement list for the current
+            // block because the existence of a block is implied by the fact
+            // this is a local declaration.
+
+            PrsInsertNodeIntoBlock (
+                PrsCurrentBlock, // block
+                asgnnode, // node
+            )
+        END
+
+    ELSE
+        IF initialnode THEN
+            // Statically evaluate the initial value. If it can't be statically
+            // evaluated, that's an error, since this is a global. Note that we
+            // might still leave it as a "complex" AST node if it's a pointer to
+            // some other global or something because we don't know the value of
+            // that immediately.
+
+            IF NOT PrsIsCompileTime ( initialnode ) THEN
+                LexTokenError ( token,
+                    "Globals require a compile-time initial value.", 0, 0, 0 )
+            END
+
+            symbol^.InitialValue = initialnode
+
+            IF symbol^.Section == &LexDefaultSection THEN
+                IF initialnode^.Type == AST_CONSTANT AND
+                    initialnode^.Body.Constant.Value == 0 THEN
+
+                    symbol^.Section = &LexBssSection
+
+                ELSE
+                    symbol^.Section = &LexDataSection
+                END
+            END
+
+        ELSE
+            // Uninitialized globals have a value of zero, always.
+
+            symbol^.InitialValue = NULLPTR
+
+            IF symbol^.Section == &LexDefaultSection THEN
+                symbol^.Section = &LexBssSection
+            END
+        END
+    END
+
+    RETURN symbol
+END
+
+FN PrsGlobalDeclaration () : UBYTE
+
+    // Parse the next global declaration. Return FALSE on EOF.
+
+    token : LexToken
+
+    LexGetToken ( &token )
+
+    IF token.Type == TOKEN_EOF THEN
+        RETURN FALSE
+    END
+
+    IF token.Type != TOKEN_IDENTIFIER AND token.Type != TOKEN_DECL THEN
+        LexTokenError ( &token,
+            "Expected identifier or declarative keyword", 0, 0, 0 )
+    END
+
+    IF token.Type == TOKEN_IDENTIFIER THEN
+        // This is a non-public, non-extern variable declaration.
+        // It may be overriding an extern declaration.
+
+        colontoken : LexToken
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COLON, // type
+            TOKEN_SUBTYPE_ANY, // subtype
+        ) THEN
+            // There MUST be a colon for global declarations, otherwise it would
+            // be a global assignment which makes no sense.
+
+            LexTokenError ( &colontoken,
+                "Expected a colon (indicating a declaration).", 0, 0, 0 )
+        END
+
+        PrsVariableDeclaration (
+            &token, // token
+            0, // flags
+            TRUE, // global
+        )
+
+        RETURN TRUE
+    END
+
+    // This is a declarative keyword of some variety.
+
+    PrsDeclarators[token.Subtype] ()
+
+    RETURN TRUE
+END
+
+FN PrsParseBlock (
+    OUT terminator : LexTokenSubtype,
+) : ^PrsBlock
+
+    // Parse a block. A block is composed of a sequence of statements, followed
+    // by one of the allowed terminator keywords.
+
+    block : ^PrsBlock
+
+    status := TlBumpAlloc (
+        SIZEOF PrsBlock, // bytes
+        OUT block, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate a block", 0, 0, 0 )
+    END
+
+    // Initialize the block.
+
+    block^.StatementListHead = NULLPTR
+    block^.StatementListTail = NULLPTR
+    block^.StatementCount = 0
+    block^.LabelCount = 0
+
+    // Save the old block and set the new.
+
+    oldblock := PrsCurrentBlock
+    PrsCurrentBlock = block
+
+    WHILE TRUE DO
+        token : LexToken
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            0, // subtype
+        ) THEN
+            // We found a terminator keyword. Check if this terminator is
+            // allowed right now and break out.
+
+            terminator = token.Subtype
+
+            IF PrsBlockStack.Count == 0 THEN
+                TlInternalError ( "Block stack was empty", 0, 0, 0 )
+            END
+
+            blockstate := PrsBlockStack.Buffer[PrsBlockStack.Count - 1]
+
+            IF blockstate == BLOCK_MACRO_BODY THEN
+                LexTokenError ( &token,
+                    "Attempt to leave block from within macro", 0, 0, 0 )
+            END
+
+            IF blockstate == BLOCK_PLAIN_BODY THEN
+                IF token.Subtype != TOKEN_END THEN
+                    LexTokenError ( &token,
+                        "Only END is allowed to terminate this block", 0, 0, 0 )
+                END
+
+                BREAK
+            END
+
+            IF blockstate == BLOCK_IF_BODY THEN
+                BREAK
+            END
+
+            TlInternalError ( "PrsParseBlock Unreachable", blockstate, 0, 0 )
+        END
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_STATEMENT, // type
+            0, // subtype
+        ) THEN
+            // We found a statement keyword. Look up the table and call the
+            // parse function for the statement.
+
+            PrsStatements[token.Subtype] (
+                &token, // token
+            )
+
+            CONTINUE
+        END
+
+        // There are now three options:
+        //
+        // Declaration: IDENTIFIER : TYPE = INITIAL
+        // Assignment: EXPR = EXPR
+        // Expression w/ side effects: EXPR
+        //
+        // The only way to tell if it's a declaration is to look ahead by two
+        // tokens. After we've ruled that out we can safely eat an expression.
+        // Then we check if there's an equals sign; if so, it's an assignment,
+        // otherwise, it's a free-floating expression (such as a function call).
+
+        decl := FALSE
+
+        LexGetToken ( &token )
+
+        IF token.Type == TOKEN_IDENTIFIER THEN
+            // Maybe a declaration? Check for the colon.
+
+            colontoken : LexToken
+
+            IF LexMatchToken (
+                &colontoken, // token
+                TOKEN_COLON, // type
+                0, // subtype
+            ) THEN
+                // Yep!
+
+                decl = TRUE
+            END
+        END
+
+        IF decl THEN
+            // It was a declaration, parse the rest.
+
+            PrsVariableDeclaration (
+                &token, // token
+                0, // flags
+                FALSE, // global
+            )
+        ELSE
+            // Not a declaration. Put the token back and try the expression
+            // cases.
+
+            LexPutbackToken ( &token )
+
+            leftexpr := PrsExpression ( 0 )
+
+            // Check for an assign operator.
+
+            assigntoken : LexToken
+
+            IF LexMatchToken (
+                &assigntoken, // token
+                TOKEN_ASSIGN, // type
+                0, // subtype
+            ) THEN
+                // Found an assign operator.
+
+                asgnnode := PrsCreateAstNode (
+                    AST_ASSIGN, // type
+                    &assigntoken, // token
+                )
+
+                IF NOT PrsIsLvalue ( leftexpr ) THEN
+                    LexTokenError ( &leftexpr^.Token,
+                        "Not a valid L-value", 0, 0, 0 )
+                END
+
+                lefttype := PrsEvaluateType ( leftexpr )
+
+                IF NOT PrsTypeIsValue (
+                    &leftexpr^.Token, // errtoken
+                    lefttype, // type
+                ) THEN
+                    LexTokenError ( &leftexpr^.Token,
+                        "This type is not directly assignable", 0, 0, 0 )
+                END
+
+                asgnnode^.Body.Assign.Left = leftexpr
+
+                rightexpr := PrsExpression ( 0 )
+
+                righttype := PrsEvaluateType ( rightexpr )
+
+                IF NOT PrsTypeIsValue (
+                    &rightexpr^.Token, // errtoken
+                    righttype, // type
+                ) THEN
+                    LexTokenError ( &rightexpr^.Token,
+                        "This type is not directly usable", 0, 0, 0 )
+                END
+
+                asgnnode^.Body.Assign.Right = rightexpr
+
+                IF assigntoken.Subtype == TOKEN_EQUALS THEN
+                    PrsCheckType (
+                        &token, // errtoken
+                        lefttype, // type1
+                        righttype, // type2
+                        "Assign: ", // errstring
+                        FALSE, // equivalence
+                    )
+
+                    IF rightexpr^.Type == AST_CONSTANT THEN
+                        // Check if the constant fits in the type.
+
+                        PrsCheckConstant (
+                            &rightexpr^.Token, // errtoken
+                            lefttype, // type
+                            rightexpr^.Body.Constant.Value, // body
+                        )
+                    END
+                END
+
+                PrsInsertNodeIntoBlock (
+                    block, // block
+                    asgnnode, // node
+                )
+            ELSE
+                // Free floating expression. These are assumed to be the result
+                // of a macro expansion and are elided from the AST completely
+                // if they aren't either a load from a pointer, or a function
+                // call. Containing either of these things nested within the
+                // expression doesn't count.
+                
+                IF PrsHasSideEffect ( leftexpr ) THEN
+                    PrsInsertNodeIntoBlock (
+                        block, // block
+                        leftexpr, // node
+                    )
+                END
+            END
+        END
+    END
+
+    // Restore the old block.
+
+    PrsCurrentBlock = oldblock
+
+    RETURN block
+END
+
+// Special operator parse routines.
+
+FN (PrsOperatorF) PrsParseCompoundTypeIndex (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a compound type index. We need to evaluate the type of the left
+    // side, and make sure it's really a compound type (i.e., a STRUCT or a
+    // UNION). Then, we set the lexical scope to the one for the compound type's
+    // field names, and collect the field name.
+
+    left := node^.Body.Operator.Left
+
+    type := PrsEvaluateType ( left )
+
+    IF type^.Subtype != TYPE_COMPOUND THEN
+        LexTokenError ( &node^.Token, "Not a compound type", 0, 0, 0 )
+    END
+
+    scope := type^.Body.Compound.FieldScope
+
+    LexEnterOverlayScope ( scope )
+
+    fieldtoken : LexToken
+
+    IF NOT LexMatchToken (
+        &fieldtoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &fieldtoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    IF fieldtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
+        LexTokenError ( &fieldtoken, "Non-existent field name", 0, 0, 0 )
+    END
+
+    fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
+
+    node^.Body.Operator.OperatorSpecific = fieldsymbol
+
+    LexExitOverlayScope ()
+END
+
+FN (PrsOperatorF) PrsParseArrayIndex (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // Parse an array index. We have to collect the index itself and the right
+    // bracket.
+
+    left := node^.Body.Operator.Left
+
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype != TYPE_ARRAY AND
+        lefttype^.Subtype != TYPE_POINTER THEN
+
+        LexTokenError ( &node^.Token,
+            "Can only index an array type or a pointer type", 0, 0, 0 )
+    END
+
+    right := PrsExpression ( 0 )
+
+    PrsCheckNodeIsValue ( right )
+
+    node^.Body.Operator.Right = right
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_RBRACKET, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+    END
+
+    IF lefttype^.Subtype == TYPE_ARRAY AND
+        lefttype^.Body.Array.HasBound AND
+        right^.Type == AST_CONSTANT THEN
+
+        // Check the constant against the array bound.
+
+        IF right^.Body.Constant.Value >= lefttype^.Body.Array.Bound THEN
+            LexTokenError ( &right^.Token,
+                "Constant exceeds array bound", 0, 0, 0 )
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseFunctionCall (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a function call. We have to collect the arguments and the right
+    // parenthesis. The head of the arguments list goes in the operator-specific
+    // field.
+
+    left := node^.Body.Operator.Left
+
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype != TYPE_FUNCTION AND
+        lefttype^.Subtype != TYPE_POINTER THEN
+
+        LexTokenError ( &node^.Token,
+            "Expected function or function pointer", 0, 0, 0 )
+    END
+
+    IF lefttype^.Subtype == TYPE_POINTER THEN
+        // We have to unwrap the function pointer. First check that it's really
+        // a function pointer.
+
+        lefttype = lefttype^.Body.Pointer.Base
+
+        IF lefttype^.Subtype != TYPE_FUNCTION THEN
+            LexTokenError ( &node^.Token,
+                "Unexpected non-function pointer", 0, 0, 0 )
+        END
+
+        // Create a new AST node.
+
+        newnode := PrsCreateAstNode (
+            AST_OPERATOR, // type
+            &node^.Token, // token
+        )
+
+        // Fib the new node into being a pointer deref.
+
+        newnode^.Token.Subtype = TOKEN_CARET
+        newnode^.Body.Operator.Left = left
+
+        // Now fib our node into pointing to the pointer deref.
+
+        node^.Body.Operator.Left = newnode
+    END
+
+    varargcount := 0
+    argcount := 0
+    argtail : ^PrsAstNode = NULLPTR
+    node^.Body.Operator.OperatorSpecific = NULLPTR
+    refarg := lefttype^.Body.Function.ArgListHead
+
+    token : LexToken
+
+    WHILE TRUE DO
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
+        argcount += 1
+
+        IF argcount > lefttype^.Body.Function.ArgCount AND
+            NOT lefttype^.Body.Function.IsVarArg THEN
+
+            LexTokenError ( &node^.Token, "Too many arguments", 0, 0, 0 )
+        END
+
+        IF refarg AND refarg^.InOut == ARG_OUT THEN
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_ARGSPEC, // type
+                TOKEN_OUT, // subtype
+            ) THEN
+                LexTokenError ( &token,
+                    "Expected OUT specifier on OUT argument", 0, 0, 0 )
+            END
+        END
+
+        argnode := PrsExpression ( 0 )
+
+        argtype := PrsEvaluateType ( argnode )
+
+        IF NOT PrsTypeIsValue (
+            &argnode^.Token, // errtoken
+            argtype, // type
+        ) THEN
+            LexTokenError ( &argnode^.Token,
+                "This type is not directly usable as a valuee", 0, 0, 0 )
+        END
+
+        // If refarg became null, that means that we walked off into the varargs
+        // part of the function arguments. Only check types before that happens.
+
+        IF refarg THEN
+            IF refarg^.InOut == ARG_OUT AND
+                NOT PrsIsLvalue ( argnode ) THEN
+
+                LexTokenError ( &argnode^.Token,
+                    "OUT arguments must be L-values", 0, 0, 0 )
+            END
+        
+            PrsCheckType (
+                &argnode^.Token, // errtoken
+                refarg^.Symbol^.SemanticType, // type1
+                argtype, // type2
+                "Function argument: ", // errstring
+                FALSE, // equivalence
+            )
+
+            IF argnode^.Type == AST_CONSTANT THEN
+                // Check if the constant fits in the type.
+
+                PrsCheckConstant (
+                    &argnode^.Token, // errtoken
+                    refarg^.Symbol^.SemanticType, // type
+                    argnode^.Body.Constant.Value, // body
+                )
+            END
+
+            refarg = refarg^.Next
+        
+        ELSE
+            // This is a vararg.
+
+            varargcount += 1
+        END
+
+        argnode^.Next = NULLPTR
+
+        IF NOT argtail THEN
+            node^.Body.Operator.OperatorSpecific = argnode
+        ELSE
+            argtail^.Next = argnode
+        END
+
+        argtail = argnode
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &token,
+                "Expected a comma or right parenthesis", 0, 0, 0 )
+        END
+    END
+
+    IF varargcount THEN
+        vartable := lefttype^.Body.Function.VarTable
+        vartabletype : ^LexSemanticType
+
+        IF NOT vartable THEN
+            // Create the var table symbol.
+
+            status := TlBumpAlloc (
+                SIZEOF LexSymbol, // bytes
+                OUT vartable, // ptr
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to allocate var table", 0, 0, 0 )
+            END
+
+            // Zero the symbol since it won't be properly initialized.
+
+            TlFillMemoryWithByte (
+                vartable, // ptr
+                SIZEOF LexSymbol, // sz
+                0, // byte
+            )
+
+            vartable^.Name = "VARTABLE"
+
+            lefttype^.Body.Function.VarTable = vartable
+
+            // Create the type.
+
+            status = TlBumpAlloc (
+                SIZEOF LexSemanticType, // bytes
+                OUT vartabletype, // ptr
+            )
+
+            vartabletype^.Subtype = TYPE_ARRAY
+            vartabletype^.Body.Array.Base = PrsNullPtrType
+            vartabletype^.Body.Array.HasBound = FALSE
+            vartabletype^.Size = 0
+
+            vartable^.SemanticType = vartabletype
+
+        ELSE
+            vartabletype = vartable^.SemanticType
+        END
+
+        vartablesize := varargcount * JklTargetInfo^.PointerSize
+
+        IF vartablesize > vartabletype^.Size THEN
+            // Extend the vartable.
+
+            vartabletype^.Size = vartablesize
+        END
+    END
+
+    node^.Body.Operator.VarArgCount = varargcount
+
+    IF argcount < lefttype^.Body.Function.ArgCount THEN
+        LexTokenError ( &node^.Token, "Too few arguments", 0, 0, 0 )
+    END
+END
+
+FN (PrsOperatorF) PrsParsePtrDereference (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    // Check that the left side is a pointer type.
+
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype != TYPE_POINTER THEN
+        LexTokenError ( &node^.Token, "Expected a pointer type", lefttype^.Subtype, 0, 0 )
+    END
+END
+
+FN (PrsOperatorF) PrsParseMul (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value * right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        IF right^.Body.Constant.Value == 0 THEN
+            // We can roll this into the constant zero.
+
+            node^.Type = AST_CONSTANT
+
+            node^.Body.Constant.Value = 0
+
+            LEAVE
+
+        ELSEIF right^.Body.Constant.Value == 1 THEN
+            // We can roll this into the left side.
+
+            TlCopyMemory (
+                node, // dest
+                left, // src
+                SIZEOF PrsAstNode, // sz
+            )
+
+            LEAVE
+        END
+
+        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a left shift.
+
+            node^.Token.Subtype = TOKEN_LEFTSHIFT
+
+            right^.Body.Constant.Value = pwrtwo
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseDivide (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        IF right^.Body.Constant.Value == 0 THEN
+            LexTokenError ( &node^.Token, "Division by zero not allowed", 0, 0, 0 )
+        END
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value / right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        IF right^.Body.Constant.Value == 1 THEN
+            // We can roll this into the left side.
+
+            TlCopyMemory (
+                node, // dest
+                left, // src
+                SIZEOF PrsAstNode, // sz
+            )
+
+            LEAVE
+        END
+
+        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a right shift.
+
+            node^.Token.Subtype = TOKEN_RIGHTSHIFT
+
+            right^.Body.Constant.Value = pwrtwo
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseModulo (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        IF right^.Body.Constant.Value == 0 THEN
+            LexTokenError ( &node^.Token, "Modulo by zero not allowed", 0, 0, 0 )
+        END
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value % right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        IF right^.Body.Constant.Value == 1 THEN
+            // We can turn this into the constant zero.
+
+            node^.Type = AST_CONSTANT
+
+            node^.Body.Constant.Value = 0
+
+            LEAVE
+        END
+
+        pwrtwo := TlIsPowerOfTwo ( right^.Body.Constant.Value )
+
+        IF pwrtwo != -1 THEN
+            // Cool, it's a power of two, we can reduce this into a bit mask.
+
+            node^.Token.Subtype = TOKEN_BITAND
+
+            right^.Body.Constant.Value = right^.Body.Constant.Value - 1
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParsePlus (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value + right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    // Check various arithmetic cases for simplification.
+    // TODO test these more thoroughly
+
+    IF left^.Type == AST_OPERATOR THEN
+        b := right^.Body.Constant.Value
+
+        IF left^.Token.Subtype == TOKEN_PLUS AND
+            left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+
+            // (x + a) + b -> x + (a + b)
+
+            a := left^.Body.Operator.Right^.Body.Constant.Value
+
+            right^.Body.Constant.Value = a + b
+
+            node^.Body.Operator.Left = left^.Body.Operator.Left
+
+            LEAVE
+
+        ELSEIF left^.Token.Subtype == TOKEN_MINUS AND
+            left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+
+            // (x - a) + b -> x - (a - b)
+
+            a := left^.Body.Operator.Right^.Body.Constant.Value
+
+            right^.Body.Constant.Value = a - b
+
+            node^.Body.Operator.Left = left^.Body.Operator.Left
+            node^.Token.Subtype = TOKEN_MINUS
+
+            LEAVE
+
+        ELSEIF left^.Token.Subtype == TOKEN_MINUS AND
+            left^.Body.Operator.Left^.Type == AST_CONSTANT THEN
+
+            // (a - x) + b -> (a + b) - x
+
+            a := left^.Body.Operator.Left^.Body.Constant.Value
+
+            node^.Body.Operator.Left = right
+
+            right^.Body.Constant.Value = a + b
+
+            node^.Body.Operator.Right = left^.Body.Operator.Right
+            node^.Token.Subtype = TOKEN_MINUS
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseMinus (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type != AST_CONSTANT AND right^.Type != AST_CONSTANT THEN
+        // No opportunities for simplification.
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value - right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    // Check various arithmetic cases for simplification.
+    // TODO test these more thoroughly
+
+    IF left^.Type == AST_OPERATOR THEN
+        b := right^.Body.Constant.Value
+
+        IF left^.Token.Subtype == TOKEN_MINUS THEN
+            IF left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+                // (x - a) - b  ->  x - (a + b)
+
+                a := left^.Body.Operator.Right^.Body.Constant.Value
+
+                right^.Body.Constant.Value = a + b
+
+                node^.Body.Operator.Left = left^.Body.Operator.Left
+
+                LEAVE
+
+            ELSEIF left^.Body.Operator.Left^.Type == AST_CONSTANT THEN
+                // (a - x) - b  ->  (a - b) - x
+
+                a := left^.Body.Operator.Left^.Body.Constant.Value
+
+                right^.Body.Constant.Value = a - b
+
+                node^.Body.Operator.Left = right
+                node^.Body.Operator.Right = left^.Body.Operator.Right
+
+                LEAVE
+            END
+
+        ELSEIF left^.Token.Subtype == TOKEN_PLUS AND
+            left^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+
+            // (x + a) - b -> x + (a - b)
+
+            a := left^.Body.Operator.Right^.Body.Constant.Value
+
+            right^.Body.Constant.Value = a - b
+
+            node^.Token.Subtype = TOKEN_PLUS
+            node^.Body.Operator.Left = left^.Body.Operator.Left
+
+            LEAVE
+        END
+    END
+
+    IF right^.Type == AST_OPERATOR THEN
+        b := left^.Body.Constant.Value
+
+        IF right^.Token.Subtype == TOKEN_MINUS THEN
+            IF right^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+                // b - (x - a) -> (a + b) - x
+
+                a := right^.Body.Operator.Right^.Body.Constant.Value
+
+                left^.Body.Constant.Value = a + b
+
+                node^.Body.Operator.Right = right^.Body.Operator.Left
+
+                LEAVE
+
+            ELSEIF right^.Body.Operator.Left^.Type == AST_CONSTANT THEN
+                // b - (a - x) -> x + (b - a)
+
+                a := right^.Body.Operator.Left^.Body.Constant.Value
+
+                left^.Body.Constant.Value = b - a
+
+                node^.Token.Subtype = TOKEN_PLUS
+                node^.Body.Operator.Left = right^.Body.Operator.Right
+
+                LEAVE
+            END
+
+        ELSEIF right^.Token.Subtype == TOKEN_PLUS AND
+            right^.Body.Operator.Right^.Type == AST_CONSTANT THEN
+            
+            // b - (x + a) -> (b - a) - x
+
+            a := right^.Body.Operator.Right^.Body.Constant.Value
+
+            left^.Body.Constant.Value = b - a
+
+            node^.Body.Operator.Right = right^.Body.Operator.Left
+
+            LEAVE
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseLeftShift (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value << right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseRightShift (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value >> right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitAnd (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value & right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    IF (right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0) THEN
+        // We can roll this into the constant zero.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = 0
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND
+        right^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
+
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitXor (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value $ right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND
+        right^.Body.Constant.Value == TL_MACHINE_WORD_MAX THEN
+
+        // Turn this node into a bitwise NOT of the left side.
+
+        node^.Type = AST_OPERATOR
+        node^.Token.Subtype = TOKEN_BITNOT
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitOr (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value | right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
+FN (PrsOperatorF) PrsParseLessThan (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value < right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseGreaterThan (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value > right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseLtEq (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value <= right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseGtEq (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value >= right^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseEquiv (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value == right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+END
+
+FN (PrsOperatorF) PrsParseNotEquiv (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value != right^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // Shuffle it to the right side; this is somewhat simplifying since
+        // we're commutative.
+
+        node^.Body.Operator.Right = left
+        node^.Body.Operator.Left = right
+
+        left = right
+        right = node^.Body.Operator.Right
+    END
+END
+
+FN (PrsOperatorF) PrsParseAnd (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value AND right^.Body.Constant.Value
+
+        LEAVE
+    END
+END
+
+FN (PrsOperatorF) PrsParseOr (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value =
+            left^.Body.Constant.Value OR right^.Body.Constant.Value
+    END
+END
+
+// Special left-operator parse routines.
+
+FN (PrsOperatorF) PrsParseAddrOf (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // Parse an addr-of operation. This just sets the operation type to
+    // TOKEN_ADDROF, to distinguish it from a bitwise AND.
+
+    node^.Token.Subtype = TOKEN_ADDROF
+
+    left := node^.Body.Operator.Left
+
+    // Check to make sure that it makes any sense to take the address here.
+    // We can only take the address of l-values.
+
+    IF NOT PrsIsLvalue ( left ) THEN
+        LexTokenError ( &left^.Token, "Not a valid L-value", 0, 0, 0 )
+    END
+
+    IF left^.Type == AST_IDENTIFIER THEN
+        symbol := CAST left^.Token.Payload TO ^LexSymbol
+
+        IF symbol^.Entry.HashTable != &LexRootScope^.HashTable THEN
+            // We can only take the address of compound locals.
+
+            type := PrsEvaluateType ( left )
+
+            IF type^.Subtype != TYPE_COMPOUND THEN
+                LexTokenError ( &left^.Token,
+                    "Can't take address of a non-compound local", 0, 0, 0 )
+            END
+        END
+    END
+END
+
+FN (PrsOperatorF) PrsParseInverse (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    PrsCheckNodeIsValue ( left )
+
+    IF left^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = -left^.Body.Constant.Value
+
+        LEAVE
+    END
+
+    // Parse an inverse operation. Turn it into 0 - x.
+
+    zeronode := PrsCreateAstNode (
+        AST_CONSTANT, // type
+        &node^.Token, // token
+    )
+
+    zeronode^.Type = AST_CONSTANT
+    zeronode^.Body.Constant.Value = 0
+
+    node^.Token.Subtype = TOKEN_MINUS
+
+    node^.Body.Operator.Right = node^.Body.Operator.Left
+    node^.Body.Operator.Left = zeronode
+END
+
+FN (PrsOperatorF) PrsParseNot (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    PrsCheckNodeIsValue ( left )
+
+    IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_NOT THEN
+        // Get rid of the redundant NOTs by copying the left side of our left
+        // side over the top of us.
+
+        TlCopyMemory (
+            node, // dest
+            left^.Body.Operator.Left, // src
+            SIZEOF PrsAstNode, // sz
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = NOT left^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseBitNot (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+
+    PrsCheckNodeIsValue ( left )
+
+    IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_BITNOT THEN
+        // Get rid of the redundant NOTs by copying the left side of our left
+        // side over the top of us.
+
+        TlCopyMemory (
+            node, // dest
+            left^.Body.Operator.Left, // src
+            SIZEOF PrsAstNode, // sz
+        )
+
+        LEAVE
+    END
+
+    IF left^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+        node^.Body.Constant.Value = ~left^.Body.Constant.Value
+    END
+END
+
+FN (PrsOperatorF) PrsParseCast (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // Parse a cast. This takes the form CAST [expression] TO [type].
+
+    node^.Body.Operator.Left = PrsExpression ( 0 )
+
+    PrsCheckNodeIsValue ( node^.Body.Operator.Left )
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_OTHER, // type
+        TOKEN_TO, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected TO.", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    PrsType (
+        type, // type
+        0, // depth
+    )
+
+    // The type goes in the operator-specific field.
+
+    node^.Body.Operator.OperatorSpecific = type
+END
+
+FN (PrsOperatorF) PrsParseContainerOf (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // This takes the form CONTAINEROF x TO StructName.FieldName and turns it
+    // into essentially CAST (x - OFFSETOF StructName.FieldName) TO ^StructName.
+
+    subnode := PrsCreateAstNode (
+        AST_OPERATOR, // type
+        &node^.Token, // token
+    )
+
+    subnode^.Token.Subtype = TOKEN_MINUS
+    subnode^.Body.Operator.Left = PrsExpression ( 0 )
+
+    PrsCheckNodeIsValue ( subnode^.Body.Operator.Left )
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_OTHER, // type
+        TOKEN_TO, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected TO.", 0, 0, 0 )
+    END
+    
+    offset : UWORD
+
+    type := PrsFieldSequence (
+        OUT offset, // offset
+    )
+
+    constnode := PrsCreateAstNode (
+        AST_CONSTANT,
+        &token, // token
+    )
+
+    constnode^.Body.Constant.Value = offset
+
+    subnode^.Body.Operator.Right = constnode
+
+    // Turn our own AST node into a cast, with the subtraction node as the left
+    // side.
+
+    node^.Token.Subtype = TOKEN_CAST
+    node^.Body.Operator.Left = subnode
+
+    // Create a pointer-to type.
+
+    ptrtype := PrsCreateType ()
+    ptrtype^.Subtype = TYPE_POINTER
+    ptrtype^.Body.Pointer.Base = type
+
+    ptrtype^.Size = JklTargetInfo^.PointerSize
+    ptrtype^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+
+    // The type goes in the operator-specific field.
+
+    node^.Body.Operator.OperatorSpecific = ptrtype
+END
+
+FN (PrsOperatorF) PrsParseSizeOfValue (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    // We have to figure out the size of the type of the value, and convert our
+    // node to a constant node containing this size.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    IF type^.Size == TYPE_SIZE_UNINIT THEN
+        LexTokenError ( &node^.Token,
+            "Can't take the size of this type", 0, 0, 0 )
+    END
+
+    node^.Type = AST_CONSTANT
+    node^.Body.Constant.Value = type^.Size
+END
+
+// Declarator parse routines.
+
+FN PrsCreateNamedType (
+    IN token : ^LexToken,
+) : ^LexSymbol
+
+    // Common part of creating a named type, such as an ENUM, a TYPE, an FNPTR,
+    // etc.
+
+    symbol := CAST token^.Payload TO ^LexSymbol
+
+    IF token^.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        // We must be overriding a forward-declared type, otherwise this is a no
+        // go.
+
+        IF symbol^.Type != SYM_FORWARD_TYPE THEN
+            LexTokenError ( token, "Identifier already in use", 0, 0, 0 )
+        END
+    END
+
+    symbol^.Type = SYM_TYPE
+
+    RETURN symbol
+END
+
+FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
+
+    // Parse an ENUM declaration.
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := PrsCreateNamedType ( &nametoken )
+
+    colontoken : LexToken
+
+    IF NOT LexMatchToken (
+        &colontoken, // token
+        TOKEN_COLON, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    PrsType (
+        type, // type
+        0, // depth
+    )
+
+    symbol^.SemanticType = type
+
+    // Parse the list of constant names.
+    // These are of the form:
+    //
+    // NAME
+    // NAME = NewPosition
+
+    token : LexToken
+
+    value : UWORD = 0
+
+    WHILE TRUE DO
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the constant list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0)
+        END
+
+        IF token.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &token, "Identifier already in use", 0, 0, 0 )
+        END
+
+        constsymbol := CAST token.Payload TO ^LexSymbol
+
+        constsymbol^.Type = SYM_CONSTANT
+        constsymbol^.Value = value
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_ASSIGN, // type
+            TOKEN_EQUALS, // subtype
+        ) THEN
+            // Set a new position for the constant values.
+
+            newposnode := PrsExpression ( 0 )
+
+            IF newposnode^.Type != AST_CONSTANT THEN
+                LexTokenError ( &newposnode^.Token,
+                    "Expected a constant value", 0, 0, 0 )
+            END
+
+            value = newposnode^.Body.Constant.Value
+            constsymbol^.Value = value
+        END
+
+        value += 1
+
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the constant list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &token,
+                "Expected a comma or END", 0, 0, 0 )
+        END
+    END
+
+    RETURN symbol
+END
+
+FN PrsParseFnSignature (
+    IN flags : ULONG,
+    IN fnptr : UBYTE,
+    OUT outsymbol : ^LexSymbol,
+) : ^LexSemanticType
+
+    // Parse a function signature and return a type structure for it.
+
+    // A Jackal function signature takes one of the following forms:
+    //
+    // (FNPTR) NAME (IN/OUT ARG : TYPE, ...)
+    // NAME (IN/OUT ARG : TYPE, ...)
+
+    fnptrtype : ^LexSemanticType = NULLPTR
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_OPER, // type
+        TOKEN_LPAREN, // subtype
+    ) THEN
+        // An FNPTR name is specified. Collect it.
+
+        fnptrtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &fnptrtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &fnptrtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF fnptrtoken.Subtype == TOKEN_IDENTIFIER_NEW THEN
+            LexTokenError ( &fnptrtoken, "Undeclared identifier", 0, 0, 0 )
+        END
+
+        IF fnptr THEN
+            LexTokenError ( &fnptrtoken, "FNPTR not allowed on an FNPTR", 0, 0, 0 )
+        END
+
+        symbol := CAST fnptrtoken.Payload TO ^LexSymbol
+
+        IF symbol^.Type != SYM_TYPE THEN
+            LexTokenError ( &fnptrtoken, "Symbol isn't a type", 0, 0, 0 )
+        END
+
+        fnptrtype = symbol^.SemanticType
+
+        IF fnptrtype^.Subtype != TYPE_POINTER THEN
+            TlPrintString ( "1 " )
+            TlPrintNumber ( fnptrtype^.Subtype )
+            LexTokenError ( &fnptrtoken, "Type isn't a function pointer", 0, 0, 0 )
+        END
+
+        fnptrtype = fnptrtype^.Body.Pointer.Base
+
+        IF fnptrtype^.Subtype != TYPE_FUNCTION THEN
+            TlPrintString ( "2 " )
+            TlPrintNumber ( fnptrtype^.Subtype )
+            LexTokenError ( &fnptrtoken, "Type isn't a function pointer", 0, 0, 0 )
+        END
+
+        IF NOT LexMatchToken (
+            &fnptrtoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &fnptrtoken, "Expected a right parenthesis.", 0, 0, 0 )
+        END
+    END
+
+    // Collect the name.
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := CAST nametoken.Payload TO ^LexSymbol
+
+    IF fnptr THEN
+        PrsCreateNamedType (
+            &nametoken, // token
+        )
+    END
+
+    // We'll verify stuff about the name token after we've fully assembled the
+    // type.
+
+    parentoken : LexToken
+
+    IF NOT LexMatchToken (
+        &parentoken, // token
+        TOKEN_OPER, // type
+        TOKEN_LPAREN, // subtype
+    ) THEN
+        LexTokenError ( &parentoken, "Expected a left parenthesis", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    type^.Subtype = TYPE_FUNCTION
+
+    // We have to create a scope atop the global scope to contain the function
+    // arguments. This scope will also be used as the function scope.
+
+    oldscope := LexEnterScope (
+        NULLPTR, // scope
+    )
+
+    type^.Body.Function.FuncScope = LexCurrentScope
+    type^.Body.Function.ArgListHead = NULLPTR
+    type^.Body.Function.ReturnType = NULLPTR
+    type^.Body.Function.FnPtrType = NULLPTR
+    type^.Body.Function.ArgCount = 0
+    type^.Body.Function.IsVarArg = FALSE
+    type^.Body.Function.IsFnPtr = fnptr
+    type^.Body.Function.VarArgCount = NULLPTR
+    type^.Body.Function.VarArgTable = NULLPTR
+    type^.Body.Function.BodyBlock = NULLPTR
+
+    argtail : ^LexFunctionArgument = NULLPTR
+
+    // Parse the list of arguments.
+    // These are of the form:
+    //
+    // IN NAME : TYPE
+    // OUT NAME : TYPE
+
+    checktoken : LexToken
+
+    WHILE TRUE DO
+        IF LexMatchToken (
+            &checktoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
+        arg : ^LexFunctionArgument
+
+        status := TlBumpAlloc (
+            SIZEOF LexFunctionArgument, // bytes
+            OUT arg, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate arg", 0, 0, 0 )
+        END
+
+        argtoken : LexToken
+
+        LexGetToken ( &checktoken )
+
+        IF checktoken.Type != TOKEN_ARGSPEC THEN
+            LexTokenError ( &checktoken,
+                "Expected an argument specifier IN/OUT", 0, 0, 0 )
+        END
+
+        IF checktoken.Subtype == TOKEN_IN THEN
+            arg^.InOut = ARG_IN
+
+        ELSEIF checktoken.Subtype == TOKEN_OUT THEN
+            arg^.InOut = ARG_OUT
+
+        ELSEIF checktoken.Subtype == TOKEN_VARARG THEN
+            type^.Body.Function.IsVarArg = TRUE
+
+            IF NOT fnptr THEN
+                // The next two identifier tokens are the name of the vararg
+                // array and the count respectively. We have to collect
+                // those and set them up.
+
+                varargtoken : LexToken
+
+                IF NOT LexMatchToken (
+                    &varargtoken, // token
+                    TOKEN_IDENTIFIER, // type
+                    0, // subtype
+                ) THEN
+                    LexTokenError ( &varargtoken,
+                        "Expected identifier", 0, 0, 0 )
+                END
+
+                IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                    LexTokenError ( &varargtoken,
+                        "Identifier already in use", 0, 0, 0 )
+                END
+
+                varargtablesymbol := CAST varargtoken.Payload TO ^LexSymbol
+
+                varargtablesymbol^.Type = SYM_VAR
+                varargtablesymbol^.Flags = 0
+                varargtablesymbol^.ParameterType = ARG_IN
+
+                type^.Body.Function.VarArgTable = varargtablesymbol
+
+                // The type of the vararg table is pointer to pointer to void.
+
+                varargtablesymbol^.SemanticType = PrsVarArgType
+
+                // Now yoink the count.
+
+                IF NOT LexMatchToken (
+                    &varargtoken, // token
+                    TOKEN_IDENTIFIER, // type
+                    0, // subtype
+                ) THEN
+                    LexTokenError ( &varargtoken,
+                        "Expected identifier", 0, 0, 0 )
+                END
+
+                IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+                    LexTokenError ( &varargtoken,
+                        "Identifier already in use", 0, 0, 0 )
+                END
+
+                varargcountsymbol := CAST varargtoken.Payload TO ^LexSymbol
+
+                varargcountsymbol^.Type = SYM_VAR
+                varargcountsymbol^.Flags = 0
+                varargcountsymbol^.ParameterType = ARG_IN
+
+                type^.Body.Function.VarArgCount = varargcountsymbol
+
+                // The type of the vararg count is the constant type, which
+                // is the largest unsigned type supported by the target.
+
+                varargcountsymbol^.SemanticType = PrsConstantType
+            END
+
+            // No more arguments are allowed after the vararg specifier.
+
+            IF NOT LexMatchToken (
+                &checktoken, // token
+                TOKEN_RPAREN, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &checktoken,
+                    "Expected right parenthesis", 0, 0, 0 )
+            END
+
+            BREAK
+        END
+
+        type^.Body.Function.ArgCount += 1
+
+        arg^.Next = NULLPTR
+
+        IF NOT argtail THEN
+            type^.Body.Function.ArgListHead = arg
+
+        ELSE
+            argtail^.Next = arg
+        END
+
+        argtail = arg
+
+        LexGetToken ( &argtoken )
+
+        IF argtoken.Type != TOKEN_IDENTIFIER THEN
+            LexTokenError ( &argtoken, "Expected an identifier", 0, 0, 0)
+        END
+
+        IF argtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+            LexTokenError ( &argtoken,
+                "Identifier already in use", 0, 0, 0 )
+        END
+
+        LexCopyToken (
+            &arg^.Token, // dest
+            &argtoken, // src
+        )
+
+        argsymbol := CAST argtoken.Payload TO ^LexSymbol
+
+        argsymbol^.Type = SYM_VAR
+        argsymbol^.Flags = 0
+
+        arg^.Symbol = argsymbol
+
+        argsymbol^.ParameterType = arg^.InOut
+
+        IF NOT LexMatchToken (
+            &checktoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &checktoken, "Expected a type", 0, 0, 0 )
+        END
+
+        argsymbol^.SemanticType = PrsCreateType ()
+
+        // Reset scope while parsing type.
+
+        funcargscope := LexResetScope ( oldscope )
+
+        PrsType (
+            argsymbol^.SemanticType, // type
+            0, // depth
+        )
+
+        LexResetScope ( funcargscope )
+
+        IF NOT PrsTypeIsValue (
+            &argtoken, // errtoken
+            argsymbol^.SemanticType, // type
+        ) THEN
+            LexTokenError (  &argtoken,
+                "Argument type is not directly usable as a value", 0, 0, 0 )
+        END
+
+        IF LexMatchToken (
+            &checktoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            // Done with the argument list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &checktoken, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &checktoken,
+                "Expected a comma or right parenthesis", 0, 0, 0 )
+        END
+    END
+
+    IF fnptr OR flags & VAR_FLAG_EXTERN THEN
+        // There's no body, so reset the scope now, or the lookahead might
+        // mistakenly pull a symbol into our scope. This is kind of hacky.
+
+        LexResetScope ( oldscope )
+    END
+
+    LexEnterMacroFreeZone ()
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_COLON, // type
+        0, // subtype
+    ) THEN
+        // There's a return type!
+
+        returntype := PrsCreateType ()
+
+        PrsType (
+            returntype, // type
+            0, // depth
+        )
+
+        LexLeaveMacroFreeZone ()
+
+        IF NOT PrsTypeIsValue (
+            &nametoken, // errtoken
+            returntype, // type
+        ) THEN
+            LexTokenError (  &nametoken,
+                "Return type is not directly usable as a value", 0, 0, 0 )
+        END
+
+        type^.Body.Function.ReturnType = returntype
+
+    ELSE
+        LexLeaveMacroFreeZone ()
+    END
+
+    IF NOT fnptr AND (flags & VAR_FLAG_EXTERN == 0) THEN
+        // There's a body, so only reset the scope now. We waited until after we
+        // looked for the colon because otherwise lookahead might cause strange
+        // symbol scoping. This is kind of hacky.
+
+        LexResetScope ( oldscope )
+    END
+
+    IF fnptrtype THEN
+        PrsCheckType (
+            &nametoken, // errtoken
+            fnptrtype, // type1
+            type, // type2
+            "FNPTR: ", // errstring
+            TRUE, // equivalence
+        )
+
+        type^.Body.Function.FnPtrType = fnptrtype
+    END
+
+    IF NOT fnptr THEN
+        // Now that we have the type, do the found-symbol processing.
+
+        PrsFoundSymbol (
+            &nametoken, // token
+            symbol, // symbol
+            flags, // flags
+            TRUE, // global
+            type, // newtype
+        )
+    END
+
+    outsymbol = symbol
+
+    RETURN type
+END
+
+FN PrsParseFnDeclaration (
+    IN flags : ULONG,
+) : ^LexSymbol
+
+    // Parse a function declaration. If the flags specify EXTERN, there is no
+    // body.
+
+    symbol : ^LexSymbol
+
+    type := PrsParseFnSignature (
+        flags, // flags
+        FALSE, // fnptr
+        OUT symbol, // symbol
+    )
+
+    IF flags & VAR_FLAG_EXTERN THEN
+        RETURN symbol
+    END
+
+    IF symbol^.Section == &LexDefaultSection THEN
+        symbol^.Section = &LexTextSection
+    END
+
+    type^.MinimumAlignment = JklTargetInfo^.CodeAlignment
+
+    // Collect the body of the function.
+
+    // First resume the argument scope.
+
+    oldscope := LexEnterScope (
+        type^.Body.Function.FuncScope, // scope
+    )
+
+    TlInsertDynamicBuffer (
+        &PrsBlockStack, // array
+        BLOCK_PLAIN_BODY, // byte
+    )
+
+    PrsCurrentFunction = type
+
+    terminator : LexTokenSubtype
+
+    type^.Body.Function.BodyBlock = PrsParseBlock (
+        OUT terminator, // terminator
+    )
+
+    PrsCurrentFunction = NULLPTR
+
+    TlPopDynamicBuffer ( &PrsBlockStack )
+
+    LexResetScope ( oldscope )
+
+    symbol^.NextFunction = NULLPTR
+
+    IF PrsFunctionListTail THEN
+        PrsFunctionListTail^.NextFunction = symbol
+
+    ELSE
+        PrsFunctionListHead = symbol
+    END
+
+    PrsFunctionListTail = symbol
+
+    RETURN symbol
+END
+
+FN (PrsDeclaratorF) PrsParseFn () : ^LexSymbol
+
+    // Parse a function declaration.
+
+    RETURN PrsParseFnDeclaration (
+        VAR_FLAG_PUBLIC, // flags
+    )
+END
+
+FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
+
+    // Parse a function pointer named type declaration.
+
+    symbol : ^LexSymbol
+
+    type := PrsParseFnSignature (
+        0, // flags
+        TRUE, // fnptr
+        OUT symbol, // symbol
+    )
+
+    // Wrap a pointer type around the given type.
+
+    ptrtype := PrsCreateType ()
+
+    ptrtype^.Subtype = TYPE_POINTER
+    ptrtype^.Body.Pointer.Base = type
+    ptrtype^.Size = JklTargetInfo^.PointerSize
+    ptrtype^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+
+    symbol^.SemanticType = ptrtype
+
+    RETURN symbol
+END
+
+FN PrsParseCompoundType (
+    IN subtype : LexTokenSubtype,
+    IN ispacked : UBYTE,
+) : ^LexSymbol
+
+    // XXX remember bit fields, and that bit field types must only be primitive
+    //     types, and that unions cant have bit fields
+    // XXX remember that non-pointer references to undeclared STRUCTs are
+    //     absolutely forbidden! may require a new argument on PrsType
+    // XXX remember that we want to calculate the size of the struct and its
+    //     field offsets right now.
+    // XXX remember that it might be possible to use the same type structure as
+    //     unions because we can have each field be defined only by offset and
+    //     type, and in a union the offsets would just all be zero. we can
+    //     also probably share most of the parsing logic between structs and
+    //     unions.
+    // XXX remember that we can probably go back and have types contain their
+    //     size where applicable. where not applicable the size should be a
+    //     magical value like -1 indicating that the type is not directly
+    //     assignable (which means it isn't legal in a struct and union).
+    // XXX remember that struct fields must have declarable types
+    // XXX remember that struct fields should be aligned unless packed and that
+    //     the minimum alignment of the compound type must be the maximum of the
+    //     required alignments for each field type
+
+    // We keep track of all of the struct field names in their own symbol table.
+
+    fieldscope := TlCreateSymbolTable (
+        NULLPTR, // outerscope
+        NULLPTR, // deletefunc
+    )
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := PrsCreateNamedType ( &nametoken )
+
+    type := PrsCreateType ()
+
+    type^.Subtype = TYPE_COMPOUND
+
+    type^.Body.Compound.FieldScope = fieldscope
+    type^.Body.Compound.IsPacked = ispacked
+
+    symbol^.SemanticType = type
+
+    minalignment := 0
+
+    offset : UWORD = 0
+
+    WHILE TRUE DO
+        LexEnterOverlayScope ( fieldscope )
+
+        IF LexMatchToken (
+            NULLPTR, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            LexExitOverlayScope ()
+
+            // We're done with the struct.
+
+            BREAK
+        END
+
+        fieldtoken : LexToken
+
+        IF NOT LexMatchToken (
+            &fieldtoken, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &fieldtoken, "Expected an identifier", 0, 0, 0 )
+        END
+
+        IF fieldtoken.Subtype != TOKEN_IDENTIFIER_NEW THEN
+            LexTokenError ( &fieldtoken, "Field name already in use", 0, 0, 0 )
+        END
+
+        fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
+
+        LexExitOverlayScope ()
+
+        colontoken : LexToken
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+        END
+
+        fieldtype := PrsCreateType ()
+
+        fieldsymbol^.SemanticType = fieldtype
+
+        PrsType (
+            fieldtype, // type
+            0, // depth
+        )
+
+        // Skip names.
+
+        WHILE fieldtype^.Subtype == TYPE_NAMED DO
+            IF fieldtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+                // Forward declared type that we don't know anything about yet.
+
+                LexTokenError ( &fieldtoken,
+                    "Illegal use of undeclared type", 0, 0, 0 )
+            END
+
+            fieldtype = fieldtype^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF NOT PrsTypeIsDeclarable (
+            &fieldtoken, // errtoken
+            fieldtype, // type
+        ) THEN
+            LexTokenError ( &fieldtoken,
+                "This type is not directly declarable", 0, 0, 0 )
+        END
+
+        IF fieldtype^.Size == TYPE_SIZE_UNINIT THEN
+            LexTokenError ( &fieldtoken,
+                "This type is not suitable as a field in a compound type",
+                0, 0, 0 )
+        END
+
+        IF fieldtype^.MinimumAlignment > minalignment THEN
+            minalignment = fieldtype^.MinimumAlignment
+        END
+
+        IF subtype == TOKEN_STRUCT THEN
+            IF NOT ispacked THEN
+                // Align the offset.
+
+                offset += fieldtype^.MinimumAlignment - 1
+                offset &= ~(fieldtype^.MinimumAlignment - 1)
+            END
+
+            // Save the offset.
+
+            fieldsymbol^.Value = offset
+
+            // Increment the offset by the size of this field.
+
+            offset += fieldtype^.Size
+
+        ELSE
+            // This is a union, the offset of all fields is zero.
+
+            fieldsymbol^.Value = 0
+
+            IF fieldtype^.Size > offset THEN
+                offset = fieldtype^.Size
+            END
+        END
+
+        IF LexMatchToken (
+            &colontoken, // token
+            TOKEN_TERMINATOR, // type
+            TOKEN_END, // subtype
+        ) THEN
+            // Done with the constant list.
+
+            BREAK
+        END
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Bad.
+
+            LexTokenError ( &colontoken,
+                "Expected a comma or END", 0, 0, 0 )
+        END
+    END
+
+    type^.MinimumAlignment = minalignment
+    type^.Size = offset
+
+    RETURN symbol
+END
+
+FN (PrsDeclaratorF) PrsParseStruct () : ^LexSymbol
+
+    // Parse a STRUCT declaration.
+
+    packedtoken : LexToken
+
+    ispacked := LexMatchToken (
+        &packedtoken, // token
+        TOKEN_OTHER, // type
+        TOKEN_PACKED, // subtype
+    )
+
+    RETURN PrsParseCompoundType (
+        TOKEN_STRUCT, // subtype
+        ispacked, // ispacked
+    )
+END
+
+FN (PrsDeclaratorF) PrsParseUnion () : ^LexSymbol
+
+    // Parse a UNION declaration.
+
+    RETURN PrsParseCompoundType (
+        TOKEN_UNION, // subtype
+        FALSE, // ispacked
+    )
+END
+
+FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
+
+    // Parse a TYPE declaration.
+
+    nametoken : LexToken
+
+    IF NOT LexMatchToken (
+        &nametoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+    END
+
+    symbol := PrsCreateNamedType ( &nametoken )
+
+    colontoken : LexToken
+
+    IF NOT LexMatchToken (
+        &colontoken, // token
+        TOKEN_COLON, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+    END
+
+    type := PrsCreateType ()
+
+    PrsType (
+        type, // type
+        0, // depth
+    )
+
+    symbol^.SemanticType = type
+
+    // TYPE declarations can cause cycles. Check if that happened.
+
+    rabbit := type
+
+    WHILE rabbit^.Subtype == TYPE_NAMED DO
+        IF rabbit^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // We don't know yet.
+
+            BREAK
+        END
+
+        rabbit = rabbit^.Body.Named.Symbol^.SemanticType
+
+        IF type == rabbit THEN
+            LexTokenError ( &nametoken,
+                "TYPE declaration causes a cycle", 0, 0, 0 )
+        END
+    END
+
+    RETURN symbol
+END
+
+FN PrsParseStorageClassSpecifier (
+    IN flags : ULONG,
+) : ^LexSymbol
+
+    // Parse any of the storage class specifiers (EXTERN, PUBLIC, etc)
+
+    symbol : ^LexSymbol
+
+    IF LexMatchToken (
+        NULLPTR, // token
+        TOKEN_DECL, // type
+        TOKEN_FN, // subtype
+    ) THEN
+        symbol = PrsParseFnDeclaration (
+            flags, // flags
+        )
+
+    ELSE
+        token : LexToken
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_IDENTIFIER, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+        END
+
+        colontoken : LexToken
+
+        IF NOT LexMatchToken (
+            &colontoken, // token
+            TOKEN_COLON, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &colontoken,
+                "Expected a colon (indicating a declaration).", 0, 0, 0 )
+        END
+
+        symbol = PrsVariableDeclaration (
+            &token, // token
+            flags, // flags
+            TRUE, // global
+        )
+    END
+
+    IF symbol^.Flags == VAR_FLAG_EXTERN THEN
+        symbol^.Section = &LexDefaultSection
+    END
+
+    RETURN symbol
+END
+
+FN (PrsDeclaratorF) PrsParseExtern () : ^LexSymbol
+
+    // Parse an EXTERN declaration.
+
+    RETURN PrsParseStorageClassSpecifier (
+        VAR_FLAG_EXTERN, // flags
+    )
+END
+
+FN (PrsDeclaratorF) PrsParsePublic () : ^LexSymbol
+
+    // Parse a PUBLIC declaration.
+
+    RETURN PrsParseStorageClassSpecifier (
+        VAR_FLAG_PUBLIC, // flags
+    )
+END
+
+FN (PrsDeclaratorF) PrsParseExport () : ^LexSymbol
+
+    // Parse an EXPORT declaration.
+
+    RETURN PrsParseStorageClassSpecifier (
+        VAR_FLAG_EXPORT, // flags
+    )
+END
+
+FN (PrsDeclaratorF) PrsParsePrivate () : ^LexSymbol
+
+    // Parse a PRIVATE declaration.
+
+    RETURN PrsParseStorageClassSpecifier (
+        0, // flags
+    )
+END
+
+// Statement parse routines.
+
+FN (PrsStatementF) PrsParseBreak (
+    IN token : ^LexToken,
+)
+
+    // Parse a BREAK statement.
+
+    IF NOT PrsWhileDepth THEN
+        LexTokenError ( token, "Can't BREAK outside of a WHILE loop", 0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_BREAK, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseContinue (
+    IN token : ^LexToken,
+)
+
+    // Parse a CONTINUE statement.
+
+    IF NOT PrsWhileDepth THEN
+        LexTokenError ( token,
+            "Can't CONTINUE outside of a WHILE loop", 0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_CONTINUE, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseGoTo (
+    IN token : ^LexToken,
+)
+
+    // Parse a GOTO statement.
+
+    // Before collecting the label identifier, drop to function scope, since
+    // that's where labels live.
+
+    LexEnterOverlayScope ( PrsCurrentFunction^.Body.Function.FuncScope )
+
+    labeltoken : LexToken
+
+    IF NOT LexMatchToken (
+        &labeltoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &labeltoken, "Expected identifier", 0, 0, 0 )
+    END
+
+    LexExitOverlayScope ()
+
+    symbol := CAST labeltoken.Payload TO ^LexSymbol
+
+    IF labeltoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        IF symbol^.Type != SYM_FORWARD_LABEL AND symbol^.Type != SYM_LABEL THEN
+            LexTokenError ( &labeltoken, "Expected a label name", 0, 0, 0 )
+        END
+
+    ELSE
+        // New symbol, which means this is a forward declared label. Set that
+        // up. Note that unlike most other stuff, the code generator needs to
+        // notice an error here (a forward-declared label that is never declared
+        // for real).
+
+        symbol^.Type = SYM_FORWARD_LABEL
+
+        // Initialize the refcount of the label.
+
+        symbol^.Value = 0
+    END
+
+    // The refcount of the label is kept in the Value field; increment it since
+    // we just referenced it with a GOTO!
+
+    symbol^.Value += 1
+
+    node := PrsCreateAstNode (
+        AST_GOTO, // type
+        &labeltoken, // token
+    )
+
+    node^.Body.Statement.StatementSpecific = symbol
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseIf (
+    IN token : ^LexToken,
+)
+
+    // Parse an IF statement. This is a chain of conditional bodies plus an ELSE
+    // body. If we run into a constant conditional which evaluates truthy, we
+    // can ignore the rest of the clauses, but we still have to parse each of
+    // them to get them out of the token stream. Equivalently, if we run into a
+    // constant conditional which evaluates falsey, we can completely omit it.
+
+    node := PrsCreateAstNode (
+        AST_IF, // type
+        token, // token
+    )
+
+    node^.Body.If.CaseListHead = NULLPTR
+    node^.Body.If.CaseListTail = NULLPTR
+    node^.Body.If.ElseBlock = NULLPTR
+
+    ignore := FALSE
+    elsenext := FALSE
+
+    WHILE TRUE DO
+        thiscase : ^PrsIfCase
+
+        status := TlBumpAlloc (
+            SIZEOF PrsIfCase, // bytes
+            OUT thiscase, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate IF case", 0, 0, 0 )
+        END
+
+        // Collect the conditional expression.
+
+        cond := PrsExpression ( 0 )
+
+        PrsCheckNodeIsValue ( cond )
+
+        thiscase^.Conditional = cond
+
+        thentoken : LexToken
+
+        IF NOT LexMatchToken (
+            &thentoken, // token
+            TOKEN_OTHER, // type
+            TOKEN_THEN, // subtype
+        ) THEN
+            LexTokenError ( &thentoken, "Expected THEN", 0, 0, 0 )
+        END
+
+        // Enter the scope and collect the body block.
+
+        LexEnterScope ( NULLPTR )
+
+        TlInsertDynamicBuffer (
+            &PrsBlockStack, // array
+            BLOCK_IF_BODY, // byte
+        )
+
+        terminator : LexTokenSubtype
+
+        thiscase^.BodyBlock = PrsParseBlock (
+            OUT terminator, // terminator
+        )
+
+        TlPopDynamicBuffer ( &PrsBlockStack )
+
+        LexLeaveScope ()
+
+        IF ignore OR (cond^.Type == AST_CONSTANT AND
+            cond^.Body.Constant.Value == 0) THEN
+
+            // This block will be completely elided.
+
+            IF thiscase^.BodyBlock^.LabelCount THEN
+                LexTokenError ( &thentoken,
+                    "One or more labels inside inaccessible block", 0, 0, 0 )
+            END
+
+        ELSE
+            // Add the block.
+
+            thiscase^.Next = NULLPTR
+
+            IF NOT node^.Body.If.CaseListTail THEN
+                node^.Body.If.CaseListHead = thiscase
+            ELSE
+
+                node^.Body.If.CaseListTail^.Next = thiscase
+            END
+
+            node^.Body.If.CaseListTail = thiscase
+
+            // If the block has a non-zero constant value, ignore the rest, as
+            // they can never execute.
+
+            IF cond^.Type == AST_CONSTANT AND cond^.Body.Constant.Value THEN
+                ignore = TRUE
+            END
+        END
+
+        IF terminator == TOKEN_END THEN
+            // We're done!
+
+            BREAK
+        END
+
+        IF terminator == TOKEN_ELSE THEN
+            // There's just an ELSE block and then we're done.
+
+            elsenext = TRUE
+
+            BREAK
+        END
+
+        IF terminator == TOKEN_ELSEIF THEN
+            // Keep going.
+
+            CONTINUE
+        END
+
+        TlInternalError ( "PrsParseIf Unreachable", 0, 0, 0 )
+    END
+
+    IF elsenext THEN
+        // Parse the ELSE block.
+
+        LexEnterScope ( NULLPTR )
+
+        TlInsertDynamicBuffer (
+            &PrsBlockStack, // array
+            BLOCK_PLAIN_BODY, // byte
+        )
+
+        terminator : LexTokenSubtype
+
+        elseblock := PrsParseBlock (
+            OUT terminator, // terminator
+        )
+
+        TlPopDynamicBuffer ( &PrsBlockStack )
+
+        LexLeaveScope ()
+
+        IF ignore THEN
+            // Exclude the ELSE block as it can never execute.
+
+            IF elseblock^.LabelCount THEN
+                LexTokenError ( token,
+                    "One or more labels inside inaccessible ELSE block",
+                    0, 0, 0 )
+            END
+
+        ELSE
+            node^.Body.If.ElseBlock = elseblock
+        END
+    END
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseLeave (
+    IN token : ^LexToken,
+)
+
+    // Parse a LEAVE statement.
+
+    IF PrsCurrentFunction^.Body.Function.ReturnType THEN
+        LexTokenError ( token,
+            "Can't LEAVE from a function with a return value, use RETURN",
+            0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_RETURN, // type
+        token, // token
+    )
+
+    node^.Body.Statement.StatementSpecific = NULLPTR
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseReturn (
+    IN token : ^LexToken,
+)
+
+    // Parse a RETURN statement.
+
+    returntype := PrsCurrentFunction^.Body.Function.ReturnType
+
+    IF NOT returntype THEN
+        LexTokenError ( token,
+            "Can't RETURN from a function with no return value, use LEAVE",
+            0, 0, 0 )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_RETURN, // type
+        token, // token
+    )
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+
+    // Parse the return value expression.
+
+    retexpr := PrsExpression ( 0 )
+
+    retexprtype := PrsEvaluateType ( retexpr )
+
+    IF NOT PrsTypeIsValue (
+        &retexpr^.Token, // errtoken
+        retexprtype, // type
+    ) THEN
+        LexTokenError ( &retexpr^.Token,
+            "This type is not directly usable as a value", 0, 0, 0 )
+    END
+
+    PrsCheckType (
+        &retexpr^.Token, // errtoken
+        returntype, // type1
+        retexprtype, // type2
+        "Return value: ", // errstring
+        FALSE, // equivalence
+    )
+
+    IF retexpr^.Type == AST_CONSTANT THEN
+        // Check if the constant fits in the type.
+
+        PrsCheckConstant (
+            &retexpr^.Token, // errtoken
+            returntype, // type
+            retexpr^.Body.Constant.Value, // body
+        )
+    END
+
+    node^.Body.Statement.StatementSpecific = retexpr
+END
+
+FN (PrsStatementF) PrsParseWhile (
+    IN token : ^LexToken,
+)
+
+    // Parse a WHILE loop.
+
+    node := PrsCreateAstNode (
+        AST_WHILE, // type
+        token, // token
+    )
+
+    cond := PrsExpression ( 0 )
+
+    PrsCheckNodeIsValue ( cond )
+
+    node^.Body.While.Conditional = cond
+
+    dotoken : LexToken
+
+    IF NOT LexMatchToken (
+        &dotoken, // token
+        TOKEN_OTHER, // type
+        TOKEN_DO, // subtype
+    ) THEN
+        LexTokenError ( &dotoken, "Expected DO", 0, 0, 0 )
+    END
+
+    LexEnterScope ( NULLPTR )
+
+    TlInsertDynamicBuffer (
+        &PrsBlockStack, // array
+        BLOCK_PLAIN_BODY, // byte
+    )
+
+    terminator : LexTokenSubtype
+
+    PrsWhileDepth += 1
+
+    node^.Body.While.BodyBlock = PrsParseBlock (
+        OUT terminator, // terminator
+    )
+
+    PrsWhileDepth -= 1
+
+    TlPopDynamicBuffer ( &PrsBlockStack )
+
+    LexLeaveScope ()
+
+    // We can completely eliminate the WHILE if it has a constant expression
+    // with a value of zero.
+
+    IF cond^.Type == AST_CONSTANT AND
+        cond^.Body.Constant.Value == 0 THEN
+
+        // It does! Early out before we insert it into the current block.
+
+        IF node^.Body.While.BodyBlock^.LabelCount THEN
+            LexTokenError ( &dotoken,
+                "One or more labels inside inaccessible block", 0, 0, 0 )
+        END
+
+        LEAVE
+    END
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseBarrier (
+    IN token : ^LexToken,
+)
+
+    // Parse a BARRIER statement.
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_BARRIER, // type
+        token, // token
+    )
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
+FN (PrsStatementF) PrsParseLabel (
+    IN token : ^LexToken,
+)
+
+    // Parse a label definition. Goes in the function scope.
+
+    // Before collecting the label identifier, drop to function scope, since
+    // that's where labels live.
+
+    LexEnterOverlayScope ( PrsCurrentFunction^.Body.Function.FuncScope )
+
+    labeltoken : LexToken
+
+    IF NOT LexMatchToken (
+        &labeltoken, // token
+        TOKEN_IDENTIFIER, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &labeltoken, "Expected identifier", 0, 0, 0 )
+    END
+
+    LexExitOverlayScope ()
+
+    symbol := CAST labeltoken.Payload TO ^LexSymbol
+
+    IF labeltoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
+        IF symbol^.Type != SYM_FORWARD_LABEL THEN
+            LexTokenError ( &labeltoken, "Identifier already in use", 0, 0, 0 )
+        END
+
+    ELSE
+        // New symbol, set it up.
+        // Initialize the refcount of the label.
+
+        symbol^.Value = 0
+    END
+
+    symbol^.Type = SYM_LABEL
+
+    node := PrsCreateAstNode (
+        AST_LABEL, // type
+        &labeltoken, // token
+    )
+
+    node^.Body.Statement.StatementSpecific = symbol
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+
+    PrsCurrentBlock^.LabelCount += 1
+END
+
+// Type evaluation functions.
+
+FN (PrsOperatorEvalF) PrsEvalCompoundTypeIndex (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    fieldsymbol := CAST node^.Body.Operator.OperatorSpecific TO ^LexSymbol
+
+    RETURN fieldsymbol^.SemanticType
+END
+
+FN (PrsOperatorEvalF) PrsEvalArrayIndex (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Get the type of the left hand side, which must be an array type (else the
+    // parser would have complained to the user earlier). Then return the base
+    // of that.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    IF type^.Subtype == TYPE_ARRAY THEN
+        RETURN type^.Body.Array.Base
+    END
+
+    // Must have been a pointer actually. We can index those too.
+
+    RETURN type^.Body.Pointer.Base
+END
+
+FN (PrsOperatorEvalF) PrsEvalFunctionCall (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Get the type of the left hand side, which must be a function type (else
+    // the parser would have complained to the user earlier). Then return the
+    // return value of that.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    IF NOT type^.Body.Function.ReturnType THEN
+        LexTokenError ( &node^.Token,
+            "Attempt to take return type of return-less function", 0, 0, 0 )
+    END
+
+    RETURN type^.Body.Function.ReturnType
+END
+
+FN (PrsOperatorEvalF) PrsEvalPtrDereference (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Get the type of the left hand side, which must be a pointer type, else
+    // the parser would have complained earlier.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    RETURN type^.Body.Pointer.Base
+END
+
+FN (PrsOperatorEvalF) PrsEvalArithmetic (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // If either side is a pointer, return the pointer type.
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    lefttype := PrsEvaluateType ( left )
+
+    IF lefttype^.Subtype == TYPE_POINTER THEN
+        RETURN lefttype
+    END
+
+    righttype := PrsEvaluateType ( right )
+
+    IF righttype^.Subtype == TYPE_POINTER THEN
+        RETURN righttype
+    END
+
+    // If either side is a constant, return the other type.
+
+    IF left^.Type == AST_CONSTANT THEN
+        RETURN righttype
+    END
+
+    IF right^.Type == AST_CONSTANT THEN
+        RETURN lefttype
+    END
+
+    // Return the left type.
+
+    RETURN lefttype
+END
+
+FN (PrsOperatorEvalF) PrsEvalConditional (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Return the constant type.
+
+    RETURN PrsConstantType
+END
+
+FN (PrsOperatorEvalF) PrsEvalAddrOf (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Get the type of the left hand side and wrap it in a pointer.
+
+    type := PrsEvaluateType ( node^.Body.Operator.Left )
+
+    ptrtype := PrsCreateType ()
+
+    ptrtype^.Subtype = TYPE_POINTER
+    ptrtype^.Body.Pointer.Base = type
+    ptrtype^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+    ptrtype^.Size = JklTargetInfo^.PointerSize
+
+    RETURN ptrtype
+END
+
+FN (PrsOperatorEvalF) PrsEvalUnaryArithmetic (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Just forward the type of the left side.
+
+    RETURN PrsEvaluateType ( node^.Body.Operator.Left )
+END
+
+FN (PrsOperatorEvalF) PrsEvalUnaryConditional (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Return the constant type.
+
+    RETURN PrsConstantType
+END
+
+FN (PrsOperatorEvalF) PrsEvalCast (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Return the casted-to type.
+
+    RETURN node^.Body.Operator.OperatorSpecific
+END
+
+FN (PrsOperatorEvalF) PrsEvalSizeOfValue (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    // Return the constant type.
+
+    RETURN PrsConstantType
+END
+
+PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_DOT] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParseCompoundTypeIndex,
+        [EvalFunc] = &PrsEvalCompoundTypeIndex,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_LBRACKET] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParseArrayIndex,
+        [EvalFunc] = &PrsEvalArrayIndex,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_LPAREN] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParseFunctionCall,
+        [EvalFunc] = &PrsEvalFunctionCall,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_CARET] = {
+        [Precedence] = 25,
+        [ParseFunc] = &PrsParsePtrDereference,
+        [EvalFunc] = &PrsEvalPtrDereference,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_MUL] = {
+        [Precedence] = 20,
+        [ParseFunc] = &PrsParseMul,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_DIVIDE] = {
+        [Precedence] = 20,
+        [ParseFunc] = &PrsParseDivide,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_MODULO] = {
+        [Precedence] = 20,
+        [ParseFunc] = &PrsParseModulo,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_PLUS] = {
+        [Precedence] = 19,
+        [ParseFunc] = &PrsParsePlus,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_MINUS] = {
+        [Precedence] = 19,
+        [ParseFunc] = &PrsParseMinus,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_LEFTSHIFT] = {
+        [Precedence] = 18,
+        [ParseFunc] = &PrsParseLeftShift,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_RIGHTSHIFT] = {
+        [Precedence] = 18,
+        [ParseFunc] = &PrsParseRightShift,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_BITAND] = {
+        [Precedence] = 17,
+        [ParseFunc] = &PrsParseBitAnd,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_BITXOR] = {
+        [Precedence] = 16,
+        [ParseFunc] = &PrsParseBitXor,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_BITOR] = {
+        [Precedence] = 15,
+        [ParseFunc] = &PrsParseBitOr,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_LESSTHAN] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseLessThan,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_GREATERTHAN] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseGreaterThan,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_LTEQ] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseLtEq,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_GTEQ] = {
+        [Precedence] = 14,
+        [ParseFunc] = &PrsParseGtEq,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_EQUIV] = {
+        [Precedence] = 13,
+        [ParseFunc] = &PrsParseEquiv,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_NOTEQUIV] = {
+        [Precedence] = 13,
+        [ParseFunc] = &PrsParseNotEquiv,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_AND] = {
+        [Precedence] = 12,
+        [ParseFunc] = &PrsParseAnd,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+    [TOKEN_OR] = {
+        [Precedence] = 11,
+        [ParseFunc] = &PrsParseOr,
+        [EvalFunc] = &PrsEvalConditional,
+    },
+
+    // Left-ops
+
+    [TOKEN_ADDROF] = {
+        [EvalFunc] = &PrsEvalAddrOf,
+    },
+    [TOKEN_NOT] = {
+        [EvalFunc] = &PrsEvalUnaryConditional,
+    },
+    [TOKEN_BITNOT] = {
+        [EvalFunc] = &PrsEvalUnaryArithmetic,
+    },
+    [TOKEN_CAST] = {
+        [EvalFunc] = &PrsEvalCast,
+    },
+    [TOKEN_SIZEOFVALUE] = {
+        [EvalFunc] = &PrsEvalSizeOfValue,
+    },
+}
+
+PrsLeftOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_BITAND] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseAddrOf,
+    },
+    [TOKEN_MINUS] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseInverse,
+    },
+    [TOKEN_NOT] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseNot,
+    },
+    [TOKEN_BITNOT] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseBitNot,
+    },
+    [TOKEN_CAST] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseCast,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_CONTAINEROF] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseContainerOf,
+        [NoRightSide] = TRUE,
+    },
+    [TOKEN_SIZEOFVALUE] = {
+        [Precedence] = 24,
+        [ParseFunc] = &PrsParseSizeOfValue,
+    },
+}
+
+PrsDeclarators : PrsDeclaratorF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_ENUM] = &PrsParseEnum,
+    [TOKEN_EXTERN] = &PrsParseExtern,
+    [TOKEN_FN] = &PrsParseFn,
+    [TOKEN_FNPTR] = &PrsParseFnPtr,
+    [TOKEN_PUBLIC] = &PrsParsePublic,
+    [TOKEN_STRUCT] = &PrsParseStruct,
+    [TOKEN_TYPE] = &PrsParseType,
+    [TOKEN_UNION] = &PrsParseUnion,
+    [TOKEN_EXPORT] = &PrsParseExport,
+    [TOKEN_PRIVATE] = &PrsParsePrivate,
+}
+
+PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_BREAK] = &PrsParseBreak,
+    [TOKEN_CONTINUE] = &PrsParseContinue,
+    [TOKEN_GOTO] = &PrsParseGoTo,
+    [TOKEN_IF] = &PrsParseIf,
+    [TOKEN_LEAVE] = &PrsParseLeave,
+    [TOKEN_RETURN] = &PrsParseReturn,
+    [TOKEN_WHILE] = &PrsParseWhile,
+    [TOKEN_BARRIER] = &PrsParseBarrier,
+    [TOKEN_LABEL] = &PrsParseLabel,
+}
+
+FN PrsInitialize ()
+
+    // Initialize the parser.
+
+    TlInitializeDynamicBuffer ( &PrsBlockStack )
+
+    // Set up the cached pre-built types.
+
+    // Set up the string type as pointer to UBYTE.
+
+    PrsStringType = PrsCreateType ()
+    primtype := PrsCreateType ()
+
+    primtype^.Subtype = TYPE_PRIMITIVE
+    primtype^.Body.Primitive.Type = PRIM_TYPE_UBYTE
+    primtype^.Body.Primitive.Inducible = FALSE
+
+    primtype^.Size =
+        JklTargetInfo^.PrimitiveSize[PRIM_TYPE_UBYTE]
+
+    primtype^.MinimumAlignment =
+        JklTargetInfo^.PrimitiveAlignment[PRIM_TYPE_UBYTE]
+
+    PrsStringType^.Subtype = TYPE_POINTER
+    PrsStringType^.Body.Pointer.Base = primtype
+
+    PrsStringType^.Size = JklTargetInfo^.PointerSize
+    PrsStringType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+
+    // Set up the NULLPTR type as pointer to VOID.
+
+    PrsNullPtrType = PrsCreateType ()
+    primtype = PrsCreateType ()
+
+    primtype^.Subtype = TYPE_PRIMITIVE
+    primtype^.Body.Primitive.Type = PRIM_TYPE_VOID
+    primtype^.Body.Primitive.Inducible = FALSE
+
+    PrsNullPtrType^.Subtype = TYPE_POINTER
+    PrsNullPtrType^.Body.Pointer.Base = primtype
+
+    PrsNullPtrType^.Size = JklTargetInfo^.PointerSize
+    PrsNullPtrType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+
+    // Set up the constant type as the largest signed primitive.
+
+    PrsConstantType = PrsCreateType ()
+
+    PrsConstantType^.Subtype = TYPE_PRIMITIVE
+    PrsConstantType^.Body.Primitive.Type = JklTargetInfo^.LargestPrimitive
+    PrsConstantType^.Body.Primitive.Inducible = TRUE
+
+    PrsConstantType^.Size =
+        JklTargetInfo^.PrimitiveSize[JklTargetInfo^.LargestPrimitive]
+
+    PrsConstantType^.MinimumAlignment =
+        JklTargetInfo^.PrimitiveAlignment[JklTargetInfo^.LargestPrimitive]
+
+    // Set up the vararg table type as pointer to pointer to VOID.
+
+    PrsVarArgType = PrsCreateType ()
+
+    PrsVarArgType^.Subtype = TYPE_POINTER
+    PrsVarArgType^.Body.Pointer.Base = PrsNullPtrType
+
+    PrsVarArgType^.Size = JklTargetInfo^.PointerSize
+    PrsVarArgType^.MinimumAlignment = JklTargetInfo^.PointerAlignment
+END
+
+FN PrsProgram ()
+
+    // Parse a program. This consists of a sequence of global declarations. We
+    // also want to place these global declarations on lists so the subsequent
+    // phases can use them appropriately, linked via the symbol table entry
+    // given to us by the lexer.
+
+    WHILE PrsGlobalDeclaration () DO
+        // Keep going...
+    END
+END

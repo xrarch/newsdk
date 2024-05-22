@@ -1,5 +1,9 @@
 #IF ( NOT ( DEFINED TRG_CT ) )
+#IF ( == BITS 64 )
 	#DEFINE TRG_CT 1
+#ELSE
+	#DEFINE TRG_CT 0
+#END
 #END
 
 #IF ( NOT ( DEFINED TRG_FOX32 ) )
@@ -28,6 +32,13 @@ TARGET "Jackal"
 		SOURCES "./Frontend/CHost"
 		SOURCES "../Library/CHost"
 		PREBUILT "./Prebuilt"
+	#END
+
+	#IF ( STRCMP PLATFORM "ROMtest" )
+		SOURCES "./Frontend/ROMtest"
+
+		LINKOPT "-bin"
+		LINKOPT "-move:text=0xFFF00000,data=0x1000,bss=@data"
 	#END
 
 	#IF TRG_CT

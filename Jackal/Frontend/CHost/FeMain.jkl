@@ -22,6 +22,7 @@ FN LexStreamError (
     IN err2 : UWORD,
     IN err3 : UWORD,
 )
+
     stream := LexCurrentStream
 
     LexStreamError_C (

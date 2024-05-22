@@ -1399,7 +1399,7 @@ FN (XrInstructionMnemonicF) XrParseShiftReg (
         LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
     END
 
-    elem^.Body.Xr.RegB = reg.TypeContext
+    elem^.Body.Xr.RegC = reg.TypeContext
 
     AsmConsumeComma ()
 
@@ -1411,7 +1411,7 @@ FN (XrInstructionMnemonicF) XrParseShiftReg (
         LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
     END
 
-    elem^.Body.Xr.RegC = reg.TypeContext
+    elem^.Body.Xr.RegB = reg.TypeContext
 
     RETURN elem
 END
