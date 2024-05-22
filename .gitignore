@@ -1,6 +1,5 @@
 **/.DS_Store
 **/*.o
-build/*.exe
 **/obj/**
-bin/*.exe
+**/*.exe
 test/**

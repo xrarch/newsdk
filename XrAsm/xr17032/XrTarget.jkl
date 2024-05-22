@@ -394,7 +394,7 @@ XrSubtypeToFunctionCode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_SYS] = 0x0,
 
     [XR_HLT] = 0xC,
-    [XR_RFE] = 0xD,
+    [XR_RFE] = 0xB,
 
     // Pseudo-instructions
 

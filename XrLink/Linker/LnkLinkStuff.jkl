@@ -429,7 +429,7 @@ FN (LnkRelocF) LnkPerformRelocXrLa (
     // Re-encode the instructions with the new value and the original opcodes.
 
     instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = (oldvalue << 16) | (instlo & 0xFFFF)
+    instptr[1] = ((oldvalue & 0xFFFF) << 16) | (instlo & 0xFFFF)
 END
 
 FN (LnkRelocF) LnkPerformRelocXrFarInt (
@@ -466,7 +466,7 @@ FN (LnkRelocF) LnkPerformRelocXrFarInt (
     // Re-encode the instructions with the new value and the original opcodes.
 
     instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = ((oldvalue << 16) >> 1) | (instlo & 0xFFFF)
+    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 1) | (instlo & 0xFFFF)
 END
 
 FN (LnkRelocF) LnkPerformRelocXrFarLong (
@@ -503,7 +503,7 @@ FN (LnkRelocF) LnkPerformRelocXrFarLong (
     // Re-encode the instructions with the new value and the original opcodes.
 
     instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = ((oldvalue << 16) >> 2) | (instlo & 0xFFFF)
+    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 2) | (instlo & 0xFFFF)
 END
 
 LnkPerformRelocationTable : LnkRelocF[] = {

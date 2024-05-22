@@ -913,9 +913,10 @@ FN (LexDirectiveParseF) LexParseInclude ()
 
     TlInitializeDynamicBuffer ( &str )
 
-    LexCollectString (
+    LexCollectValue (
         &token, // token
         &str, // buffer
+        FALSE, // ignore
     )
 
     IF LexFalseCount THEN
