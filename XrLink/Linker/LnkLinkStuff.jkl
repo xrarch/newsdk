@@ -1966,7 +1966,7 @@ FN LnkOutputXlo ()
 
             sectiontable[i].RelocTableOffset = 0xABABABAB
 
-            sectiontable[i].RelocCount = lnksection^.RelocationCount
+            sectiontable[i].RelocCount = 0
 
             sectiontable[i].Flags = lnksection^.Flags
 
@@ -1981,6 +1981,8 @@ FN LnkOutputXlo ()
                 IF status THEN
                     TlInternalError ( "Failed to create reloc table", 0, 0, 0 )
                 END
+
+                sectiontable[i].RelocCount = lnksection^.RelocationCount
 
                 // Record and bump the offset.
 
