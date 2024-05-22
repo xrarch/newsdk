@@ -13,7 +13,7 @@ Typing `./buildall.sh [desired multithread count]` will then do a "proper" build
 Subsequent compilations of the tools can be performed as:
 
 ```
-./bin/xrbt.exe ./build.xrbt ARCHITECTURE=CHost JOBS=[desired multithread count] [toolname]
+./bin/xrbt.exe ./build.xrbt JOBS=[desired multithread count] [toolname]
 ```
 
 Where toolname is one of the following choices:
