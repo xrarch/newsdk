@@ -12,10 +12,6 @@
 	#DEFINE BUILD_BASE ( STRCAT "./build/" PLATFORM )
 #END
 
-#IF ( NOT ( DEFINED BITS ) )
-	#DEFINE BITS 64
-#END
-
 #EXPOSE BITS
 
 #DEPEND "./Rtl/build.xrbt"

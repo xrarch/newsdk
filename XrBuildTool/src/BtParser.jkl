@@ -11,6 +11,7 @@ BtCurrentTarget : ^BtTarget
 PUBLIC BtCHost := FALSE
 PUBLIC BtArchHasSuffix := FALSE
 PUBLIC BtCleanUp := FALSE
+PUBLIC BtVerbose := FALSE
 
 PUBLIC BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 PUBLIC BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
@@ -913,5 +914,21 @@ FN BtLookupConfigMacros ()
         END
 
         BtCleanUp = TRUE
+    END
+
+    // Now VERBOSE.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "VERBOSE", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlUserError (
+            "VERBOSE is a function macro for some reason", 0, 0, 0 )
+        END
+
+        BtVerbose = TRUE
     END
 END

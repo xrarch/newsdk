@@ -110,12 +110,14 @@ extern uint64_t LexCrunchNumber(uint64_t _mng_token158, uint64_t _mng_buffer159)
 extern uint64_t LexExposedMacroListHead[2];
 extern uint64_t BtTargetArchitectureName[8];
 extern uint64_t BtJobCount;
+extern uint64_t BtVerbose;
 extern uint64_t BtStatFile(uint64_t _mng_fullpath160);
 uint64_t BtTargetHashTable[196];
 uint64_t BtCurrentTarget;
 uint64_t BtCHost = 0ULL;
 uint64_t BtArchHasSuffix = 0ULL;
 uint64_t BtCleanUp = 0ULL;
+uint64_t BtVerbose = 0ULL;
 uint64_t BtTargetArchitectureName[8];
 uint64_t BtSdkBase[32];
 uint64_t BtArchNameSuffix[32];
@@ -2003,6 +2005,19 @@ void BtLookupConfigMacros() {
     uint64_t __twr_v993;
     uint64_t __twr_v994;
     uint64_t __twr_v995;
+    uint64_t __twr_v996;
+    uint64_t __twr_v997;
+    uint64_t __twr_v998;
+    uint64_t __twr_v999;
+    uint64_t __twr_v1000;
+    uint64_t __twr_v1001;
+    uint64_t __twr_v1002;
+    uint64_t __twr_v1003;
+    uint64_t __twr_v1004;
+    uint64_t __twr_v1005;
+    uint64_t __twr_v1006;
+    uint64_t __twr_v1007;
+    uint64_t __twr_v1008;
     __twr_v889 = (uint64_t)(&TlLookupSymbolTable);
     __twr_v890 = (uint64_t)(&LexCurrentMacroScope);
     __twr_v891 = *(uint64_t*)(__twr_v890);
@@ -2169,6 +2184,28 @@ void BtLookupConfigMacros() {
     __twr_v995 = (uint64_t)(&BtCleanUp);
     *(uint64_t*)(__twr_v995) = __twr_v994;
     __twr_l136:;
+    __twr_v996 = (uint64_t)(&TlLookupSymbolTable);
+    __twr_v997 = (uint64_t)(&LexCurrentMacroScope);
+    __twr_v998 = *(uint64_t*)(__twr_v997);
+    __twr_v999 = (uint64_t)(&"VERBOSE");
+    __twr_v1000 = ((uint64_t (*)(uint64_t, uint64_t))__twr_v996)(__twr_v998, __twr_v999);
+    _mng_macro894 = __twr_v1000;
+    if (!(_mng_macro894)) { goto __twr_l140; } else { goto __twr_l141; }
+    __twr_l141:;
+    __twr_v1001 = 264ULL;
+    __twr_v1002 = _mng_macro894 + __twr_v1001;
+    __twr_v1003 = *(uint8_t*)(__twr_v1002);
+    if (!(__twr_v1003)) { goto __twr_l142; } else { goto __twr_l143; }
+    __twr_l143:;
+    __twr_v1004 = (uint64_t)(&TlUserError);
+    __twr_v1005 = (uint64_t)(&"VERBOSE is a function macro for some reason");
+    __twr_v1006 = 0ULL;
+    ((void (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1004)(__twr_v1005, __twr_v1006, __twr_v1006, __twr_v1006);
+    __twr_l142:;
+    __twr_v1007 = 1ULL;
+    __twr_v1008 = (uint64_t)(&BtVerbose);
+    *(uint64_t*)(__twr_v1008) = __twr_v1007;
+    __twr_l140:;
     __twr_l113:;
     _jkl_epilogue:;
 }

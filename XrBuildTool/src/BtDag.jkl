@@ -247,6 +247,18 @@ FN BtAnyDepsLater (
     RETURN FALSE
 END
 
+FN BtRunCommand (
+    IN str : ^UBYTE,
+) : UWORD
+
+    IF BtVerbose THEN
+        TlPrintString ( str )
+        TlPrintString ( "\n" )
+    END
+
+    RETURN TlSystem ( str )
+END
+
 FN BtCleanUpFile (
     IN path : ^UBYTE,
 )
@@ -269,7 +281,7 @@ FN BtCleanUpFile (
         TlMeasureString ( path ) + 1, // length
     )
 
-    TlSystem ( cmdline.Buffer )
+    BtRunCommand ( cmdline.Buffer )
 END
 
 STRUCT BtProcessDirectoryContext
@@ -852,7 +864,7 @@ FN (BtDagActionF) BtBuildJkl (
 
     // Now do the command.
 
-    IF TlSystem ( cmdline.Buffer ) THEN
+    IF BtRunCommand ( cmdline.Buffer ) THEN
         BtTerminateWorkers = TRUE
 
         LEAVE
@@ -887,7 +899,7 @@ FN (BtDagActionF) BtBuildJkl (
             dagnode^.Target^.PrebuiltCopiesPath.Count, // length
         )
 
-        IF TlSystem ( cmdline.Buffer ) THEN
+        IF BtRunCommand ( cmdline.Buffer ) THEN
             BtTerminateWorkers = TRUE
 
             LEAVE
@@ -972,7 +984,7 @@ FN (BtDagActionF) BtBuildJkl (
 
     // Now do the command.
 
-    IF TlSystem ( cmdline.Buffer ) THEN
+    IF BtRunCommand ( cmdline.Buffer ) THEN
         BtTerminateWorkers = TRUE
     END
 
@@ -1023,7 +1035,7 @@ FN (BtDagActionF) BtBuildC (
 
     // Now do the command.
 
-    IF TlSystem ( cmdline.Buffer ) THEN
+    IF BtRunCommand ( cmdline.Buffer ) THEN
         BtTerminateWorkers = TRUE
 
         LEAVE
@@ -1058,7 +1070,7 @@ FN (BtDagActionF) BtBuildC (
             dagnode^.Target^.PrebuiltCopiesPath.Count, // length
         )
 
-        IF TlSystem ( cmdline.Buffer ) THEN
+        IF BtRunCommand ( cmdline.Buffer ) THEN
             BtTerminateWorkers = TRUE
         END
     END
@@ -1124,7 +1136,7 @@ FN (BtDagActionF) BtBuildS (
 
     // Now do the command.
 
-    IF TlSystem ( cmdline.Buffer ) THEN
+    IF BtRunCommand ( cmdline.Buffer ) THEN
         BtTerminateWorkers = TRUE
     END
 END
@@ -1278,7 +1290,7 @@ FN (BtDagActionF) BtLinkExecutable (
 
     // Now do the command.
 
-    IF TlSystem ( cmdline.Buffer ) THEN
+    IF BtRunCommand ( cmdline.Buffer ) THEN
         BtTerminateWorkers = TRUE
     END
 END

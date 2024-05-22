@@ -110,6 +110,7 @@ extern uint64_t LexCrunchNumber(uint64_t _mng_token158, uint64_t _mng_buffer159)
 extern uint64_t LexExposedMacroListHead[2];
 extern uint64_t BtTargetArchitectureName[8];
 extern uint64_t BtJobCount;
+extern uint64_t BtVerbose;
 extern uint64_t BtStatFile(uint64_t _mng_fullpath160);
 extern void LexStreamError_C(uint64_t _mng_filename161, uint64_t _mng_linenumber162, uint64_t _mng_linepos163, uint64_t _mng_str164, uint64_t _mng_err1165, uint64_t _mng_err2166, uint64_t _mng_err3167);
 void LexStreamError(uint64_t _mng_str168, uint64_t _mng_err1169, uint64_t _mng_err2170, uint64_t _mng_err3171) {

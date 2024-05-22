@@ -256,6 +256,8 @@ EXTERN BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 
 EXTERN BtJobCount : UWORD
 
+EXTERN BtVerbose : UWORD
+
 EXTERN FN BtStatFile (
     IN fullpath : ^UBYTE,
 ) : ^TlStatRecord

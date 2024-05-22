@@ -110,6 +110,7 @@ extern uint64_t LexCrunchNumber(uint64_t _mng_token158, uint64_t _mng_buffer159)
 extern uint64_t LexExposedMacroListHead[2];
 extern uint64_t BtTargetArchitectureName[8];
 extern uint64_t BtJobCount;
+extern uint64_t BtVerbose;
 extern uint64_t BtStatFile(uint64_t _mng_fullpath160);
 uint64_t LexCharTreatment[32] = {
     0x0000000000000004,

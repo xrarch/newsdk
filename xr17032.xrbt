@@ -1,1 +1,4 @@
+// Generic XR17032 platform.
+
 #DEFINE ARCHITECTURE "xr17032"
+#DEFINE BITS 32
