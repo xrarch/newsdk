@@ -1,3 +1,9 @@
 - Test the dynamic linking functionality (such as jump stub generation) since it
   is completely untested currently due to having no dynamically linked
   environment to run it in yet.
+
+- Finish dumping info about import table and fixups of imports which is
+  incomplete due to having no object files to test with yet.
+
+- Sort the symbol table by virtual address of the symbol to allow faster reverse
+  lookup of virtaddr -> symbol for stack traces and such.
