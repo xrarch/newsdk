@@ -186,7 +186,7 @@ FN LnkFindSection (
         LnkSectionCount += 1
 
         IF NOT LnkJumpStubSection AND flags & XLO_SECTION_CODE THEN
-            // The stub section is the first code section found.
+            // The first code section found is used as the stub section.
 
             LnkJumpStubSection = section
         END
@@ -267,7 +267,7 @@ FN LnkAddDynamicObject (
         TlInternalError ( "Failed to allocate library block", 0, 0, 0 )
     END
 
-    // Libraries have a link time and runtime path, separated by a comma:
+    // Libraries have a link time and runtime path, separated by a colon:
     //
     // [runtime]:[link time]
     //
@@ -275,7 +275,7 @@ FN LnkAddDynamicObject (
     // The runtime path is used by the dynamic linker at load time to find the
     // dynamic library in the system.
     //
-    // If there is no comma, the runtime path is the final component of the
+    // If there is no colon, the runtime path is the final component of the
     // link time path. Lets find out.
 
     i := 0
