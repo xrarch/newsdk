@@ -1015,6 +1015,13 @@ FN LnkResolveExterns ()
                     lnkextern^.HasJumpStub = FALSE
                     lnkextern^.Index = LnkExternCount
 
+                    IF LnkExternCount == 0xFFFF THEN
+                        TlPrintString (
+                            "Maximum extern count (65536) exceeded\n" )
+
+                        TlErrorExit ()
+                    END
+
                     LnkExternCount += 1
                     LnkUnresolvedCount += 1
                 END
