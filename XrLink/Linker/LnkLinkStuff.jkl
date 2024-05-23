@@ -513,10 +513,13 @@ LnkPerformRelocationTable : LnkRelocF[] = {
     [XLO_RELOC_XR17032_LA] = &LnkPerformRelocXrLa,
     [XLO_RELOC_XR17032_FAR_INT] = &LnkPerformRelocXrFarInt,
     [XLO_RELOC_XR17032_FAR_LONG] = &LnkPerformRelocXrFarLong,
+
+    [XLO_RELOC_FOX32_CALL] = &LnkPerformRelocPtr,
 }
 
 LnkCreateJumpStub : UBYTE[XLO_RELOC_MAX] = {
     [XLO_RELOC_XR17032_ABSJ] = TRUE,
+    [XLO_RELOC_FOX32_CALL] = TRUE,
 }
 
 FN LnkRelocateInternalSection (
@@ -1145,8 +1148,65 @@ FN (LnkCreateStubF) LnkCreateXr17032Stub (
     lnkextern^.Library^.FixupCount += 1
 END
 
+FN (LnkCreateStubF) LnkCreateFox32Stub (
+    IN lnkextern : ^LnkExtern,
+)
+
+    // Create a jump stub for fox32.
+    // This is just a single  JMP [ADDR]  instruction appended to the end of the
+    // jump stub section.
+
+    op : UINT[1]
+    op[0] = 0x8802
+
+    addr : ULONG[1]
+    addr[0] = lnkextern^.Address
+
+    TlCopyIntoDynamicBuffer (
+        &LnkJumpStubSection^.DynamicData, // array
+        &op[0], // srcbuf
+        2, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &LnkJumpStubSection^.DynamicData, // array
+        &addr[0], // srcbuf
+        4, // length
+    )
+
+    // Create the import fixup that fixes up the jump stub if the dynamic
+    // library is relocated.
+
+    lnkreloc : ^LnkRelocation
+
+    status := TlBumpAlloc (
+        SIZEOF LnkRelocation, // bytes
+        OUT lnkreloc, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate relocation", 0, 0, 0 )
+    END
+
+    lnkreloc^.Extern = lnkextern
+
+    lnkreloc^.SectionOffset = lnkextern^.JumpStubOffset + 2
+
+    lnkreloc^.Section = LnkJumpStubSection
+
+    lnkreloc^.Type = XLO_RELOC_PTR
+
+    TlInsertAtTailList (
+        &lnkextern^.Library^.FixupListHead, // head
+        &lnkreloc^.Entry, // entry
+    )
+
+    lnkextern^.Library^.FixupCount += 1
+END
+
 LnkCreateStubTable : LnkCreateStubF[XLO_ARCHITECTURE_MAX] = {
     [XLO_ARCHITECTURE_XR17032] = &LnkCreateXr17032Stub,
+    [XLO_ARCHITECTURE_FOX32] = &LnkCreateFox32Stub,
 }
 
 FN LnkResolveFixupTable ()
