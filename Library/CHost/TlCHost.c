@@ -94,6 +94,13 @@ uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t,
 
 void TlpStatFileHelper (uint64_t statrecord, uint64_t isdir, uint64_t mtime, uint64_t sizebytes);
 
+#ifdef __APPLE__
+#ifndef st_mtime
+#define st_mtime st_mtimespec.tv_sec
+#endif
+#endif
+
+
 uint64_t TlStatFile (uint8_t *path, uint64_t statrecord) {
     struct stat sb;
 
@@ -106,7 +113,7 @@ uint64_t TlStatFile (uint8_t *path, uint64_t statrecord) {
     TlpStatFileHelper (
         statrecord, // statrecord
         (uint64_t)(S_ISDIR(sb.st_mode)), // isdir
-        (uint64_t)(sb.st_mtimespec.tv_sec), // mtime
+        (uint64_t)(sb.st_mtime), // mtime
         (uint64_t)(sb.st_size) // sizebytes
     );
 
