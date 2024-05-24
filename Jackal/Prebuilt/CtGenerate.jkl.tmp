@@ -2036,7 +2036,7 @@ void CtGenerateNothing(uint64_t _mng_inst859) {
     __twr_l134:;
     _jkl_epilogue:;
 }
-uint64_t CtGenerateInstructionFunctions[53] = {
+uint64_t CtGenerateInstructionFunctions[57] = {
     0x0000000000000000,
     (uint64_t)(&CtGenerateLoad),
     (uint64_t)(&CtGenerateAddr),
@@ -2054,10 +2054,12 @@ uint64_t CtGenerateInstructionFunctions[53] = {
     (uint64_t)(&CtGenerateBranchGreaterThan),
     (uint64_t)(&CtGenerateBranchLtEq),
     (uint64_t)(&CtGenerateBranchGtEq),
+    0x0000000000000000,
     (uint64_t)(&CtGenerateBranchLtSigned),
     (uint64_t)(&CtGenerateBranchGtSigned),
     (uint64_t)(&CtGenerateBranchLtEqSigned),
     (uint64_t)(&CtGenerateBranchGtEqSigned),
+    0x0000000000000000,
     (uint64_t)(&CtGenerateLabel),
     (uint64_t)(&CtGenerateJump),
     0x0000000000000000,
@@ -2072,10 +2074,12 @@ uint64_t CtGenerateInstructionFunctions[53] = {
     (uint64_t)(&CtGenerateCmpGreaterThan),
     (uint64_t)(&CtGenerateCmpLtEq),
     (uint64_t)(&CtGenerateCmpGtEq),
+    0x0000000000000000,
     (uint64_t)(&CtGenerateCmpLtSigned),
     (uint64_t)(&CtGenerateCmpGtSigned),
     (uint64_t)(&CtGenerateCmpLtEqSigned),
     (uint64_t)(&CtGenerateCmpGtEqSigned),
+    0x0000000000000000,
     (uint64_t)(&CtGenerateNot),
     (uint64_t)(&CtGenerateBitAnd),
     (uint64_t)(&CtGenerateBitOr),

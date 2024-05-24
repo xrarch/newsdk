@@ -1204,11 +1204,11 @@ void LirResetRegPool() {
     __twr_v596 = *(uint64_t*)(__twr_v595);
     _mng_lirinfo597 = __twr_v596;
     _mng_i598 = 0ULL;
-    __twr_v599 = 552ULL;
+    __twr_v599 = 584ULL;
     __twr_v600 = _mng_lirinfo597 + __twr_v599;
     __twr_v601 = *(uint8_t*)(__twr_v600);
     _mng_max602 = __twr_v601;
-    __twr_v603 = 488ULL;
+    __twr_v603 = 520ULL;
     __twr_v604 = _mng_lirinfo597 + __twr_v603;
     _mng_statmap605 = __twr_v604;
     __twr_v606 = (uint64_t)(&LirCurrentFunction);
@@ -1216,7 +1216,7 @@ void LirResetRegPool() {
     __twr_v608 = 60ULL;
     __twr_v609 = __twr_v607 + __twr_v608;
     _mng_everalloced610 = __twr_v609;
-    __twr_v611 = 424ULL;
+    __twr_v611 = 456ULL;
     __twr_v612 = _mng_lirinfo597 + __twr_v611;
     _mng_abimap613 = __twr_v612;
     if (_mng_max602 <= _mng_i598) { goto __twr_l90; } else { goto __twr_l89; }
@@ -1340,10 +1340,10 @@ uint64_t LirAllocateRegister(uint64_t _mng_reg624) {
     __twr_v628 = __twr_v626 + __twr_v627;
     __twr_v629 = *(uint64_t*)(__twr_v628);
     _mng_lirinfo630 = __twr_v629;
-    __twr_v631 = 488ULL;
+    __twr_v631 = 520ULL;
     __twr_v632 = _mng_lirinfo630 + __twr_v631;
     _mng_statmap633 = __twr_v632;
-    __twr_v634 = 424ULL;
+    __twr_v634 = 456ULL;
     __twr_v635 = _mng_lirinfo630 + __twr_v634;
     _mng_abimap636 = __twr_v635;
     __twr_v637 = (uint64_t)(&LirCurrentFunction);
@@ -1417,7 +1417,7 @@ uint64_t LirAllocateRegister(uint64_t _mng_reg624) {
     goto _jkl_epilogue;
     __twr_l100:;
     _mng_i684 = 0ULL;
-    __twr_v685 = 552ULL;
+    __twr_v685 = 584ULL;
     __twr_v686 = _mng_lirinfo630 + __twr_v685;
     __twr_v687 = *(uint8_t*)(__twr_v686);
     _mng_max688 = __twr_v687;
@@ -1492,10 +1492,10 @@ void LirFreeRegister(uint64_t _mng_reg711) {
     __twr_v715 = __twr_v713 + __twr_v714;
     __twr_v716 = *(uint64_t*)(__twr_v715);
     _mng_lirinfo717 = __twr_v716;
-    __twr_v718 = 488ULL;
+    __twr_v718 = 520ULL;
     __twr_v719 = _mng_lirinfo717 + __twr_v718;
     _mng_statmap720 = __twr_v719;
-    __twr_v721 = 424ULL;
+    __twr_v721 = 456ULL;
     __twr_v722 = _mng_lirinfo717 + __twr_v721;
     _mng_abimap723 = __twr_v722;
     __twr_v724 = _mng_abimap723 + _mng_reg711;

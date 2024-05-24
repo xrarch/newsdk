@@ -24,10 +24,6 @@
    extension is guaranteed when loading a signed type from memory into a local
    datum variable.
 
-   EXCEPTION: Due to architectural limitations, fox32 target has no signed type
-              semantics. All code intended for this target should use unsigned
-              types only.
-
 7. The operators AND and OR short circuit; i.e., if the left side of an AND
    evaluates to false, the right side will not be evaluated. If the left side of
    an OR evaluates to true, the right side will not be evaluated.

@@ -400,8 +400,6 @@ XrPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_BYTE] = 24,
 }
 
-
-
 XrTmps : LirRegister[3]
 XrSp : LirRegister
 XrLr : LirRegister

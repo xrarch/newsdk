@@ -173,7 +173,7 @@ extern void XrAsmInsertNumberForward(uint64_t _mng_number200);
 extern void XrAsmEmitString(uint64_t _mng_string201);
 extern void XrCompile();
 extern uint64_t XrValueNumber(uint64_t _mng_constant202);
-extern uint64_t XrLirInfo[70];
+extern uint64_t XrLirInfo[74];
 uint64_t XrTargetInfo[12] = {
     (uint64_t)(&"xr17032"),
     (uint64_t)(&XrCompile),
@@ -294,39 +294,43 @@ uint64_t XrShiftTypeNames[3] = {
     (uint64_t)(&"RSH"),
     (uint64_t)(&"ASH"),
 };
-uint64_t XrInstToShiftType[7] = {
+uint64_t XrInstToShiftType[8] = {
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
-    0x0000000000020100,
+    0x0002010000000000,
+    0x0000000000000000,
 };
-uint64_t XrIrToImmOp[7] = {
+uint64_t XrIrToImmOp[8] = {
     0x0000000000000000,
     0x1616161515000000,
-    0x0000001717171716,
+    0x0000171717170016,
     0x0000000000000000,
     0x0000000000000000,
-    0x1900000015141A18,
-    0x0000000000090807,
+    0x15141A1800000000,
+    0x0009080719000000,
+    0x0000000000000000,
 };
-uint64_t XrIrToRegOp[7] = {
+uint64_t XrIrToRegOp[8] = {
     0x0000000000000000,
     0x1F1F1F1E1E000000,
-    0x000000202020201F,
-    0x1F1E1E0000000000,
-    0x00202020201F1F1F,
-    0x222E2D2C1E1D2321,
-    0x0000002B002A2928,
+    0x000020202020001F,
+    0x1E00000000000000,
+    0x2020001F1F1F1F1E,
+    0x1E1D232100002020,
+    0x002A2928222E2D2C,
+    0x000000000000002B,
 };
-uint64_t XrBranchFlags[7] = {
+uint64_t XrBranchFlags[8] = {
     0x0000000000000000,
     0x0301000002000000,
-    0x0000000203010002,
-    0x0000020000000000,
-    0x0002030100020301,
+    0x0000020301000002,
+    0x0200000000000000,
+    0x0100000203010000,
+    0x0000000000000203,
     0x0000000000000000,
     0x0000000000000000,
 };
@@ -782,7 +786,7 @@ void XrFillAccess(uint64_t _mng_inst226, uint64_t _mng_lirinst227) {
     __twr_v336 = 88ULL;
     __twr_v337 = _mng_srcinst245 + __twr_v336;
     __twr_v338 = *(uint8_t*)(__twr_v337);
-    __twr_v339 = 42ULL;
+    __twr_v339 = 46ULL;
     if (__twr_v338 != __twr_v339) { goto __twr_l5; } else { goto __twr_l18; }
     __twr_l18:;
     __twr_v340 = (uint64_t)(&LirSelectOrGetRegister);
@@ -837,19 +841,19 @@ void XrFillAccess(uint64_t _mng_inst226, uint64_t _mng_lirinst227) {
     __twr_v375 = 88ULL;
     __twr_v376 = _mng_inst2353 + __twr_v375;
     __twr_v377 = *(uint8_t*)(__twr_v376);
-    __twr_v378 = 48ULL;
+    __twr_v378 = 52ULL;
     if (__twr_v377 == __twr_v378) { goto __twr_l26; } else { goto __twr_l28; }
     __twr_l28:;
     __twr_v379 = 88ULL;
     __twr_v380 = _mng_inst2353 + __twr_v379;
     __twr_v381 = *(uint8_t*)(__twr_v380);
-    __twr_v382 = 49ULL;
+    __twr_v382 = 53ULL;
     if (__twr_v381 == __twr_v382) { goto __twr_l26; } else { goto __twr_l27; }
     __twr_l27:;
     __twr_v383 = 88ULL;
     __twr_v384 = _mng_inst2353 + __twr_v383;
     __twr_v385 = *(uint8_t*)(__twr_v384);
-    __twr_v386 = 50ULL;
+    __twr_v386 = 54ULL;
     if (__twr_v385 != __twr_v386) { goto __twr_l21; } else { goto __twr_l26; }
     __twr_l26:;
     __twr_v387 = 64ULL;
@@ -2319,19 +2323,19 @@ void XrGenerateArithmetic(uint64_t _mng_defreg934, uint64_t _mng_src1935, uint64
     __twr_v976 = 88ULL;
     __twr_v977 = _mng_defby958 + __twr_v976;
     __twr_v978 = *(uint8_t*)(__twr_v977);
-    __twr_v979 = 48ULL;
+    __twr_v979 = 52ULL;
     if (__twr_v978 == __twr_v979) { goto __twr_l112; } else { goto __twr_l115; }
     __twr_l115:;
     __twr_v980 = 88ULL;
     __twr_v981 = _mng_defby958 + __twr_v980;
     __twr_v982 = *(uint8_t*)(__twr_v981);
-    __twr_v983 = 49ULL;
+    __twr_v983 = 53ULL;
     if (__twr_v982 == __twr_v983) { goto __twr_l112; } else { goto __twr_l114; }
     __twr_l114:;
     __twr_v984 = 88ULL;
     __twr_v985 = _mng_defby958 + __twr_v984;
     __twr_v986 = *(uint8_t*)(__twr_v985);
-    __twr_v987 = 50ULL;
+    __twr_v987 = 54ULL;
     if (__twr_v986 != __twr_v987) { goto __twr_l109; } else { goto __twr_l112; }
     __twr_l112:;
     __twr_v988 = 64ULL;
@@ -3692,7 +3696,7 @@ uint64_t XrSelectCall(uint64_t _mng_inst1377) {
     _jkl_epilogue:;
     return _jkl_retv;
 }
-uint64_t XrLirInfo[70] = {
+uint64_t XrLirInfo[74] = {
     0x0000000000000000,
     (uint64_t)(&XrSelectLoad),
     (uint64_t)(&XrSelectAddr),
@@ -3710,10 +3714,12 @@ uint64_t XrLirInfo[70] = {
     (uint64_t)(&XrSelectBranch),
     (uint64_t)(&XrSelectBranch),
     (uint64_t)(&XrSelectBranch),
+    0x0000000000000000,
     (uint64_t)(&XrSelectBranch),
     (uint64_t)(&XrSelectBranch),
     (uint64_t)(&XrSelectBranch),
     (uint64_t)(&XrSelectBranch),
+    0x0000000000000000,
     0x0000000000000000,
     (uint64_t)(&XrSelectJump),
     0x0000000000000000,
@@ -3728,10 +3734,12 @@ uint64_t XrLirInfo[70] = {
     (uint64_t)(&XrSelectCompare),
     (uint64_t)(&XrSelectCompare),
     (uint64_t)(&XrSelectCompare),
+    0x0000000000000000,
     (uint64_t)(&XrSelectCompare),
     (uint64_t)(&XrSelectCompare),
     (uint64_t)(&XrSelectCompare),
     (uint64_t)(&XrSelectCompare),
+    0x0000000000000000,
     (uint64_t)(&XrSelectNot),
     (uint64_t)(&XrSelectArithmetic),
     (uint64_t)(&XrSelectArithmetic),

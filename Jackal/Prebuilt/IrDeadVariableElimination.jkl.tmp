@@ -154,7 +154,7 @@ extern void IrValueNumberConstantVariable(uint64_t _mng_var182, uint64_t _mng_co
 extern uint64_t IrFindConstant(uint64_t _mng_constant185, uint64_t _mng_op186);
 extern void IrGiveOpaqueValueVariable(uint64_t _mng_var187);
 extern void IrInitializeValueNumber();
-extern uint64_t IrCommutativity[7];
+extern uint64_t IrCommutativity[8];
 extern uint64_t IrCreateConstantBefore(uint64_t _mng_beforeinst188, uint64_t _mng_value189);
 extern void IrRemoveInstruction(uint64_t _mng_inst190);
 uint64_t IrDeadVariableListHead[2];
@@ -296,7 +296,7 @@ void IrEliminateDeadVariable(uint64_t _mng_var233) {
     __twr_v238 = 88ULL;
     __twr_v239 = _mng_definedbyinst237 + __twr_v238;
     __twr_v240 = *(uint8_t*)(__twr_v239);
-    __twr_v241 = 25ULL;
+    __twr_v241 = 27ULL;
     if (__twr_v240 != __twr_v241) { goto __twr_l14; } else { goto __twr_l15; }
     __twr_l15:;
     goto _jkl_epilogue;
@@ -641,7 +641,7 @@ void IrEliminateForFunction(uint64_t _mng_funcsym279) {
     __twr_v360 = 88ULL;
     __twr_v361 = _mng_inst310 + __twr_v360;
     __twr_v362 = *(uint8_t*)(__twr_v361);
-    __twr_v363 = 25ULL;
+    __twr_v363 = 27ULL;
     if (__twr_v362 != __twr_v363) { goto __twr_l50; } else { goto __twr_l51; }
     __twr_l51:;
     __twr_v364 = *(uint64_t*)(_mng_inst310);

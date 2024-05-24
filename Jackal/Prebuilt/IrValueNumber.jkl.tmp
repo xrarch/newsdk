@@ -154,7 +154,7 @@ extern void IrValueNumberConstantVariable(uint64_t _mng_var182, uint64_t _mng_co
 extern uint64_t IrFindConstant(uint64_t _mng_constant185, uint64_t _mng_op186);
 extern void IrGiveOpaqueValueVariable(uint64_t _mng_var187);
 extern void IrInitializeValueNumber();
-extern uint64_t IrCommutativity[7];
+extern uint64_t IrCommutativity[8];
 extern uint64_t IrCreateConstantBefore(uint64_t _mng_beforeinst188, uint64_t _mng_value189);
 extern void IrRemoveInstruction(uint64_t _mng_inst190);
 uint64_t IrHashTable[196];

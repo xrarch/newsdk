@@ -41,9 +41,9 @@ PUBLIC FoxTargetInfo : JklTargetInfoRecord = {
         [PRIM_TYPE_UINT] = TRUE,
         [PRIM_TYPE_ULONG] = TRUE,
         [PRIM_TYPE_UQUAD] = FALSE,
-        [PRIM_TYPE_BYTE] = FALSE,
-        [PRIM_TYPE_INT] = FALSE,
-        [PRIM_TYPE_LONG] = FALSE,
+        [PRIM_TYPE_BYTE] = TRUE,
+        [PRIM_TYPE_INT] = TRUE,
+        [PRIM_TYPE_LONG] = TRUE,
         [PRIM_TYPE_QUAD] = FALSE,
     },
     [PrimitiveAlignment] = {
@@ -104,6 +104,7 @@ ENUM FoxInstructionTypes : UBYTE
     FOX_NOT,
     FOX_IDIV,
     FOX_IREM,
+    FOX_ICMP,
 
     FOX_MAX,
 END
@@ -251,6 +252,7 @@ FoxInstructionNames : ^UBYTE[FOX_MAX] = {
     [FOX_NOT] = "not",
     [FOX_IDIV] = "idiv",
     [FOX_IREM] = "irem",
+    [FOX_ICMP] = "icmp",
 }
 
 FoxConditionNames : ^UBYTE[FOX_COND_MAX] = {
@@ -290,10 +292,10 @@ FoxIrInstToCondition : UBYTE[IR_MAX] = {
     [IR_BRANCH_LTEQ] = FOX_COND_IFLTEQ,
     [IR_BRANCH_GTEQ] = FOX_COND_IFGTEQ,
 
-    // [IR_BRANCH_LESS_THAN_SIGNED] = FOX_COND_IFLT,
-    // [IR_BRANCH_GREATER_THAN_SIGNED] = FOX_COND_IFGT,
-    // [IR_BRANCH_LTEQ_SIGNED] = FOX_COND_IFLTEQ,
-    // [IR_BRANCH_GTEQ_SIGNED] = FOX_COND_IFGTEQ,
+    [IR_BRANCH_LESS_THAN_SIGNED] = FOX_COND_IFLT,
+    [IR_BRANCH_GREATER_THAN_SIGNED] = FOX_COND_IFGT,
+    [IR_BRANCH_LTEQ_SIGNED] = FOX_COND_IFLTEQ,
+    [IR_BRANCH_GTEQ_SIGNED] = FOX_COND_IFGTEQ,
 
     [IR_COMPARE_EQUALS] = FOX_COND_IFZ,
     [IR_COMPARE_NOT_EQUALS] = FOX_COND_IFNZ,
@@ -315,6 +317,13 @@ FoxIrInstToFoxOp : FoxInstructionTypes[IR_MAX] = {
     [IR_BIT_XOR] = FOX_XOR,
     [IR_LEFT_SHIFT] = FOX_SLA,
     [IR_RIGHT_SHIFT] = FOX_SRL,
+    [IR_RIGHT_SHIFT_SIGNED] = FOX_SRA,
+    [IR_DIVIDE_SIGNED] = FOX_IDIV,
+}
+
+FoxPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
+    [PRIM_TYPE_INT] = 16,
+    [PRIM_TYPE_BYTE] = 24,
 }
 
 FoxTmps : LirRegister[2]
@@ -456,13 +465,17 @@ FN FoxFillOperand (
         // TODO If it's used more than once, share instead of selecting over it,
         //      or we will generate lots of extra loads.
 
-        // We can only select over this if the load width matches.
+        // We can only select over this if the load width matches, and if the
+        // access is either unsigned or 32 bits.
 
         IF var^.Opt.Dve.References == 1 THEN
             bitsize := lirinst^.Body.Machine.Fox.BitSize
 
-            IF bitsize == FOX_BITS_UNKNOWN OR
-                bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type] THEN
+            IF (bitsize == FOX_BITS_UNKNOWN OR
+                bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type]) AND
+                ((inst^.Body.LoadStore.Type > PRIM_TYPE_UNSIGNED AND
+                inst^.Body.LoadStore.Type < PRIM_TYPE_UNSIGNED_MAX) OR
+                inst^.Body.LoadStore.Type == PRIM_TYPE_LONG) THEN
 
                 RETURN FoxFillOperandForAccess (
                     lirinst, // lirinst
@@ -529,6 +542,52 @@ FN (LirSelectF) FoxSelectLoad (
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
 
     LirInsertInstructionTail ( lirinst )
+
+    // If this was a signed type, less than 32 bits, make sure to sign extend.
+
+    IF inst^.Body.LoadStore.Type == PRIM_TYPE_BYTE OR
+        inst^.Body.LoadStore.Type == PRIM_TYPE_INT THEN
+
+        // Generate a left shift and then an arithmetic right shift.
+
+        lirinst = LirCreateInstruction (
+            LIR_MACH_INST, // type
+            FOX_SLA, // machtype
+        )
+
+        lirinst^.Defines = defreg
+        lirinst^.Source1 = defreg
+
+        lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+        lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
+        lirinst^.Body.Machine.Fox.Op2.Constant =
+            FoxPrimTypeToSignShift[inst^.Body.LoadStore.Type]
+
+        lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        LirInsertInstructionTail ( lirinst )
+
+        lirinst = LirCreateInstruction (
+            LIR_MACH_INST, // type
+            FOX_SRA, // machtype
+        )
+
+        lirinst^.Defines = defreg
+        lirinst^.Source1 = defreg
+
+        lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+        lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
+        lirinst^.Body.Machine.Fox.Op2.Constant =
+            FoxPrimTypeToSignShift[inst^.Body.LoadStore.Type]
+
+        lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        LirInsertInstructionTail ( lirinst )
+    END
 
     RETURN defreg
 END
@@ -1022,9 +1081,17 @@ FN (LirSelectF) FoxSelectBranch (
 
     // Output CMP and then JMP.
 
+    cmptype := FOX_CMP
+
+    IF inst^.Type > IR_BRANCH_SIGNED_LOW_NUMBER AND
+        inst^.Type < IR_BRANCH_SIGNED_HIGH_NUMBER THEN
+
+        cmptype = FOX_ICMP
+    END
+
     cmpinst := LirCreateInstruction (
         LIR_MACH_INST, // type
-        FOX_CMP, // machtype
+        cmptype, // machtype
     )
 
     cmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
@@ -1331,9 +1398,17 @@ FN (LirSelectF) FoxSelectCompare (
 
     LirInsertInstructionTail ( falsemovinst )
 
+    cmptype := FOX_CMP
+
+    IF inst^.Type > IR_COMPARE_SIGNED_LOW_NUMBER AND
+        inst^.Type < IR_COMPARE_SIGNED_HIGH_NUMBER THEN
+
+        cmptype = FOX_ICMP
+    END
+
     cmpinst := LirCreateInstruction (
         LIR_MACH_INST, // type
-        FOX_CMP, // machtype
+        cmptype, // machtype
     )
 
     cmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
@@ -2423,10 +2498,10 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_BRANCH_GREATER_THAN] = &FoxSelectBranch,
         [IR_BRANCH_LTEQ] = &FoxSelectBranch,
         [IR_BRANCH_GTEQ] = &FoxSelectBranch,
-        // [IR_BRANCH_LESS_THAN_SIGNED] = &FoxSelectBranch,
-        // [IR_BRANCH_GREATER_THAN_SIGNED] = &FoxSelectBranch,
-        // [IR_BRANCH_LTEQ_SIGNED] = &FoxSelectBranch,
-        // [IR_BRANCH_GTEQ_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_LESS_THAN_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_GREATER_THAN_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_LTEQ_SIGNED] = &FoxSelectBranch,
+        [IR_BRANCH_GTEQ_SIGNED] = &FoxSelectBranch,
         [IR_JUMP] = &FoxSelectJump,
 
         [IR_CALL] = &FoxSelectCall,
@@ -2438,10 +2513,10 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_COMPARE_GREATER_THAN] = &FoxSelectCompare,
         [IR_COMPARE_LTEQ] = &FoxSelectCompare,
         [IR_COMPARE_GTEQ] = &FoxSelectCompare,
-        // [IR_COMPARE_LESS_THAN_SIGNED] = &FoxSelectCompare,
-        // [IR_COMPARE_GREATER_THAN_SIGNED] = &FoxSelectCompare,
-        // [IR_COMPARE_LTEQ_SIGNED] = &FoxSelectCompare,
-        // [IR_COMPARE_GTEQ_SIGNED] = &FoxSelectCompare,
+        [IR_COMPARE_LESS_THAN_SIGNED] = &FoxSelectCompare,
+        [IR_COMPARE_GREATER_THAN_SIGNED] = &FoxSelectCompare,
+        [IR_COMPARE_LTEQ_SIGNED] = &FoxSelectCompare,
+        [IR_COMPARE_GTEQ_SIGNED] = &FoxSelectCompare,
 
         [IR_NOT] = &FoxSelectNot,
 
@@ -2450,12 +2525,12 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_ADD] = &FoxSelectArithmetic,
         [IR_SUBTRACT] = &FoxSelectArithmetic,
         [IR_DIVIDE] = &FoxSelectArithmetic,
-        // [IR_DIVIDE_SIGNED] = &FoxSelectArithmetic,
+        [IR_DIVIDE_SIGNED] = &FoxSelectArithmetic,
         [IR_MODULO] = &FoxSelectArithmetic,
         [IR_BIT_XOR] = &FoxSelectArithmetic,
         [IR_LEFT_SHIFT] = &FoxSelectArithmetic,
         [IR_RIGHT_SHIFT] = &FoxSelectArithmetic,
-        // [IR_RIGHT_SHIFT_SIGNED] = &XrSelectArithmetic,
+        [IR_RIGHT_SHIFT_SIGNED] = &FoxSelectArithmetic,
         [IR_MULTIPLY] = &FoxSelectArithmetic,
 
         [IR_BIT_NOT] = &FoxSelectBitNot,

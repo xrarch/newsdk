@@ -154,21 +154,22 @@ extern void IrValueNumberConstantVariable(uint64_t _mng_var182, uint64_t _mng_co
 extern uint64_t IrFindConstant(uint64_t _mng_constant185, uint64_t _mng_op186);
 extern void IrGiveOpaqueValueVariable(uint64_t _mng_var187);
 extern void IrInitializeValueNumber();
-extern uint64_t IrCommutativity[7];
+extern uint64_t IrCommutativity[8];
 extern uint64_t IrCreateConstantBefore(uint64_t _mng_beforeinst188, uint64_t _mng_value189);
 extern void IrRemoveInstruction(uint64_t _mng_inst190);
 uint64_t IrCurrentFunction;
 uint64_t IrWhileEndLabel = 0ULL;
 uint64_t IrWhileBeginLabel = 0ULL;
 uint64_t IrCurrentFunctionType;
-uint64_t IrCommutativity[7] = {
+uint64_t IrCommutativity[8] = {
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
-    0x0001010000000000,
-    0x0000000000000000,
-    0x0100000000010101,
-    0x0000000100000000,
+    0x0100000000000000,
+    0x0000000000000001,
+    0x0001010100000000,
+    0x0000000001000000,
+    0x0000000000000001,
 };
 uint64_t IrTokenToInstructionType[11] = {
     0x0000000000000000,
@@ -180,8 +181,8 @@ uint64_t IrTokenToInstructionType[11] = {
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
-    0x282E2C342B2A0000,
-    0x0000000031302F29,
+    0x2C3230382F2E0000,
+    0x000000003534332D,
 };
 uint64_t IrAllocateStack(uint64_t _mng_func191, uint64_t _mng_bytes192) {
     uint64_t _jkl_retv;
@@ -385,7 +386,7 @@ uint64_t IrCreateLabel() {
     uint64_t __twr_v276;
     uint64_t __twr_v277;
     __twr_v264 = (uint64_t)(&IrCreateInstruction);
-    __twr_v265 = 21ULL;
+    __twr_v265 = 23ULL;
     __twr_v266 = ((uint64_t (*)(uint64_t))__twr_v264)(__twr_v265);
     _mng_label267 = __twr_v266;
     __twr_v268 = 0ULL;
@@ -643,7 +644,7 @@ void IrInsertInstructionTail(uint64_t _mng_inst328) {
     __twr_v362 = 88ULL;
     __twr_v363 = _mng_inst328 + __twr_v362;
     __twr_v364 = *(uint8_t*)(__twr_v363);
-    __twr_v365 = 23ULL;
+    __twr_v365 = 25ULL;
     if (__twr_v364 >= __twr_v365) { goto __twr_l27; } else { goto __twr_l26; }
     __twr_l26:;
     __twr_v366 = (uint64_t)(&IrValueNumberBarrier);
@@ -654,13 +655,13 @@ void IrInsertInstructionTail(uint64_t _mng_inst328) {
     __twr_v368 = 88ULL;
     __twr_v369 = _mng_inst328 + __twr_v368;
     __twr_v370 = *(uint8_t*)(__twr_v369);
-    __twr_v371 = 24ULL;
+    __twr_v371 = 26ULL;
     if (__twr_v370 <= __twr_v371) { goto __twr_l25; } else { goto __twr_l30; }
     __twr_l30:;
     __twr_v372 = 88ULL;
     __twr_v373 = _mng_inst328 + __twr_v372;
     __twr_v374 = *(uint8_t*)(__twr_v373);
-    __twr_v375 = 27ULL;
+    __twr_v375 = 29ULL;
     if (__twr_v374 >= __twr_v375) { goto __twr_l25; } else { goto __twr_l29; }
     __twr_l29:;
     __twr_v376 = (uint64_t)(&IrValueNumberBarrier);
@@ -977,7 +978,7 @@ void IrGenerateStore(uint64_t _mng_destvar475, uint64_t _mng_srcvar476, uint64_t
     uint64_t __twr_v528;
     uint64_t __twr_v529;
     __twr_v478 = (uint64_t)(&IrCreateInstruction);
-    __twr_v479 = 28ULL;
+    __twr_v479 = 30ULL;
     __twr_v480 = ((uint64_t (*)(uint64_t))__twr_v478)(__twr_v479);
     _mng_inst481 = __twr_v480;
     __twr_v482 = 80ULL;
@@ -1139,7 +1140,7 @@ void IrGenerateUnconditionalJump(uint64_t _mng_label562) {
     uint64_t _mng_inst566;
     uint64_t __twr_v567;
     __twr_v563 = (uint64_t)(&IrCreateInstruction);
-    __twr_v564 = 22ULL;
+    __twr_v564 = 24ULL;
     __twr_v565 = ((uint64_t (*)(uint64_t))__twr_v563)(__twr_v564);
     _mng_inst566 = __twr_v565;
     *(uint64_t*)(_mng_inst566) = _mng_label562;
@@ -1918,7 +1919,7 @@ uint64_t IrGenerateNot(uint64_t _mng_node858, uint64_t _mng_truelabel859, uint64
     __twr_v872 = ((uint64_t (*)(uint64_t))__twr_v867)(__twr_v871);
     _mng_var873 = __twr_v872;
     __twr_v874 = (uint64_t)(&IrGenerateOperatorInst);
-    __twr_v875 = 39ULL;
+    __twr_v875 = 43ULL;
     __twr_v876 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v874)(__twr_v875, _mng_var873, __twr_v870);
     _jkl_retv = __twr_v876;
     goto _jkl_epilogue;
@@ -1966,7 +1967,7 @@ uint64_t IrGenerateEquiv(uint64_t _mng_node877, uint64_t _mng_truelabel878, uint
     goto _jkl_epilogue;
     __twr_l124:;
     __twr_v894 = (uint64_t)(&IrGenerateOperatorInst);
-    __twr_v895 = 29ULL;
+    __twr_v895 = 31ULL;
     __twr_v896 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v894)(__twr_v895, _mng_var1885, _mng_var2890);
     _jkl_retv = __twr_v896;
     goto _jkl_epilogue;
@@ -2014,7 +2015,7 @@ uint64_t IrGenerateNotEquiv(uint64_t _mng_node897, uint64_t _mng_truelabel898, u
     goto _jkl_epilogue;
     __twr_l127:;
     __twr_v914 = (uint64_t)(&IrGenerateOperatorInst);
-    __twr_v915 = 30ULL;
+    __twr_v915 = 32ULL;
     __twr_v916 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v914)(__twr_v915, _mng_var1905, _mng_var2910);
     _jkl_retv = __twr_v916;
     goto _jkl_epilogue;
@@ -2147,10 +2148,10 @@ uint64_t IrGenerateLessThan(uint64_t _mng_node959, uint64_t _mng_truelabel960, u
     uint64_t __twr_v966;
     uint64_t __twr_v967;
     __twr_v962 = (uint64_t)(&IrGenerateComparison);
-    __twr_v963 = 17ULL;
+    __twr_v963 = 18ULL;
     __twr_v964 = 13ULL;
-    __twr_v965 = 35ULL;
-    __twr_v966 = 31ULL;
+    __twr_v965 = 38ULL;
+    __twr_v966 = 33ULL;
     __twr_v967 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v962)(_mng_node959, _mng_truelabel960, _mng_falselabel961, __twr_v963, __twr_v964, __twr_v965, __twr_v966);
     _jkl_retv = __twr_v967;
     goto _jkl_epilogue;
@@ -2167,10 +2168,10 @@ uint64_t IrGenerateGreaterThan(uint64_t _mng_node968, uint64_t _mng_truelabel969
     uint64_t __twr_v975;
     uint64_t __twr_v976;
     __twr_v971 = (uint64_t)(&IrGenerateComparison);
-    __twr_v972 = 18ULL;
+    __twr_v972 = 19ULL;
     __twr_v973 = 14ULL;
-    __twr_v974 = 36ULL;
-    __twr_v975 = 32ULL;
+    __twr_v974 = 39ULL;
+    __twr_v975 = 34ULL;
     __twr_v976 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v971)(_mng_node968, _mng_truelabel969, _mng_falselabel970, __twr_v972, __twr_v973, __twr_v974, __twr_v975);
     _jkl_retv = __twr_v976;
     goto _jkl_epilogue;
@@ -2187,10 +2188,10 @@ uint64_t IrGenerateLtEq(uint64_t _mng_node977, uint64_t _mng_truelabel978, uint6
     uint64_t __twr_v984;
     uint64_t __twr_v985;
     __twr_v980 = (uint64_t)(&IrGenerateComparison);
-    __twr_v981 = 19ULL;
+    __twr_v981 = 20ULL;
     __twr_v982 = 15ULL;
-    __twr_v983 = 37ULL;
-    __twr_v984 = 33ULL;
+    __twr_v983 = 40ULL;
+    __twr_v984 = 35ULL;
     __twr_v985 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v980)(_mng_node977, _mng_truelabel978, _mng_falselabel979, __twr_v981, __twr_v982, __twr_v983, __twr_v984);
     _jkl_retv = __twr_v985;
     goto _jkl_epilogue;
@@ -2207,10 +2208,10 @@ uint64_t IrGenerateGtEq(uint64_t _mng_node986, uint64_t _mng_truelabel987, uint6
     uint64_t __twr_v993;
     uint64_t __twr_v994;
     __twr_v989 = (uint64_t)(&IrGenerateComparison);
-    __twr_v990 = 20ULL;
+    __twr_v990 = 21ULL;
     __twr_v991 = 16ULL;
-    __twr_v992 = 38ULL;
-    __twr_v993 = 34ULL;
+    __twr_v992 = 41ULL;
+    __twr_v993 = 36ULL;
     __twr_v994 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))__twr_v989)(_mng_node986, _mng_truelabel987, _mng_falselabel988, __twr_v990, __twr_v991, __twr_v992, __twr_v993);
     _jkl_retv = __twr_v994;
     goto _jkl_epilogue;
@@ -2312,7 +2313,7 @@ uint64_t IrGenerateBitAnd(uint64_t _mng_node1033, uint64_t _mng_truelabel1034, u
     uint64_t __twr_v1037;
     uint64_t __twr_v1038;
     __twr_v1036 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1037 = 40ULL;
+    __twr_v1037 = 44ULL;
     __twr_v1038 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1036)(_mng_node1033, __twr_v1037, _mng_truelabel1034, _mng_falselabel1035);
     _jkl_retv = __twr_v1038;
     goto _jkl_epilogue;
@@ -2326,7 +2327,7 @@ uint64_t IrGenerateBitOr(uint64_t _mng_node1039, uint64_t _mng_truelabel1040, ui
     uint64_t __twr_v1043;
     uint64_t __twr_v1044;
     __twr_v1042 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1043 = 41ULL;
+    __twr_v1043 = 45ULL;
     __twr_v1044 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1042)(_mng_node1039, __twr_v1043, _mng_truelabel1040, _mng_falselabel1041);
     _jkl_retv = __twr_v1044;
     goto _jkl_epilogue;
@@ -2340,7 +2341,7 @@ uint64_t IrGeneratePlus(uint64_t _mng_node1045, uint64_t _mng_truelabel1046, uin
     uint64_t __twr_v1049;
     uint64_t __twr_v1050;
     __twr_v1048 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1049 = 42ULL;
+    __twr_v1049 = 46ULL;
     __twr_v1050 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1048)(_mng_node1045, __twr_v1049, _mng_truelabel1046, _mng_falselabel1047);
     _jkl_retv = __twr_v1050;
     goto _jkl_epilogue;
@@ -2354,7 +2355,7 @@ uint64_t IrGenerateMinus(uint64_t _mng_node1051, uint64_t _mng_truelabel1052, ui
     uint64_t __twr_v1055;
     uint64_t __twr_v1056;
     __twr_v1054 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1055 = 43ULL;
+    __twr_v1055 = 47ULL;
     __twr_v1056 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1054)(_mng_node1051, __twr_v1055, _mng_truelabel1052, _mng_falselabel1053);
     _jkl_retv = __twr_v1056;
     goto _jkl_epilogue;
@@ -2368,7 +2369,7 @@ uint64_t IrGenerateModulo(uint64_t _mng_node1057, uint64_t _mng_truelabel1058, u
     uint64_t __twr_v1061;
     uint64_t __twr_v1062;
     __twr_v1060 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1061 = 46ULL;
+    __twr_v1061 = 50ULL;
     __twr_v1062 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1060)(_mng_node1057, __twr_v1061, _mng_truelabel1058, _mng_falselabel1059);
     _jkl_retv = __twr_v1062;
     goto _jkl_epilogue;
@@ -2382,7 +2383,7 @@ uint64_t IrGenerateBitXor(uint64_t _mng_node1063, uint64_t _mng_truelabel1064, u
     uint64_t __twr_v1067;
     uint64_t __twr_v1068;
     __twr_v1066 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1067 = 47ULL;
+    __twr_v1067 = 51ULL;
     __twr_v1068 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1066)(_mng_node1063, __twr_v1067, _mng_truelabel1064, _mng_falselabel1065);
     _jkl_retv = __twr_v1068;
     goto _jkl_epilogue;
@@ -2396,7 +2397,7 @@ uint64_t IrGenerateLeftShift(uint64_t _mng_node1069, uint64_t _mng_truelabel1070
     uint64_t __twr_v1073;
     uint64_t __twr_v1074;
     __twr_v1072 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1073 = 48ULL;
+    __twr_v1073 = 52ULL;
     __twr_v1074 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1072)(_mng_node1069, __twr_v1073, _mng_truelabel1070, _mng_falselabel1071);
     _jkl_retv = __twr_v1074;
     goto _jkl_epilogue;
@@ -2410,7 +2411,7 @@ uint64_t IrGenerateMul(uint64_t _mng_node1075, uint64_t _mng_truelabel1076, uint
     uint64_t __twr_v1079;
     uint64_t __twr_v1080;
     __twr_v1078 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1079 = 52ULL;
+    __twr_v1079 = 56ULL;
     __twr_v1080 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1078)(_mng_node1075, __twr_v1079, _mng_truelabel1076, _mng_falselabel1077);
     _jkl_retv = __twr_v1080;
     goto _jkl_epilogue;
@@ -2428,7 +2429,7 @@ uint64_t IrGenerateRightShift(uint64_t _mng_node1081, uint64_t _mng_truelabel108
     uint64_t __twr_v1089;
     uint64_t __twr_v1090;
     uint64_t __twr_v1091;
-    _mng_type1084 = 49ULL;
+    _mng_type1084 = 53ULL;
     __twr_v1085 = (uint64_t)(&IrIsSignedType);
     __twr_v1086 = 48ULL;
     __twr_v1087 = _mng_node1081 + __twr_v1086;
@@ -2436,7 +2437,7 @@ uint64_t IrGenerateRightShift(uint64_t _mng_node1081, uint64_t _mng_truelabel108
     __twr_v1089 = ((uint64_t (*)(uint64_t))__twr_v1085)(__twr_v1088);
     if (!(__twr_v1089)) { goto __twr_l164; } else { goto __twr_l165; }
     __twr_l165:;
-    _mng_type1084 = 50ULL;
+    _mng_type1084 = 54ULL;
     __twr_l164:;
     __twr_v1090 = (uint64_t)(&IrGenerateArithmetic);
     __twr_v1091 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1090)(_mng_node1081, _mng_type1084, _mng_truelabel1082, _mng_falselabel1083);
@@ -2448,26 +2449,26 @@ uint64_t IrGenerateRightShift(uint64_t _mng_node1081, uint64_t _mng_truelabel108
 }
 uint64_t IrGenerateDivide(uint64_t _mng_node1092, uint64_t _mng_truelabel1093, uint64_t _mng_falselabel1094) {
     uint64_t _jkl_retv;
-    uint64_t _mng_type1095;
-    uint64_t __twr_v1096;
+    uint64_t __twr_v1095;
+    uint64_t _mng_type1096;
     uint64_t __twr_v1097;
     uint64_t __twr_v1098;
     uint64_t __twr_v1099;
     uint64_t __twr_v1100;
     uint64_t __twr_v1101;
     uint64_t __twr_v1102;
-    _mng_type1095 = 44ULL;
-    __twr_v1096 = (uint64_t)(&IrIsSignedType);
-    __twr_v1097 = 48ULL;
-    __twr_v1098 = _mng_node1092 + __twr_v1097;
+    __twr_v1095 = 48ULL;
+    _mng_type1096 = 48ULL;
+    __twr_v1097 = (uint64_t)(&IrIsSignedType);
+    __twr_v1098 = _mng_node1092 + __twr_v1095;
     __twr_v1099 = *(uint64_t*)(__twr_v1098);
-    __twr_v1100 = ((uint64_t (*)(uint64_t))__twr_v1096)(__twr_v1099);
+    __twr_v1100 = ((uint64_t (*)(uint64_t))__twr_v1097)(__twr_v1099);
     if (!(__twr_v1100)) { goto __twr_l167; } else { goto __twr_l168; }
     __twr_l168:;
-    _mng_type1095 = 45ULL;
+    _mng_type1096 = 49ULL;
     __twr_l167:;
     __twr_v1101 = (uint64_t)(&IrGenerateArithmetic);
-    __twr_v1102 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1101)(_mng_node1092, _mng_type1095, _mng_truelabel1093, _mng_falselabel1094);
+    __twr_v1102 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1101)(_mng_node1092, _mng_type1096, _mng_truelabel1093, _mng_falselabel1094);
     _jkl_retv = __twr_v1102;
     goto _jkl_epilogue;
     __twr_l166:;
@@ -2480,7 +2481,7 @@ uint64_t IrGenerateBitNot(uint64_t _mng_node1103, uint64_t _mng_truelabel1104, u
     uint64_t __twr_v1107;
     uint64_t __twr_v1108;
     __twr_v1106 = (uint64_t)(&IrGenerateUnaryArithmetic);
-    __twr_v1107 = 51ULL;
+    __twr_v1107 = 55ULL;
     __twr_v1108 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t))__twr_v1106)(_mng_node1103, __twr_v1107, _mng_truelabel1104, _mng_falselabel1105);
     _jkl_retv = __twr_v1108;
     goto _jkl_epilogue;
@@ -2592,7 +2593,7 @@ uint64_t IrGenerateCompoundTypeIndex(uint64_t _mng_node1131, uint64_t _mng_truel
     __twr_v1149 = ((uint64_t (*)(uint64_t))__twr_v1145)(__twr_v1148);
     _mng_constvar1150 = __twr_v1149;
     __twr_v1151 = (uint64_t)(&IrGenerateOperatorInst);
-    __twr_v1152 = 42ULL;
+    __twr_v1152 = 46ULL;
     __twr_v1153 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1151)(__twr_v1152, _mng_var1140, _mng_constvar1150);
     _mng_retvar1154 = __twr_v1153;
     __twr_v1155 = 1ULL;
@@ -2747,10 +2748,10 @@ uint64_t IrGenerateArrayIndex(uint64_t _mng_node1161, uint64_t _mng_truelabel116
     __twr_v1214 = ((uint64_t (*)(uint64_t))__twr_v1213)(_mng_stride1178);
     _mng_stridevar1215 = __twr_v1214;
     __twr_v1216 = (uint64_t)(&IrGenerateOperatorInst);
-    __twr_v1217 = 52ULL;
+    __twr_v1217 = 56ULL;
     __twr_v1218 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1216)(__twr_v1217, _mng_indexvar1212, _mng_stridevar1215);
     _mng_offsetvar1219 = __twr_v1218;
-    __twr_v1220 = 42ULL;
+    __twr_v1220 = 46ULL;
     __twr_v1221 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1216)(__twr_v1220, _mng_var1184, _mng_offsetvar1219);
     _mng_retvar1222 = __twr_v1221;
     __twr_v1223 = 1ULL;
@@ -2833,11 +2834,11 @@ void IrGenerateVarTableStore(uint64_t _mng_vartablevar1244, uint64_t _mng_argvar
     __twr_v1248 = ((uint64_t (*)(uint64_t))__twr_v1247)(_mng_offset1246);
     _mng_offsetvar1249 = __twr_v1248;
     __twr_v1250 = (uint64_t)(&IrGenerateOperatorInst);
-    __twr_v1251 = 42ULL;
+    __twr_v1251 = 46ULL;
     __twr_v1252 = ((uint64_t (*)(uint64_t, uint64_t, uint64_t))__twr_v1250)(__twr_v1251, _mng_vartablevar1244, _mng_offsetvar1249);
     _mng_addrvar1253 = __twr_v1252;
     __twr_v1254 = (uint64_t)(&IrCreateInstruction);
-    __twr_v1255 = 28ULL;
+    __twr_v1255 = 30ULL;
     __twr_v1256 = ((uint64_t (*)(uint64_t))__twr_v1254)(__twr_v1255);
     _mng_inst1257 = __twr_v1256;
     __twr_v1258 = 13ULL;
@@ -3076,7 +3077,7 @@ uint64_t IrGenerateFunctionCall(uint64_t _mng_node1264, uint64_t _mng_truelabel1
     __twr_v1272 = ((uint64_t (*)(uint64_t))__twr_v1267)(__twr_v1271);
     _mng_type1273 = __twr_v1272;
     __twr_v1274 = (uint64_t)(&IrCreateInstruction);
-    __twr_v1275 = 25ULL;
+    __twr_v1275 = 27ULL;
     __twr_v1276 = ((uint64_t (*)(uint64_t))__twr_v1274)(__twr_v1275);
     _mng_inst1277 = __twr_v1276;
     __twr_v1278 = (uint64_t)(&IrCreateVariable);
@@ -3633,10 +3634,10 @@ uint64_t IrGenerateModificationAssign(uint64_t _mng_node1526, uint64_t _mng_true
     __twr_v1557 = __twr_v1553 + __twr_v1556;
     __twr_v1558 = *(uint8_t*)(__twr_v1557);
     _mng_type1559 = __twr_v1558;
-    __twr_v1560 = 44ULL;
+    __twr_v1560 = 48ULL;
     if (_mng_type1559 == __twr_v1560) { goto __twr_l263; } else { goto __twr_l264; }
     __twr_l264:;
-    __twr_v1561 = 49ULL;
+    __twr_v1561 = 53ULL;
     if (_mng_type1559 != __twr_v1561) { goto __twr_l261; } else { goto __twr_l263; }
     __twr_l263:;
     __twr_v1562 = (uint64_t)(&IrIsSignedType);
@@ -3646,13 +3647,13 @@ uint64_t IrGenerateModificationAssign(uint64_t _mng_node1526, uint64_t _mng_true
     __twr_v1566 = ((uint64_t (*)(uint64_t))__twr_v1562)(__twr_v1565);
     if (!(__twr_v1566)) { goto __twr_l261; } else { goto __twr_l262; }
     __twr_l262:;
-    __twr_v1567 = 44ULL;
+    __twr_v1567 = 48ULL;
     if (_mng_type1559 != __twr_v1567) { goto __twr_l267; } else { goto __twr_l266; }
     __twr_l266:;
-    _mng_type1559 = 45ULL;
+    _mng_type1559 = 49ULL;
     goto __twr_l265;
     __twr_l267:;
-    _mng_type1559 = 50ULL;
+    _mng_type1559 = 54ULL;
     __twr_l265:;
     __twr_l261:;
     __twr_v1568 = (uint64_t)(&IrGenerateOperatorInst);
@@ -4020,7 +4021,7 @@ void IrGenerateBarrier(uint64_t _mng_node1673) {
     uint64_t _mng_inst1677;
     uint64_t __twr_v1678;
     __twr_v1674 = (uint64_t)(&IrCreateInstruction);
-    __twr_v1675 = 26ULL;
+    __twr_v1675 = 28ULL;
     __twr_v1676 = ((uint64_t (*)(uint64_t))__twr_v1674)(__twr_v1675);
     _mng_inst1677 = __twr_v1676;
     __twr_v1678 = (uint64_t)(&IrInsertInstructionTail);

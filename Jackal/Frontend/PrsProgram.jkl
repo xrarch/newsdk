@@ -934,7 +934,7 @@ FN PrsCheckConstant (
 
     signbits := JklSignExtendedTypeMasks[primtype] & value
 
-    IF signbits == JklSignExtendedTypeMasks[primtype] THEN
+    IF signbits == JklSignExtendedTypeMasks[primtype] OR signbits == 0 THEN
         LEAVE
     END
 

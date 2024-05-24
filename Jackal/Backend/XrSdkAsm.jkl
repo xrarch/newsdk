@@ -287,7 +287,8 @@ FN XrAsmEmitInitializer (
 
     IF value^.Type == AST_CONSTANT THEN
         XrAsmInsertString ( XrAsmDataDirectives[primtype] )
-        XrAsmInsertNumber ( value^.Body.Constant.Value )
+        XrAsmInsertNumber (
+            value^.Body.Constant.Value & JklPrimitiveTypeMasks[primtype] )
         XrAsmInsertString ( "\n" )
 
         LEAVE

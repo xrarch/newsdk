@@ -957,7 +957,7 @@ void LirSelectForFunction(uint64_t _mng_funcsym451) {
     __twr_v464 = 88ULL;
     __twr_v465 = _mng_inst462 + __twr_v464;
     __twr_v466 = *(uint8_t*)(__twr_v465);
-    __twr_v467 = 21ULL;
+    __twr_v467 = 23ULL;
     if (__twr_v466 != __twr_v467) { goto __twr_l59; } else { goto __twr_l58; }
     __twr_l58:;
     __twr_v468 = 8ULL;
@@ -989,13 +989,13 @@ void LirSelectForFunction(uint64_t _mng_funcsym451) {
     __twr_v484 = 88ULL;
     __twr_v485 = _mng_inst462 + __twr_v484;
     __twr_v486 = *(uint8_t*)(__twr_v485);
-    __twr_v487 = 25ULL;
+    __twr_v487 = 27ULL;
     if (__twr_v486 == __twr_v487) { goto __twr_l62; } else { goto __twr_l66; }
     __twr_l66:;
     __twr_v488 = 88ULL;
     __twr_v489 = _mng_inst462 + __twr_v488;
     __twr_v490 = *(uint8_t*)(__twr_v489);
-    __twr_v491 = 28ULL;
+    __twr_v491 = 30ULL;
     if (__twr_v490 == __twr_v491) { goto __twr_l62; } else { goto __twr_l65; }
     __twr_l65:;
     __twr_v492 = 88ULL;
@@ -1033,7 +1033,7 @@ void LirSelectForFunction(uint64_t _mng_funcsym451) {
     __twr_v514 = 88ULL;
     __twr_v515 = _mng_inst462 + __twr_v514;
     __twr_v516 = *(uint8_t*)(__twr_v515);
-    __twr_v517 = 23ULL;
+    __twr_v517 = 25ULL;
     if (__twr_v516 >= __twr_v517) { goto __twr_l57; } else { goto __twr_l62; }
     __twr_l62:;
     __twr_v518 = (uint64_t)(&LirSelect);
