@@ -1,0 +1,673 @@
+//
+// Host-specific entrypoint for the Jackal compiler program.
+//
+
+#INCLUDE "<inc>/Frontend.hjk"
+#INCLUDE "<inc>/Runtime.hjk"
+#INCLUDE "<inc>/Lexer.hjk"
+
+#ASM [
+
+mov sp, 0x100000
+mov fp, 0
+jmp Main
+
+LdrFox32Font:
+    .incbin "../../PC.8x8.hcf"
+
+// a2 - word
+// a1 - size
+// a0 - ptr
+memset:
+.global memset
+    push fp
+    mov  fp, sp
+
+    mov  r31, a1
+    srl  r31, 2
+    ifz  rjmp .skip
+
+.wordloop:
+    mov  [a0], a2
+    add  a0, 4
+    rloop .wordloop
+
+.skip:
+    mov  r31, a1
+    and  r31, 3
+    ifz  rjmp .skipbyte
+
+.byteloop:
+    mov.8 [a0], a2
+    srl  a2, 8
+    add  a0, 1
+    rloop .byteloop
+
+.skipbyte:
+    pop  fp
+    ret
+
+// a0 - dest
+// a1 - src
+// a2 - size
+memcpy:
+.global memcpy
+    push fp
+    mov  fp, sp
+
+    mov  r31, a2
+    srl  r31, 2
+    ifz  rjmp .skip
+
+.wordloop:
+    mov  [a0], [a1]
+    add  a0, 4
+    add  a1, 4
+    rloop .wordloop
+
+.skip:
+    mov  r31, a2
+    and  r31, 3
+    ifz  rjmp .skipbyte
+
+.byteloop:
+    mov.8 [a0], [a1]
+    add  a0, 1
+    add  a1, 1
+    rloop .byteloop
+
+.skipbyte:
+    pop  fp
+    ret
+
+// a0 - max
+// a1 - src
+// a2 - dest
+strncpy:
+.global strncpy
+    push fp
+    mov  fp, sp
+
+.byteloop:
+
+    cmp  a0, 0
+    ifz  rjmp .done
+    movz.8 t3, [a1]
+    mov.8 [a2], t3
+    add  a1, 1
+    add  a2, 1
+    sub  a0, 1
+    cmp  t3, 0
+    ifnz rjmp .byteloop
+
+    pop  fp
+    ret
+
+.done:
+    mov.8 [a2], 0
+
+    pop  fp
+    ret
+
+testfile:
+    .incbin "../../../ROMtest/bigtest.bin"
+testfileend:
+
+]
+
+EXTERN FN memset (
+    IN ptr : ^UBYTE,
+    IN sz : ULONG,
+    IN word : ULONG,
+)
+
+EXTERN FN memcpy (
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN sz : ULONG,
+)
+
+STRUCT HcfHeader
+    Magic : ULONG,
+    Width : ULONG,
+    Height : ULONG,
+    Flags : ULONG,
+    FontName : UBYTE[16],
+    Reserved : UBYTE[16],
+END
+
+EXTERN LdrFox32Font : HcfHeader
+
+#DEFINE FRAMEBUFFER_START 0x02000000
+#DEFINE FRAMEBUFFER_WIDTH  640
+#DEFINE FRAMEBUFFER_HEIGHT 480
+
+#DEFINE FRAMEBUFFER_SIZE [(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * 4)]
+#DEFINE FRAMEBUFFER_END [(FRAMEBUFFER_START + FRAMEBUFFER_SIZE)]
+
+X := 0
+Y := 0
+
+FN KvBlitBitsFastBackwardsFg (
+    IN bmp : ^UBYTE,
+    IN dest : ^ULONG,
+    IN mod : ULONG,
+    IN w : ULONG,
+    IN h : ULONG,
+)
+
+    WHILE h DO
+        left := w >> 3
+
+        WHILE left DO
+            byte := bmp^
+
+            IF byte THEN
+                IF byte & 128 THEN
+                    dest[0] = -1
+                END
+
+                IF byte & 64 THEN
+                    dest[1] = -1
+                END
+
+                IF byte & 32 THEN
+                    dest[2] = -1
+                END
+
+                IF byte & 16 THEN
+                    dest[3] = -1
+                END
+
+                IF byte & 8 THEN
+                    dest[4] = -1
+                END
+
+                IF byte & 4 THEN
+                    dest[5] = -1
+                END
+
+                IF byte & 2 THEN
+                    dest[6] = -1
+                END
+
+                IF byte & 1 THEN
+                    dest[7] = -1
+                END
+            END
+
+            left -= 1
+            bmp += 1
+            dest += 32
+        END
+
+        dest += mod
+        h -= 1
+    END
+END
+
+FN KvDrawCharacter (
+    IN char : UBYTE,
+    IN x : ULONG,
+    IN y : ULONG,
+    IN font : ^HcfHeader,
+)
+
+    gw := FRAMEBUFFER_WIDTH
+    w := font^.Width
+    h := font^.Height
+    dest := ((y * gw) << 2) + (x << 2) + FRAMEBUFFER_START
+
+    mod := (gw - w) << 2
+
+    bmp := ((w + 7) >> 3) * h * char
+    bmp += font + SIZEOF HcfHeader
+
+    KvBlitBitsFastBackwardsFg (
+        CAST bmp TO ^UBYTE, // bmp
+        CAST dest TO ^ULONG, // dest
+        mod, // mod
+        w, // w
+        h, // h
+    )
+END
+
+FN Putc (
+    IN c : UBYTE,
+)
+
+    IF c == '\n' THEN
+        Y += 8
+        X = 0
+
+        LEAVE
+    END
+
+    IF X >= 640 THEN
+        X = 0
+        Y += 8
+    END
+
+    IF Y >= 480 THEN
+        memset (
+            CAST FRAMEBUFFER_START TO ^UBYTE, // ptr
+            FRAMEBUFFER_SIZE, // sz
+            0, // word
+        )
+
+        Y = 0
+    END
+
+    KvDrawCharacter (
+        c, // char
+        X, // x
+        Y, // y
+        &LdrFox32Font, // font
+    )
+
+    X += 8
+END
+
+FN Puts (
+    IN str : ^UBYTE,
+)
+
+    i := 0
+
+    WHILE str[i] DO
+        Putc ( str[i] )
+
+        i += 1
+    END
+END
+
+EXTERN testfile : UBYTE
+EXTERN testfileend : UBYTE
+
+Pos : ^UBYTE = NULLPTR
+EndFile : ^UBYTE = NULLPTR
+
+FN TlReadFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+    IN buffer : ^VOID,
+) : UWORD
+
+    IF Pos >= EndFile THEN
+        RETURN 0
+    END
+
+    IF Pos + bytes > EndFile THEN
+        bytes = CAST EndFile - Pos TO UWORD
+    END
+
+    memcpy (
+        buffer, // dest
+        Pos, // src
+        bytes, // sz
+    )
+
+    Pos += bytes
+
+    RETURN bytes
+END
+
+TlBumpPtr : ^VOID = NULLPTR
+
+EXTERN _data : UBYTE
+EXTERN _data_size : UBYTE
+EXTERN _text_size : UBYTE
+
+TlBumpBytesLeft : UWORD = 0
+TlBumpBytesUsed : UWORD = 0
+TlBumpHits : UWORD = 0
+
+FN Main ()
+    // AbiTest ()
+
+    TlPrintString ( "reset\n" )
+
+    memcpy (
+        &_data, // dest
+        &_text_size + 0xF0000000, // src
+        CAST &_data_size TO UWORD, // sz
+    )
+
+    Pos = &testfile
+    EndFile = &testfileend
+    TlBumpPtr = CAST 0x800000 TO ^VOID
+
+    TlInitialize ()
+
+    args : ^UBYTE[5]
+    args[1] = "target=xr17032"
+    args[2] = "kitsunebit.jkl"
+    args[3] = "kitsunebit.s"
+    args[4] = "BITS=32"
+
+    JklCompileProgram ( 5, &args[0] )
+
+    TlPrintString ( "Bump allocator bytes usage: " )
+    TlPrintNumber ( TlBumpBytesUsed )
+    TlPrintString ( "\n" )
+
+    WHILE TRUE DO END
+END
+
+FN TlErrorExit ()
+    Puts ( "Error" )
+
+    WHILE TRUE DO END
+END
+
+FN TlPrintNumber (
+    IN num : UWORD,
+)
+
+    IF num == 0 THEN
+        Putc ( '0' )
+
+        LEAVE
+    END
+
+    log10 := 0
+    divisor := 1
+    n := num
+
+    WHILE n >= 10 DO
+        divisor *= 10
+        n /= 10
+        log10 += 1
+    END
+
+    log10 += 1
+
+    WHILE log10 DO
+        Putc ( '0' + (num / divisor) % 10 )
+
+        log10 -= 1
+        divisor /= 10
+    END
+END
+
+FN LexStreamError_C (
+    IN filename : ^UBYTE,
+    IN linenumber : UWORD,
+    IN linepos : UWORD,
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    Puts ( filename )
+    Puts ( ":" )
+    TlPrintNumber ( linenumber )
+    Puts ( ":" )
+    TlPrintNumber ( linepos )
+    Puts ( ": " )
+    Puts ( str )
+    Puts ( "\n" )
+
+    TlErrorExit ()
+END
+
+FN LexStreamError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+    stream := LexCurrentStream
+
+    LexStreamError_C (
+        &stream^.FileBlock^.IncludeName[0], // filename
+        stream^.LineNumber, // linenumber
+        stream^.LinePosition, // linepos
+        str, // str
+        err1, // err1
+        err2, // err2
+        err3, // err3
+    )
+END
+
+FN LexTokenError (
+    IN token : ^LexToken,
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    LexStreamError_C (
+        &token^.FileBlock^.IncludeName[0], // filename
+        token^.LineNumber, // linenumber
+        token^.LinePosition, // linepos
+        str, // str
+        err1, // err1
+        err2, // err2
+        err3, // err3
+    )
+END
+
+FN TlPrintString (
+    IN str : ^UBYTE,
+)
+
+    Puts ( str )
+END
+
+FN TlFillMemoryWithByte (
+    IN ptr : ^VOID,
+    IN sz : UWORD,
+    IN byte : UWORD,
+)
+
+    word := (byte << 24) | (byte << 16) | (byte << 8) | byte
+
+    memset (
+        ptr, // ptr
+        sz, // sz
+        word, // word
+    )
+END
+
+FN TlCopyMemory (
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN sz : UWORD,
+)
+
+    memcpy (
+        dest, // dst
+        src, // src
+        sz, // sz
+    )
+END
+
+FN TlBumpAlloc (
+    IN bytes : UWORD,
+    OUT ptr : ^VOID,
+) : TlStatus
+
+    // Eternal bump allocator for accelerating some stuff.
+    // First align to 8 bytes, assuming a 64-bit C host.
+
+    bytes += 3
+    bytes &= ~3
+
+    ptr = TlBumpPtr
+
+    TlBumpHits += 1
+    TlBumpBytesUsed += bytes
+    TlBumpPtr += bytes
+    TlBumpBytesLeft -= bytes
+
+    RETURN TL_SUCCESS
+END
+
+FN TlFree (
+    IN ptr : ^VOID,
+)
+
+    // free ( ptr )
+END
+
+FN TlAlloc (
+    IN bytes : UWORD,
+    OUT ptr : ^VOID,
+) : TlStatus
+    
+    bytes += 3
+    bytes &= ~3
+
+    ptr = TlBumpPtr
+
+    TlBumpPtr += bytes
+
+    RETURN TL_SUCCESS
+END
+
+FN TlCompareString (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+) : UWORD
+
+    i := 0
+
+    WHILE TRUE DO
+        IF NOT str1[i] AND NOT str2[i] THEN
+            RETURN 0
+        END
+
+        IF str1[i] != str2[i] THEN
+            RETURN 1
+        END
+
+        i += 1
+    END
+END
+
+FN TlCompareStringWithMax (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : UWORD,
+) : UWORD
+
+    i := 0
+
+    WHILE i < count DO
+        IF NOT str1[i] AND NOT str2[i] THEN
+            RETURN 0
+        END
+
+        IF str1[i] != str2[i] THEN
+            RETURN 1
+        END
+
+        i += 1
+    END
+
+    RETURN 0
+END
+
+FN TlMeasureString (
+    IN str : ^UBYTE,
+) : UWORD
+
+    cnt := 0
+
+    WHILE str[cnt] DO
+        cnt += 1
+    END
+
+    RETURN cnt
+END
+
+FN TlCopyString (
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+)
+    IF NOT bufsize THEN
+        LEAVE
+    END
+
+    WHILE bufsize - 1 DO
+        dest^ = src^
+
+        dest += 1
+        src += 1
+        bufsize -= 1
+
+        IF src^ == 0 THEN
+            BREAK
+        END
+    END
+
+    dest^ = 0
+END
+
+FN TlOpenSource (
+    IN filename : ^UBYTE,
+    OUT handle : ^VOID,
+) : TlStatus
+
+    RETURN TL_SUCCESS
+END
+
+FN TlOpenDestination (
+    IN filename : ^UBYTE,
+    OUT handle : ^VOID,
+) : TlStatus
+
+    RETURN TL_SUCCESS
+END
+
+FN TlClose (
+    IN handle : ^VOID,
+)
+
+END
+
+FN TlInternalError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    Puts ( "Internal compiler error: " )
+    Puts ( str )
+    Puts ( "\n" )
+
+    TlErrorExit ()
+END
+
+FN TlUserError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    Puts ( "User error: " )
+    Puts ( str )
+    Puts ( "\n" )
+
+    TlErrorExit ()
+END
+
+FN TlWriteFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+    IN buffer : ^VOID,
+) : UWORD
+
+    WHILE bytes DO
+        Putc ( (CAST buffer TO ^UBYTE)^ )
+
+        buffer += 1
+        bytes -= 1
+    END
+END

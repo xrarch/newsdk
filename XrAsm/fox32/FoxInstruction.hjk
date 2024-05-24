@@ -1,0 +1,24 @@
+STRUCT FoxOperand
+    ImmExpr : ^AsmExpressionNode,
+    Type : UBYTE,
+    Reg : UBYTE,
+    Offset : UBYTE,
+    Size : UBYTE,
+    RelocationType : UBYTE,
+    IsOp1 : UBYTE,
+    Relative : UBYTE,
+END
+
+STRUCT FoxInstructionBody
+    Op1 : FoxOperand,
+    Op2 : FoxOperand,
+
+    OpCount : UBYTE,
+
+    Condition : UBYTE,
+
+    HasOffset : UBYTE,
+
+    Opcode : UBYTE,
+    Bits : UBYTE,
+END

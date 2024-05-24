@@ -110,6 +110,7 @@ STRUCT LexToken
     Type : LexTokenType,
     Subtype : LexTokenSubtype,
     TypeContext : UBYTE,
+    WhitespaceBefore : UBYTE,
 END
 
 STRUCT LexStream

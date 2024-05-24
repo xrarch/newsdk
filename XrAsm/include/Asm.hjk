@@ -10,6 +10,7 @@
 ]
 
 #INCLUDE "../xr17032/XrInstruction.hjk"
+#INCLUDE "../fox32/FoxInstruction.hjk"
 
 STRUCT AsmIncBinBody
     Path : ^UBYTE,
@@ -30,6 +31,8 @@ ENUM AsmRelocationType : UBYTE
     XLO_RELOC_XR17032_LA = 3,
     XLO_RELOC_XR17032_FAR_INT = 4,
     XLO_RELOC_XR17032_FAR_LONG = 5,
+
+    XLO_RELOC_FOX32_CALL = 6,
 END
 
 #DEFINE XLO_ARCHITECTURE_XR17032 1
@@ -145,6 +148,7 @@ UNION AsmElementBody
     String : ^TlDynamicBuffer,
 
     Xr : XrInstructionBody,
+    Fox : FoxInstructionBody,
 END
 
 STRUCT AsmElement

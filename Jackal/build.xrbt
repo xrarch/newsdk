@@ -41,6 +41,13 @@ TARGET "Jackal"
 		LINKOPT "-move:text=0xFFF00000,data=0x1000,bss=@data"
 	#END
 
+	#IF ( STRCMP PLATFORM "FoxROMtest" )
+		SOURCES "./Frontend/FoxROMtest"
+
+		LINKOPT "-bin"
+		LINKOPT "-move:text=0xF0000000,data=0x1000,bss=@data"
+	#END
+
 	#IF TRG_CT
 		SOURCES "./CTranspiler"
 	#END

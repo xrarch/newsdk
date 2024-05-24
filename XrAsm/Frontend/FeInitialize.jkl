@@ -192,7 +192,7 @@ EXTERN FoxTargetInfo : AsmTargetInfoRecord
 EXTERN XrTargetInfo : AsmTargetInfoRecord
 
 TrgInfoRecords : ^AsmTargetInfoRecord[8] = {
-    // &FoxTargetInfo,
+    &FoxTargetInfo,
     &XrTargetInfo,
 
     NULLPTR, // MUST be here, as a sentinel

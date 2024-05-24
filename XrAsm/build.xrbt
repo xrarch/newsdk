@@ -8,6 +8,7 @@ TARGET "XrAsm"
 	SOURCES "./Frontend"
 
 	SOURCES "./xr17032"
+	SOURCES "./fox32"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		SOURCES "./Frontend/CHost"

@@ -69,6 +69,8 @@ LexKeywordHashTable : TlHashTable
 LexKeywordBumpArray : LexKeyword[256]
 LexKeywordBumpIndex := 0
 
+LexLastSawWhitespace := TRUE
+
 FN LexInsertKeyword (
     IN name : ^UBYTE,
     IN type : LexTokenType,
@@ -229,6 +231,13 @@ FN (LexGetCharacterF) LexGetCharacter () : UBYTE
             // EOF has been reached.
 
             BREAK
+        END
+
+        IF LexCharTreatment[byte] == CHAR_WHITESPACE THEN
+            LexLastSawWhitespace = TRUE
+
+        ELSE
+            LexLastSawWhitespace = FALSE
         END
 
         // We care about backslashes and about knowing whether we're in a
@@ -600,6 +609,8 @@ FN LexGetTokenContents (
         // Re-capture the stream location information for each character of
         // whitespace consumed, until we get the real thing.
 
+        token^.WhitespaceBefore = TRUE
+
         stream = LexCurrentStream
 
         IF stream THEN
@@ -762,6 +773,8 @@ FN LexNextToken (
     // Upper level part of token getting.
     // Receives a token string and some flags, and does some extra crunching on
     // it. Ignores the putback stack.
+
+    token^.WhitespaceBefore = LexLastSawWhitespace
 
     internedstring : ^LexInternedString
 
@@ -954,6 +967,7 @@ FN LexCopyToken (
     dest^.Type = src^.Type
     dest^.Subtype = src^.Subtype
     dest^.TypeContext = src^.TypeContext
+    dest^.WhitespaceBefore = src^.WhitespaceBefore
 END
 
 FN LexGetToken (

@@ -1,0 +1,940 @@
+//
+// Implements target-specific code for fox32 assembly.
+//
+
+#INCLUDE "<inc>/Asm.hjk"
+
+// FORWARD
+EXTERN FN (AsmTargetKeywordsF) FoxRegisterKeywords ()
+
+// FORWARD
+EXTERN FN (AsmTargetParseF) FoxParseInstruction (
+    IN token : ^LexToken,
+)
+
+// FORWARD
+EXTERN FN (AsmTargetEncodeF) FoxEncodeInstruction (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+PUBLIC FoxTargetInfo : AsmTargetInfoRecord = {
+    [Name] = "fox32",
+    [KeywordsFunc] = &FoxRegisterKeywords,
+    [ParseFunc] = &FoxParseInstruction,
+    [EncodeFunc] = &FoxEncodeInstruction,
+    [ConstantMask] = 0xFFFFFFFF,
+    [PointerSize] = 4,
+    [ObjectFileAlignment] = 4,
+    [ArchitectureCode] = XLO_ARCHITECTURE_FOX32,
+}
+
+#DEFINE FOX_OPERAND_REG 0
+#DEFINE FOX_OPERAND_REG_PTR 1
+#DEFINE FOX_OPERAND_IMM 2
+#DEFINE FOX_OPERAND_IMM_PTR 3
+
+#DEFINE FOX_COND_ALWAYS 0
+#DEFINE FOX_COND_IFZ 1
+#DEFINE FOX_COND_IFNZ 2
+#DEFINE FOX_COND_IFC 3
+#DEFINE FOX_COND_IFNC 4
+#DEFINE FOX_COND_IFGT 5
+#DEFINE FOX_COND_IFLTEQ 6
+
+#DEFINE FOX_BITS_8 0
+#DEFINE FOX_BITS_16 1
+#DEFINE FOX_BITS_32 2
+
+ENUM FoxInstructionSubtype : LexTokenSubtype
+    FOX_NOP,
+    FOX_ADD,
+    FOX_MUL,
+    FOX_AND,
+    FOX_SLA,
+    FOX_SRA,
+    FOX_BSE,
+    FOX_CMP,
+    FOX_JMP,
+    FOX_RJMP,
+    FOX_PUSH,
+    FOX_IN,
+    FOX_ISE,
+    FOX_MSE,
+    FOX_HALT,
+    FOX_INC,
+    FOX_OR,
+    FOX_IMUL,
+    FOX_SRL,
+    FOX_BCL,
+    FOX_MOV,
+    FOX_CALL,
+    FOX_RCALL,
+    FOX_POP,
+    FOX_OUT,
+    FOX_ICL,
+    FOX_MCL,
+    FOX_BRK,
+    FOX_SUB,
+    FOX_DIV,
+    FOX_XOR,
+    FOX_ROL,
+    FOX_ROR,
+    FOX_BTS,
+    FOX_MOVZ,
+    FOX_LOOP,
+    FOX_RLOOP,
+    FOX_RET,
+    FOX_INT,
+    FOX_TLB,
+    FOX_DEC,
+    FOX_REM,
+    FOX_NOT,
+    FOX_IDIV,
+    FOX_IREM,
+    FOX_RTA,
+    FOX_RETI,
+    FOX_FLP,
+    FOX_ICMP,
+    
+    FOX_IFZ,
+    FOX_IFNZ,
+    FOX_IFC,
+    FOX_IFLT,
+    FOX_IFNC,
+    FOX_IFGTEQ,
+    FOX_IFGT,
+    FOX_IFLTEQ,
+
+    FOX_MAX,
+END
+
+FoxOpcodes : UBYTE[FOX_MAX] = {
+    [FOX_NOP] = 0x00,
+    [FOX_ADD] = 0x01,
+    [FOX_MUL] = 0x02,
+    [FOX_AND] = 0x03,
+    [FOX_SLA] = 0x04,
+    [FOX_SRA] = 0x05,
+    [FOX_BSE] = 0x06,
+    [FOX_CMP] = 0x07,
+    [FOX_JMP] = 0x08,
+    [FOX_RJMP] = 0x09,
+    [FOX_PUSH] = 0x0A,
+    [FOX_IN] = 0x0B,
+    [FOX_ISE] = 0x0C,
+    [FOX_MSE] = 0x0D,
+    [FOX_HALT] = 0x10,
+    [FOX_INC] = 0x11,
+    [FOX_OR] = 0x13,
+    [FOX_IMUL] = 0x14,
+    [FOX_SRL] = 0x15,
+    [FOX_BCL] = 0x16,
+    [FOX_MOV] = 0x17,
+    [FOX_CALL] = 0x18,
+    [FOX_RCALL] = 0x19,
+    [FOX_POP] = 0x1A,
+    [FOX_OUT] = 0x1B,
+    [FOX_ICL] = 0x1C,
+    [FOX_MCL] = 0x1D,
+    [FOX_BRK] = 0x20,
+    [FOX_SUB] = 0x21,
+    [FOX_DIV] = 0x22,
+    [FOX_XOR] = 0x23,
+    [FOX_ROL] = 0x24,
+    [FOX_ROR] = 0x25,
+    [FOX_BTS] = 0x26,
+    [FOX_MOVZ] = 0x27,
+    [FOX_LOOP] = 0x28,
+    [FOX_RLOOP] = 0x29,
+    [FOX_RET] = 0x2A,
+    [FOX_INT] = 0x2C,
+    [FOX_TLB] = 0x2D,
+    [FOX_DEC] = 0x31,
+    [FOX_REM] = 0x32,
+    [FOX_NOT] = 0x33,
+    [FOX_IDIV] = 0x34,
+    [FOX_IREM] = 0x35,
+    [FOX_ICMP] = 0x37,
+    [FOX_RTA] = 0x39,
+    [FOX_RETI] = 0x3A,
+    [FOX_FLP] = 0x3D,
+
+    // Condition codes
+
+    [FOX_IFZ] = FOX_COND_IFZ,
+    [FOX_IFNZ] = FOX_COND_IFNZ,
+    [FOX_IFC] = FOX_COND_IFC,
+    [FOX_IFLT] = FOX_COND_IFC,
+    [FOX_IFNC] = FOX_COND_IFNC,
+    [FOX_IFGTEQ] = FOX_COND_IFNC,
+    [FOX_IFGT] = FOX_COND_IFGT,
+    [FOX_IFLTEQ] = FOX_COND_IFLTEQ,
+}
+
+FoxOp1IsDestination : UBYTE[FOX_MAX] = {
+    [FOX_NOP] = FALSE,
+    [FOX_ADD] = TRUE,
+    [FOX_MUL] = TRUE,
+    [FOX_AND] = TRUE,
+    [FOX_SLA] = TRUE,
+    [FOX_SRA] = TRUE,
+    [FOX_BSE] = TRUE,
+    [FOX_CMP] = FALSE,
+    [FOX_JMP] = FALSE,
+    [FOX_RJMP] = FALSE,
+    [FOX_PUSH] = FALSE,
+    [FOX_IN] = TRUE,
+    [FOX_ISE] = FALSE,
+    [FOX_MSE] = FALSE,
+    [FOX_HALT] = FALSE,
+    [FOX_INC] = TRUE,
+    [FOX_OR] = TRUE,
+    [FOX_IMUL] = TRUE,
+    [FOX_SRL] = TRUE,
+    [FOX_BCL] = TRUE,
+    [FOX_MOV] = TRUE,
+    [FOX_CALL] = FALSE,
+    [FOX_RCALL] = FALSE,
+    [FOX_POP] = TRUE,
+    [FOX_OUT] = FALSE,
+    [FOX_ICL] = FALSE,
+    [FOX_MCL] = FALSE,
+    [FOX_BRK] = FALSE,
+    [FOX_SUB] = TRUE,
+    [FOX_DIV] = TRUE,
+    [FOX_XOR] = TRUE,
+    [FOX_ROL] = TRUE,
+    [FOX_ROR] = TRUE,
+    [FOX_BTS] = TRUE,
+    [FOX_MOVZ] = TRUE,
+    [FOX_LOOP] = FALSE,
+    [FOX_RLOOP] = FALSE,
+    [FOX_RET] = FALSE,
+    [FOX_INT] = FALSE,
+    [FOX_TLB] = FALSE,
+    [FOX_DEC] = TRUE,
+    [FOX_REM] = TRUE,
+    [FOX_NOT] = TRUE,
+    [FOX_IDIV] = TRUE,
+    [FOX_IREM] = TRUE,
+    [FOX_ICMP] = FALSE,
+    [FOX_RTA] = TRUE,
+    [FOX_RETI] = FALSE,
+    [FOX_FLP] = FALSE,
+}
+
+FoxOperandCount : UBYTE[FOX_MAX] = {
+    [FOX_NOP] = 0,
+    [FOX_ADD] = 2,
+    [FOX_MUL] = 2,
+    [FOX_AND] = 2,
+    [FOX_SLA] = 2,
+    [FOX_SRA] = 2,
+    [FOX_BSE] = 2,
+    [FOX_CMP] = 2,
+    [FOX_JMP] = 1,
+    [FOX_RJMP] = 1,
+    [FOX_PUSH] = 1,
+    [FOX_IN] = 2,
+    [FOX_ISE] = 0,
+    [FOX_MSE] = 0,
+    [FOX_HALT] = 0,
+    [FOX_INC] = 1,
+    [FOX_OR] = 2,
+    [FOX_IMUL] = 2,
+    [FOX_SRL] = 2,
+    [FOX_BCL] = 2,
+    [FOX_MOV] = 2,
+    [FOX_CALL] = 1,
+    [FOX_RCALL] = 1,
+    [FOX_POP] = 1,
+    [FOX_OUT] = 2,
+    [FOX_ICL] = 0,
+    [FOX_MCL] = 0,
+    [FOX_BRK] = 0,
+    [FOX_SUB] = 2,
+    [FOX_DIV] = 2,
+    [FOX_XOR] = 2,
+    [FOX_ROL] = 2,
+    [FOX_ROR] = 2,
+    [FOX_BTS] = 2,
+    [FOX_MOVZ] = 2,
+    [FOX_LOOP] = 1,
+    [FOX_RLOOP] = 1,
+    [FOX_RET] = 0,
+    [FOX_INT] = 1,
+    [FOX_TLB] = 1,
+    [FOX_DEC] = 1,
+    [FOX_REM] = 2,
+    [FOX_NOT] = 1,
+    [FOX_IDIV] = 2,
+    [FOX_IREM] = 2,
+    [FOX_ICMP] = 2,
+    [FOX_RTA] = 2,
+    [FOX_RETI] = 0,
+    [FOX_FLP] = 1,
+}
+
+FoxSpecialImm : UBYTE[FOX_MAX] = {
+    [FOX_INC] = TRUE,
+    [FOX_DEC] = TRUE,
+}
+
+FoxBitnessToSize : UBYTE[4] = {
+    [FOX_BITS_8] = 1,
+    [FOX_BITS_16] = 2,
+    [FOX_BITS_32] = 4,
+}
+
+#DEFINE FOX_IS_RELATIVE 1
+#DEFINE FOX_IS_JMP 2
+
+FoxRelativity : UBYTE[FOX_MAX] = {
+    [FOX_JMP] = FOX_IS_JMP,
+    [FOX_RJMP] = FOX_IS_RELATIVE,
+    [FOX_CALL] = FOX_IS_JMP,
+    [FOX_RCALL] = FOX_IS_RELATIVE,
+    [FOX_LOOP] = FOX_IS_JMP,
+    [FOX_RLOOP] = FOX_IS_RELATIVE,
+}
+
+FoxClampedImm : UBYTE[FOX_MAX] = {
+    [FOX_SLA] = TRUE,
+    [FOX_SRA] = TRUE,
+    [FOX_SRL] = TRUE,
+    [FOX_ROR] = TRUE,
+    [FOX_ROL] = TRUE,
+    [FOX_BCL] = TRUE,
+    [FOX_BSE] = TRUE,
+    [FOX_BTS] = TRUE,
+}
+
+FN (AsmTargetKeywordsF) FoxRegisterKeywords ()
+
+    // Register all of the instruction keywords.
+    // These are keywords that cause the target independent parser to dispatch
+    // to us.
+
+    LexInsertKeyword ( "nop", TOKEN_INSTRUCTION, FOX_NOP, 0 )
+    LexInsertKeyword ( "add", TOKEN_INSTRUCTION, FOX_ADD, 0 )
+    LexInsertKeyword ( "mul", TOKEN_INSTRUCTION, FOX_MUL, 0 )
+    LexInsertKeyword ( "and", TOKEN_INSTRUCTION, FOX_AND, 0 )
+    LexInsertKeyword ( "sla", TOKEN_INSTRUCTION, FOX_SLA, 0 )
+    LexInsertKeyword ( "sra", TOKEN_INSTRUCTION, FOX_SRA, 0 )
+    LexInsertKeyword ( "bse", TOKEN_INSTRUCTION, FOX_BSE, 0 )
+    LexInsertKeyword ( "cmp", TOKEN_INSTRUCTION, FOX_CMP, 0 )
+    LexInsertKeyword ( "jmp", TOKEN_INSTRUCTION, FOX_JMP, 0 )
+    LexInsertKeyword ( "rjmp", TOKEN_INSTRUCTION, FOX_RJMP, 0 )
+    LexInsertKeyword ( "push", TOKEN_INSTRUCTION, FOX_PUSH, 0 )
+    LexInsertKeyword ( "in", TOKEN_INSTRUCTION, FOX_IN, 0 )
+    LexInsertKeyword ( "ise", TOKEN_INSTRUCTION, FOX_ISE, 0 )
+    LexInsertKeyword ( "mse", TOKEN_INSTRUCTION, FOX_MSE, 0 )
+    LexInsertKeyword ( "halt", TOKEN_INSTRUCTION, FOX_HALT, 0 )
+    LexInsertKeyword ( "inc", TOKEN_INSTRUCTION, FOX_INC, 0 )
+    LexInsertKeyword ( "or", TOKEN_INSTRUCTION, FOX_OR, 0 )
+    LexInsertKeyword ( "imul", TOKEN_INSTRUCTION, FOX_IMUL, 0 )
+    LexInsertKeyword ( "srl", TOKEN_INSTRUCTION, FOX_SRL, 0 )
+    LexInsertKeyword ( "bcl", TOKEN_INSTRUCTION, FOX_BCL, 0 )
+    LexInsertKeyword ( "mov", TOKEN_INSTRUCTION, FOX_MOV, 0 )
+    LexInsertKeyword ( "call", TOKEN_INSTRUCTION, FOX_CALL, 0 )
+    LexInsertKeyword ( "rcall", TOKEN_INSTRUCTION, FOX_RCALL, 0 )
+    LexInsertKeyword ( "pop", TOKEN_INSTRUCTION, FOX_POP, 0 )
+    LexInsertKeyword ( "out", TOKEN_INSTRUCTION, FOX_OUT, 0 )
+    LexInsertKeyword ( "icl", TOKEN_INSTRUCTION, FOX_ICL, 0 )
+    LexInsertKeyword ( "mcl", TOKEN_INSTRUCTION, FOX_MCL, 0 )
+    LexInsertKeyword ( "brk", TOKEN_INSTRUCTION, FOX_BRK, 0 )
+    LexInsertKeyword ( "sub", TOKEN_INSTRUCTION, FOX_SUB, 0 )
+    LexInsertKeyword ( "div", TOKEN_INSTRUCTION, FOX_DIV, 0 )
+    LexInsertKeyword ( "xor", TOKEN_INSTRUCTION, FOX_XOR, 0 )
+    LexInsertKeyword ( "rol", TOKEN_INSTRUCTION, FOX_ROL, 0 )
+    LexInsertKeyword ( "ror", TOKEN_INSTRUCTION, FOX_ROR, 0 )
+    LexInsertKeyword ( "bts", TOKEN_INSTRUCTION, FOX_BTS, 0 )
+    LexInsertKeyword ( "movz", TOKEN_INSTRUCTION, FOX_MOVZ, 0 )
+    LexInsertKeyword ( "loop", TOKEN_INSTRUCTION, FOX_LOOP, 0 )
+    LexInsertKeyword ( "rloop", TOKEN_INSTRUCTION, FOX_RLOOP, 0 )
+    LexInsertKeyword ( "ret", TOKEN_INSTRUCTION, FOX_RET, 0 )
+    LexInsertKeyword ( "int", TOKEN_INSTRUCTION, FOX_INT, 0 )
+    LexInsertKeyword ( "tlb", TOKEN_INSTRUCTION, FOX_TLB, 0 )
+    LexInsertKeyword ( "dec", TOKEN_INSTRUCTION, FOX_DEC, 0 )
+    LexInsertKeyword ( "rem", TOKEN_INSTRUCTION, FOX_REM, 0 )
+    LexInsertKeyword ( "not", TOKEN_INSTRUCTION, FOX_NOT, 0 )
+    LexInsertKeyword ( "idiv", TOKEN_INSTRUCTION, FOX_IDIV, 0 )
+    LexInsertKeyword ( "irem", TOKEN_INSTRUCTION, FOX_IREM, 0 )
+    LexInsertKeyword ( "rta", TOKEN_INSTRUCTION, FOX_RTA, 0 )
+    LexInsertKeyword ( "reti", TOKEN_INSTRUCTION, FOX_RETI, 0 )
+    LexInsertKeyword ( "flp", TOKEN_INSTRUCTION, FOX_FLP, 0 )
+    LexInsertKeyword ( "icmp", TOKEN_INSTRUCTION, FOX_ICMP, 0 )
+
+    LexInsertKeyword ( "ifz", TOKEN_INSTRUCTION, FOX_IFZ, 1 )
+    LexInsertKeyword ( "ifnz", TOKEN_INSTRUCTION, FOX_IFNZ, 1 )
+    LexInsertKeyword ( "ifc", TOKEN_INSTRUCTION, FOX_IFC, 1 )
+    LexInsertKeyword ( "iflt", TOKEN_INSTRUCTION, FOX_IFLT, 1 )
+    LexInsertKeyword ( "ifnc", TOKEN_INSTRUCTION, FOX_IFNC, 1 )
+    LexInsertKeyword ( "ifgteq", TOKEN_INSTRUCTION, FOX_IFGTEQ, 1 )
+    LexInsertKeyword ( "ifgt", TOKEN_INSTRUCTION, FOX_IFGT, 1 )
+    LexInsertKeyword ( "iflteq", TOKEN_INSTRUCTION, FOX_IFLTEQ, 1 )
+
+    // Registers (hyenasky assembler names)
+
+    LexInsertKeyword ( "t0", TOKEN_REGISTER, 0, 0 )
+    LexInsertKeyword ( "t1", TOKEN_REGISTER, 0, 1 )
+    LexInsertKeyword ( "t2", TOKEN_REGISTER, 0, 2 )
+    LexInsertKeyword ( "t3", TOKEN_REGISTER, 0, 3 )
+    LexInsertKeyword ( "t4", TOKEN_REGISTER, 0, 4 )
+    LexInsertKeyword ( "t5", TOKEN_REGISTER, 0, 5 )
+    LexInsertKeyword ( "t6", TOKEN_REGISTER, 0, 6 )
+    LexInsertKeyword ( "a0", TOKEN_REGISTER, 0, 7 )
+    LexInsertKeyword ( "a1", TOKEN_REGISTER, 0, 8 )
+    LexInsertKeyword ( "a2", TOKEN_REGISTER, 0, 9 )
+    LexInsertKeyword ( "a3", TOKEN_REGISTER, 0, 10 )
+    LexInsertKeyword ( "s0", TOKEN_REGISTER, 0, 11 )
+    LexInsertKeyword ( "s1", TOKEN_REGISTER, 0, 12 )
+    LexInsertKeyword ( "s2", TOKEN_REGISTER, 0, 13 )
+    LexInsertKeyword ( "s3", TOKEN_REGISTER, 0, 14 )
+    LexInsertKeyword ( "s4", TOKEN_REGISTER, 0, 15 )
+    LexInsertKeyword ( "s5", TOKEN_REGISTER, 0, 16 )
+    LexInsertKeyword ( "s6", TOKEN_REGISTER, 0, 17 )
+    LexInsertKeyword ( "s7", TOKEN_REGISTER, 0, 18 )
+    LexInsertKeyword ( "s8", TOKEN_REGISTER, 0, 19 )
+    LexInsertKeyword ( "s9", TOKEN_REGISTER, 0, 20 )
+    LexInsertKeyword ( "s10", TOKEN_REGISTER, 0, 21 )
+    LexInsertKeyword ( "s11", TOKEN_REGISTER, 0, 22 )
+    LexInsertKeyword ( "s12", TOKEN_REGISTER, 0, 23 )
+    LexInsertKeyword ( "s13", TOKEN_REGISTER, 0, 24 )
+    LexInsertKeyword ( "s14", TOKEN_REGISTER, 0, 25 )
+    LexInsertKeyword ( "s15", TOKEN_REGISTER, 0, 26 )
+    LexInsertKeyword ( "s16", TOKEN_REGISTER, 0, 27 )
+    LexInsertKeyword ( "s17", TOKEN_REGISTER, 0, 28 )
+    LexInsertKeyword ( "at", TOKEN_REGISTER, 0, 29 )
+    LexInsertKeyword ( "tp", TOKEN_REGISTER, 0, 30 )
+    LexInsertKeyword ( "r31", TOKEN_REGISTER, 0, 31 )
+    LexInsertKeyword ( "sp", TOKEN_REGISTER, 0, 32 )
+    LexInsertKeyword ( "esp", TOKEN_REGISTER, 0, 33 )
+    LexInsertKeyword ( "fp", TOKEN_REGISTER, 0, 34 )
+
+    // Registers (ryfox assembler names)
+
+    LexInsertKeyword ( "r0", TOKEN_REGISTER, 0, 0 )
+    LexInsertKeyword ( "r1", TOKEN_REGISTER, 0, 1 )
+    LexInsertKeyword ( "r2", TOKEN_REGISTER, 0, 2 )
+    LexInsertKeyword ( "r3", TOKEN_REGISTER, 0, 3 )
+    LexInsertKeyword ( "r4", TOKEN_REGISTER, 0, 4 )
+    LexInsertKeyword ( "r5", TOKEN_REGISTER, 0, 5 )
+    LexInsertKeyword ( "r6", TOKEN_REGISTER, 0, 6 )
+    LexInsertKeyword ( "r7", TOKEN_REGISTER, 0, 7 )
+    LexInsertKeyword ( "r8", TOKEN_REGISTER, 0, 8 )
+    LexInsertKeyword ( "r9", TOKEN_REGISTER, 0, 9 )
+    LexInsertKeyword ( "r10", TOKEN_REGISTER, 0, 10 )
+    LexInsertKeyword ( "r11", TOKEN_REGISTER, 0, 11 )
+    LexInsertKeyword ( "r12", TOKEN_REGISTER, 0, 12 )
+    LexInsertKeyword ( "r13", TOKEN_REGISTER, 0, 13 )
+    LexInsertKeyword ( "r14", TOKEN_REGISTER, 0, 14 )
+    LexInsertKeyword ( "r15", TOKEN_REGISTER, 0, 15 )
+    LexInsertKeyword ( "r16", TOKEN_REGISTER, 0, 16 )
+    LexInsertKeyword ( "r17", TOKEN_REGISTER, 0, 17 )
+    LexInsertKeyword ( "r18", TOKEN_REGISTER, 0, 18 )
+    LexInsertKeyword ( "r19", TOKEN_REGISTER, 0, 19 )
+    LexInsertKeyword ( "r20", TOKEN_REGISTER, 0, 20 )
+    LexInsertKeyword ( "r21", TOKEN_REGISTER, 0, 21 )
+    LexInsertKeyword ( "r22", TOKEN_REGISTER, 0, 22 )
+    LexInsertKeyword ( "r23", TOKEN_REGISTER, 0, 23 )
+    LexInsertKeyword ( "r24", TOKEN_REGISTER, 0, 24 )
+    LexInsertKeyword ( "r25", TOKEN_REGISTER, 0, 25 )
+    LexInsertKeyword ( "r26", TOKEN_REGISTER, 0, 26 )
+    LexInsertKeyword ( "r27", TOKEN_REGISTER, 0, 27 )
+    LexInsertKeyword ( "r28", TOKEN_REGISTER, 0, 28 )
+    LexInsertKeyword ( "r29", TOKEN_REGISTER, 0, 29 )
+    LexInsertKeyword ( "r30", TOKEN_REGISTER, 0, 30 )
+    // LexInsertKeyword ( "r31", TOKEN_REGISTER, 0, 31 )
+    LexInsertKeyword ( "rsp", TOKEN_REGISTER, 0, 32 )
+    LexInsertKeyword ( "resp", TOKEN_REGISTER, 0, 33 )
+    LexInsertKeyword ( "rfp", TOKEN_REGISTER, 0, 34 )
+END
+
+FN FoxCollectOffset () : UWORD
+
+    // Collect and return an 8-bit offset.
+
+    offset := AsmParseAtom ()
+
+    dumpster : ^VOID
+
+    val : UWORD
+
+    AsmEvaluateNodeMustWork (
+        offset, // node
+        OUT val, // value
+        OUT dumpster, // refsymbol
+    )
+
+    IF val > 255 THEN
+        LexTokenError ( &offset^.Token, "Offset must be 0-255", 0, 0, 0 )
+    END
+
+    RETURN val
+END
+
+FN FoxParseOperand (
+    IN bitness : UWORD,
+    IN operand : ^FoxOperand,
+    IN otheroperand : ^FoxOperand,
+    IN subtype : LexTokenSubtype,
+    IN hasoffset : UWORD,
+) : UWORD
+
+    // Parse a fox32 operand.
+
+    operand^.Offset = 0
+
+    token : LexToken
+
+    IF LexMatchToken (
+        &token, // token
+        TOKEN_REGISTER, // type
+        0, // subtype
+    ) THEN
+        // Reg.
+
+        operand^.Type = FOX_OPERAND_REG
+        operand^.Reg = token.TypeContext
+        operand^.Size = 1
+
+        RETURN FALSE
+    END
+
+    IF LexMatchToken (
+        &token, // token
+        TOKEN_LBRACKET, // type
+        0, // subtype
+    ) THEN
+        IF LexMatchToken (
+            &token, // token
+            TOKEN_REGISTER, // type
+            0, // subtype
+        ) THEN
+            // Reg pointer.
+
+            operand^.Type = FOX_OPERAND_REG_PTR
+            operand^.Reg = token.TypeContext
+            operand^.ImmExpr = NULLPTR
+            operand^.Size = 1
+            operand^.Offset = 0
+
+            IF hasoffset THEN
+                operand^.Size = 2
+            END
+
+            IF LexMatchToken (
+                &token, // token
+                TOKEN_OPER, // type
+                TOKEN_PLUS, // subtype
+            ) THEN
+                // Has offset.
+
+                hasoffset = TRUE
+                operand^.Offset = FoxCollectOffset ()
+                operand^.Size = 2
+
+                IF otheroperand AND
+                    otheroperand^.Type == FOX_OPERAND_REG_PTR THEN
+
+                    otheroperand^.Size = 2
+                END
+            END
+
+            IF NOT LexMatchToken (
+                &token, // token
+                TOKEN_RBRACKET, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &token, "Expected right bracket", 0, 0, 0 )
+            END
+
+            RETURN hasoffset
+        END
+
+        // Imm pointer.
+
+        operand^.Type = FOX_OPERAND_IMM_PTR
+        operand^.ImmExpr = AsmParseAtom ()
+        operand^.Size = 4
+        operand^.Relative = FALSE
+
+        operand^.RelocationType = XLO_RELOC_PTR
+
+        IF NOT LexMatchToken (
+            &token, // token
+            TOKEN_RBRACKET, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &token, "Expected right bracket", 0, 0, 0 )
+        END
+
+        RETURN FALSE
+    END
+
+    // Imm.
+
+    IF operand^.IsOp1 AND FoxOp1IsDestination[subtype] THEN
+        LexTokenError ( &token,
+            "Can't use an immediate on this operand", 0, 0, 0 )
+    END
+
+    operand^.Type = FOX_OPERAND_IMM
+    operand^.ImmExpr = AsmParseAtom ()
+    operand^.Relative = FALSE
+
+    IF NOT operand^.IsOp1 AND FoxClampedImm[subtype] THEN
+        // This is a special instruction where the op2 immediate value is
+        // clamped to 8 bits in width.
+
+        operand^.Size = 1
+
+    ELSE
+        operand^.Size = FoxBitnessToSize[bitness]
+
+        IF bitness == FOX_BITS_32 THEN
+            operand^.RelocationType = XLO_RELOC_PTR
+
+            IF FoxRelativity[subtype] == FOX_IS_RELATIVE THEN
+                operand^.RelocationType = XLO_RELOC_NONE
+                operand^.Relative = TRUE
+
+            ELSEIF FoxRelativity[subtype] == FOX_IS_JMP THEN
+                operand^.RelocationType = XLO_RELOC_FOX32_CALL
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
+FN FoxCreateInstruction (
+    IN token : ^LexToken,
+) : ^AsmElement
+
+    elem := AsmCreateElement (
+        token, // token
+        0, // size
+    )
+
+    elem^.Body.Fox.OpCount = 0
+    elem^.Body.Fox.Condition = FOX_COND_ALWAYS
+    elem^.Body.Fox.HasOffset = 0
+    elem^.Body.Fox.Opcode = 0
+    elem^.Body.Fox.Bits = FOX_BITS_32
+    
+    elem^.Body.Fox.Op1.Type = 0
+    elem^.Body.Fox.Op1.RelocationType = 0
+    elem^.Body.Fox.Op1.IsOp1 = TRUE
+
+    elem^.Body.Fox.Op2.Type = 0
+    elem^.Body.Fox.Op2.RelocationType = 0
+    elem^.Body.Fox.Op2.IsOp1 = FALSE
+
+    RETURN elem
+END
+
+#MACRO FoxSetInstructionSize ( inst, size ) [
+    AsmAdvanceSection ( size )
+]
+
+FN (AsmTargetParseF) FoxParseInstruction (
+    IN token : ^LexToken,
+)
+
+    // Parse a fox32 instruction!
+
+    elem := FoxCreateInstruction ( token )
+
+    // These are all of the form:
+    //
+    // [condition] [opcode]<.bits> [target]<, [source]>
+
+    IF token^.TypeContext THEN
+        // This is actually a condition token.
+
+        elem^.Body.Fox.Condition = FoxOpcodes[token^.Subtype]
+
+        // Grab the opcode token.
+
+        optoken : LexToken
+
+        IF NOT LexMatchToken (
+            &optoken, // token
+            TOKEN_INSTRUCTION, // type
+            0, // subtype
+        ) THEN
+            LexTokenError ( &optoken, "Expected an opcode", 0, 0, 0 )
+        END
+
+        IF optoken.TypeContext THEN
+            // Another condition token >:(
+
+            LexTokenError ( &optoken, "Unexpected condition token", 0, 0, 0 )
+        END
+
+        token = &optoken
+    END
+
+    // Now we know the condition and the opcode.
+
+    elem^.Body.Fox.OpCount = FoxOperandCount[token^.Subtype]
+    elem^.Body.Fox.Opcode = FoxOpcodes[token^.Subtype]
+
+    ptoken : LexToken
+
+    IF LexMatchToken (
+        &ptoken, // token
+        TOKEN_DOT, // type
+        0, // subtype
+    ) THEN
+        // Bitness is specified.
+
+        IF ptoken.WhitespaceBefore THEN
+            // Nevermind!
+
+            LexPutbackToken ( &ptoken )
+
+        ELSE
+            IF NOT LexMatchToken (
+                &ptoken, // token
+                TOKEN_NUMBER, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &ptoken, "Expected bitness number", 0, 0, 0 )
+            END
+
+            IF ptoken.Payload == 8 THEN
+                elem^.Body.Fox.Bits = FOX_BITS_8
+
+            ELSEIF ptoken.Payload == 16 THEN
+                elem^.Body.Fox.Bits = FOX_BITS_16
+
+            ELSEIF ptoken.Payload == 32 THEN
+                elem^.Body.Fox.Bits = FOX_BITS_32
+
+            ELSE
+                LexTokenError ( &ptoken, "Expected 8, 16, or 32", 0, 0, 0 )
+            END
+        END
+    END
+
+    IF FoxOperandCount[token^.Subtype] == 0 THEN
+        // We're done.
+
+        FoxSetInstructionSize ( elem, 2 )
+
+        LEAVE
+    END
+
+    // There's at least one operand so collect it.
+
+    elem^.Body.Fox.HasOffset = FoxParseOperand (
+        elem^.Body.Fox.Bits, // bitness
+        &elem^.Body.Fox.Op1, // operand
+        NULLPTR, // otheroperand
+        token^.Subtype, // subtype
+        FALSE, // hasoffset
+    )
+
+    IF FoxSpecialImm[token^.Subtype] THEN
+        // INC or DEC.
+
+        IF LexMatchToken (
+            &ptoken, // token
+            TOKEN_COMMA, // type
+            0, // subtype
+        ) THEN
+            // Special power of two thing.
+
+            IF NOT LexMatchToken (
+                &ptoken, // token
+                TOKEN_NUMBER, // type
+                0, // subtype
+            ) THEN
+                LexTokenError ( &ptoken, "Expected a number", 0, 0, 0 )
+            END
+
+            IF ptoken.Payload == 2 THEN
+                elem^.Body.Fox.Op2.Type = 1
+
+            ELSEIF ptoken.Payload == 4 THEN
+                elem^.Body.Fox.Op2.Type = 2
+
+            ELSEIF ptoken.Payload == 8 THEN
+                elem^.Body.Fox.Op2.Type = 3
+            
+            ELSE
+                LexTokenError ( &ptoken, "Expected 1, 2, 4, or 8", 0, 0, 0 )
+            END
+        END
+    END
+
+    IF FoxOperandCount[token^.Subtype] == 1 THEN
+        // We're done.
+
+        FoxSetInstructionSize ( elem, 2 + elem^.Body.Fox.Op1.Size )
+
+        LEAVE
+    END
+
+    // There's a second operand so collect it.
+
+    AsmConsumeComma ()
+
+    elem^.Body.Fox.HasOffset |= FoxParseOperand (
+        elem^.Body.Fox.Bits, // bitness
+        &elem^.Body.Fox.Op2, // operand
+        &elem^.Body.Fox.Op1, // otheroperand
+        token^.Subtype, // subtype
+        elem^.Body.Fox.HasOffset, // hasoffset
+    )
+
+    // We're done.
+
+    FoxSetInstructionSize (
+        elem, // inst
+        2 + elem^.Body.Fox.Op1.Size + elem^.Body.Fox.Op2.Size, // size
+    )
+END
+
+#MACRO FoxWriteInt ( dataptr, data ) [
+    dataptr[0] = data
+    dataptr[1] = data >> 8
+]
+
+#MACRO FoxWriteLong ( dataptr, data ) [
+    dataptr[0] = data
+    dataptr[1] = data >> 8
+    dataptr[2] = data >> 16
+    dataptr[3] = data >> 24
+]
+
+FN FoxEncodeOperand (
+    IN operand : ^FoxOperand,
+    IN dataptr : ^UBYTE,
+    IN offset : UWORD,
+    IN section : ^AsmSection,
+    IN instbase : UWORD,
+)
+
+    // Encode the operand structure starting at the provided data pointer.
+
+    IF operand^.Type == FOX_OPERAND_REG THEN
+        dataptr[0] = operand^.Reg
+
+        LEAVE
+    END
+
+    IF operand^.Type == FOX_OPERAND_REG_PTR THEN
+        dataptr[0] = operand^.Reg
+
+        IF operand^.Size == 2 THEN
+            dataptr[1] = operand^.Offset
+        END
+
+        LEAVE
+    END
+
+    // It's one of the immediates.
+
+    val : UWORD
+    refsymbol : ^LexSymbol
+
+    AsmEvaluateNodeMustWork (
+        operand^.ImmExpr, // node
+        OUT val, // value
+        OUT refsymbol, // refsymbol
+    )
+
+    IF operand^.RelocationType AND refsymbol THEN
+        // Add a relocation.
+
+        AsmAddRelocation (
+            offset, // offset
+            operand^.RelocationType, // relocationtype
+            section, // section
+            refsymbol, // symbol
+        )
+    END
+
+    IF operand^.Relative THEN
+        val -= instbase
+    END
+
+    IF operand^.Size == 1 THEN
+        dataptr[0] = val
+
+    ELSEIF operand^.Size == 2 THEN
+        FoxWriteInt ( dataptr, val )
+
+    ELSE
+        FoxWriteLong ( dataptr, val )
+    END
+END
+
+FN (AsmTargetEncodeF) FoxEncodeInstruction (
+    IN instruction : ^AsmElement,
+    IN section : ^AsmSection,
+    IN dataptr : ^UBYTE,
+)
+
+    // Encode the instruction starting at dataptr.
+
+    opcode : UINT[1]
+    opcode[0] = 0
+
+    opcode[0] |= instruction^.Body.Fox.Condition << 4
+    opcode[0] |= instruction^.Body.Fox.HasOffset << 7
+    opcode[0] |= instruction^.Body.Fox.Opcode << 8
+    opcode[0] |= instruction^.Body.Fox.Bits << 14
+
+    IF instruction^.Body.Fox.OpCount == 0 THEN
+        FoxWriteInt ( dataptr, opcode[0] )
+
+        LEAVE
+    END
+
+    IF instruction^.Body.Fox.OpCount == 1 THEN
+        opcode[0] |= instruction^.Body.Fox.Op1.Type << 0
+        opcode[0] |= instruction^.Body.Fox.Op2.Type << 2
+
+        FoxWriteInt ( dataptr, opcode[0] )
+
+        FoxEncodeOperand (
+            &instruction^.Body.Fox.Op1, // operand
+            dataptr + 2, // dataptr
+            instruction^.FileOffset + 2, // offset
+            section, // section
+            instruction^.MemoryOffset, // instbase
+        )
+
+        LEAVE
+    END
+
+    // Two operands.
+
+    opcode[0] |= instruction^.Body.Fox.Op2.Type << 0
+    opcode[0] |= instruction^.Body.Fox.Op1.Type << 2
+
+    FoxWriteInt ( dataptr, opcode[0] )
+
+    FoxEncodeOperand (
+        &instruction^.Body.Fox.Op2, // operand
+        dataptr + 2, // dataptr
+        instruction^.FileOffset + 2, // offset
+        section, // section
+        instruction^.MemoryOffset, // instbase
+    )
+
+    FoxEncodeOperand (
+        &instruction^.Body.Fox.Op1, // operand
+        dataptr + 2 + instruction^.Body.Fox.Op2.Size, // dataptr
+        instruction^.FileOffset + 2 + instruction^.Body.Fox.Op2.Size, // offset
+        section, // section
+        instruction^.MemoryOffset, // instbase
+    )
+END
