@@ -652,9 +652,6 @@ FN TlOpenSource (
 
     e[0] = FoxGetSize ( handle )
 
-    TlPrintNumber ( e[0] )
-    TlPrintString ( "\n" )
-
     RETURN TL_SUCCESS
 END
 
