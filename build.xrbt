@@ -19,3 +19,4 @@
 #DEPEND "./XrBuildTool/build.xrbt"
 #DEPEND "./XrAsm/build.xrbt"
 #DEPEND "./XrLink/build.xrbt"
+#DEPEND "./XrDiskUpdateTool/build.xrbt"

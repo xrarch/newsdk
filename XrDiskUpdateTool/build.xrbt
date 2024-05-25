@@ -1,0 +1,14 @@
+TARGET "XrDiskUpdateTool"
+	FILE "<bld>/xrdut.exe"
+	
+	INCDIR "../Library/include"
+	SOURCES "../Library"
+
+	INCDIR "./include"
+	SOURCES "./Dut"
+
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		SOURCES "./Dut/CHost"
+		SOURCES "../Library/CHost"
+	#END
+END

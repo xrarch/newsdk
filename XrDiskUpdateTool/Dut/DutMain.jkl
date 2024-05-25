@@ -1,0 +1,34 @@
+//
+// Disk Update Tool initialization.
+//
+
+#INCLUDE "<inc>/Dut.hjk"
+
+DutBinaryName : ^UBYTE = NULLPTR
+
+FN DutUsage ()
+    TlPrintString ( "Usage: " )
+    TlPrintString ( DutBinaryName )
+    TlPrintString ( " <command> <options ...>\n" )
+
+    TlPrintString ( "\nCommands:\n" )
+    TlPrintString ( "  info <imagename>: Print miscellaneous information about the disk image.\n" )
+
+    TlErrorExit ()
+END
+
+FN DutMain (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Dispatch to the correct command.
+
+    DutBinaryName = argv[0]
+
+    IF argc < 3 THEN
+        DutUsage ()
+    END
+
+    cmd := argv[1]
+END
