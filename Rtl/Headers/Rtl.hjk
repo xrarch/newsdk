@@ -15,6 +15,12 @@ EXTERN FN RtlCopyBytes (
     IN size : UWORD,
 )
 
+EXTERN FN RtlMoveBytes (
+    IN dest : ^VOID,
+    IN src : ^VOID,
+    IN size : UWORD,
+)
+
 EXTERN FN RtlPrintByCallbackByVarTable (
     IN callback : RtlPrintCallbackF,
     IN context : ^VOID,
