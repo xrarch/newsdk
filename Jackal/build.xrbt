@@ -19,7 +19,11 @@
 #EXPOSE TRG_XR17032
 
 TARGET "Jackal"
-	FILE "<bld>/jkl.exe"
+	#IF ( STRCMP PLATFORM "fox32os" )
+		FILE "<bld>/jkl.fxf"
+	#ELSE
+		FILE "<bld>/jkl.exe"
+	#END
 
 	INCDIR "../Library/include"
 	INCDIR "./include"
@@ -46,6 +50,13 @@ TARGET "Jackal"
 
 		LINKOPT "-bin"
 		LINKOPT "-move:text=0xF0000000,data=0x1000,bss=@data"
+	#END
+
+	#IF ( STRCMP PLATFORM "fox32os" )
+		SOURCES "./Frontend/fox32os"
+		SOURCES "../Library/fox32os"
+
+		LINKOPT "-fxf"
 	#END
 
 	#IF TRG_CT
