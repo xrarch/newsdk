@@ -20,7 +20,7 @@ FN LnkUsage ()
     TlPrintString ( "  imports <imagename>: Dump the import table.\n" )
     TlPrintString ( "  link <outputname> [objects ...] [-d <shared libs ...>]\n" )
     TlPrintString ( "   [-move:section1=expr,section2=expr,...] XOR [-base:addr] XOR [-mapbase:addr]\n" )
-    TlPrintString ( "   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin]\n" )
+    TlPrintString ( "   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin] [-fxf]\n" )
 
     TlErrorExit ()
 END
@@ -31,6 +31,7 @@ PUBLIC LnkStripRelocs := FALSE
 PUBLIC LnkCreateStubs := TRUE
 PUBLIC LnkCreateFragment := FALSE
 PUBLIC LnkCreateBin := FALSE
+PUBLIC LnkCreateFxf := FALSE
 PUBLIC LnkBaseAddress := 0
 PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
 PUBLIC LnkMappedBase := FALSE
@@ -72,6 +73,10 @@ FN LnkLinkStuff (
 
             ELSEIF TlCompareString ( argv[i], "-bin" ) == 0 THEN
                 LnkCreateBin = TRUE
+
+            ELSEIF TlCompareString ( argv[i], "-fxf" ) == 0 THEN
+                LnkCreateBin = TRUE
+                LnkCreateFxf = TRUE
 
             ELSEIF TlCompareString ( argv[i], "-d" ) == 0 THEN
                 static = FALSE

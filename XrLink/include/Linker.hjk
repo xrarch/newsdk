@@ -47,6 +47,7 @@ EXTERN LnkCreateBin : UWORD
 EXTERN LnkBaseAddress : UWORD
 EXTERN LnkMoveExpression : ^UBYTE
 EXTERN LnkMappedBase : UWORD
+EXTERN LnkCreateFxf : UWORD
 
 // XLO stuff.
 
@@ -172,6 +173,17 @@ STRUCT PACKED XloRelocEntry
     ExternIndex : UINT,
     Type : UBYTE,
     SectionIndex : UBYTE,
+END
+
+#DEFINE FXF_MAGIC_AND_VERSION 0x01465846
+
+STRUCT PACKED FxfHeader
+    MagicAndVersion : ULONG,
+    CodeBytes : ULONG,
+    CodeOffset : ULONG,
+    RelocTableBytes : ULONG,
+    RelocTableOffset : ULONG,
+    BssBytes : ULONG,
 END
 
 EXTERN LnkArchitectureType : UWORD

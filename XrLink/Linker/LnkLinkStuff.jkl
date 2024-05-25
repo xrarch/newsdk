@@ -1778,28 +1778,7 @@ FN LnkEvaluateMoveExpression (
     END
 END
 
-FN LnkPerformRelocations ()
-
-    // Perform the final section relocations before emission.
-
-    IF LnkMappedBase THEN
-        // A mappedbase was provided.
-
-        LnkAssignMappedBases ( LnkBaseAddress )
-
-    ELSEIF LnkBaseAddress THEN
-        // A simple base address was provided.
-
-        LnkAssignSectionBases ( LnkBaseAddress )
-
-    ELSEIF LnkMoveExpression THEN
-        // A move expression was provided.
-
-        LnkEvaluateMoveExpression ( LnkMoveExpression )
-
-    ELSE
-        LEAVE
-    END
+FN LnkIterateRelocationTables ()
 
     // Now iterate the relocation tables for each section and perform the
     // relocations to move them to their base address.
@@ -1859,6 +1838,200 @@ FN LnkPerformRelocations ()
 
         listentry = listentry^.Next
     END
+END
+
+FN LnkPerformRelocations ()
+
+    // Perform the final section relocations before emission.
+
+    IF LnkMappedBase THEN
+        // A mappedbase was provided.
+
+        LnkAssignMappedBases ( LnkBaseAddress )
+
+    ELSEIF LnkBaseAddress THEN
+        // A simple base address was provided.
+
+        LnkAssignSectionBases ( LnkBaseAddress )
+
+    ELSEIF LnkMoveExpression THEN
+        // A move expression was provided.
+
+        LnkEvaluateMoveExpression ( LnkMoveExpression )
+
+    ELSE
+        LEAVE
+    END
+
+    LnkIterateRelocationTables ()
+END
+
+FN LnkOutputFxf ()
+
+    // Output a fox32os FXF executable.
+
+    // First we need to relocate all of the sections contiguously, with a base
+    // of zero.
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    base := 0
+    sawbss := FALSE
+    codesize := 0
+    bsssize := 0
+    reloccount := 0
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        IF lnksection^.Flags & XLO_SECTION_ZERO THEN
+            sawbss = TRUE
+            bsssize += lnksection^.Size
+
+        ELSEIF sawbss THEN
+            TlPrintString (
+                "FXF requires BSS sections to be at the end\n" )
+
+            TlErrorExit ()
+
+        ELSE
+            codesize += (lnksection^.Size + lnksection^.DynamicData.Count)
+        END
+
+        lnksection^.VirtualAddress = base
+
+        base += (lnksection^.Size + lnksection^.DynamicData.Count)
+
+        reloccount += lnksection^.RelocationCount
+
+        listentry = listentry^.Next
+    END
+
+    // Now do the relocations.
+
+    LnkIterateRelocationTables ()
+
+    // Now initialize the header.
+
+    header : FxfHeader
+
+    header.MagicAndVersion = FXF_MAGIC_AND_VERSION
+    header.CodeBytes = codesize
+    header.RelocTableBytes = reloccount * 4
+    header.BssBytes = bsssize
+
+    offset := SIZEOF FxfHeader
+
+    header.RelocTableOffset = offset
+
+    reloctable : ^ULONG = NULLPTR
+
+    IF reloccount THEN
+        status := TlBumpAlloc (
+            reloccount * 4, // bytes
+            OUT reloctable, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate relocation table", 0, 0, 0 )
+        END
+
+        offset += reloccount * 4
+
+        i := 0
+
+        listhead = &LnkSectionTable.OrderedListHead
+        listentry = listhead^.Next
+
+        WHILE listentry != listhead DO
+            lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+            // Fill in the relocation table.
+
+            rhead := &lnksection^.RelocationListHead
+            rlistentry := rhead^.Next
+
+            WHILE rlistentry != rhead DO
+                lnkreloc := CONTAINEROF rlistentry TO LnkRelocation.Entry
+
+                reloctable[i] =
+                    lnkreloc^.Section^.VirtualAddress + lnkreloc^.SectionOffset
+
+                rlistentry = rlistentry^.Next
+                i += 1
+            END
+
+            listentry = listentry^.Next
+        END
+    END
+
+    header.CodeOffset = offset
+
+    // Now output all of these binary structures to the object file.
+
+    handle : ^VOID
+
+    status := TlOpenDestination (
+        LnkOutputName, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlPrintString ( LnkOutputName )
+        TlPrintString ( ": failed to open\n" )
+
+        TlErrorExit ()
+    END
+
+    // Output the header.
+
+    TlWriteFile (
+        handle, // handle
+        SIZEOF FxfHeader, // bytes
+        &header, // buffer
+    )
+
+    IF reloctable THEN
+        // Output the relocation table.
+
+        TlWriteFile (
+            handle, // handle
+            reloccount * 4, // bytes
+            reloctable, // buffer
+        )
+    END
+
+    // Output the section contents.
+
+    listhead = &LnkSectionTable.OrderedListHead
+    listentry = listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
+            IF lnksection^.Size THEN
+                TlWriteFile (
+                    handle, // handle
+                    lnksection^.Size, // bytes
+                    lnksection^.Data, // buffer
+                )
+            END
+
+            IF lnksection^.DynamicData.Count THEN
+                TlWriteFile (
+                    handle, // handle
+                    lnksection^.DynamicData.Count, // bytes
+                    lnksection^.DynamicData.Buffer, // buffer
+                )
+            END
+        END
+
+        listentry = listentry^.Next
+    END
+
+    TlClose ( handle )
 END
 
 FN LnkOutputBinary ()
@@ -2566,6 +2739,12 @@ FN LnkLinkObject ()
 
     IF LnkUnresolvedFixupCount AND NOT LnkCreateFragment THEN
         TlInternalError ( "Unresolved fixups in non-fragment", 0, 0, 0 )
+    END
+
+    IF LnkCreateFxf THEN
+        LnkOutputFxf ()
+
+        LEAVE
     END
 
     IF LnkCreateBin THEN
