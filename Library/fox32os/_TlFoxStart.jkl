@@ -379,6 +379,8 @@ EXTERN FN FoxWrapCreate (
 
 EXTERN FN end_current_task ()
 
+TlAllocatedBlockList : TlListEntry
+
 TlFoxStreamPtr : ^VOID
 TlFoxArg0 : ^VOID
 TlFoxArg1 : ^VOID
@@ -401,6 +403,19 @@ FN FoxExit ()
         i += 1
     END
 
+    // Free the allocated blocks.
+
+    head := &TlAllocatedBlockList
+    entry := head^.Next
+
+    WHILE entry != head DO
+        nextentry := entry^.Next
+
+        FoxWrapFree ( entry )
+
+        entry = nextentry
+    END
+
     // End the task.
 
     end_current_task ()
@@ -412,6 +427,8 @@ FN TlErrorExit ()
 END
 
 FN TlFoxStart ()
+
+    TlInitializeList ( &TlAllocatedBlockList )
 
     args : ^UBYTE[5]
     args[0] = "tool"
@@ -523,6 +540,11 @@ FN TlAlloc (
     OUT ptr : ^VOID,
 ) : TlStatus
 
+    bytes += SIZEOF TlListEntry
+
+    bytes += 3
+    bytes &= ~3
+
     TlHeapHits += 1
 
     ptr = FoxWrapAllocate ( bytes )
@@ -531,12 +553,23 @@ FN TlAlloc (
         RETURN TL_NO_MEMORY
     END
 
+    TlInsertAtTailList (
+        &TlAllocatedBlockList, // head
+        CAST ptr TO ^TlListEntry, // entry
+    )
+
+    ptr += SIZEOF TlListEntry
+
     RETURN TL_SUCCESS
 END
 
 FN TlFree (
     IN ptr : ^VOID,
 )
+
+    ptr -= SIZEOF TlListEntry
+
+    TlRemoveEntryList ( CAST ptr TO ^TlListEntry )
 
     FoxWrapFree ( ptr )
 END
