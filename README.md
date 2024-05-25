@@ -1,6 +1,6 @@
 # XR/SDK
 
-Self-hosting toolchain for the XR/station platform.
+Self-hosting toolchain for the XR/station and Fox32 platforms.
 
 Features a self-hosting compiler for the Jackal language, an assembler, a linker, and a multi-threaded build tool; all written in Jackal. These tools can run on any little-endian platform that has a C compiler, and also on the XR/17032 and Fox32 architectures.
 
