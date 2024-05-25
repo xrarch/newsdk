@@ -1,12 +1,12 @@
-;
-; Implements optimized string and memory manipulation routines for Jackal RTL.
-;
+//
+// Implements optimized string and memory manipulation routines for Jackal RTL.
+//
 
 .section text
 
-;a0 - ptr
-;a1 - size
-;a2 - ulong
+//a0 - ptr
+//a1 - size
+//a2 - ulong
 RtlFillMemoryWithUlong:
 .global RtlFillMemoryWithUlong
 	push fp
@@ -36,9 +36,9 @@ RtlFillMemoryWithUlong:
 	pop  fp
 	ret
 
-;a0 - dest
-;a1 - src
-;a2 - sz
+//a0 - dest
+//a1 - src
+//a2 - sz
 RtlCopyBytes:
 .global RtlCopyBytes
 	push fp
@@ -69,9 +69,9 @@ RtlCopyBytes:
 	pop  fp
 	ret
 
-;a0 - dest
-;a1 - src
-;a2 - size
+//a0 - dest
+//a1 - src
+//a2 - size
 RtlpCopyBytesBackwards:
 .global RtlpCopyBytesBackwards
 	push fp
@@ -82,8 +82,8 @@ RtlpCopyBytesBackwards:
 	add  a1, a2
 	add  a0, a2
 
-; if dest - src > 3, we can do our tricks.
-; otherwise, this will cause horrible things to happen.
+// if dest - src > 3, we can do our tricks.
+// otherwise, this will cause horrible things to happen.
 
 	mov  t0, a0
 	sub  t0, a1
@@ -114,17 +114,17 @@ RtlpCopyBytesBackwards:
 	pop  fp
 	ret
 
-;a0 - dest
-;a1 - src
-;a2 - size
+//a0 - dest
+//a1 - src
+//a2 - size
 RtlMoveBytes:
 .global RtlMoveBytes
 	cmp  a2, 0
-	ifz  rjmp .out
+	ifz  rjmp .done
 
 	cmp  a1, a0
 	iflt jmp RtlpCopyBytesBackwards
 	jmp  RtlCopyBytes
 
-.out:
+.done:
 	ret

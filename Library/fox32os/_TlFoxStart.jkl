@@ -1,0 +1,875 @@
+//
+// Host-specific runtime functions.
+// These are mostly just a bunch of wrapper functions.
+//
+
+#INCLUDE "<inc>/Runtime.hjk"
+
+#ASM [
+
+pop [TlFoxStreamPtr]
+pop [TlFoxArg0]
+pop [TlFoxArg1]
+pop [TlFoxArg2]
+pop [TlFoxArg3]
+
+jmp TlFoxStart
+
+//a0 - ptr
+//a1 - size
+//a2 - ulong
+RtlFillMemoryWithUlong:
+.global RtlFillMemoryWithUlong
+    push fp
+    mov  fp, sp
+
+    mov  r31, a1
+    srl  r31, 2
+    ifz  rjmp .skip
+
+.wordloop:
+    mov  [a0], a2
+    add  a0, 4
+    rloop .wordloop
+
+.skip:
+    mov  r31, a1
+    and  r31, 3
+    ifz  rjmp .skipbyte
+
+.byteloop:
+    mov.8 [a0], a2
+    srl  a2, 8
+    add  a0, 1
+    rloop .byteloop
+
+.skipbyte:
+    pop  fp
+    ret
+
+//a0 - dest
+//a1 - src
+//a2 - sz
+TlCopyMemory:
+.global TlCopyMemory
+    push fp
+    mov  fp, sp
+
+    mov  r31, a2
+    srl  r31, 2
+    ifz  rjmp .skip
+
+.wordloop:
+    mov  [a0], [a1]
+    add  a0, 4
+    add  a1, 4
+    rloop .wordloop
+
+.skip:
+    mov  r31, a2
+    and  r31, 3
+    ifz  rjmp .skipbyte
+
+.byteloop:
+    mov.8 [a0], [a1]
+    add  a0, 1
+    add  a1, 1
+    rloop .byteloop
+
+.skipbyte:
+    pop  fp
+    ret
+
+// fox32rom routine definitions
+
+// system jump table
+get_rom_version:                          jmp [0xF0040000]
+system_vsync_handler:                     jmp [0xF0040004]
+get_mouse_position:                       jmp [0xF0040008]
+new_event:                                jmp [0xF004000C]
+wait_for_event:                           jmp [0xF0040010]
+get_next_event:                           jmp [0xF0040014]
+panic:                                    jmp [0xF0040018]
+get_mouse_button:                         jmp [0xF004001C]
+scancode_to_ascii:                        jmp [0xF0040020]
+shift_pressed:                            jmp [0xF0040024]
+shift_released:                           jmp [0xF0040028]
+caps_pressed:                             jmp [0xF004002C]
+poweroff:                                 jmp [0xF0040030]
+get_rom_api_version:                      jmp [0xF0040034]
+
+// generic drawing jump table
+draw_str_generic:                         jmp [0xF0041000]
+draw_format_str_generic:                  jmp [0xF0041004]
+draw_decimal_generic:                     jmp [0xF0041008]
+draw_hex_generic:                         jmp [0xF004100C]
+draw_font_tile_generic:                   jmp [0xF0041010]
+draw_tile_generic:                        jmp [0xF0041014]
+set_tilemap:                              jmp [0xF0041018]
+draw_pixel_generic:                       jmp [0xF004101C]
+draw_filled_rectangle_generic:            jmp [0xF0041020]
+get_tilemap:                              jmp [0xF0041024]
+
+// background jump table
+fill_background:                          jmp [0xF0042000]
+draw_str_to_background:                   jmp [0xF0042004]
+draw_format_str_to_background:            jmp [0xF0042008]
+draw_decimal_to_background:               jmp [0xF004200C]
+draw_hex_to_background:                   jmp [0xF0042010]
+draw_font_tile_to_background:             jmp [0xF0042014]
+draw_tile_to_background:                  jmp [0xF0042018]
+draw_pixel_to_background:                 jmp [0xF004201C]
+draw_filled_rectangle_to_background:      jmp [0xF0042020]
+
+// overlay jump table
+fill_overlay:                             jmp [0xF0043000]
+draw_str_to_overlay:                      jmp [0xF0043004]
+draw_format_str_to_overlay:               jmp [0xF0043008]
+draw_decimal_to_overlay:                  jmp [0xF004300C]
+draw_hex_to_overlay:                      jmp [0xF0043010]
+draw_font_tile_to_overlay:                jmp [0xF0043014]
+draw_tile_to_overlay:                     jmp [0xF0043018]
+draw_pixel_to_overlay:                    jmp [0xF004301C]
+draw_filled_rectangle_to_overlay:         jmp [0xF0043020]
+check_if_overlay_covers_position:         jmp [0xF0043024]
+check_if_enabled_overlay_covers_position: jmp [0xF0043028]
+enable_overlay:                           jmp [0xF004302C]
+disable_overlay:                          jmp [0xF0043030]
+move_overlay:                             jmp [0xF0043034]
+resize_overlay:                           jmp [0xF0043038]
+set_overlay_framebuffer_pointer:          jmp [0xF004303C]
+get_unused_overlay:                       jmp [0xF0043040]
+make_coordinates_relative_to_overlay:     jmp [0xF0043044]
+
+// menu bar jump table
+enable_menu_bar:                          jmp [0xF0044000]
+disable_menu_bar:                         jmp [0xF0044004]
+menu_bar_click_event:                     jmp [0xF0044008]
+clear_menu_bar:                           jmp [0xF004400C]
+draw_menu_bar_root_items:                 jmp [0xF0044010]
+draw_menu_items:                          jmp [0xF0044014]
+close_menu:                               jmp [0xF0044018]
+menu_update_event:                        jmp [0xF004401C]
+
+// disk jump table
+read_sector:                              jmp [0xF0045000]
+write_sector:                             jmp [0xF0045004]
+ryfs_open:                                jmp [0xF0045008]
+ryfs_seek:                                jmp [0xF004500C]
+ryfs_read:                                jmp [0xF0045010]
+ryfs_read_whole_file:                     jmp [0xF0045014]
+ryfs_get_size:                            jmp [0xF0045018]
+ryfs_get_file_list:                       jmp [0xF004501C]
+ryfs_tell:                                jmp [0xF0045020]
+ryfs_write:                               jmp [0xF0045024]
+is_romdisk_available:                     jmp [0xF0045028]
+ryfs_create:                              jmp [0xF004502C]
+ryfs_delete:                              jmp [0xF0045030]
+ryfs_format:                              jmp [0xF0045034]
+is_ramdisk_formatted:                     jmp [0xF0045038]
+
+// memory copy/compare jump table
+copy_memory_bytes:                        jmp [0xF0046000]
+copy_memory_words:                        jmp [0xF0046004]
+copy_string:                              jmp [0xF0046008]
+compare_memory_bytes:                     jmp [0xF004600C]
+compare_memory_words:                     jmp [0xF0046010]
+compare_string:                           jmp [0xF0046014]
+string_length:                            jmp [0xF0046018]
+
+// integer jump table
+string_to_int:                            jmp [0xF0047000]
+
+// audio jump table
+play_audio:                               jmp [0xF0048000]
+stop_audio:                               jmp [0xF0048004]
+
+// random number jump table
+random:                                   jmp [0xF0049000]
+random_range:                             jmp [0xF0049004]
+
+// event types
+#DEFINE EVENT_TYPE_MOUSE_CLICK     0x00000000
+#DEFINE EVENT_TYPE_MOUSE_RELEASE   0x00000001
+#DEFINE EVENT_TYPE_KEY_DOWN        0x00000002
+#DEFINE EVENT_TYPE_KEY_UP          0x00000003
+#DEFINE EVENT_TYPE_MENU_BAR_CLICK  0x00000004
+#DEFINE EVENT_TYPE_MENU_UPDATE     0x00000005
+#DEFINE EVENT_TYPE_MENU_CLICK      0x00000006
+#DEFINE EVENT_TYPE_MENU_ACK        0x00000007
+#DEFINE EVENT_TYPE_EMPTY           0xFFFFFFFF
+
+// keys
+#DEFINE KEY_CTRL    0x1D
+#DEFINE KEY_LSHIFT  0x2A
+#DEFINE KEY_RSHIFT  0x36
+#DEFINE KEY_CAPS    0x3A
+
+// fox32os routine definitions
+
+// system jump table
+get_os_version:            jmp [0x00000810]
+get_os_api_version:        jmp [0x00000814]
+get_current_disk_id:       jmp [0x00000818]
+set_current_disk_id:       jmp [0x0000081C]
+get_boot_disk_id:          jmp [0x00000820]
+
+// FXF jump table
+parse_fxf_binary:          jmp [0x00000910]
+launch_fxf_from_disk:      jmp [0x00000914]
+launch_fxf_from_open_file: jmp [0x00000918]
+
+// task jump table
+new_task:                  jmp [0x00000A10]
+yield_task:                jmp [0x00000A14]
+end_current_task:          jmp [0x00000A18]
+get_current_task_id:       jmp [0x00000A1C]
+get_unused_task_id:        jmp [0x00000A20]
+is_task_id_used:           jmp [0x00000A24]
+save_state_and_yield_task: jmp [0x00000A28]
+sleep_task:                jmp [0x00000A2C]
+
+// memory jump table
+allocate_memory:           jmp [0x00000B10]
+free_memory:               jmp [0x00000B14]
+
+// window jump table
+new_window:                jmp [0x00000C10]
+destroy_window:            jmp [0x00000C14]
+new_window_event:          jmp [0x00000C18]
+get_next_window_event:     jmp [0x00000C1C]
+draw_title_bar_to_window:  jmp [0x00000C20]
+move_window:               jmp [0x00000C24]
+fill_window:               jmp [0x00000C28]
+get_window_overlay_number: jmp [0x00000C2C]
+start_dragging_window:     jmp [0x00000C30]
+new_messagebox:            jmp [0x00000C34]
+get_active_window_struct:  jmp [0x00000C38]
+set_window_flags:          jmp [0x00000C3C]
+
+// VFS jump table
+open:                      jmp [0x00000D10]
+seek:                      jmp [0x00000D14]
+tell:                      jmp [0x00000D18]
+read:                      jmp [0x00000D1C]
+write:                     jmp [0x00000D20]
+get_size:                  jmp [0x00000D24]
+create:                    jmp [0x00000D28]
+delete:                    jmp [0x00000D2C]
+copy:                      jmp [0x00000D30]
+
+// widget jump table
+draw_widgets_to_window:    jmp [0x00000E10]
+handle_widget_click:       jmp [0x00000E14]
+
+// resource jump table
+get_resource:              jmp [0x00000F10]
+
+// event types
+#DEFINE EVENT_TYPE_BUTTON_CLICK  0x80000000
+
+// widget types
+#DEFINE WIDGET_TYPE_BUTTON  0x00000000
+
+// window flags
+#DEFINE WINDOW_FLAG_ALWAYS_BACKGROUND  1
+
+FoxWrapAllocate:
+    mov r0, a0
+    call allocate_memory
+    mov a3, r0
+    ret
+
+FoxWrapFree:
+    mov r0, a0
+    jmp free_memory
+
+FoxGetCurrentDiskId:
+    call get_current_disk_id
+    mov a3, r0
+    ret
+
+FoxWrapOpen:
+    mov r0, a0
+    mov r1, a1
+    mov r2, a2
+    call open
+    mov a3, r0
+    ret
+
+FoxWrapCreate:
+    mov r0, a0
+    mov r1, a1
+    mov r2, a2
+    mov r3, a3
+    call create
+    mov a3, r0
+    ret
+
+FoxWrapRead:
+    mov r0, a0
+    mov r1, a1
+    mov r2, a2
+    jmp read
+
+FoxWrapWrite:
+    mov r0, a0
+    mov r1, a1
+    mov r2, a2
+    jmp write
+
+FoxGetSize:
+    mov r0, a0
+    call get_size
+    mov a3, r0
+    ret
+
+]
+
+#DEFINE FOX_BUMP_EXTENSION_MAX 256
+#DEFINE FOX_FILE_STRUCT_SIZE 64
+
+FoxBumpExtensions : ^VOID[FOX_BUMP_EXTENSION_MAX]
+FoxBumpExtensionIndex : UWORD = 0
+
+EXTERN FN RtlFillMemoryWithUlong (
+    IN ptr : ^VOID,
+    IN sz : UWORD,
+    IN ulong : ULONG,
+)
+
+EXTERN FN FoxWrapAllocate (
+    IN bytes : UWORD,
+) : ^VOID
+
+EXTERN FN FoxWrapFree (
+    IN ptr : ^VOID,
+)
+
+EXTERN FN FoxWrapRead (
+    IN bytes : UWORD,
+    IN filestruct : ^VOID,
+    IN buf : ^VOID,
+)
+
+EXTERN FN FoxWrapWrite (
+    IN bytes : UWORD,
+    IN filestruct : ^VOID,
+    IN buf : ^VOID,
+)
+
+EXTERN FN FoxGetSize (
+    IN filestruct : ^VOID,
+) : UWORD
+
+EXTERN FN FoxGetCurrentDiskId () : UWORD
+
+EXTERN FN FoxWrapOpen (
+    IN name : ^UBYTE,
+    IN diskid : UWORD,
+    IN filestruct : ^VOID,
+) : UWORD
+
+EXTERN FN FoxWrapCreate (
+    IN name : ^UBYTE,
+    IN diskid : UWORD,
+    IN filestruct : ^VOID,
+    IN size : UWORD,
+) : UWORD
+
+EXTERN FN end_current_task ()
+
+TlFoxStreamPtr : ^VOID
+TlFoxArg0 : ^VOID
+TlFoxArg1 : ^VOID
+TlFoxArg2 : ^VOID
+TlFoxArg3 : ^VOID
+
+EXTERN FN FoxMain (
+    IN argc : UWORD,
+    IN argv : ^^UBYTE,
+)
+
+FN FoxExit ()
+    // Free the bump allocator extensions.
+
+    i := 0
+
+    WHILE i < FoxBumpExtensionIndex DO
+        FoxWrapFree ( FoxBumpExtensions[i] )
+
+        i += 1
+    END
+
+    // End the task.
+
+    end_current_task ()
+END
+
+FN TlErrorExit ()
+
+    FoxExit ()
+END
+
+FN TlFoxStart ()
+
+    args : ^UBYTE[5]
+    args[0] = "tool"
+    args[1] = TlFoxArg0
+    args[2] = TlFoxArg1
+    args[3] = TlFoxArg2
+    args[4] = TlFoxArg3
+
+    argcount := 5
+
+    IF NOT TlFoxArg0 THEN
+        argcount = 1
+
+    ELSEIF NOT TlFoxArg1 THEN
+        argcount = 2
+
+    ELSEIF NOT TlFoxArg2 THEN
+        argcount = 3
+
+    ELSEIF NOT TlFoxArg3 THEN
+        argcount = 4
+    END
+
+    TlInitialize ()
+
+    FoxMain (
+        argcount, // argc
+        &args[0], // argv
+    )
+
+    FoxExit ()
+END
+
+FN TlCompareString (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+) : UWORD
+
+    i := 0
+
+    WHILE TRUE DO
+        IF NOT str1[i] AND NOT str2[i] THEN
+            RETURN 0
+        END
+
+        IF str1[i] != str2[i] THEN
+            RETURN str1[i] - str2[i]
+        END
+
+        i += 1
+    END
+END
+
+FN TlCompareStringWithMax (
+    IN str1 : ^UBYTE,
+    IN str2 : ^UBYTE,
+    IN count : UWORD,
+) : UWORD
+
+    i := 0
+
+    WHILE i < count DO
+        IF NOT str1[i] AND NOT str2[i] THEN
+            RETURN 0
+        END
+
+        IF str1[i] != str2[i] THEN
+            RETURN str1[i] - str2[i]
+        END
+
+        i += 1
+    END
+
+    RETURN 0
+END
+
+FN TlMeasureString (
+    IN str : ^UBYTE,
+) : UWORD
+
+    cnt := 0
+
+    WHILE str[cnt] DO
+        cnt += 1
+    END
+
+    RETURN cnt
+END
+
+FN TlFillMemoryWithByte (
+    IN ptr : ^VOID,
+    IN sz : UWORD,
+    IN byte : UWORD,
+)
+
+    ulong := (byte << 24) | (byte << 16) | (byte << 8) | byte
+
+    RtlFillMemoryWithUlong (
+        ptr, // ptr
+        sz, // sz
+        ulong, // ulong
+    )
+END
+
+TlHeapHits : UWORD = 0
+
+FN TlAlloc (
+    IN bytes : UWORD,
+    OUT ptr : ^VOID,
+) : TlStatus
+
+    TlHeapHits += 1
+
+    ptr = FoxWrapAllocate ( bytes )
+
+    IF ptr == 0 THEN
+        RETURN TL_NO_MEMORY
+    END
+
+    RETURN TL_SUCCESS
+END
+
+FN TlFree (
+    IN ptr : ^VOID,
+)
+
+    FoxWrapFree ( ptr )
+END
+
+TlBumpPtr := NULLPTR
+TlBumpBytesLeft : UWORD = 0
+TlBumpBytesUsed : UWORD = 0
+TlBumpHits : UWORD = 0
+
+#DEFINE TL_BUMP_EXTEND 65536
+
+FN TlBumpAlloc (
+    IN bytes : UWORD,
+    OUT ptr : ^VOID,
+) : TlStatus
+
+    // Eternal bump allocator for accelerating some stuff.
+    // First align to 4 bytes.
+
+    bytes += 3
+    bytes &= ~3
+
+    IF bytes <= TlBumpBytesLeft THEN
+        ptr = TlBumpPtr
+
+        TlBumpHits += 1
+        TlBumpBytesUsed += bytes
+        TlBumpPtr += bytes
+        TlBumpBytesLeft -= bytes
+
+        RETURN TL_SUCCESS
+    END
+
+    IF FoxBumpExtensionIndex == FOX_BUMP_EXTENSION_MAX THEN
+        TlInternalError ( "Out of bump extensions", 0, 0, 0 )
+    END
+
+    TlHeapHits += 1
+
+    allocbytes := TL_BUMP_EXTEND
+
+    IF bytes >= TL_BUMP_EXTEND THEN
+        allocbytes = bytes
+    END
+
+    TlBumpPtr = FoxWrapAllocate ( allocbytes )
+
+    IF NOT TlBumpPtr THEN
+        RETURN TL_NO_MEMORY
+    END
+
+    FoxBumpExtensions[FoxBumpExtensionIndex] = TlBumpPtr
+    FoxBumpExtensionIndex += 1
+
+    ptr = TlBumpPtr
+
+    TlBumpBytesUsed += bytes
+    TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
+    TlBumpPtr += bytes
+
+    RETURN TL_SUCCESS
+END
+
+FN TlCopyString (
+    IN dest : ^UBYTE,
+    IN src : ^UBYTE,
+    IN bufsize : UWORD,
+)
+    IF NOT bufsize THEN
+        LEAVE
+    END
+
+    WHILE bufsize - 1 DO
+        dest^ = src^
+
+        dest += 1
+        src += 1
+        bufsize -= 1
+
+        IF src^ == 0 THEN
+            BREAK
+        END
+    END
+
+    dest^ = 0
+END
+
+FN TlOpenSource (
+    IN filename : ^UBYTE,
+    OUT handle : ^VOID,
+) : TlStatus
+
+    status := TlBumpAlloc (
+        FOX_FILE_STRUCT_SIZE, // bytes
+        OUT handle, // ptr
+    )
+
+    IF status THEN
+        RETURN status
+    END
+
+    status = FoxWrapOpen (
+        filename, // filename
+        FoxGetCurrentDiskId (), // diskid
+        handle, // filestruct
+    )
+
+    IF status == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
+
+    e := CAST handle + 60 TO ^ULONG
+
+    e[0] = FoxGetSize ( handle )
+
+    TlPrintNumber ( e[0] )
+    TlPrintString ( "\n" )
+
+    RETURN TL_SUCCESS
+END
+
+FN TlOpenDestination (
+    IN filename : ^UBYTE,
+    OUT handle : ^VOID,
+) : TlStatus
+
+    status := TlBumpAlloc (
+        FOX_FILE_STRUCT_SIZE, // bytes
+        OUT handle, // ptr
+    )
+
+    IF status THEN
+        RETURN status
+    END
+
+    status = FoxWrapCreate (
+        filename, // filename
+        FoxGetCurrentDiskId (), // diskid
+        handle, // filestruct
+        0, // size
+    )
+
+    IF status == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
+
+    RETURN TL_SUCCESS
+END
+
+FN TlClose (
+    IN handle : ^VOID,
+)
+
+    // fclose ( handle )
+END
+
+FN TlReadFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+    IN buffer : ^VOID,
+) : UWORD
+
+    // XXX make sure to check for errors on hosts where that is more
+    // applicable.
+
+    e := CAST handle + 60 TO ^ULONG
+
+    IF bytes > e[0] THEN
+        bytes = e[0]
+    END
+
+    e[0] -= bytes
+
+    TlPrintNumber ( bytes )
+    TlPrintString ( "\n" )
+
+    FoxWrapRead (
+        bytes, // bytes
+        handle, // filestruct
+        buffer, // buffer
+    )
+
+    RETURN bytes
+END
+
+FN TlWriteFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+    IN buffer : ^VOID,
+) : UWORD
+
+    // XXX make sure to check for errors on hosts where that is more
+    // applicable.
+
+    FoxWrapWrite (
+        bytes, // bytes
+        handle, // filestruct
+        buffer, // buffer
+    )
+
+    RETURN bytes
+END
+
+FN FoxPutc (
+    IN byte : UWORD,
+)
+
+    byteonstack : UBYTE[1]
+    byteonstack[0] = byte
+
+    FoxWrapWrite (
+        1, // bytes
+        TlFoxStreamPtr, // filestruct
+        &byteonstack[0], // buffer
+    )
+END
+
+FN TlPrintNumber (
+    IN num : UWORD,
+)
+
+    IF num == 0 THEN
+        FoxPutc ( '0' )
+
+        LEAVE
+    END
+
+    log10 := 0
+    divisor := 1
+    n := num
+
+    WHILE n >= 10 DO
+        divisor *= 10
+        n /= 10
+        log10 += 1
+    END
+
+    log10 += 1
+
+    WHILE log10 DO
+        FoxPutc ( '0' + (num / divisor) % 10 )
+
+        log10 -= 1
+        divisor /= 10
+    END
+END
+
+FN TlPrintHex (
+    IN num : UWORD,
+)
+
+    IF num == 0 THEN
+        FoxPutc ( '0' )
+
+        LEAVE
+    END
+
+    log16 := 0
+    divisor := 1
+    n := num
+
+    WHILE n >= 16 DO
+        divisor *= 16
+        n /= 16
+        log16 += 1
+    END
+
+    log16 += 1
+
+    WHILE log16 DO
+        digit := (num / divisor) % 16
+
+        IF digit >= 0 AND digit <= 9 THEN
+            FoxPutc ( '0' + digit )
+        
+        ELSE
+            FoxPutc ( 'A' + digit )
+        END
+
+        log16 -= 1
+        divisor /= 16
+    END
+END
+
+FN TlPrintString (
+    IN str : ^UBYTE,
+)
+
+    len := TlMeasureString ( str )
+
+    FoxWrapWrite (
+        len, // bytes
+        TlFoxStreamPtr, // filestruct
+        str, // buffer
+    )
+END
+
+FN TlCurrentEpochTime () : UWORD
+
+    // TEMP
+
+    RETURN 0
+END
+
+FN TlStatFile (
+    IN path : ^UBYTE,
+    IN statrecord : ^TlStatRecord,
+) : UWORD
+
+    handle : ^VOID
+
+    status := TlBumpAlloc (
+        FOX_FILE_STRUCT_SIZE, // bytes
+        OUT handle, // ptr
+    )
+
+    IF status THEN
+        RETURN status
+    END
+
+    status = FoxWrapOpen (
+        path, // filename
+        FoxGetCurrentDiskId (), // diskid
+        handle, // filestruct
+    )
+
+    IF status == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
+
+    statrecord^.FileType = TL_FT_FILE
+    statrecord^.ModificationTime = 0
+    statrecord^.SizeInBytes = FoxGetSize ( handle )
+
+    RETURN TL_SUCCESS
+END

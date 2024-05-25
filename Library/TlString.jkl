@@ -119,3 +119,43 @@ FN TlStringToNumber (
 
     RETURN TRUE
 END
+
+FN TlInternalError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    TlPrintString ( "Internal tool error: " )
+    TlPrintString ( str )
+    TlPrintString ( " (" )
+    TlPrintNumber ( err1 )
+    TlPrintString ( " " )
+    TlPrintNumber ( err2 )
+    TlPrintString ( " " )
+    TlPrintNumber ( err3 )
+    TlPrintString ( ")\n" )
+
+    TlErrorExit ()
+END
+
+FN TlUserError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    TlPrintString ( "User error: " )
+    TlPrintString ( str )
+    TlPrintString ( " (" )
+    TlPrintNumber ( err1 )
+    TlPrintString ( " " )
+    TlPrintNumber ( err2 )
+    TlPrintString ( " " )
+    TlPrintNumber ( err3 )
+    TlPrintString ( ")\n" )
+
+    TlErrorExit ()
+END

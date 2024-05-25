@@ -128,6 +128,72 @@ FN LexCreateSymbolTable (
     )
 END
 
+FN LexPrintError (
+    IN filename : ^UBYTE,
+    IN linenumber : UWORD,
+    IN linepos : UWORD,
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    TlPrintString ( filename )
+    TlPrintString ( ":" )
+    TlPrintNumber ( linenumber )
+    TlPrintString ( ":" )
+    TlPrintNumber ( linepos )
+    TlPrintString ( ": " )
+    TlPrintString ( str )
+    TlPrintString ( " (" )
+    TlPrintNumber ( err1 )
+    TlPrintString ( " " )
+    TlPrintNumber ( err2 )
+    TlPrintString ( " " )
+    TlPrintNumber ( err3 )
+    TlPrintString ( ")\n" )
+
+    TlErrorExit ()
+END
+
+FN LexStreamError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+    stream := LexCurrentStream
+
+    LexPrintError (
+        &stream^.FileBlock^.IncludeName[0], // filename
+        stream^.LineNumber, // linenumber
+        stream^.LinePosition, // linepos
+        str, // str
+        err1, // err1
+        err2, // err2
+        err3, // err3
+    )
+END
+
+FN LexTokenError (
+    IN token : ^LexToken,
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    LexPrintError (
+        &token^.FileBlock^.IncludeName[0], // filename
+        token^.LineNumber, // linenumber
+        token^.LinePosition, // linepos
+        str, // str
+        err1, // err1
+        err2, // err2
+        err3, // err3
+    )
+END
+
 FN LexInitialize ()
 
     dumpster : UBYTE

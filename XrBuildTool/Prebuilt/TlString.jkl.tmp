@@ -340,3 +340,63 @@ uint64_t TlStringToNumber(uint64_t _mng_src146, uint64_t _mng_bufsize147, uint64
     *(uint64_t*)(_mng_o_num) = _mng_num158;
     return _jkl_retv;
 }
+void TlInternalError(uint64_t _mng_str198, uint64_t _mng_err1199, uint64_t _mng_err2200, uint64_t _mng_err3201) {
+    uint64_t __twr_v202;
+    uint64_t __twr_v203;
+    uint64_t __twr_v204;
+    uint64_t __twr_v205;
+    uint64_t __twr_v206;
+    uint64_t __twr_v207;
+    uint64_t __twr_v208;
+    uint64_t __twr_v209;
+    __twr_v202 = (uint64_t)(&TlPrintString);
+    __twr_v203 = (uint64_t)(&"Internal tool error: ");
+    ((void (*)(uint64_t))__twr_v202)(__twr_v203);
+    ((void (*)(uint64_t))__twr_v202)(_mng_str198);
+    __twr_v204 = (uint64_t)(&" (");
+    ((void (*)(uint64_t))__twr_v202)(__twr_v204);
+    __twr_v205 = (uint64_t)(&TlPrintNumber);
+    ((void (*)(uint64_t))__twr_v205)(_mng_err1199);
+    __twr_v206 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v202)(__twr_v206);
+    ((void (*)(uint64_t))__twr_v205)(_mng_err2200);
+    __twr_v207 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v202)(__twr_v207);
+    ((void (*)(uint64_t))__twr_v205)(_mng_err3201);
+    __twr_v208 = (uint64_t)(&")\n");
+    ((void (*)(uint64_t))__twr_v202)(__twr_v208);
+    __twr_v209 = (uint64_t)(&TlErrorExit);
+    ((void (*)())__twr_v209)();
+    __twr_l48:;
+    _jkl_epilogue:;
+}
+void TlUserError(uint64_t _mng_str210, uint64_t _mng_err1211, uint64_t _mng_err2212, uint64_t _mng_err3213) {
+    uint64_t __twr_v214;
+    uint64_t __twr_v215;
+    uint64_t __twr_v216;
+    uint64_t __twr_v217;
+    uint64_t __twr_v218;
+    uint64_t __twr_v219;
+    uint64_t __twr_v220;
+    uint64_t __twr_v221;
+    __twr_v214 = (uint64_t)(&TlPrintString);
+    __twr_v215 = (uint64_t)(&"User error: ");
+    ((void (*)(uint64_t))__twr_v214)(__twr_v215);
+    ((void (*)(uint64_t))__twr_v214)(_mng_str210);
+    __twr_v216 = (uint64_t)(&" (");
+    ((void (*)(uint64_t))__twr_v214)(__twr_v216);
+    __twr_v217 = (uint64_t)(&TlPrintNumber);
+    ((void (*)(uint64_t))__twr_v217)(_mng_err1211);
+    __twr_v218 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v214)(__twr_v218);
+    ((void (*)(uint64_t))__twr_v217)(_mng_err2212);
+    __twr_v219 = (uint64_t)(&" ");
+    ((void (*)(uint64_t))__twr_v214)(__twr_v219);
+    ((void (*)(uint64_t))__twr_v217)(_mng_err3213);
+    __twr_v220 = (uint64_t)(&")\n");
+    ((void (*)(uint64_t))__twr_v214)(__twr_v220);
+    __twr_v221 = (uint64_t)(&TlErrorExit);
+    ((void (*)())__twr_v221)();
+    __twr_l49:;
+    _jkl_epilogue:;
+}
