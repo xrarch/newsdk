@@ -2,7 +2,7 @@
 
 Self-hosting toolchain for the XR/station platform.
 
-Features a self-hosting compiler for the Jackal language, an assembler, a linker, and a multi-threaded build tool; all written in Jackal. These tools can run on any platform that has a C compiler, and also on the XR/17032 and fox32 architectures.
+Features a self-hosting compiler for the Jackal language, an assembler, a linker, and a multi-threaded build tool; all written in Jackal. These tools can run on any platform that has a C compiler, and also on the XR/17032 and Fox32 architectures.
 
 ## Usage
 
@@ -28,14 +28,10 @@ XrLink      - The linker.
 ## Implementation Plan
 
 - [x] Jackal -> C bootstrap transpiler.
-- [x] Self-hosted Jackal compiler w/ C backend.
-- [x] Fox32 backend.
-- [x] XR/17032 backend.
+- [x] Self-hosted Jackal compiler with C, Fox32, and XR/17032 backends.
 - [x] Self-hosted build tool `xrbt` to replace `make`.
 - [x] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [x] New linker written in Jackal with XR/17032 and Fox32 support.
 - [ ] Disk image creation and partitioning tool. Also with support for formatting, reading, and writing AisixFS.
 - [ ] `xrbt` support for automatically creating and updating rebuilt files in disk images if configured to do so.
-- [ ] Complete rewrite of the MINTIA OS in Jackal (and all required SDK tools thereof).
-- [ ] MINTIA port of the new compiler.
-- [ ] Future ports and fun junk.
+- [ ] Complete rewrite of the MINTIA OS in Jackal.
