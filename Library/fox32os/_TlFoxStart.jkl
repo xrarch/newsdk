@@ -710,9 +710,6 @@ FN TlReadFile (
 
     e[0] -= bytes
 
-    TlPrintNumber ( bytes )
-    TlPrintString ( "\n" )
-
     FoxWrapRead (
         bytes, // bytes
         handle, // filestruct
