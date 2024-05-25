@@ -1,4 +1,4 @@
-# sdk
+# XR/SDK
 
 Self-hosting toolchain for the XR/station platform.
 
