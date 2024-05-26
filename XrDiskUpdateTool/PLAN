@@ -1,0 +1,41 @@
+In order to develop the MINTIA operating system, an easy way to create a disk
+image for testing, and to update its contents as system components are rebuilt,
+is required. The XR Disk Update Tool (XRDUT) must fulfill these requirements.
+
+For the build tool it must, in a single invocation (for efficiency):
+  o  Be able to create a blank disk image of a given size.
+
+  o  Give the disk a simple partition map (for now APT support only, but GPT
+     and EFI System Partition support will appear during the AMD64 port, so it
+     should be generic enough to easily slide that in later).
+
+  o  Write a boot sector to the disk if applicable.
+
+  o  Format the root partition as AisixFS (while being generic enough to allow
+     other filesystems, such as the to-be-designed MintyFS, later).
+
+  o  Initialize the filesystem structure of the root partition from a "manifest"
+     file which specifies a list of host directory subtrees to be copied into
+     the image, along with UID and GID for the files in the destination subtree.
+
+In another invocation it must:
+  o  Update any specified files given by a file containing a newline-delineated
+     list.
+
+For user usage it must:
+  o  Allow generic information about a disk image such as partition entries,
+     filesystem type, etc to be printed.
+
+  o  Allow a manifest file to be provided and to iterate over all of the files
+     in each directory subtree it specifies, and to update each file with a
+     modification time later than that of the matching file within the disk
+     image.
+
+The format of a manifest file is a sequence of lines of this form:
+
+    <base path within disk image> <source subtree path> <uid gid>
+
+E.g.:
+
+    /mintia SystemManifest.xrdut 0 0
+    /home/guest ExampleUserManifest.xrdut 50 50
