@@ -37,5 +37,5 @@ The format of a manifest file is a sequence of lines of this form:
 
 E.g.:
 
-    /mintia SystemManifest.xrdut 0 0
-    /home/guest ExampleUserManifest.xrdut 50 50
+    /Mintia ./TestBase/Mintia 0 0
+    /Home/Guest ./TestBase/Home/Guest 50 50
