@@ -140,8 +140,13 @@ FN FeParseArguments (
     END
 
     IF NOT foundtarget THEN
-        TlPrintString ( "Error: No target specified.\n" )
-        AsmUsage ()
+        // Default to the architecture the tool was built for.
+
+        TlCopyString (
+            &FeTargetString[0], // dest
+            TL_ARCH_STRING, // src
+            FE_PATH_BUFFER_SIZE, // bufsize
+        )
     END
 END
 

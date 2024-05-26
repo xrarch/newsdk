@@ -31,10 +31,19 @@ PUBLIC LnkStripRelocs := FALSE
 PUBLIC LnkCreateStubs := TRUE
 PUBLIC LnkCreateFragment := FALSE
 PUBLIC LnkCreateBin := FALSE
-PUBLIC LnkCreateFxf := FALSE
 PUBLIC LnkBaseAddress := 0
 PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
 PUBLIC LnkMappedBase := FALSE
+
+#IF ( STRCMP PLATFORM "fox32os" )
+
+PUBLIC LnkCreateFxf := TRUE
+
+#ELSE
+
+PUBLIC LnkCreateFxf := FALSE
+
+#END
 
 EXTERN FN LnkInitializeDatabase ()
 

@@ -28,6 +28,8 @@ END
 
 #END
 
+#DEFINE TL_ARCH_STRING ( STRCAT ( STRCAT "\"" ARCHITECTURE ) "\"" )
+
 #MACRO TlInitializeList ( head ) [
     listhead := (head)
 
