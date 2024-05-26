@@ -662,6 +662,10 @@ FN TlOpenSource (
     OUT handle : ^VOID,
 ) : TlStatus
 
+    WHILE filename[0] == '.' AND filename[1] == '/' DO
+        filename += 2
+    END
+
     status := TlBumpAlloc (
         FOX_FILE_STRUCT_SIZE, // bytes
         OUT handle, // ptr
@@ -692,6 +696,10 @@ FN TlOpenDestination (
     IN filename : ^UBYTE,
     OUT handle : ^VOID,
 ) : TlStatus
+
+    WHILE filename[0] == '.' AND filename[1] == '/' DO
+        filename += 2
+    END
 
     status := TlBumpAlloc (
         FOX_FILE_STRUCT_SIZE, // bytes

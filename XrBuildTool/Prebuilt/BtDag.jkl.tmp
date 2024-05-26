@@ -1180,7 +1180,7 @@ void BtProcessDirectoryEntry(uint64_t _mng_fullpath370, uint64_t _mng_filename37
     __twr_v556 = 24ULL;
     __twr_v557 = _mng_pdc373 + __twr_v556;
     __twr_v558 = *(uint64_t*)(__twr_v557);
-    if (__twr_v555 < __twr_v558) { goto __twr_l75; } else { goto __twr_l76; }
+    if (__twr_v555 <= __twr_v558) { goto __twr_l75; } else { goto __twr_l76; }
     __twr_l76:;
     __twr_v559 = (uint64_t)(&BtCreateDagNode);
     __twr_v560 = *(uint64_t*)(_mng_pdc373);
