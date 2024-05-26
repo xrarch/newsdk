@@ -34,16 +34,7 @@ PUBLIC LnkCreateBin := FALSE
 PUBLIC LnkBaseAddress := 0
 PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
 PUBLIC LnkMappedBase := FALSE
-
-#IF ( STRCMP PLATFORM "fox32os" )
-
-PUBLIC LnkCreateFxf := TRUE
-
-#ELSE
-
 PUBLIC LnkCreateFxf := FALSE
-
-#END
 
 EXTERN FN LnkInitializeDatabase ()
 
@@ -61,6 +52,7 @@ FN LnkLinkStuff (
     static := TRUE
     foundoutput := FALSE
     dynamicadded := FALSE
+    explicitformat := FALSE
 
     i := 2
 
@@ -82,14 +74,17 @@ FN LnkLinkStuff (
 
             ELSEIF TlCompareString ( argv[i], "-bin" ) == 0 THEN
                 LnkCreateBin = TRUE
+                explicitformat = TRUE
 
             ELSEIF TlCompareString ( argv[i], "-fxf" ) == 0 THEN
                 LnkCreateBin = TRUE
                 LnkCreateFxf = TRUE
+                explicitformat = TRUE
 
             ELSEIF TlCompareString ( argv[i], "-xlo" ) == 0 THEN
                 LnkCreateBin = FALSE
                 LnkCreateFxf = FALSE
+                explicitformat = TRUE
 
             ELSEIF TlCompareString ( argv[i], "-d" ) == 0 THEN
                 static = FALSE
@@ -193,6 +188,20 @@ FN LnkLinkStuff (
         // Can't do mappedbase if binary output.
 
         LnkUsage ()
+    END
+
+    IF NOT explicitformat THEN
+        // Guess the format by the extension.
+
+        ext := TlGetPathExtension ( LnkOutputName )
+
+        IF TlCompareString ( ext, "bin" ) == 0 THEN
+            LnkCreateBin = TRUE
+
+        ELSEIF TlCompareString ( ext, "fxf" ) == 0 THEN
+            LnkCreateFxf = TRUE
+            LnkCreateBin = TRUE
+        END
     END
 
     // Now call the linker.
