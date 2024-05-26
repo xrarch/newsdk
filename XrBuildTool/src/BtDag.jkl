@@ -495,6 +495,13 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         5, // length
     )
 
+    TlPrintString ( objectpath^.Buffer )
+    TlPrintString ( " " )
+    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( " " )
+    TlPrintNumber ( pdc^.ObjectsOnly )
+    TlPrintString ( "\n" )
+
     IF BtCleanUp THEN
         // This is actually just a clean-up operation.
         // Delete those 3 files if they exist.
@@ -572,6 +579,8 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
             // Object file modified later than executable file.
             // Cause re-link.
 
+            TlPrintString ( "Relink\n" )
+
             pdc^.DagNode = BtCreateDagNode (
                 pdc^.Target, // target
                 DAG_EXECUTABLE, // type
@@ -603,11 +612,17 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
             type = DAG_NULL
         END
 
+        TlPrintString ( "Relink 2\n" )
+
         pdc^.DagNode = BtCreateDagNode (
             pdc^.Target, // target
             type, // type
         )
     END
+
+    TlPrintString ( "Connect " )
+    TlPrintString ( dagnode^.SrcPath.Buffer )
+    TlPrintString ( "\n" )
 
     BtConnectDagNodes (
         pdc^.DagNode, // fromnode
@@ -690,7 +705,6 @@ FN BtBuildDagForTarget (
     context : BtProcessDirectoryContext
 
     context.Target = target
-    context.DagNode = dagnode
     context.HasFileName = target^.HasFileName
     context.ModificationTime = 0
 
@@ -712,6 +726,8 @@ FN BtBuildDagForTarget (
             context.ModificationTime = execstat^.ModificationTime
         END
     END
+
+    context.DagNode = dagnode
 
     WHILE sourcesentry != sourceshead DO
         sourcesrcrd := CONTAINEROF sourcesentry TO BtSourcesRecord.Entry
