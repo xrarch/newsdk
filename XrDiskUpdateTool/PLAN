@@ -1,8 +1,14 @@
+====  ABSTRACT  ====
+
 In order to develop the MINTIA operating system, an easy way to create a disk
 image for testing, and to update its contents as system components are rebuilt,
 is required. The XR Disk Update Tool (XRDUT) must fulfill these requirements.
 
+
+==== BUILD TOOL ====
+
 For the build tool it must, in a single invocation (for efficiency):
+
   o  Be able to create a blank disk image of a given size.
 
   o  Give the disk a simple partition map (for now APT support only, but GPT
@@ -19,17 +25,30 @@ For the build tool it must, in a single invocation (for efficiency):
      the image, along with UID and GID for the files in the destination subtree.
 
 In another invocation it must:
+
   o  Update any specified files given by a file containing a newline-delineated
      list.
 
+
+==== USER USAGE ====
+
 For user usage it must:
+
   o  Allow generic information about a disk image such as partition entries,
      filesystem type, etc to be printed.
+
+  o  Allow individual files to be read, written, and deleted from within the
+     image.
+
+  o  Allow listings of directories within the image to be printed.
 
   o  Allow a manifest file to be provided and to iterate over all of the files
      in each directory subtree it specifies, and to update each file with a
      modification time later than that of the matching file within the disk
      image.
+
+
+==== MANIFEST FILES ====
 
 The format of a manifest file is a sequence of lines of this form:
 
