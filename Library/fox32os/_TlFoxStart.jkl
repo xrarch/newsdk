@@ -848,7 +848,7 @@ FN TlPrintHex (
             FoxPutc ( '0' + digit )
         
         ELSE
-            FoxPutc ( 'A' + digit )
+            FoxPutc ( 'A' + digit - 10 )
         END
 
         log16 -= 1
