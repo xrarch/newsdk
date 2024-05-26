@@ -25,16 +25,15 @@ TARGET "Jackal"
 		FILE "<bld>/jkl.exe"
 	#END
 
-	INCDIR "../Library/include"
+	DEPEND_LIBRARY ( 0 )
+
 	INCDIR "./include"
 
-	SOURCES "../Library"
 	SOURCES "./Backend"
 	SOURCES "./Frontend"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		SOURCES "./Frontend/CHost"
-		SOURCES "../Library/CHost"
 		PREBUILT "./Prebuilt"
 	#END
 
@@ -54,7 +53,6 @@ TARGET "Jackal"
 
 	#IF ( STRCMP PLATFORM "fox32os" )
 		SOURCES "./Frontend/fox32os"
-		SOURCES "../Library/fox32os"
 
 		LINKOPT "-fxf"
 	#END

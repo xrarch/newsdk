@@ -1,0 +1,12 @@
+TARGET "Library"
+	INCDIR "./include"
+	SOURCES "./"
+
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		SOURCES "./CHost"
+	#END
+
+	#IF ( STRCMP PLATFORM "fox32os" )
+		SOURCES "./fox32os"
+	#END
+END

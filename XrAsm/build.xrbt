@@ -4,9 +4,8 @@ TARGET "XrAsm"
 	#ELSE
 		FILE "<bld>/xrasm.exe"
 	#END
-	
-	INCDIR "../Library/include"
-	SOURCES "../Library"
+
+	DEPEND_LIBRARY ( 0 )
 
 	INCDIR "./include"
 	SOURCES "./Frontend"
@@ -16,12 +15,10 @@ TARGET "XrAsm"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		SOURCES "./Frontend/CHost"
-		SOURCES "../Library/CHost"
 	#END
 
 	#IF ( STRCMP PLATFORM "fox32os" )
 		SOURCES "./Frontend/fox32os"
-		SOURCES "../Library/fox32os"
 
 		LINKOPT "-fxf"
 	#END

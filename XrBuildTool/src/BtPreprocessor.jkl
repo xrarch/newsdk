@@ -701,6 +701,7 @@ FN LexDefineMacroFromArgumentString (
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
     macro^.IsExposed = FALSE
+    macro^.CanBeExposed = TRUE
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -812,7 +813,8 @@ FN LexExpandMacro (
         WHILE arg DO
             argmacro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
-            argmacro^.IsExposed = TRUE
+            argmacro^.IsExposed = FALSE
+            argmacro^.CanBeExposed = FALSE
 
             argmacro^.ResumeMacroScope = oldmacroscope
 
@@ -1077,6 +1079,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
     macro^.IsExposed = FALSE
+    macro^.CanBeExposed = TRUE
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -1297,7 +1300,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
-    macro^.IsExposed = TRUE
+    macro^.IsExposed = FALSE
+    macro^.CanBeExposed = FALSE
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
@@ -1587,7 +1591,7 @@ FN (LexDirectiveParseF) LexParseExpose ()
         LEAVE
     END
 
-    IF macro^.IsExposed THEN
+    IF macro^.IsExposed OR NOT macro^.CanBeExposed THEN
         // Already exposed.
 
         LEAVE

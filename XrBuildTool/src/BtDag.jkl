@@ -288,6 +288,9 @@ STRUCT BtProcessDirectoryContext
     Target : ^BtTarget,
     DagNode : ^BtDagNode,
     SourceDirPath : ^TlDynamicBuffer,
+    ModificationTime : UWORD,
+    ObjectsOnly : UBYTE,
+    HasFileName : UBYTE,
 END
 
 FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
@@ -496,9 +499,11 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         // This is actually just a clean-up operation.
         // Delete those 3 files if they exist.
 
-        BtCleanUpFile ( objectpath^.Buffer )
-        BtCleanUpFile ( depspath^.Buffer )
-        BtCleanUpFile ( tmppath^.Buffer )
+        IF NOT pdc^.ObjectsOnly THEN
+            BtCleanUpFile ( objectpath^.Buffer )
+            BtCleanUpFile ( depspath^.Buffer )
+            BtCleanUpFile ( tmppath^.Buffer )
+        END
 
         LEAVE
     END
@@ -520,39 +525,58 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
         )
     END
 
-    // Now we have these paths, check the existence of the dep file.
+    IF NOT pdc^.ObjectsOnly THEN
+        // Now we have these paths, check the existence of the dep file.
 
-    IF nodetype == DAG_JKL_OBJECT AND
-        NOT TlPathExists ( depspath^.Buffer ) THEN
+        IF nodetype == DAG_JKL_OBJECT AND
+            NOT TlPathExists ( depspath^.Buffer ) THEN
 
-        GOTO AddToDag 
-    END
+            GOTO AddToDag 
+        END
 
-    // Stat the object file and check the modification times.
+        // Stat the object file and check the modification times.
 
-    objstat := BtStatFile ( objectpath^.Buffer )
+        objstat := BtStatFile ( objectpath^.Buffer )
 
-    IF NOT objstat THEN
-        // Doesn't exist.
+        IF NOT objstat THEN
+            // Doesn't exist.
 
-        GOTO AddToDag
-    END
+            GOTO AddToDag
+        END
 
-    IF stat^.ModificationTime >= objstat^.ModificationTime THEN
-        // Source file modified later than object file.
+        IF stat^.ModificationTime >= objstat^.ModificationTime THEN
+            // Source file modified later than object file.
 
-        GOTO AddToDag
-    END
+            GOTO AddToDag
+        END
 
-    // Now we have to open and read the deps file.
+        // Now we have to open and read the deps file.
 
-    IF nodetype == DAG_JKL_OBJECT AND
-        BtAnyDepsLater (
-            objstat^.ModificationTime, // srctime
-            depspath^.Buffer, // depspath
-        ) THEN
+        IF nodetype == DAG_JKL_OBJECT AND
+            BtAnyDepsLater (
+                objstat^.ModificationTime, // srctime
+                depspath^.Buffer, // depspath
+            ) THEN
 
-        GOTO AddToDag
+            GOTO AddToDag
+        END
+
+    ELSE
+        // Stat the object file and check the modification times.
+
+        objstat := BtStatFile ( objectpath^.Buffer )
+
+        IF objstat AND NOT pdc^.DagNode AND pdc^.HasFileName AND
+            objstat^.ModificationTime >= pdc^.ModificationTime THEN
+
+            // Object file modified later than executable file.
+            // Cause re-link.
+
+            pdc^.DagNode = BtCreateDagNode (
+                pdc^.Target, // target
+                DAG_EXECUTABLE, // type
+            )
+        END
     END
 
     // We didn't need to add it to the DAG, so uninitialize all we can.
@@ -573,9 +597,15 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
     IF NOT pdc^.DagNode THEN
         // Gotta make it.
 
+        type := DAG_EXECUTABLE
+
+        IF NOT pdc^.HasFileName THEN
+            type = DAG_NULL
+        END
+
         pdc^.DagNode = BtCreateDagNode (
             pdc^.Target, // target
-            DAG_EXECUTABLE, // type
+            type, // type
         )
     END
 
@@ -608,6 +638,7 @@ FN BtBuildDagForTarget (
 
     IF target^.HasFileName THEN
         dagtype = DAG_EXECUTABLE
+
     ELSE
         dagtype = DAG_NULL
     END
@@ -642,60 +673,66 @@ FN BtBuildDagForTarget (
         dependentry = dependentry^.Next
     END
 
+    // For all SOURCES subdirectories specified, we need to iterate their
+    // contents. Each *.jkl and *.s file represent an object file in the
+    // build cache that must exist and have a modification date later than
+    // the source file, and later than that of all header files upon which
+    // the source file depends (which are themselves cached). If this
+    // invariant is violated, we have to create a node in the DAG and add an
+    // out-edge from ourselves to it.
+
+    // Note: Also check for *.c files when building for the C transpilation
+    //       host.
+
+    sourceshead := &target^.SourcesListHead
+    sourcesentry := sourceshead^.Next
+
+    context : BtProcessDirectoryContext
+
+    context.Target = target
+    context.DagNode = dagnode
+    context.HasFileName = target^.HasFileName
+    context.ModificationTime = 0
+
+    // If there still isn't a DAG node, check to make sure that the
+    // executable actually does exist. If it doesn't, we need to create a
+    // node for relinking.
+
     IF target^.HasFileName THEN
-        // For all SOURCES subdirectories specified, we need to iterate their
-        // contents. Each *.jkl and *.s file represent an object file in the
-        // build cache that must exist and have a modification date later than
-        // the source file, and later than that of all header files upon which
-        // the source file depends (which are themselves cached). If this
-        // invariant is violated, we have to create a node in the DAG and add an
-        // out-edge from ourselves to it.
+        execstat := BtStatFile ( target^.FileName.Buffer )
 
-        // Note: Also check for *.c files when building for the C transpilation
-        //       host.
-
-        sourceshead := &target^.SourcesListHead
-        sourcesentry := sourceshead^.Next
-
-        context : BtProcessDirectoryContext
-
-        context.Target = target
-        context.DagNode = dagnode
-
-        WHILE sourcesentry != sourceshead DO
-            sourcesrcrd := CONTAINEROF sourcesentry TO BtSourcesRecord.Entry
-
-            context.SourceDirPath = &sourcesrcrd^.FilePathBuffer
-
-            status := TlIterateDirectory (
-                sourcesrcrd^.FilePathBuffer.Buffer, // path
-                &BtProcessDirectoryEntry, // callback
-                &context, // context
-            )
-
-            IF status THEN
-                TlInternalError ( "Failed to iterate directory", 0, 0, 0 )
+        IF NOT execstat THEN
+            IF NOT BtCleanUp AND NOT dagnode THEN
+                dagnode = BtCreateDagNode (
+                    target, // target
+                    dagtype, // type
+                )
             END
-
-            sourcesentry = sourcesentry^.Next
-        END
-
-        dagnode = context.DagNode
-
-        // If there still isn't a DAG node, check to make sure that the
-        // executable actually does exist. If it doesn't, we need to create a
-        // node for relinking.
-
-        IF NOT dagnode AND
-            NOT TlPathExists ( target^.FileName.Buffer ) AND
-            NOT BtCleanUp THEN
-
-            dagnode = BtCreateDagNode (
-                target, // target
-                dagtype, // type
-            )
+        ELSE
+            context.ModificationTime = execstat^.ModificationTime
         END
     END
+
+    WHILE sourcesentry != sourceshead DO
+        sourcesrcrd := CONTAINEROF sourcesentry TO BtSourcesRecord.Entry
+
+        context.SourceDirPath = &sourcesrcrd^.FilePathBuffer
+        context.ObjectsOnly = sourcesrcrd^.ObjectsOnly
+
+        status := TlIterateDirectory (
+            sourcesrcrd^.FilePathBuffer.Buffer, // path
+            &BtProcessDirectoryEntry, // callback
+            &context, // context
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to iterate directory", 0, 0, 0 )
+        END
+
+        sourcesentry = sourcesentry^.Next
+    END
+
+    dagnode = context.DagNode
 
     // Now cache the DAG node and return.
 

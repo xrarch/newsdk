@@ -249,9 +249,60 @@ FN (BtTargetInfoF) BtTargetInfoSources ()
 
     string := CAST token.Payload TO ^LexInternedString
 
-    IF NOT BtCurrentTarget^.HasFileName THEN
-        LexTokenError ( &token, "Sourceful target needs FILE name", 0, 0, 0 )
+    // Allocate a sources record.
+
+    entry : ^BtSourcesRecord
+
+    status := TlBumpAlloc (
+        SIZEOF BtSourcesRecord, // bytes
+        OUT entry, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate sources record", 0, 0, 0 )
     END
+
+    entry^.ObjectsOnly = FALSE
+
+    filepath := &entry^.FilePathBuffer
+
+    TlInitializeDynamicBuffer ( filepath )
+
+    BtParseStandardPath (
+        &string^.DynamicBuffer, // stdpath
+        filepath, // fullpath
+        &token, // errtoken
+    )
+
+    // Check if this is actually a directory and that it exists.
+
+    IF NOT TlIsPathDirectory ( filepath^.Buffer ) THEN
+        LexTokenError ( &token, "Doesn't exist or not a directory", 0, 0, 0 )
+    END
+
+    // Add to the sources list.
+
+    TlInsertAtTailList (
+        &BtCurrentTarget^.SourcesListHead, // head
+        &entry^.Entry, // entry
+    )
+END
+
+FN (BtTargetInfoF) BtTargetInfoObjects ()
+
+    // Parse an OBJECTS info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
 
     // Allocate a sources record.
 
@@ -267,6 +318,8 @@ FN (BtTargetInfoF) BtTargetInfoSources ()
     END
 
     filepath := &entry^.FilePathBuffer
+
+    entry^.ObjectsOnly = TRUE
 
     TlInitializeDynamicBuffer ( filepath )
 
@@ -624,6 +677,7 @@ BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_LINK] = &BtTargetInfoLink,
     [TOKEN_DYLINK] = &BtTargetInfoDyLink,
     [TOKEN_PREBUILT] = &BtTargetInfoPrebuilt,
+    [TOKEN_OBJECTS] = &BtTargetInfoObjects,
 }
 
 FN BtParseTarget () : UBYTE

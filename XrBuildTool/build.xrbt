@@ -1,14 +1,12 @@
 TARGET "XrBuildTool"
 	FILE "<bld>/xrbt.exe"
 	
-	INCDIR "../Library/include"
-	SOURCES "../Library"
+	DEPEND_LIBRARY ( 0 )
 
 	SOURCES "./src"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		SOURCES "./src/CHost"
-		SOURCES "../Library/CHost"
 		PREBUILT "./Prebuilt"
 	#END
 END

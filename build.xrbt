@@ -14,9 +14,36 @@
 
 #EXPOSE BITS
 
+#MACRO DEPEND_LIBRARY ( x ) [
+
+DEPEND "Library"
+
+INCDIR "../Library/include"
+
+OBJECTS "../Library"
+
+#IF ( STRCMP ARCHITECTURE "CHost" )
+	OBJECTS "../Library/CHost"
+#END
+
+#IF ( STRCMP PLATFORM "fox32os" )
+	OBJECTS "../Library/fox32os"
+#END
+
+]
+
 #DEPEND "./Rtl/build.xrbt"
+#DEPEND "./Library/build.xrbt"
 #DEPEND "./Jackal/build.xrbt"
 #DEPEND "./XrBuildTool/build.xrbt"
 #DEPEND "./XrAsm/build.xrbt"
 #DEPEND "./XrLink/build.xrbt"
 #DEPEND "./XrDiskUpdateTool/build.xrbt"
+
+TARGET "all"
+	DEPEND "Jackal"
+	DEPEND "XrBuildTool"
+	DEPEND "XrAsm"
+	DEPEND "XrLink"
+	DEPEND "XrDiskUpdateTool"
+END

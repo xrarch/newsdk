@@ -56,6 +56,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_LINK,
     TOKEN_DYLINK,
     TOKEN_PREBUILT,
+    TOKEN_OBJECTS,
 
     TOKEN_SUBTYPE_MAX, // MUST be at the end
 END
@@ -137,6 +138,7 @@ STRUCT LexMacro
     IsFunctionMacro : UBYTE,
     IsArgumentMacro : UBYTE,
     IsExposed : UBYTE,
+    CanBeExposed : UBYTE,
 END
 
 STRUCT LexMacroArgument
@@ -272,6 +274,8 @@ STRUCT BtSourcesRecord
     Entry : TlListEntry,
 
     FilePathBuffer : TlDynamicBuffer,
+
+    ObjectsOnly : UBYTE,
 END
 
 STRUCT BtExposedMacroRecord
