@@ -1755,6 +1755,7 @@ FN FoxGenerateSpillForOperand (
     IN src : UWORD,
 ) : ^LirRegister
 
+    spreg : ^LirRegister
     tmpreg := &FoxTmps[tmp]
 
     spilloff := LirGetSpillOffset (
@@ -1763,16 +1764,16 @@ FN FoxGenerateSpillForOperand (
     )
 
     IF operand^.AccessType == FOX_ACCESS_REGISTER THEN
-        spreg := FoxGenerateStackAddress (
-            tmpreg, // tmp
-            inst, // beforeinst
-            NULLPTR, // afterinst
-            spilloff, // off
-            OUT spilloff, // OUT newoff
-        )
-
         IF src OR inst^.Body.Machine.Fox.BitSize == FOX_BITS_32 THEN
             // Replace in-place with an [SP + OFF].
+
+            spreg = FoxGenerateStackAddress (
+                tmpreg, // tmp
+                inst, // beforeinst
+                NULLPTR, // afterinst
+                spilloff, // off
+                OUT spilloff, // OUT newoff
+            )
 
             operand^.AccessType = FOX_ACCESS_REG_PTR
             operand^.Constant = spilloff
@@ -1784,6 +1785,14 @@ FN FoxGenerateSpillForOperand (
         // an intermediate store of the correct width and maybe a load too.
 
         IF spilledreg == inst^.Source1 THEN
+            spreg = FoxGenerateStackAddress (
+                tmpreg, // tmp
+                inst, // beforeinst
+                NULLPTR, // afterinst
+                spilloff, // off
+                OUT spilloff, // OUT newoff
+            )
+
             // Generate load.
 
             lirinst := LirCreateInstruction (
@@ -1805,26 +1814,35 @@ FN FoxGenerateSpillForOperand (
                 inst, // beforeinst
                 lirinst, // inst
             )
-
-            IF spilledreg == inst^.Defines THEN
-                // Re-generate the SP offset.
-
-                spilloff = LirGetSpillOffset (
-                    inst^.Block, // irfunc
-                    spilledreg, // spilledreg
-                )
-
-                spreg = FoxGenerateStackAddress (
-                    tmpreg, // tmp
-                    NULLPTR, // beforeinst
-                    inst, // afterinst
-                    spilloff, // off
-                    OUT spilloff, // OUT newoff
-                )
-            END
         END
 
         IF spilledreg == inst^.Defines THEN
+            // Re-generate the SP offset.
+
+            spilloff = LirGetSpillOffset (
+                inst^.Block, // irfunc
+                spilledreg, // spilledreg
+            )
+
+            beforeinst := inst^.Next
+
+            othertmp := tmpreg
+
+            IF othertmp == &FoxTmps[0] THEN
+                othertmp = &FoxTmps[1]
+
+            ELSE
+                othertmp = &FoxTmps[0]
+            END
+
+            spreg = FoxGenerateStackAddress (
+                othertmp, // tmp
+                NULLPTR, // beforeinst
+                inst, // afterinst
+                spilloff, // off
+                OUT spilloff, // OUT newoff
+            )
+
             // Generate store. 
 
             lirinst := LirCreateInstruction (
@@ -1842,10 +1860,15 @@ FN FoxGenerateSpillForOperand (
 
             lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
 
-            LirInsertInstructionAfter (
-                inst, // afterinst
-                lirinst, // inst
-            )
+            IF beforeinst THEN
+                LirInsertInstructionBefore (
+                    beforeinst, // afterinst
+                    lirinst, // inst
+                )
+
+            ELSE
+                LirInsertInstructionTail ( lirinst )
+            END
         END
 
         IF spilledreg == inst^.Source1 THEN
@@ -1864,7 +1887,7 @@ FN FoxGenerateSpillForOperand (
     // We have to load the spilled reg into a temporary, then shove that
     // temporary into the instruction.
 
-    spreg := FoxGenerateStackAddress (
+    spreg = FoxGenerateStackAddress (
         &FoxTmpAt, // tmp
         inst, // beforeinst
         NULLPTR, // afterinst
