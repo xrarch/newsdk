@@ -73,6 +73,11 @@ STRUCT TlListEntry
     Prev : ^TlListEntry,
 END
 
+EXTERN FN TlMain (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
 EXTERN FN TlInitialize ()
 
 EXTERN FN TlMeasureString (

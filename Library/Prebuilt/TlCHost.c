@@ -11,6 +11,23 @@
 #include <signal.h>
 #include <time.h>
 
+extern void TlInitialize ();
+extern void TlMain (uint64_t argc, uint64_t argv);
+
+int main (int argc, char *argv[]) {
+    // Initialize the Toolchain Library.
+
+    TlInitialize ();
+
+    // Run the tool.
+
+    TlMain ( (uint64_t)(argc), (uint64_t)(argv) );
+
+    // Return success.
+
+    return 0;
+}
+
 void TlPrintString (uint8_t *str) {
     fprintf(stderr, "%s", str);
 }

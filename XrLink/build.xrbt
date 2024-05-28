@@ -8,15 +8,6 @@ TARGET "XrLink"
 	DEPEND_LIBRARY ( 0 )
 
 	INCDIR "./include"
+
 	SOURCES "./Linker"
-
-	#IF ( STRCMP ARCHITECTURE "CHost" )
-		SOURCES "./Linker/CHost"
-	#END
-
-	#IF ( STRCMP PLATFORM "fox32os" )
-		SOURCES "./Linker/fox32os"
-
-		LINKOPT "-fxf"
-	#END
 END

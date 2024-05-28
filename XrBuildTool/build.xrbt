@@ -6,7 +6,6 @@ TARGET "XrBuildTool"
 	SOURCES "./src"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
-		SOURCES "./src/CHost"
 		PREBUILT "./Prebuilt"
 	#END
 END

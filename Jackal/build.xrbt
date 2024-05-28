@@ -33,7 +33,6 @@ TARGET "Jackal"
 	SOURCES "./Frontend"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
-		SOURCES "./Frontend/CHost"
 		PREBUILT "./Prebuilt"
 	#END
 
@@ -49,12 +48,6 @@ TARGET "Jackal"
 
 		LINKOPT "-bin"
 		LINKOPT "-move:text=0xF0000000,data=0x1000,bss=@data"
-	#END
-
-	#IF ( STRCMP PLATFORM "fox32os" )
-		SOURCES "./Frontend/fox32os"
-
-		LINKOPT "-fxf"
 	#END
 
 	#IF TRG_CT

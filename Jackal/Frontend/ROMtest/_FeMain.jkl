@@ -546,7 +546,7 @@ FN Main ()
     args[3] = "kitsunebit.s"
     args[4] = "BITS=32"
 
-    JklCompileProgram ( 5, &args[0] )
+    TlMain ( 5, &args[0] )
 
     TlPrintString ( "Bump allocator bytes usage: " )
     TlPrintNumber ( TlBumpBytesUsed )

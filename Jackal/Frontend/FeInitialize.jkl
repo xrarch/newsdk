@@ -361,7 +361,7 @@ EXTERN FN IrGenerate ()
 EXTERN FN IrSimplify ()
 EXTERN FN IrEliminateDeadVariables ()
 
-FN JklCompileProgram (
+FN TlMain (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
 )

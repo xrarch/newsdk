@@ -2,11 +2,6 @@
 
 #DEFINE FE_PATH_BUFFER_SIZE 256
 
-EXTERN FN AsmAssembleProgram (
-    IN argc : ULONG,
-    IN argv : ^^UBYTE,
-)
-
 EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 

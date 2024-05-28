@@ -8,18 +8,8 @@ TARGET "XrAsm"
 	DEPEND_LIBRARY ( 0 )
 
 	INCDIR "./include"
-	SOURCES "./Frontend"
 
+	SOURCES "./Frontend"
 	SOURCES "./xr17032"
 	SOURCES "./fox32"
-
-	#IF ( STRCMP ARCHITECTURE "CHost" )
-		SOURCES "./Frontend/CHost"
-	#END
-
-	#IF ( STRCMP PLATFORM "fox32os" )
-		SOURCES "./Frontend/fox32os"
-
-		LINKOPT "-fxf"
-	#END
 END

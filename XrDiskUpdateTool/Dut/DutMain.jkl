@@ -17,7 +17,7 @@ FN DutUsage ()
     TlErrorExit ()
 END
 
-FN DutMain (
+FN TlMain (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
 )

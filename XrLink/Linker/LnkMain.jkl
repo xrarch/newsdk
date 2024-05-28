@@ -209,7 +209,7 @@ FN LnkLinkStuff (
     LnkLinkObject ()
 END
 
-FN LnkMain (
+FN TlMain (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
 )

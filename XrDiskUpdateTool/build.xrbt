@@ -4,9 +4,6 @@ TARGET "XrDiskUpdateTool"
 	DEPEND_LIBRARY ( 0 )
 
 	INCDIR "./include"
-	SOURCES "./Dut"
 
-	#IF ( STRCMP ARCHITECTURE "CHost" )
-		SOURCES "./Dut/CHost"
-	#END
+	SOURCES "./Dut"
 END

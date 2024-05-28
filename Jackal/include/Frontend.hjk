@@ -2,11 +2,6 @@
 
 #DEFINE FE_PATH_BUFFER_SIZE 256
 
-EXTERN FN JklCompileProgram (
-    IN argc : ULONG,
-    IN argv : ^^UBYTE,
-)
-
 FNPTR JklTargetF ()
 
 FNPTR JklValueNumberF (
