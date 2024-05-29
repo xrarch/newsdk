@@ -4,8 +4,6 @@
 
 #INCLUDE "<inc>/Dut.hjk"
 
-DutBinaryName : ^UBYTE = NULLPTR
-
 FN DutUsage ()
     TlPrintByHandle (
         TlStdErr, // handle
@@ -25,8 +23,6 @@ FN TlMain (
 )
 
     // Dispatch to the correct command.
-
-    DutBinaryName = argv[0]
 
     IF argc < 3 THEN
         DutUsage ()
