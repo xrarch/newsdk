@@ -326,11 +326,7 @@ FoxGetSize:
 
 ]
 
-#DEFINE FOX_BUMP_EXTENSION_MAX 256
 #DEFINE FOX_FILE_STRUCT_SIZE 64
-
-FoxBumpExtensions : ^VOID[FOX_BUMP_EXTENSION_MAX]
-FoxBumpExtensionIndex : UWORD = 0
 
 EXTERN FN RtlFillMemoryWithUlong (
     IN ptr : ^VOID,
@@ -393,15 +389,9 @@ EXTERN FN FoxMain (
 )
 
 FN FoxExit ()
-    // Free the bump allocator extensions.
-
-    i := 0
-
-    WHILE i < FoxBumpExtensionIndex DO
-        FoxWrapFree ( FoxBumpExtensions[i] )
-
-        i += 1
-    END
+    
+    // fox32os's heap is global and permanent, so we have to be sure to free
+    // ALL of our tool's allocations when it exits. This is where we do that.
 
     // Free the allocated blocks.
 
@@ -597,38 +587,38 @@ FN TlBumpAlloc (
 
         TlBumpHits += 1
         TlBumpBytesUsed += bytes
+
         TlBumpPtr += bytes
         TlBumpBytesLeft -= bytes
 
         RETURN TL_SUCCESS
     END
 
-    IF FoxBumpExtensionIndex == FOX_BUMP_EXTENSION_MAX THEN
-        TlInternalError ( "Out of bump extensions", 0, 0, 0 )
+    IF bytes >= TL_BUMP_EXTEND THEN
+        RETURN TlAlloc (
+            bytes, // bytes
+            OUT ptr
+        )
     END
 
     TlHeapHits += 1
 
-    allocbytes := TL_BUMP_EXTEND
-
-    IF bytes >= TL_BUMP_EXTEND THEN
-        allocbytes = bytes
-    END
-
-    TlBumpPtr = FoxWrapAllocate ( allocbytes )
+    TlBumpPtr = FoxWrapAllocate ( TL_BUMP_EXTEND + SIZEOF TlListEntry )
 
     IF NOT TlBumpPtr THEN
         RETURN TL_NO_MEMORY
     END
 
-    FoxBumpExtensions[FoxBumpExtensionIndex] = TlBumpPtr
-    FoxBumpExtensionIndex += 1
+    TlInsertAtTailList (
+        &TlAllocatedBlockList, // head
+        CAST TlBumpPtr TO ^TlListEntry, // entry
+    )
 
-    ptr = TlBumpPtr
+    ptr = TlBumpPtr + SIZEOF TlListEntry
 
     TlBumpBytesUsed += bytes
     TlBumpBytesLeft = TL_BUMP_EXTEND - bytes
-    TlBumpPtr += bytes
+    TlBumpPtr += bytes + SIZEOF TlListEntry
 
     RETURN TL_SUCCESS
 END
