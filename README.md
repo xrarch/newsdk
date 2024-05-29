@@ -6,7 +6,7 @@ Features a self-hosting compiler for the Jackal language, an assembler, a linker
 
 ## Usage
 
-To initially build the Jackal compiler, type `./bootstrap.sh` to cause the "precompiled" C files to be built into the initial compiler at `./bin/jkl.exe`. The custom build system will also be built.
+To initially build the Jackal compiler, type `./bootstrap.sh` to cause the "precompiled" C files to be built into the initial compiler at `./bin/jkl.exe`. The custom build system will also be built at `./bin/xrbt.exe`.
 
 Typing `./buildall.sh [desired multithread count]` will then do a "proper" build of all of the tools.
 

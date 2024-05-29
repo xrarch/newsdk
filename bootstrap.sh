@@ -14,4 +14,5 @@ cc -x c -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Of
 echo "Building initial xrbt.exe"
 cc -x c -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast Prebuilt/XrBuildTool/Prebuilt/* Prebuilt/Library/Prebuilt/* -o bin/xrbt.exe
 
+echo "Deleting extracted prebuilt files"
 rm -rf Prebuilt
