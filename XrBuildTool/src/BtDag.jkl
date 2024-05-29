@@ -252,8 +252,7 @@ FN BtRunCommand (
 ) : UWORD
 
     IF BtVerbose THEN
-        TlPrintString ( str )
-        TlPrintString ( "\n" )
+        TlPrint ( "%s\n", str )
     END
 
     RETURN TlSystem ( str )
@@ -762,9 +761,7 @@ FN (BtDagActionF) BtBuildJkl (
 
     TlAcquireMutex ( BtPrintMutex )
 
-    TlPrintString ( "Building " )
-    TlPrintString ( TlGetFileName ( dagnode^.SrcPath.Buffer ) )
-    TlPrintString ( "\n" )
+    TlPrint ( "Building %s\n", TlGetFileName ( dagnode^.SrcPath.Buffer ) )
 
     TlReleaseMutex ( BtPrintMutex )
 
@@ -1037,9 +1034,7 @@ FN (BtDagActionF) BtBuildC (
 
     TlAcquireMutex ( BtPrintMutex )
 
-    TlPrintString ( "Building " )
-    TlPrintString ( TlGetFileName ( dagnode^.SrcPath.Buffer ) )
-    TlPrintString ( "\n" )
+    TlPrint ( "Building %s\n", TlGetFileName ( dagnode^.SrcPath.Buffer ) )
 
     TlReleaseMutex ( BtPrintMutex )
 
@@ -1122,9 +1117,7 @@ FN (BtDagActionF) BtBuildS (
 
     TlAcquireMutex ( BtPrintMutex )
 
-    TlPrintString ( "Assembling " )
-    TlPrintString ( TlGetFileName ( dagnode^.SrcPath.Buffer ) )
-    TlPrintString ( "\n" )
+    TlPrint ( "Assembling %s\n", TlGetFileName ( dagnode^.SrcPath.Buffer ) )
 
     TlReleaseMutex ( BtPrintMutex )
 
@@ -1187,9 +1180,7 @@ FN (BtDagActionF) BtLinkExecutable (
 
     TlAcquireMutex ( BtPrintMutex )
 
-    TlPrintString ( "Linking " )
-    TlPrintString ( dagnode^.Target^.FileName.Buffer )
-    TlPrintString ( "\n" )
+    TlPrint ( "Linking %s\n", dagnode^.Target^.FileName.Buffer )
 
     TlReleaseMutex ( BtPrintMutex )
 
@@ -1410,7 +1401,7 @@ FN (TlTerminationHandlerF) BtTerminationHandler ()
     // (such as ctrl-C on *nix hosts). All we do is set a flag which will cause
     // the worker threads to break out of their loops.
 
-    TlPrintString ( "BREAK. Waiting for jobs to complete." )
+    TlPrint ( "BREAK. Waiting for jobs to complete.\n" )
 
     BtTerminateWorkers = TRUE
 END
@@ -1527,7 +1518,7 @@ FN BtBuildDag ()
     END
 
     IF NOT dagroot THEN
-        TlPrintString ( "The target is already up to date.\n" )
+        TlPrint ( "The target is already up to date.\n" )
 
         LEAVE
     END

@@ -17,8 +17,6 @@ PUBLIC FeOutputHeaders : ^UBYTE = NULLPTR
 
 PUBLIC FeRootFileBlock : ^FeFileBlock
 
-JklBinaryName : ^UBYTE = NULLPTR
-
 PUBLIC JklTargetInfo : ^JklTargetInfoRecord = NULLPTR
 
 PUBLIC JklPrimitiveTypeMasks : UWORD[PRIM_TYPE_MAX] = {
@@ -59,9 +57,12 @@ PUBLIC JklSignExtendedTypeMasks : UWORD[PRIM_TYPE_MAX] = {
 }
 
 FN JklUsage ()
-    TlPrintString ( "Usage: " )
-    TlPrintString ( JklBinaryName )
-    TlPrintString ( " [inputfile] [outputfile] target=[CHost/xr17032/fox32]\n" )
+    
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Usage: %s [inputfile] [outputfile] target=[CHost/xr17032/fox32]\n", // fmt
+        TlProgramName,
+    )
 
     TlErrorExit ()
 END
@@ -138,7 +139,6 @@ FN FeParseArguments (
 
         ELSEIF foundinput THEN
             IF foundoutput THEN
-                TlPrintString ( "Too many arguments specified!\n" )
                 JklUsage ()
             END
 
@@ -164,13 +164,11 @@ FN FeParseArguments (
     END
 
     IF NOT foundinput THEN
-        TlPrintString ( "Error: No input file specified.\n" )
-        JklUsage ()
+        TlError ( "No input file specified.\n" )
     END
 
     IF NOT foundoutput THEN
-        TlPrintString ( "Error: No output file specified.\n" )
-        JklUsage ()
+        TlError ( "No output file specified.\n" )
     END
 
     IF NOT foundtarget THEN
@@ -367,8 +365,6 @@ FN TlMain (
 )
 
     // Compile the entire program.
-
-    JklBinaryName = &argv[0][0]
 
     // Initialize the front-end components.
 

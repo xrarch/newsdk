@@ -17,15 +17,16 @@ PUBLIC FeOutputHeaders : ^UBYTE = NULLPTR
 
 PUBLIC FeRootFileBlock : ^FeFileBlock
 
-AsmBinaryName : ^UBYTE = NULLPTR
-
 PUBLIC AsmTargetInfo : ^AsmTargetInfoRecord = NULLPTR
 PUBLIC AsmEncoderInfo : ^AsmEncoderInfoRecord = NULLPTR
 
 FN AsmUsage ()
-    TlPrintString ( "Usage: " )
-    TlPrintString ( AsmBinaryName )
-    TlPrintString ( " [inputfile] [outputfile] target=[xr17032/fox32]\n" )
+
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Usage: %s [inputfile] [outputfile] target=[xr17032/fox32]\n", // fmt
+        TlProgramName,
+    )
 
     TlErrorExit ()
 END
@@ -104,7 +105,6 @@ FN FeParseArguments (
 
         ELSEIF foundinput THEN
             IF foundoutput THEN
-                TlPrintString ( "Too many arguments specified!\n" )
                 AsmUsage ()
             END
 
@@ -130,13 +130,11 @@ FN FeParseArguments (
     END
 
     IF NOT foundinput THEN
-        TlPrintString ( "Error: No input file specified.\n" )
-        AsmUsage ()
+        TlError ( "Error: No input file specified.\n" )
     END
 
     IF NOT foundoutput THEN
-        TlPrintString ( "Error: No output file specified.\n" )
-        AsmUsage ()
+        TlError ( "Error: No output file specified.\n" )
     END
 
     IF NOT foundtarget THEN
@@ -321,8 +319,6 @@ FN TlMain (
 )
 
     // Compile the entire program.
-
-    AsmBinaryName = &argv[0][0]
 
     // Initialize the front-end components.
 

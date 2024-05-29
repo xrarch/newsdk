@@ -41,10 +41,7 @@ FN TlSummarizeHashTable (
         END
 
         IF entries THEN
-            TlPrintNumber ( i )
-            TlPrintString ( ": " )
-            TlPrintNumber ( entries )
-            TlPrintString ( "\n" )
+            TlPrint ( "%d: %d\n", i, entries )
         END
 
         i += 1

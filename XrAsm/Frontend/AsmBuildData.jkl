@@ -170,8 +170,7 @@ FN (AsmDataEncodeF) AsmEncodeDq (
     END
 
 #ELSE
-    LexTokenError ( &element^.ErrorToken,
-        "DQ only supported on 64 bit builds", 0, 0, 0 )
+    LexError ( &element^.ErrorToken, "DQ only supported on 64 bit builds\n" )
 #END
 
 END

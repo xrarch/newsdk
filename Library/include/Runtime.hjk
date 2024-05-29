@@ -98,22 +98,6 @@ EXTERN FN TlCopyMemory (
     IN sz : UWORD,
 )
 
-EXTERN FN TlPrintString (
-    IN str : ^UBYTE,
-)
-
-EXTERN FN TlPrintNumber (
-    IN num : UWORD,
-)
-
-EXTERN FN TlPrintHex (
-    IN num : UWORD,
-)
-
-EXTERN FN TlPrintCharacter (
-    IN byte : UBYTE,
-)
-
 EXTERN FN TlInternalError (
     IN str : ^UBYTE,
     IN err1 : UWORD,

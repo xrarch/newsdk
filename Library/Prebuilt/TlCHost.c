@@ -31,22 +31,6 @@ int main (int argc, char *argv[]) {
     return 0;
 }
 
-void TlPrintString (uint8_t *str) {
-    fprintf(stderr, "%s", str);
-}
-
-void TlPrintNumber (uint64_t num) {
-    fprintf(stderr, "%lld", num);
-}
-
-void TlPrintHex (uint64_t num) {
-    fprintf(stderr, "%llx", num);
-}
-
-void TlPrintCharacter (uint8_t byte) {
-    fprintf(stderr, "%c", byte);
-}
-
 void TlpPrintCallback (uint8_t byte, void *context) {
     if (!context) {
         context = stdout;
