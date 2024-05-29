@@ -2088,8 +2088,8 @@ FN IrGenerateInitializer (
 
     // Generate IR to initialize a structure.
 
-    LexTokenError ( &node^.Token,
-        "I didn't feel like implementing runtime initializers yet", 0, 0, 0 )
+    LexError ( &node^.Token,
+        "I didn't feel like implementing runtime initializers yet\n" )
 
     RETURN NULLPTR
 END
@@ -2335,8 +2335,7 @@ FN (IrStatementGenerationF) IrGenerateGoTo (
         // This is one of the few source text errors that we wait until IR gen
         // to catch.
 
-        LexTokenError ( &node^.Token,
-            "Use of label that is never defined", 0, 0, 0 )
+        LexError ( &node^.Token, "Use of label that is never defined\n" )
     END
 
     labelinst := CAST labelsym^.IrContext TO ^IrInstruction

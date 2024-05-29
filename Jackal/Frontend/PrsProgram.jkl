@@ -171,45 +171,6 @@ FN PrsInsertNodeIntoBlock (
     block^.StatementListTail = node
 END
 
-FN PrsPrintType (
-    IN type : ^LexSemanticType,
-)
-
-    // Debug function that recursively prints a type.
-
-    TlPrintString ( "Subtype: " )
-    TlPrintNumber ( type^.Subtype )
-    TlPrintString ( "\n" )
-
-    IF type^.Subtype == TYPE_PRIMITIVE THEN
-        TlPrintString ( "Primitive type: " )
-        TlPrintNumber ( type^.Body.Primitive.Type )
-        TlPrintString ( "\n" )
-
-    ELSEIF type^.Subtype == TYPE_NAMED THEN
-        TlPrintString ( "Type name: " )
-        TlPrintString ( type^.Body.Named.Symbol^.Name )
-        TlPrintString ( "\n" )
-
-    ELSEIF type^.Subtype == TYPE_POINTER THEN
-        TlPrintString ( "Pointer to:\n" )
-        PrsPrintType ( type^.Body.Pointer.Base )
-
-    ELSEIF type^.Subtype == TYPE_ARRAY THEN
-        TlPrintString ( "Array with bound: " )
-
-        IF type^.Body.Array.HasBound THEN
-            TlPrintNumber ( type^.Body.Array.Bound )
-            TlPrintString ( ", of:\n" )
-
-        ELSE
-            TlPrintString ( "Boundless, of:\n" )
-        END
-
-        PrsPrintType ( type^.Body.Array.Base )
-    END
-END
-
 FN PrsIsLvalue (
     IN node : ^PrsAstNode,
 ) : UBYTE
@@ -300,17 +261,17 @@ FN PrsFieldSequence (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+        LexError ( &idtoken, "Expected an identifier\n" )
     END
 
     IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-        LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        LexError ( &idtoken, "Expected a struct name\n" )
     END
 
     symbol := CAST idtoken.Payload TO ^LexSymbol
 
     IF symbol^.Type != SYM_TYPE THEN
-        LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+        LexError ( &idtoken, "Expected a struct name\n" )
     END
 
     type := symbol^.SemanticType
@@ -321,7 +282,7 @@ FN PrsFieldSequence (
         TOKEN_OPER, // type
         TOKEN_DOT, // subtype
     ) THEN
-        LexTokenError ( &idtoken, "Expected a dot", 0, 0, 0 )
+        LexError ( &idtoken, "Expected a dot\n" )
     END
 
     finaloffset : UWORD = 0
@@ -331,15 +292,15 @@ FN PrsFieldSequence (
             IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
                 // Forward declared type that we don't know anything about yet.
 
-                LexTokenError ( &idtoken,
-                    "Illegal use of undeclared destination type", 0, 0, 0 )
+                LexError ( &idtoken,
+                    "Illegal use of undeclared destination type\n" )
             END
 
             type = type^.Body.Named.Symbol^.SemanticType
         END
 
         IF type^.Subtype != TYPE_COMPOUND THEN
-            LexTokenError ( &idtoken, "Expected a struct name", 0, 0, 0 )
+            LexError ( &idtoken, "Expected a struct name\n" )
         END
 
         LexEnterOverlayScope ( type^.Body.Compound.FieldScope )
@@ -349,13 +310,13 @@ FN PrsFieldSequence (
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &idtoken, "Expected an identifier", 0, 0, 0 )
+            LexError ( &idtoken, "Expected an identifier\n" )
         END
 
         LexExitOverlayScope ()
 
         IF idtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-            LexTokenError ( &idtoken, "Non-existent field name", 0, 0, 0 )
+            LexError ( &idtoken, "Non-existent field name\n" )
         END
 
         symbol = CAST idtoken.Payload TO ^LexSymbol
@@ -393,8 +354,6 @@ FN PrsCheckType (
     // is tested rather than assignment compatibility. Returns TRUE if there is
     // an implicit cast.
 
-    // TODO fix to use vararg LexTokenError
-
     IF type1 == type2 THEN
         // They're identical, literally the same type object.
 
@@ -407,9 +366,8 @@ FN PrsCheckType (
         IF type1^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Illegal use of undeclared destination type", 0, 0, 0 )
+            LexError ( errtoken,
+                "%sIllegal use of undeclared destination type\n", errstring )
         END
 
         type1 = type1^.Body.Named.Symbol^.SemanticType
@@ -419,9 +377,8 @@ FN PrsCheckType (
         IF type2^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Illegal use of undeclared source type", 0, 0, 0 )
+            LexError ( errtoken,
+                "%sIllegal use of undeclared source type\n", errstring )
         END
 
         type2 = type2^.Body.Named.Symbol^.SemanticType
@@ -436,8 +393,7 @@ FN PrsCheckType (
     IF type1^.Subtype != type2^.Subtype THEN
         // Not the same type of type.
 
-        TlPrintString ( errstring )
-        LexTokenError ( errtoken, "Incompatible types", 0, 0, 0 )
+        LexError ( errtoken, "%sIncompatible types\n", errstring )
     END
 
     IF type1^.Subtype == TYPE_PRIMITIVE THEN
@@ -456,9 +412,8 @@ FN PrsCheckType (
             // We're checking for exact equivalence.
 
             IF primtype1 != primtype2 THEN
-                TlPrintString ( errstring )
-                LexTokenError ( errtoken,
-                    "Primitive types not equivalent", 0, 0, 0 )
+                LexError ( errtoken,
+                    "%sPrimitive types not equivalent\n", errstring )
             END
         END
 
@@ -478,9 +433,9 @@ FN PrsCheckType (
 
                 // We are, so we aren't compatible.
 
-                TlPrintString ( errstring )
-                LexTokenError ( errtoken,
-                    "Implicit cast from unsigned to signed type", 0, 0, 0 )
+                LexError ( errtoken,
+                    "%sImplicit cast from unsigned to signed type\n",
+                    errstring )
             END
 
         ELSEIF primtype2 > PRIM_TYPE_SIGNED AND
@@ -488,9 +443,8 @@ FN PrsCheckType (
 
             // We're crossing from signed to unsigned, which isn't compatible.
 
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Implicit cast from signed to unsigned type", 0, 0, 0 )
+            LexError ( errtoken,
+                "%sImplicit cast from signed to unsigned type\n", errstring )
         END
 
         RETURN TRUE
@@ -524,24 +478,21 @@ FN PrsCheckType (
 
             IF type1base^.Body.Function.IsFnPtr THEN
                 IF type2base^.Body.Function.FnPtrType != type1base THEN
-                    TlPrintString ( errstring )
-                    LexTokenError ( errtoken,
-                        "Not the same function pointer type", 0, 0, 0 )
+                    LexError ( errtoken,
+                        "%sNot the same function pointer type\n", errstring )
                 END
 
             ELSEIF type2base^.Body.Function.IsFnPtr THEN
                 IF type1base^.Body.Function.FnPtrType != type2base THEN
-                    TlPrintString ( errstring )
-                    LexTokenError ( errtoken,
-                        "Not the same function pointer type", 0, 0, 0 )
+                    LexError ( errtoken,
+                        "%sNot the same function pointer type\n", errstring )
                 END
 
             ELSEIF type1base^.Body.Function.FnPtrType !=
                 type2base^.Body.Function.FnPtrType THEN
 
-                TlPrintString ( errstring )
-                LexTokenError ( errtoken,
-                    "Not the same function pointer type", 0, 0, 0 )
+                LexError ( errtoken,
+                    "%sNot the same function pointer type\n", errstring )
             END
 
             RETURN FALSE
@@ -564,8 +515,7 @@ FN PrsCheckType (
         // Compound types are only compatible if they're the same type.
 
         IF type1 != type2 THEN
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken, "Incompatible compound types", 0, 0, 0 )
+            LexError ( errtoken, "%sIncompatible compound types\n", errstring )
         END
 
         RETURN FALSE
@@ -576,8 +526,7 @@ FN PrsCheckType (
 
         IF type1^.Body.Array.HasBound AND type2^.Body.Array.HasBound THEN
             IF type1^.Body.Array.Bound != type2^.Body.Array.Bound THEN
-                TlPrintString ( errstring )
-                LexTokenError ( errtoken, "Array type bound differs", 0, 0, 0 )
+                LexError ( errtoken, "%sArray type bound differs\n", errstring )
             END
         END
 
@@ -603,17 +552,15 @@ FN PrsCheckType (
         // Check FNPTR type.
 
         IF type1^.Body.Function.FnPtrType != type2^.Body.Function.FnPtrType THEN
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken, "Not the same FNPTR type", 0, 0, 0 )
+            LexError ( errtoken, "%sNot the same FNPTR type\n", errstring )
         END
 
         // Check return value types.
 
         IF type1^.Body.Function.ReturnType THEN
             IF NOT type2^.Body.Function.ReturnType THEN
-                TlPrintString ( errstring )
-                LexTokenError ( errtoken,
-                    "Incompatible return value types", 0, 0, 0 )
+                LexError ( errtoken,
+                    "%sIncompatible return value types\n", errstring )
             END
 
             PrsCheckType (
@@ -625,23 +572,20 @@ FN PrsCheckType (
             )
 
         ELSEIF type2^.Body.Function.ReturnType THEN
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken,
-                "Incompatible return value types", 0, 0, 0 )
+            LexError ( errtoken,
+                "%sIncompatible return value types\n", errstring )
         END
 
         // Check vararg-ness.
 
         IF type1^.Body.Function.IsVarArg != type2^.Body.Function.IsVarArg THEN
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken, "Not the same varargness", 0, 0, 0 )
+            LexError ( errtoken, "%sNot the same varargness\n", errstring )
         END
 
         // Check argument count.
 
         IF type1^.Body.Function.ArgCount != type2^.Body.Function.ArgCount THEN
-            TlPrintString ( errstring )
-            LexTokenError ( errtoken, "Wrong argument count", 0, 0, 0 )
+            LexError ( errtoken, "%sWrong argument count\n", errstring )
         END
 
         // Check each argument for type and name equivalence.
@@ -651,9 +595,8 @@ FN PrsCheckType (
 
         WHILE arg1 DO
             IF TlCompareString ( arg1^.Symbol^.Name, arg2^.Symbol^.Name ) THEN
-                TlPrintString ( errstring )
-                LexTokenError ( &arg2^.Token,
-                    "Argument name mismatch", 0, 0, 0 )
+                LexError ( &arg2^.Token,
+                    "%sArgument name mismatch\n", errstring )
             END
 
             PrsCheckType (
@@ -702,7 +645,7 @@ FN PrsAtom () : ^PrsAstNode
         // payload.
 
         IF token.Subtype == TOKEN_IDENTIFIER_NEW THEN
-            LexTokenError ( &token, "Use of undeclared symbol.", 0, 0, 0 )
+            LexError ( &token, "Use of undeclared symbol.\n" )
         END
 
         symbol := CAST token.Payload TO ^LexSymbol
@@ -724,7 +667,7 @@ FN PrsAtom () : ^PrsAstNode
             )
 
         ELSE
-            LexTokenError ( &token, "Expected a variable.", 0, 0, 0 )
+            LexError ( &token, "Expected a variable.\n" )
         END
 
     ELSEIF token.Type == TOKEN_STRING THEN
@@ -748,7 +691,7 @@ FN PrsAtom () : ^PrsAstNode
             TOKEN_RPAREN, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected a right parenthesis.", 0, 0, 0 )
+            LexError ( &token, "Expected a right parenthesis.\n" )
         END
 
     ELSEIF token.Type == TOKEN_OPER THEN
@@ -758,7 +701,7 @@ FN PrsAtom () : ^PrsAstNode
         operator := &PrsLeftOperators[token.Subtype]
 
         IF NOT operator^.Precedence THEN
-            LexTokenError ( &token, "Expected a left operator.", 0, 0, 0 )
+            LexError ( &token, "Expected a left operator.\n" )
         END
 
         atomnode = PrsCreateAstNode (
@@ -818,16 +761,16 @@ FN PrsAtom () : ^PrsAstNode
             IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
                 // Forward declared type that we don't know anything about yet.
 
-                LexTokenError ( &token,
-                    "Illegal use of undeclared type", 0, 0, 0 )
+                LexError ( &token,
+                    "Illegal use of undeclared type\n" )
             END
 
             type = type^.Body.Named.Symbol^.SemanticType
         END
 
         IF type^.Size == TYPE_SIZE_UNINIT THEN
-            LexTokenError ( &token,
-                "Can't take the size of this type", 0, 0, 0 )
+            LexError ( &token,
+                "Can't take the size of this type\n" )
         END
 
         atomnode = PrsCreateAstNode (
@@ -855,7 +798,7 @@ FN PrsAtom () : ^PrsAstNode
         atomnode^.Body.Constant.Value = offset
 
     ELSE
-        LexTokenError ( &token, "Expected an atom.", 0, 0, 0 )
+        LexError ( &token, "Expected an atom.\n" )
     END
 
     RETURN atomnode
@@ -881,7 +824,7 @@ FN PrsExpression (
         IF NOT operator^.Precedence THEN
             // This must have been a left operator, which we didn't expect.
 
-            LexTokenError ( &optoken, "Unexpected left operator", 0, 0, 0 )
+            LexError ( &optoken, "Unexpected left operator\n" )
         END
 
         IF operator^.Precedence < minprecedence THEN
@@ -939,14 +882,14 @@ FN PrsCheckConstant (
     END
 
     IF primtype > PRIM_TYPE_SIGNED AND primtype < PRIM_TYPE_SIGNED_MAX THEN
-        LexTokenError ( errtoken,
-            "Constant doesn't fit in signed type", 0, 0, 0 )
+        LexError ( errtoken,
+            "Constant doesn't fit in signed type\n" )
     END
 
     masked := value & JklPrimitiveTypeMasks[primtype]
 
     IF masked != value THEN
-        LexTokenError ( errtoken, "Constant doesn't fit in type", 0, 0, 0 )
+        LexError ( errtoken, "Constant doesn't fit in type\n" )
     END
 END
 
@@ -1011,8 +954,8 @@ FN PrsEvaluateType (
         IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
-            LexTokenError ( &node^.Token,
-                "Illegal use of undeclared type", 0, 0, 0 )
+            LexError ( &node^.Token,
+                "Illegal use of undeclared type\n" )
         END
 
         type = type^.Body.Named.Symbol^.SemanticType
@@ -1042,8 +985,8 @@ FN PrsTypeIsDeclarable (
         IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
-            LexTokenError ( errtoken,
-                "Illegal use of undeclared type", 0, 0, 0 )
+            LexError ( errtoken,
+                "Illegal use of undeclared type\n" )
         END
 
         type = type^.Body.Named.Symbol^.SemanticType
@@ -1087,8 +1030,8 @@ FN PrsTypeIsValue (
         IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
-            LexTokenError ( errtoken,
-                "Illegal use of undeclared type", 0, 0, 0 )
+            LexError ( errtoken,
+                "Illegal use of undeclared type\n" )
         END
 
         type = type^.Body.Named.Symbol^.SemanticType
@@ -1137,8 +1080,8 @@ FN PrsCheckNodeIsValue (
         &node^.Token, // errtoken
         type, // type
     ) THEN
-        LexTokenError ( &node^.Token,
-            "This type is not directly usable as a value", 0, 0, 0 )
+        LexError ( &node^.Token,
+            "This type is not directly usable as a value\n" )
     END
 END
 
@@ -1175,8 +1118,8 @@ FN PrsType (
         // It's a primitive type, that was easy!
 
         IF NOT JklTargetInfo^.SupportedTypes[typetoken.TypeContext] THEN
-            LexTokenError ( &typetoken,
-                "This primitive type is not supported on this target", 0, 0, 0 )
+            LexError ( &typetoken,
+                "This primitive type is not supported on this target\n" )
         END
 
         type^.Subtype = TYPE_PRIMITIVE
@@ -1219,7 +1162,7 @@ FN PrsType (
 
                 // Nope, that's bad :(
 
-                LexTokenError ( &typetoken, "Symbol isn't a type", 0, 0, 0 )
+                LexError ( &typetoken, "Symbol isn't a type\n" )
             END
 
         ELSE
@@ -1234,8 +1177,8 @@ FN PrsType (
     ELSE
         // Type didn't match with anything we expected.
 
-        LexTokenError ( &typetoken,
-            "Type must be primitive, pointer, or named.", 0, 0, 0 )
+        LexError ( &typetoken,
+            "Type must be primitive, pointer, or named.\n" )
     END
 
     IF depth THEN
@@ -1279,8 +1222,8 @@ FN PrsType (
         IF skippedtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
-            LexTokenError ( &typetoken,
-                "Illegal use of undeclared type", 0, 0, 0 )
+            LexError ( &typetoken,
+                "Illegal use of undeclared type\n" )
         END
 
         skippedtype = skippedtype^.Body.Named.Symbol^.SemanticType
@@ -1290,13 +1233,13 @@ FN PrsType (
         &typetoken, // errtoken
         skippedtype, // type
     ) THEN
-        LexTokenError ( &typetoken,
-            "This type is not directly declarable", 0, 0, 0 )
+        LexError ( &typetoken,
+            "This type is not directly declarable\n" )
     END
 
     IF skippedtype^.Size == TYPE_SIZE_UNINIT THEN
-        LexTokenError ( &typetoken,
-            "This type is not suitable as a base for an array", 0, 0, 0 )
+        LexError ( &typetoken,
+            "This type is not suitable as a base for an array\n" )
     END
 
     elementalign := skippedtype^.MinimumAlignment
@@ -1333,8 +1276,8 @@ FN PrsType (
             // The array is boundless.
 
             IF dimensions > 1 THEN
-                LexTokenError ( &typetoken,
-                    "Boundless arrays can't be multidimensional.", 0, 0, 0 )
+                LexError ( &typetoken,
+                    "Boundless arrays can't be multidimensional.\n" )
             END
 
             boundless = TRUE
@@ -1345,13 +1288,13 @@ FN PrsType (
             boundnode := PrsExpression ( 0 )
 
             IF boundnode^.Type != AST_CONSTANT THEN
-                LexTokenError ( &typetoken,
-                    "Expected a constant array bound", 0, 0, 0 )
+                LexError ( &typetoken,
+                    "Expected a constant array bound\n" )
             END
 
             IF boundnode^.Body.Constant.Value == 0 THEN
-                LexTokenError ( &typetoken,
-                    "Array bound must not be zero", 0, 0, 0 )
+                LexError ( &typetoken,
+                    "Array bound must not be zero\n" )
             END
 
             arraytype^.Body.Array.Bound = boundnode^.Body.Constant.Value
@@ -1364,8 +1307,8 @@ FN PrsType (
                 TOKEN_RBRACKET, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &rbrackettoken,
-                    "Array type must be terminated by right bracket.", 0, 0, 0 )
+                LexError ( &rbrackettoken,
+                    "Array type must be terminated by right bracket.\n" )
             END
         END
 
@@ -1380,8 +1323,8 @@ FN PrsType (
         END
 
         IF boundless THEN
-            LexTokenError ( &typetoken,
-                "Boundless arrays can't be multidimensional.", 0, 0, 0 )
+            LexError ( &typetoken,
+                "Boundless arrays can't be multidimensional.\n" )
         END
 
         dimensions += 1
@@ -1430,27 +1373,27 @@ FN PrsFoundSymbol (
         IF symbol^.Type != SYM_VAR THEN
             // This symbol isn't the expected type.
 
-            LexTokenError ( token, "Symbol name already in use.", 0, 0, 0 )
+            LexError ( token, "Symbol name already in use.\n" )
         END
 
         IF flags & VAR_FLAG_EXTERN THEN
             // This is an attempt at an extern declaration. Externs can't
             // override anything.
 
-            LexTokenError ( token, "Symbol already declared.", 0, 0, 0 )
+            LexError ( token, "Symbol already declared.\n" )
         END
 
         IF NOT (symbol^.Flags & VAR_FLAG_EXTERN) THEN
             // Can only override externs.
 
-            LexTokenError ( token, "Symbol already declared.", 0, 0, 0 )
+            LexError ( token, "Symbol already declared.\n" )
         END
 
         IF NOT global THEN
             // Can't override externs from local scope.
 
-            LexTokenError ( token,
-                "Can't override extern from local scope.", 0, 0, 0 )
+            LexError ( token,
+                "Can't override extern from local scope.\n" )
         END
 
         PrsCheckType (
@@ -1606,8 +1549,8 @@ FN PrsVariableDeclaration (
             token, // errtoken
             type, // type
         ) THEN
-            LexTokenError ( token,
-                "This type is not directly declarable", 0, 0, 0 )
+            LexError ( token,
+                "This type is not directly declarable\n" )
         END
 
         eqtoken : LexToken
@@ -1627,8 +1570,8 @@ FN PrsVariableDeclaration (
 
     IF hasinitializer THEN
         IF flags & VAR_FLAG_EXTERN THEN
-            LexTokenError ( token,
-                "EXTERN declarations must not have an initializer.", 0, 0, 0 )
+            LexError ( token,
+                "EXTERN declarations must not have an initializer.\n" )
         END
 
         // Parse the initializer.
@@ -1644,8 +1587,8 @@ FN PrsVariableDeclaration (
                 &initialnode^.Token, // errtoken
                 type, // type
             ) THEN
-                LexTokenError ( &initialnode^.Token,
-                    "This type is not directly usable as a value", 0, 0, 0 )
+                LexError ( &initialnode^.Token,
+                    "This type is not directly usable as a value\n" )
             END
             
         ELSE
@@ -1658,8 +1601,8 @@ FN PrsVariableDeclaration (
                     // Forward declared type that we don't know anything about
                     // yet.
 
-                    LexTokenError ( &initialnode^.Token,
-                        "Illegal use of undeclared type", 0, 0, 0 )
+                    LexError ( &initialnode^.Token,
+                        "Illegal use of undeclared type\n" )
                 END
 
                 striptype = striptype^.Body.Named.Symbol^.SemanticType
@@ -1695,8 +1638,8 @@ FN PrsVariableDeclaration (
         NOT type^.Body.Array.HasBound AND
         NOT (flags & VAR_FLAG_EXTERN) THEN
 
-        LexTokenError ( token,
-            "Can't declare a boundless array", 0, 0, 0 )
+        LexError ( token,
+            "Can't declare a boundless array\n" )
     END
 
     // Do general declaration processing of the symbol.
@@ -1753,8 +1696,8 @@ FN PrsVariableDeclaration (
             // that immediately.
 
             IF NOT PrsIsCompileTime ( initialnode ) THEN
-                LexTokenError ( token,
-                    "Globals require a compile-time initial value.", 0, 0, 0 )
+                LexError ( token,
+                    "Globals require a compile-time initial value.\n" )
             END
 
             symbol^.InitialValue = initialnode
@@ -1797,8 +1740,8 @@ FN PrsGlobalDeclaration () : UBYTE
     END
 
     IF token.Type != TOKEN_IDENTIFIER AND token.Type != TOKEN_DECL THEN
-        LexTokenError ( &token,
-            "Expected identifier or declarative keyword", 0, 0, 0 )
+        LexError ( &token,
+            "Expected identifier or declarative keyword\n" )
     END
 
     IF token.Type == TOKEN_IDENTIFIER THEN
@@ -1815,8 +1758,8 @@ FN PrsGlobalDeclaration () : UBYTE
             // There MUST be a colon for global declarations, otherwise it would
             // be a global assignment which makes no sense.
 
-            LexTokenError ( &colontoken,
-                "Expected a colon (indicating a declaration).", 0, 0, 0 )
+            LexError ( &colontoken,
+                "Expected a colon (indicating a declaration).\n" )
         END
 
         PrsVariableDeclaration (
@@ -1886,14 +1829,14 @@ FN PrsParseBlock (
             blockstate := PrsBlockStack.Buffer[PrsBlockStack.Count - 1]
 
             IF blockstate == BLOCK_MACRO_BODY THEN
-                LexTokenError ( &token,
-                    "Attempt to leave block from within macro", 0, 0, 0 )
+                LexError ( &token,
+                    "Attempt to leave block from within macro\n" )
             END
 
             IF blockstate == BLOCK_PLAIN_BODY THEN
                 IF token.Subtype != TOKEN_END THEN
-                    LexTokenError ( &token,
-                        "Only END is allowed to terminate this block", 0, 0, 0 )
+                    LexError ( &token,
+                        "Only END is allowed to terminate this block\n" )
                 END
 
                 BREAK
@@ -1985,8 +1928,7 @@ FN PrsParseBlock (
                 )
 
                 IF NOT PrsIsLvalue ( leftexpr ) THEN
-                    LexTokenError ( &leftexpr^.Token,
-                        "Not a valid L-value", 0, 0, 0 )
+                    LexError ( &leftexpr^.Token, "Not a valid L-value\n" )
                 END
 
                 lefttype := PrsEvaluateType ( leftexpr )
@@ -1995,8 +1937,8 @@ FN PrsParseBlock (
                     &leftexpr^.Token, // errtoken
                     lefttype, // type
                 ) THEN
-                    LexTokenError ( &leftexpr^.Token,
-                        "This type is not directly assignable", 0, 0, 0 )
+                    LexError ( &leftexpr^.Token,
+                        "This type is not directly assignable\n" )
                 END
 
                 asgnnode^.Body.Assign.Left = leftexpr
@@ -2009,8 +1951,8 @@ FN PrsParseBlock (
                     &rightexpr^.Token, // errtoken
                     righttype, // type
                 ) THEN
-                    LexTokenError ( &rightexpr^.Token,
-                        "This type is not directly usable", 0, 0, 0 )
+                    LexError ( &rightexpr^.Token,
+                        "This type is not directly usable\n" )
                 END
 
                 asgnnode^.Body.Assign.Right = rightexpr
@@ -2086,7 +2028,7 @@ FN (PrsOperatorF) PrsParseCompoundTypeIndex (
     type := PrsEvaluateType ( left )
 
     IF type^.Subtype != TYPE_COMPOUND THEN
-        LexTokenError ( &node^.Token, "Not a compound type", 0, 0, 0 )
+        LexError ( &node^.Token, "Not a compound type\n" )
     END
 
     scope := type^.Body.Compound.FieldScope
@@ -2100,11 +2042,11 @@ FN (PrsOperatorF) PrsParseCompoundTypeIndex (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &fieldtoken, "Expected an identifier", 0, 0, 0 )
+        LexError ( &fieldtoken, "Expected an identifier\n" )
     END
 
     IF fieldtoken.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-        LexTokenError ( &fieldtoken, "Non-existent field name", 0, 0, 0 )
+        LexError ( &fieldtoken, "Non-existent field name\n" )
     END
 
     fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
@@ -2129,8 +2071,8 @@ FN (PrsOperatorF) PrsParseArrayIndex (
     IF lefttype^.Subtype != TYPE_ARRAY AND
         lefttype^.Subtype != TYPE_POINTER THEN
 
-        LexTokenError ( &node^.Token,
-            "Can only index an array type or a pointer type", 0, 0, 0 )
+        LexError ( &node^.Token,
+            "Can only index an array type or a pointer type\n" )
     END
 
     right := PrsExpression ( 0 )
@@ -2146,7 +2088,7 @@ FN (PrsOperatorF) PrsParseArrayIndex (
         TOKEN_RBRACKET, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+        LexError ( &token, "Expected a right bracket\n" )
     END
 
     IF lefttype^.Subtype == TYPE_ARRAY AND
@@ -2156,8 +2098,8 @@ FN (PrsOperatorF) PrsParseArrayIndex (
         // Check the constant against the array bound.
 
         IF right^.Body.Constant.Value >= lefttype^.Body.Array.Bound THEN
-            LexTokenError ( &right^.Token,
-                "Constant exceeds array bound", 0, 0, 0 )
+            LexError ( &right^.Token,
+                "Constant exceeds array bound\n" )
         END
     END
 END
@@ -2178,8 +2120,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     IF lefttype^.Subtype != TYPE_FUNCTION AND
         lefttype^.Subtype != TYPE_POINTER THEN
 
-        LexTokenError ( &node^.Token,
-            "Expected function or function pointer", 0, 0, 0 )
+        LexError ( &node^.Token,
+            "Expected function or function pointer\n" )
     END
 
     IF lefttype^.Subtype == TYPE_POINTER THEN
@@ -2189,8 +2131,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         lefttype = lefttype^.Body.Pointer.Base
 
         IF lefttype^.Subtype != TYPE_FUNCTION THEN
-            LexTokenError ( &node^.Token,
-                "Unexpected non-function pointer", 0, 0, 0 )
+            LexError ( &node^.Token,
+                "Unexpected non-function pointer\n" )
         END
 
         // Create a new AST node.
@@ -2234,7 +2176,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         IF argcount > lefttype^.Body.Function.ArgCount AND
             NOT lefttype^.Body.Function.IsVarArg THEN
 
-            LexTokenError ( &node^.Token, "Too many arguments", 0, 0, 0 )
+            LexError ( &node^.Token, "Too many arguments\n" )
         END
 
         IF refarg AND refarg^.InOut == ARG_OUT THEN
@@ -2243,8 +2185,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
                 TOKEN_ARGSPEC, // type
                 TOKEN_OUT, // subtype
             ) THEN
-                LexTokenError ( &token,
-                    "Expected OUT specifier on OUT argument", 0, 0, 0 )
+                LexError ( &token,
+                    "Expected OUT specifier on OUT argument\n" )
             END
         END
 
@@ -2256,8 +2198,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
             &argnode^.Token, // errtoken
             argtype, // type
         ) THEN
-            LexTokenError ( &argnode^.Token,
-                "This type is not directly usable as a valuee", 0, 0, 0 )
+            LexError ( &argnode^.Token,
+                "This type is not directly usable as a valuee\n" )
         END
 
         // If refarg became null, that means that we walked off into the varargs
@@ -2267,8 +2209,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
             IF refarg^.InOut == ARG_OUT AND
                 NOT PrsIsLvalue ( argnode ) THEN
 
-                LexTokenError ( &argnode^.Token,
-                    "OUT arguments must be L-values", 0, 0, 0 )
+                LexError ( &argnode^.Token,
+                    "OUT arguments must be L-values\n" )
             END
         
             PrsCheckType (
@@ -2324,8 +2266,8 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         ) THEN
             // Bad.
 
-            LexTokenError ( &token,
-                "Expected a comma or right parenthesis", 0, 0, 0 )
+            LexError ( &token,
+                "Expected a comma or right parenthesis\n" )
         END
     END
 
@@ -2387,7 +2329,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     node^.Body.Operator.VarArgCount = varargcount
 
     IF argcount < lefttype^.Body.Function.ArgCount THEN
-        LexTokenError ( &node^.Token, "Too few arguments", 0, 0, 0 )
+        LexError ( &node^.Token, "Too few arguments\n" )
     END
 END
 
@@ -2403,7 +2345,7 @@ FN (PrsOperatorF) PrsParsePtrDereference (
     lefttype := PrsEvaluateType ( left )
 
     IF lefttype^.Subtype != TYPE_POINTER THEN
-        LexTokenError ( &node^.Token, "Expected a pointer type", lefttype^.Subtype, 0, 0 )
+        LexError ( &node^.Token, "Expected a pointer type\n" )
     END
 END
 
@@ -2503,7 +2445,7 @@ FN (PrsOperatorF) PrsParseDivide (
         // We can roll this into a constant.
 
         IF right^.Body.Constant.Value == 0 THEN
-            LexTokenError ( &node^.Token, "Division by zero not allowed", 0, 0, 0 )
+            LexError ( &node^.Token, "Division by zero not allowed\n" )
         END
 
         node^.Type = AST_CONSTANT
@@ -2548,7 +2490,7 @@ FN (PrsOperatorF) PrsParseModulo (
         // We can roll this into a constant.
 
         IF right^.Body.Constant.Value == 0 THEN
-            LexTokenError ( &node^.Token, "Modulo by zero not allowed", 0, 0, 0 )
+            LexError ( &node^.Token, "Modulo by zero not allowed\n" )
         END
 
         node^.Type = AST_CONSTANT
@@ -3252,7 +3194,7 @@ FN (PrsOperatorF) PrsParseAddrOf (
     // We can only take the address of l-values.
 
     IF NOT PrsIsLvalue ( left ) THEN
-        LexTokenError ( &left^.Token, "Not a valid L-value", 0, 0, 0 )
+        LexError ( &left^.Token, "Not a valid L-value\n" )
     END
 
     IF left^.Type == AST_IDENTIFIER THEN
@@ -3264,8 +3206,8 @@ FN (PrsOperatorF) PrsParseAddrOf (
             type := PrsEvaluateType ( left )
 
             IF type^.Subtype != TYPE_COMPOUND THEN
-                LexTokenError ( &left^.Token,
-                    "Can't take address of a non-compound local", 0, 0, 0 )
+                LexError ( &left^.Token,
+                    "Can't take address of a non-compound local\n" )
             END
         END
     END
@@ -3383,7 +3325,7 @@ FN (PrsOperatorF) PrsParseCast (
         TOKEN_OTHER, // type
         TOKEN_TO, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected TO.", 0, 0, 0 )
+        LexError ( &token, "Expected TO.\n" )
     END
 
     type := PrsCreateType ()
@@ -3423,7 +3365,7 @@ FN (PrsOperatorF) PrsParseContainerOf (
         TOKEN_OTHER, // type
         TOKEN_TO, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected TO.", 0, 0, 0 )
+        LexError ( &token, "Expected TO.\n" )
     END
     
     offset : UWORD
@@ -3472,8 +3414,8 @@ FN (PrsOperatorF) PrsParseSizeOfValue (
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
     IF type^.Size == TYPE_SIZE_UNINIT THEN
-        LexTokenError ( &node^.Token,
-            "Can't take the size of this type", 0, 0, 0 )
+        LexError ( &node^.Token,
+            "Can't take the size of this type\n" )
     END
 
     node^.Type = AST_CONSTANT
@@ -3496,7 +3438,7 @@ FN PrsCreateNamedType (
         // go.
 
         IF symbol^.Type != SYM_FORWARD_TYPE THEN
-            LexTokenError ( token, "Identifier already in use", 0, 0, 0 )
+            LexError ( token, "Identifier already in use\n" )
         END
     END
 
@@ -3516,7 +3458,7 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+        LexError ( &nametoken, "Expected an identifier\n" )
     END
 
     symbol := PrsCreateNamedType ( &nametoken )
@@ -3528,7 +3470,7 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
         TOKEN_COLON, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+        LexError ( &colontoken, "Expected a type\n" )
     END
 
     type := PrsCreateType ()
@@ -3566,11 +3508,11 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected an identifier", 0, 0, 0)
+            LexError ( &token, "Expected an identifier\n" )
         END
 
         IF token.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-            LexTokenError ( &token, "Identifier already in use", 0, 0, 0 )
+            LexError ( &token, "Identifier already in use\n" )
         END
 
         constsymbol := CAST token.Payload TO ^LexSymbol
@@ -3588,8 +3530,8 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
             newposnode := PrsExpression ( 0 )
 
             IF newposnode^.Type != AST_CONSTANT THEN
-                LexTokenError ( &newposnode^.Token,
-                    "Expected a constant value", 0, 0, 0 )
+                LexError ( &newposnode^.Token,
+                    "Expected a constant value\n" )
             END
 
             value = newposnode^.Body.Constant.Value
@@ -3615,8 +3557,8 @@ FN (PrsDeclaratorF) PrsParseEnum () : ^LexSymbol
         ) THEN
             // Bad.
 
-            LexTokenError ( &token,
-                "Expected a comma or END", 0, 0, 0 )
+            LexError ( &token,
+                "Expected a comma or END\n" )
         END
     END
 
@@ -3652,33 +3594,33 @@ FN PrsParseFnSignature (
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &fnptrtoken, "Expected an identifier", 0, 0, 0 )
+            LexError ( &fnptrtoken, "Expected an identifier\n" )
         END
 
         IF fnptrtoken.Subtype == TOKEN_IDENTIFIER_NEW THEN
-            LexTokenError ( &fnptrtoken, "Undeclared identifier", 0, 0, 0 )
+            LexError ( &fnptrtoken, "Undeclared identifier\n" )
         END
 
         IF fnptr THEN
-            LexTokenError ( &fnptrtoken, "FNPTR not allowed on an FNPTR", 0, 0, 0 )
+            LexError ( &fnptrtoken, "FNPTR not allowed on an FNPTR\n" )
         END
 
         symbol := CAST fnptrtoken.Payload TO ^LexSymbol
 
         IF symbol^.Type != SYM_TYPE THEN
-            LexTokenError ( &fnptrtoken, "Symbol isn't a type", 0, 0, 0 )
+            LexError ( &fnptrtoken, "Symbol isn't a type\n" )
         END
 
         fnptrtype = symbol^.SemanticType
 
         IF fnptrtype^.Subtype != TYPE_POINTER THEN
-            LexTokenError ( &fnptrtoken, "Type isn't a function pointer", 0, 0, 0 )
+            LexError ( &fnptrtoken, "Type isn't a function pointer\n" )
         END
 
         fnptrtype = fnptrtype^.Body.Pointer.Base
 
         IF fnptrtype^.Subtype != TYPE_FUNCTION THEN
-            LexTokenError ( &fnptrtoken, "Type isn't a function pointer", 0, 0, 0 )
+            LexError ( &fnptrtoken, "Type isn't a function pointer\n" )
         END
 
         IF NOT LexMatchToken (
@@ -3686,7 +3628,7 @@ FN PrsParseFnSignature (
             TOKEN_RPAREN, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &fnptrtoken, "Expected a right parenthesis.", 0, 0, 0 )
+            LexError ( &fnptrtoken, "Expected a right parenthesis.\n" )
         END
     END
 
@@ -3699,7 +3641,7 @@ FN PrsParseFnSignature (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+        LexError ( &nametoken, "Expected an identifier\n" )
     END
 
     symbol := CAST nametoken.Payload TO ^LexSymbol
@@ -3733,7 +3675,7 @@ FN PrsParseFnSignature (
         TOKEN_OPER, // type
         TOKEN_LPAREN, // subtype
     ) THEN
-        LexTokenError ( &parentoken, "Expected a left parenthesis", 0, 0, 0 )
+        LexError ( &parentoken, "Expected a left parenthesis\n" )
     END
 
     type := PrsCreateType ()
@@ -3795,8 +3737,8 @@ FN PrsParseFnSignature (
         LexGetToken ( &checktoken )
 
         IF checktoken.Type != TOKEN_ARGSPEC THEN
-            LexTokenError ( &checktoken,
-                "Expected an argument specifier IN/OUT", 0, 0, 0 )
+            LexError ( &checktoken,
+                "Expected an argument specifier IN/OUT\n" )
         END
 
         IF checktoken.Subtype == TOKEN_IN THEN
@@ -3820,13 +3762,13 @@ FN PrsParseFnSignature (
                     TOKEN_IDENTIFIER, // type
                     0, // subtype
                 ) THEN
-                    LexTokenError ( &varargtoken,
-                        "Expected identifier", 0, 0, 0 )
+                    LexError ( &varargtoken,
+                        "Expected identifier\n" )
                 END
 
                 IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-                    LexTokenError ( &varargtoken,
-                        "Identifier already in use", 0, 0, 0 )
+                    LexError ( &varargtoken,
+                        "Identifier already in use\n" )
                 END
 
                 varargtablesymbol := CAST varargtoken.Payload TO ^LexSymbol
@@ -3848,13 +3790,13 @@ FN PrsParseFnSignature (
                     TOKEN_IDENTIFIER, // type
                     0, // subtype
                 ) THEN
-                    LexTokenError ( &varargtoken,
-                        "Expected identifier", 0, 0, 0 )
+                    LexError ( &varargtoken,
+                        "Expected identifier\n" )
                 END
 
                 IF varargtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-                    LexTokenError ( &varargtoken,
-                        "Identifier already in use", 0, 0, 0 )
+                    LexError ( &varargtoken,
+                        "Identifier already in use\n" )
                 END
 
                 varargcountsymbol := CAST varargtoken.Payload TO ^LexSymbol
@@ -3878,8 +3820,8 @@ FN PrsParseFnSignature (
                 TOKEN_RPAREN, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &checktoken,
-                    "Expected right parenthesis", 0, 0, 0 )
+                LexError ( &checktoken,
+                    "Expected right parenthesis\n" )
             END
 
             BREAK
@@ -3901,12 +3843,12 @@ FN PrsParseFnSignature (
         LexGetToken ( &argtoken )
 
         IF argtoken.Type != TOKEN_IDENTIFIER THEN
-            LexTokenError ( &argtoken, "Expected an identifier", 0, 0, 0)
+            LexError ( &argtoken, "Expected an identifier", 0, 0, 0)
         END
 
         IF argtoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
-            LexTokenError ( &argtoken,
-                "Identifier already in use", 0, 0, 0 )
+            LexError ( &argtoken,
+                "Identifier already in use\n" )
         END
 
         LexCopyToken (
@@ -3928,7 +3870,7 @@ FN PrsParseFnSignature (
             TOKEN_COLON, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &checktoken, "Expected a type", 0, 0, 0 )
+            LexError ( &checktoken, "Expected a type\n" )
         END
 
         argsymbol^.SemanticType = PrsCreateType ()
@@ -3948,8 +3890,8 @@ FN PrsParseFnSignature (
             &argtoken, // errtoken
             argsymbol^.SemanticType, // type
         ) THEN
-            LexTokenError (  &argtoken,
-                "Argument type is not directly usable as a value", 0, 0, 0 )
+            LexError (  &argtoken,
+                "Argument type is not directly usable as a value\n" )
         END
 
         IF LexMatchToken (
@@ -3969,8 +3911,8 @@ FN PrsParseFnSignature (
         ) THEN
             // Bad.
 
-            LexTokenError ( &checktoken,
-                "Expected a comma or right parenthesis", 0, 0, 0 )
+            LexError ( &checktoken,
+                "Expected a comma or right parenthesis\n" )
         END
     END
 
@@ -4003,8 +3945,8 @@ FN PrsParseFnSignature (
             &nametoken, // errtoken
             returntype, // type
         ) THEN
-            LexTokenError (  &nametoken,
-                "Return type is not directly usable as a value", 0, 0, 0 )
+            LexError (  &nametoken,
+                "Return type is not directly usable as a value\n" )
         END
 
         type^.Body.Function.ReturnType = returntype
@@ -4190,7 +4132,7 @@ FN PrsParseCompoundType (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+        LexError ( &nametoken, "Expected an identifier\n" )
     END
 
     symbol := PrsCreateNamedType ( &nametoken )
@@ -4230,11 +4172,11 @@ FN PrsParseCompoundType (
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &fieldtoken, "Expected an identifier", 0, 0, 0 )
+            LexError ( &fieldtoken, "Expected an identifier\n" )
         END
 
         IF fieldtoken.Subtype != TOKEN_IDENTIFIER_NEW THEN
-            LexTokenError ( &fieldtoken, "Field name already in use", 0, 0, 0 )
+            LexError ( &fieldtoken, "Field name already in use\n" )
         END
 
         fieldsymbol := CAST fieldtoken.Payload TO ^LexSymbol
@@ -4248,7 +4190,7 @@ FN PrsParseCompoundType (
             TOKEN_COLON, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+            LexError ( &colontoken, "Expected a type\n" )
         END
 
         fieldtype := PrsCreateType ()
@@ -4266,8 +4208,8 @@ FN PrsParseCompoundType (
             IF fieldtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
                 // Forward declared type that we don't know anything about yet.
 
-                LexTokenError ( &fieldtoken,
-                    "Illegal use of undeclared type", 0, 0, 0 )
+                LexError ( &fieldtoken,
+                    "Illegal use of undeclared type\n" )
             END
 
             fieldtype = fieldtype^.Body.Named.Symbol^.SemanticType
@@ -4277,14 +4219,13 @@ FN PrsParseCompoundType (
             &fieldtoken, // errtoken
             fieldtype, // type
         ) THEN
-            LexTokenError ( &fieldtoken,
-                "This type is not directly declarable", 0, 0, 0 )
+            LexError ( &fieldtoken,
+                "This type is not directly declarable\n" )
         END
 
         IF fieldtype^.Size == TYPE_SIZE_UNINIT THEN
-            LexTokenError ( &fieldtoken,
-                "This type is not suitable as a field in a compound type",
-                0, 0, 0 )
+            LexError ( &fieldtoken,
+                "This type is not suitable as a field in a compound type\n" )
         END
 
         IF fieldtype^.MinimumAlignment > minalignment THEN
@@ -4334,8 +4275,8 @@ FN PrsParseCompoundType (
         ) THEN
             // Bad.
 
-            LexTokenError ( &colontoken,
-                "Expected a comma or END", 0, 0, 0 )
+            LexError ( &colontoken,
+                "Expected a comma or END\n" )
         END
     END
 
@@ -4397,7 +4338,7 @@ FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &nametoken, "Expected an identifier", 0, 0, 0 )
+        LexError ( &nametoken, "Expected an identifier\n" )
     END
 
     symbol := PrsCreateNamedType ( &nametoken )
@@ -4409,7 +4350,7 @@ FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
         TOKEN_COLON, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &colontoken, "Expected a type", 0, 0, 0 )
+        LexError ( &colontoken, "Expected a type\n" )
     END
 
     type := PrsCreateType ()
@@ -4435,8 +4376,8 @@ FN (PrsDeclaratorF) PrsParseType () : ^LexSymbol
         rabbit = rabbit^.Body.Named.Symbol^.SemanticType
 
         IF type == rabbit THEN
-            LexTokenError ( &nametoken,
-                "TYPE declaration causes a cycle", 0, 0, 0 )
+            LexError ( &nametoken,
+                "TYPE declaration causes a cycle\n" )
         END
     END
 
@@ -4468,7 +4409,7 @@ FN PrsParseStorageClassSpecifier (
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+            LexError ( &token, "Expected an identifier\n" )
         END
 
         colontoken : LexToken
@@ -4478,8 +4419,8 @@ FN PrsParseStorageClassSpecifier (
             TOKEN_COLON, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &colontoken,
-                "Expected a colon (indicating a declaration).", 0, 0, 0 )
+            LexError ( &colontoken,
+                "Expected a colon (indicating a declaration).\n" )
         END
 
         symbol = PrsVariableDeclaration (
@@ -4541,7 +4482,7 @@ FN (PrsStatementF) PrsParseBreak (
     // Parse a BREAK statement.
 
     IF NOT PrsWhileDepth THEN
-        LexTokenError ( token, "Can't BREAK outside of a WHILE loop", 0, 0, 0 )
+        LexError ( token, "Can't BREAK outside of a WHILE loop\n" )
     END
 
     // Just create an AST node for it and add it to the current block.
@@ -4566,8 +4507,8 @@ FN (PrsStatementF) PrsParseContinue (
     // Parse a CONTINUE statement.
 
     IF NOT PrsWhileDepth THEN
-        LexTokenError ( token,
-            "Can't CONTINUE outside of a WHILE loop", 0, 0, 0 )
+        LexError ( token,
+            "Can't CONTINUE outside of a WHILE loop\n" )
     END
 
     // Just create an AST node for it and add it to the current block.
@@ -4603,7 +4544,7 @@ FN (PrsStatementF) PrsParseGoTo (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &labeltoken, "Expected identifier", 0, 0, 0 )
+        LexError ( &labeltoken, "Expected identifier\n" )
     END
 
     LexExitOverlayScope ()
@@ -4612,7 +4553,7 @@ FN (PrsStatementF) PrsParseGoTo (
 
     IF labeltoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
         IF symbol^.Type != SYM_FORWARD_LABEL AND symbol^.Type != SYM_LABEL THEN
-            LexTokenError ( &labeltoken, "Expected a label name", 0, 0, 0 )
+            LexError ( &labeltoken, "Expected a label name\n" )
         END
 
     ELSE
@@ -4695,7 +4636,7 @@ FN (PrsStatementF) PrsParseIf (
             TOKEN_OTHER, // type
             TOKEN_THEN, // subtype
         ) THEN
-            LexTokenError ( &thentoken, "Expected THEN", 0, 0, 0 )
+            LexError ( &thentoken, "Expected THEN\n" )
         END
 
         // Enter the scope and collect the body block.
@@ -4723,8 +4664,8 @@ FN (PrsStatementF) PrsParseIf (
             // This block will be completely elided.
 
             IF thiscase^.BodyBlock^.LabelCount THEN
-                LexTokenError ( &thentoken,
-                    "One or more labels inside inaccessible block", 0, 0, 0 )
+                LexError ( &thentoken,
+                    "One or more labels inside inaccessible block\n" )
             END
 
         ELSE
@@ -4796,9 +4737,8 @@ FN (PrsStatementF) PrsParseIf (
             // Exclude the ELSE block as it can never execute.
 
             IF elseblock^.LabelCount THEN
-                LexTokenError ( token,
-                    "One or more labels inside inaccessible ELSE block",
-                    0, 0, 0 )
+                LexError ( token,
+                    "One or more labels inside inaccessible ELSE block\n" )
             END
 
         ELSE
@@ -4819,9 +4759,8 @@ FN (PrsStatementF) PrsParseLeave (
     // Parse a LEAVE statement.
 
     IF PrsCurrentFunction^.Body.Function.ReturnType THEN
-        LexTokenError ( token,
-            "Can't LEAVE from a function with a return value, use RETURN",
-            0, 0, 0 )
+        LexError ( token,
+            "Can't LEAVE from a function with a return value, use RETURN\n" )
     END
 
     // Just create an AST node for it and add it to the current block.
@@ -4848,9 +4787,8 @@ FN (PrsStatementF) PrsParseReturn (
     returntype := PrsCurrentFunction^.Body.Function.ReturnType
 
     IF NOT returntype THEN
-        LexTokenError ( token,
-            "Can't RETURN from a function with no return value, use LEAVE",
-            0, 0, 0 )
+        LexError ( token,
+            "Can't RETURN from a function with no return value, use LEAVE\n" )
     END
 
     // Just create an AST node for it and add it to the current block.
@@ -4875,8 +4813,8 @@ FN (PrsStatementF) PrsParseReturn (
         &retexpr^.Token, // errtoken
         retexprtype, // type
     ) THEN
-        LexTokenError ( &retexpr^.Token,
-            "This type is not directly usable as a value", 0, 0, 0 )
+        LexError ( &retexpr^.Token,
+            "This type is not directly usable as a value\n" )
     END
 
     PrsCheckType (
@@ -4924,7 +4862,7 @@ FN (PrsStatementF) PrsParseWhile (
         TOKEN_OTHER, // type
         TOKEN_DO, // subtype
     ) THEN
-        LexTokenError ( &dotoken, "Expected DO", 0, 0, 0 )
+        LexError ( &dotoken, "Expected DO\n" )
     END
 
     LexEnterScope ( NULLPTR )
@@ -4957,8 +4895,8 @@ FN (PrsStatementF) PrsParseWhile (
         // It does! Early out before we insert it into the current block.
 
         IF node^.Body.While.BodyBlock^.LabelCount THEN
-            LexTokenError ( &dotoken,
-                "One or more labels inside inaccessible block", 0, 0, 0 )
+            LexError ( &dotoken,
+                "One or more labels inside inaccessible block\n" )
         END
 
         LEAVE
@@ -5030,7 +4968,7 @@ FN (PrsStatementF) PrsParseLabel (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &labeltoken, "Expected identifier", 0, 0, 0 )
+        LexError ( &labeltoken, "Expected identifier\n" )
     END
 
     LexExitOverlayScope ()
@@ -5039,7 +4977,7 @@ FN (PrsStatementF) PrsParseLabel (
 
     IF labeltoken.Subtype == TOKEN_IDENTIFIER_FOUND THEN
         IF symbol^.Type != SYM_FORWARD_LABEL THEN
-            LexTokenError ( &labeltoken, "Identifier already in use", 0, 0, 0 )
+            LexError ( &labeltoken, "Identifier already in use\n" )
         END
 
     ELSE
@@ -5107,8 +5045,8 @@ FN (PrsOperatorEvalF) PrsEvalFunctionCall (
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
     IF NOT type^.Body.Function.ReturnType THEN
-        LexTokenError ( &node^.Token,
-            "Attempt to take return type of return-less function", 0, 0, 0 )
+        LexError ( &node^.Token,
+            "Attempt to take return type of return-less function\n" )
     END
 
     RETURN type^.Body.Function.ReturnType

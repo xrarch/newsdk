@@ -911,7 +911,7 @@ FN LexNextToken (
         )
 
         IF status THEN
-            TlInternalError ( "Couldn't allocate symbol\n", 0, 0, 0 )
+            TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
         END
 
         symbol^.Name = CAST (symbol + SIZEOF LexSymbol) TO ^UBYTE
@@ -1028,7 +1028,7 @@ FN LexPutbackToken (
     index := LexPutbackStackPtr
 
     IF index == LEX_PUTBACK_STACK_DEPTH THEN
-        TlInternalError ( "Lexer putback stack overflow\n", 0, 0, 0 )
+        TlInternalError ( "Lexer putback stack overflow", 0, 0, 0 )
     END
 
     LexCopyToken (

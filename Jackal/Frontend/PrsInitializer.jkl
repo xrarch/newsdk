@@ -138,7 +138,7 @@ FN PrsParseArrayInitializer (
                 TOKEN_RBRACKET, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+                LexError ( &token, "Expected a right bracket\n" )
             END
 
             IF NOT LexMatchToken (
@@ -146,12 +146,12 @@ FN PrsParseArrayInitializer (
                 TOKEN_ASSIGN, // type
                 TOKEN_EQUALS, // subtype
             ) THEN
-                LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+                LexError ( &token, "Expected an equals sign\n" )
             END
 
             IF expr^.Type != AST_CONSTANT THEN
-                LexTokenError ( &expr^.Token,
-                    "Expected a constant value", 0, 0, 0 )
+                LexError ( &expr^.Token,
+                    "Expected a constant value\n" )
             END
 
             index = expr^.Body.Constant.Value
@@ -161,7 +161,7 @@ FN PrsParseArrayInitializer (
 
         IF index >= bound THEN
             IF hasbound THEN
-                LexTokenError ( &token, "Index exceeds array bound", 0, 0, 0 )
+                LexError ( &token, "Index exceeds array bound\n" )
 
             ELSE
                 bound = index + 1
@@ -199,7 +199,7 @@ FN PrsParseArrayInitializer (
             TOKEN_COMMA, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+            LexError ( &token, "Expected a right brace or comma\n" )
         END
     END
 END
@@ -236,7 +236,7 @@ FN PrsParseStructInitializer (
             TOKEN_OPER, // type
             TOKEN_LBRACKET, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected a left bracket", 0, 0, 0 )
+            LexError ( &token, "Expected a left bracket\n" )
         END
 
         LexEnterOverlayScope ( fieldscope )
@@ -246,11 +246,11 @@ FN PrsParseStructInitializer (
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected an identifier", 0, 0, 0 )
+            LexError ( &token, "Expected an identifier\n" )
         END
 
         IF token.Subtype != TOKEN_IDENTIFIER_FOUND THEN
-            LexTokenError ( &token, "Non-existent field name", 0, 0, 0 )
+            LexError ( &token, "Non-existent field name\n" )
         END
 
         fieldsymbol := CAST token.Payload TO ^LexSymbol
@@ -262,7 +262,7 @@ FN PrsParseStructInitializer (
             TOKEN_RBRACKET, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected a right bracket", 0, 0, 0 )
+            LexError ( &token, "Expected a right bracket\n" )
         END
 
         IF NOT LexMatchToken (
@@ -270,7 +270,7 @@ FN PrsParseStructInitializer (
             TOKEN_ASSIGN, // type
             TOKEN_EQUALS, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected an equals sign", 0, 0, 0 )
+            LexError ( &token, "Expected an equals sign\n" )
         END
 
         offset := fieldsymbol^.Value
@@ -308,7 +308,7 @@ FN PrsParseStructInitializer (
             TOKEN_COMMA, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected a right brace or comma", 0, 0, 0 )
+            LexError ( &token, "Expected a right brace or comma\n" )
         END
     END
 END
@@ -334,8 +334,8 @@ FN PrsParseInitializer (
             TOKEN_LBRACE, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &bracetoken,
-                "Illegal initializer, expected expression", 0, 0, 0 )
+            LexError ( &bracetoken,
+                "Illegal initializer, expected expression\n" )
         END
 
         expr := PrsExpression ( 0 )
@@ -355,8 +355,8 @@ FN PrsParseInitializer (
         END
 
         IF NOT PrsIsCompileTime ( expr ) THEN
-            LexTokenError ( &expr^.Token,
-                "Expected a compile time value", 0, 0, 0 )
+            LexError ( &expr^.Token,
+                "Expected a compile time value\n" )
         END
 
         IF expr^.Type == AST_CONSTANT THEN
@@ -377,8 +377,8 @@ FN PrsParseInitializer (
 
         ELSE
             IF type^.Size < JklTargetInfo^.PointerSize THEN
-                LexTokenError ( &expr^.Token,
-                    "This field is smaller than a pointer", 0, 0, 0 )
+                LexError ( &expr^.Token,
+                    "This field is smaller than a pointer\n" )
             END
 
             // Add to the backpatch array.
@@ -403,7 +403,7 @@ FN PrsParseInitializer (
         TOKEN_LBRACE, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &bracetoken, "Expected initializer", 0, 0, 0 )
+        LexError ( &bracetoken, "Expected initializer\n" )
     END
 
     node : ^PrsAstNode = NULLPTR
@@ -435,8 +435,8 @@ FN PrsParseInitializer (
         END
     
     ELSEIF type^.Subtype == TYPE_ARRAY AND NOT type^.Body.Array.HasBound THEN
-        LexTokenError ( &bracetoken,
-            "Can't initialize a boundless array", 0, 0, 0 )
+        LexError ( &bracetoken,
+            "Can't initialize a boundless array\n" )
     END
 
     IF type^.Subtype == TYPE_ARRAY THEN
