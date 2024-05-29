@@ -418,7 +418,7 @@ FN XrCollectShiftAmount () : UWORD
     )
 
     IF val > 31 THEN
-        LexTokenError ( &shiftamt^.Token, "Shift amount must be 0-31", 0, 0, 0 )
+        LexError ( &shiftamt^.Token, "Shift amount must be 0-31\n", )
     END
 
     RETURN val
@@ -479,7 +479,7 @@ FN (XrInstructionMnemonicF) XrParseBranchFormat (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -515,7 +515,7 @@ FN (XrInstructionMnemonicF) XrParseImmFormat (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -527,7 +527,7 @@ FN (XrInstructionMnemonicF) XrParseImmFormat (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegB = reg.TypeContext
@@ -620,8 +620,7 @@ FN XrParseMovLoad (
     END
 
     IF sizetok.Type != TOKEN_SIZE_SPECIFIER THEN
-        LexTokenError ( &sizetok,
-            "Expected register or size specifier", 0, 0, 0 )
+        LexError ( &sizetok, "Expected register or size specifier\n", )
     END
 
     rbtoken : LexToken
@@ -631,7 +630,7 @@ FN XrParseMovLoad (
         TOKEN_LBRACKET, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected left bracket", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected left bracket\n", )
     END
 
     IF LexMatchToken (
@@ -690,8 +689,7 @@ FN XrParseMovLoad (
                     TOKEN_RBRACKET, // type
                     0, // subtype
                 ) THEN
-                    LexTokenError ( &rbtoken,
-                        "Expected right bracket", 0, 0, 0 )
+                    LexError ( &rbtoken, "Expected right bracket\n", )
                 END
 
                 // Set the opcode.
@@ -717,7 +715,7 @@ FN XrParseMovLoad (
                 TOKEN_RBRACKET, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &rbtoken, "Expected right bracket", 0, 0, 0 )
+                LexError ( &rbtoken, "Expected right bracket\n", )
             END
 
             // Create a shift on the immediate value so that it is encoded
@@ -756,7 +754,7 @@ FN XrParseMovLoad (
             TOKEN_RBRACKET, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &rbtoken, "Expected right bracket", 0, 0, 0 )
+            LexError ( &rbtoken, "Expected right bracket\n", )
         END
 
         LEAVE
@@ -781,7 +779,7 @@ FN XrParseMovLoad (
         TOKEN_RBRACKET, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected right bracket", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected right bracket\n", )
     END
 
     // Now initialize the LUI instruction.
@@ -860,7 +858,7 @@ FN XrParseMovStore (
         TOKEN_LBRACKET, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected left bracket", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected left bracket\n", )
     END
 
     IF LexMatchToken (
@@ -962,8 +960,7 @@ FN XrParseMovStore (
             TOKEN_RBRACKET, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &rbtoken,
-                "Expected right bracket", 0, 0, 0 )
+            LexError ( &rbtoken, "Expected right bracket\n", )
         END
 
         // Consume the comma.
@@ -995,8 +992,8 @@ FN XrParseMovStore (
                 val &= 0xFFFFFFFF
 
                 IF val > 15 AND val < 0xFFFFFFF0 THEN
-                    LexTokenError ( &shortimm^.Token,
-                        "Short imm must be in range of -16 to 15", 0, 0, 0 )
+                    LexError ( &shortimm^.Token,
+                        "Short imm must be in range of -16 to 15\n", )
                 END
 
                 elem^.Body.Xr.RegB = val
@@ -1005,8 +1002,7 @@ FN XrParseMovStore (
                 elem^.Body.Xr.RegA = basereg
 
             ELSE
-                LexTokenError ( &rbtoken,
-                    "Expected register name", 0, 0, 0 )
+                LexError ( &rbtoken, "Expected register name\n", )
             END
         
         ELSEIF elem^.Body.Xr.FormatType == XR_FORMAT_IMM THEN
@@ -1047,7 +1043,7 @@ FN XrParseMovStore (
         TOKEN_RBRACKET, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected right bracket", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected right bracket\n", )
     END
 
     // Now create the store instruction.
@@ -1085,8 +1081,8 @@ FN XrParseMovStore (
         val &= 0xFFFFFFFF
 
         IF val > 15 AND val < 0xFFFFFFF0 THEN
-            LexTokenError ( &shortimm^.Token,
-                "Short imm must be in range of -16 to 15", 0, 0, 0 )
+            LexError ( &shortimm^.Token,
+                "Short imm must be in range of -16 to 15\n", )
         END
 
         elem2^.Body.Xr.RegB = val
@@ -1107,7 +1103,7 @@ FN XrParseMovStore (
         TOKEN_AUX, // type
         XR_AUX_TMP, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected tmp=", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected tmp=\n", )
     END
 
     IF NOT LexMatchToken (
@@ -1115,7 +1111,7 @@ FN XrParseMovStore (
         TOKEN_EQUALS, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected tmp=", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected tmp=\n", )
     END
 
     // Consume the TMP register.
@@ -1125,7 +1121,7 @@ FN XrParseMovStore (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &rbtoken, "Expected a register", 0, 0, 0 )
+        LexError ( &rbtoken, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = rbtoken.TypeContext
@@ -1236,8 +1232,7 @@ FN (XrInstructionMnemonicF) XrParseMov (
     END
 
     IF nexttok.Type != TOKEN_SIZE_SPECIFIER THEN
-        LexTokenError ( &nexttok,
-            "Expected register or size specifier", 0, 0, 0 )
+        LexError ( &nexttok, "Expected register or size specifier\n", )
     END
 
     // This is a store.
@@ -1274,7 +1269,7 @@ FN (XrInstructionMnemonicF) XrParseRegFormat (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -1286,7 +1281,7 @@ FN (XrInstructionMnemonicF) XrParseRegFormat (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegB = reg.TypeContext
@@ -1298,7 +1293,7 @@ FN (XrInstructionMnemonicF) XrParseRegFormat (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegC = reg.TypeContext
@@ -1384,7 +1379,7 @@ FN (XrInstructionMnemonicF) XrParseShiftReg (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -1396,7 +1391,7 @@ FN (XrInstructionMnemonicF) XrParseShiftReg (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegC = reg.TypeContext
@@ -1408,7 +1403,7 @@ FN (XrInstructionMnemonicF) XrParseShiftReg (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegB = reg.TypeContext
@@ -1442,7 +1437,7 @@ FN (XrInstructionMnemonicF) XrParseShiftImm (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -1454,7 +1449,7 @@ FN (XrInstructionMnemonicF) XrParseShiftImm (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegC = reg.TypeContext
@@ -1493,7 +1488,7 @@ FN (XrInstructionMnemonicF) XrParseLoadLocked (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -1505,7 +1500,7 @@ FN (XrInstructionMnemonicF) XrParseLoadLocked (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegB = reg.TypeContext
@@ -1557,7 +1552,7 @@ FN (XrInstructionMnemonicF) XrParseMfcr (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -1569,7 +1564,7 @@ FN (XrInstructionMnemonicF) XrParseMfcr (
         TOKEN_CONTROL_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a control register", 0, 0, 0 )
+        LexError ( &reg, "Expected a control register\n", )
     END
 
     elem^.Body.Xr.RegC = reg.TypeContext
@@ -1600,7 +1595,7 @@ FN (XrInstructionMnemonicF) XrParseMtcr (
         TOKEN_CONTROL_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a control register", 0, 0, 0 )
+        LexError ( &reg, "Expected a control register\n", )
     END
 
     elem^.Body.Xr.RegC = reg.TypeContext
@@ -1612,7 +1607,7 @@ FN (XrInstructionMnemonicF) XrParseMtcr (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegB = reg.TypeContext
@@ -1683,7 +1678,7 @@ FN (XrInstructionMnemonicF) XrParseJr (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegB = reg.TypeContext
@@ -1712,7 +1707,7 @@ FN (XrInstructionMnemonicF) XrParseLi (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     elem^.Body.Xr.RegA = reg.TypeContext
@@ -1747,7 +1742,7 @@ FN (XrInstructionMnemonicF) XrParseLa (
         TOKEN_REGISTER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &reg, "Expected a register", 0, 0, 0 )
+        LexError ( &reg, "Expected a register\n", )
     END
 
     AsmConsumeComma ()
@@ -1949,8 +1944,8 @@ FN (XrInstructionEncodeF) XrEncodeBranch (
     IF refsymbol AND
         refsymbol^.Section != section THEN
 
-        LexTokenError ( &instruction^.ErrorToken,
-            "Can't relative branch to another section", 0, 0, 0 )
+        LexError ( &instruction^.ErrorToken,
+            "Can't relative branch to another section\n", )
     END
 
     // Turn the value into a relative branch offset by subtracting the offset to
@@ -1961,8 +1956,7 @@ FN (XrInstructionEncodeF) XrEncodeBranch (
     // Check alignment.
 
     IF val & 3 THEN
-        LexTokenError ( &instruction^.ErrorToken,
-            "Unaligned branch offset", 0, 0, 0 )
+        LexError ( &instruction^.ErrorToken, "Unaligned branch offset\n", )
     END
 
     val >>= 2

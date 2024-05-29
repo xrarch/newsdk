@@ -10,14 +10,14 @@ PUBLIC FeTargetName : UBYTE[FE_PATH_BUFFER_SIZE]
 
 PUBLIC FeInputFileHandle : ^VOID
 
-BtBinaryName : ^UBYTE = NULLPTR
-
 BtJobCount : UWORD = 1
 
 FN BtUsage ()
-    TlPrintString ( "Usage: " )
-    TlPrintString ( BtBinaryName )
-    TlPrintString ( " [configname] [targetname]\n" )
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Usage: %s [configname] [targetname]\n", // fmt
+        TlProgramName,
+    )
 
     TlErrorExit ()
 END
@@ -62,7 +62,6 @@ FN FeParseArguments (
 
         ELSEIF foundinput THEN
             IF foundtarget THEN
-                TlPrintString ( "Too many arguments specified!\n" )
                 BtUsage ()
             END
 
@@ -88,13 +87,11 @@ FN FeParseArguments (
     END
 
     IF NOT foundinput THEN
-        TlPrintString ( "Error: No config file specified.\n" )
-        BtUsage ()
+        TlError ( "No config file specified.\n" )
     END
 
     IF NOT foundtarget THEN
-        TlPrintString ( "Error: No target name specified.\n" )
-        BtUsage ()
+        TlError ( "No target name specified.\n" )
     END
 END
 
@@ -168,7 +165,7 @@ FN FeInitialize (
     )
 
     IF status THEN
-        TlUserError ( "Failed to open the config file.", 0, 0, 0 )
+        TlError ( "%s: Failed to open config file\n", &FeInputFile[0] )
     END
 
     // Switch to the parent directory of the input file.
@@ -204,7 +201,7 @@ FN FeInitialize (
     )
 
     IF NOT TlSwitchDirectory ( parentpath.Buffer ) THEN
-        TlUserError ( "Failed to switch to config file directory", 0, 0, 0 )
+        TlError ( "%s: Failed to change directory\n", parentpath.Buffer )
     END
 
     TlUninitializeDynamicBuffer ( &parentpath )
@@ -240,9 +237,7 @@ FN TlMain (
     IN argv : ^^UBYTE,
 )
 
-    // Build the entire program.
-
-    BtBinaryName = &argv[0][0]
+    // Build a program.
 
     // Initialize the front-end components.
 

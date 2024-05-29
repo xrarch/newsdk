@@ -470,7 +470,7 @@ FN FoxCollectOffset () : UWORD
     )
 
     IF val > 255 THEN
-        LexTokenError ( &offset^.Token, "Offset must be 0-255", 0, 0, 0 )
+        LexError ( &offset^.Token, "Offset must be 0-255\n" )
     END
 
     RETURN val
@@ -549,7 +549,7 @@ FN FoxParseOperand (
                 TOKEN_RBRACKET, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &token, "Expected right bracket", 0, 0, 0 )
+                LexError ( &token, "Expected right bracket\n" )
             END
 
             RETURN hasoffset
@@ -569,7 +569,7 @@ FN FoxParseOperand (
             TOKEN_RBRACKET, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected right bracket", 0, 0, 0 )
+            LexError ( &token, "Expected right bracket\n" )
         END
 
         RETURN FALSE
@@ -578,8 +578,7 @@ FN FoxParseOperand (
     // Imm.
 
     IF operand^.IsOp1 AND FoxOp1IsDestination[subtype] THEN
-        LexTokenError ( &token,
-            "Can't use an immediate on this operand", 0, 0, 0 )
+        LexError ( &token, "Can't use an immediate on this operand\n" )
     END
 
     operand^.Type = FOX_OPERAND_IMM
@@ -667,13 +666,13 @@ FN (AsmTargetParseF) FoxParseInstruction (
             TOKEN_INSTRUCTION, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &optoken, "Expected an opcode", 0, 0, 0 )
+            LexError ( &optoken, "Expected an opcode\n" )
         END
 
         IF optoken.TypeContext THEN
             // Another condition token >:(
 
-            LexTokenError ( &optoken, "Unexpected condition token", 0, 0, 0 )
+            LexError ( &optoken, "Unexpected condition token\n" )
         END
 
         token = &optoken
@@ -704,7 +703,7 @@ FN (AsmTargetParseF) FoxParseInstruction (
                 TOKEN_NUMBER, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &ptoken, "Expected bitness number", 0, 0, 0 )
+                LexError ( &ptoken, "Expected bitness number\n" )
             END
 
             IF ptoken.Payload == 8 THEN
@@ -717,7 +716,7 @@ FN (AsmTargetParseF) FoxParseInstruction (
                 elem^.Body.Fox.Bits = FOX_BITS_32
 
             ELSE
-                LexTokenError ( &ptoken, "Expected 8, 16, or 32", 0, 0, 0 )
+                LexError ( &ptoken, "Expected 8, 16, or 32\n" )
             END
         END
     END
@@ -755,7 +754,7 @@ FN (AsmTargetParseF) FoxParseInstruction (
                 TOKEN_NUMBER, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &ptoken, "Expected a number", 0, 0, 0 )
+                LexError ( &ptoken, "Expected a number\n" )
             END
 
             IF ptoken.Payload == 2 THEN
@@ -768,7 +767,7 @@ FN (AsmTargetParseF) FoxParseInstruction (
                 elem^.Body.Fox.Op2.Type = 3
             
             ELSE
-                LexTokenError ( &ptoken, "Expected 1, 2, 4, or 8", 0, 0, 0 )
+                LexError ( &ptoken, "Expected 1, 2, 4, or 8\n" )
             END
         END
     END

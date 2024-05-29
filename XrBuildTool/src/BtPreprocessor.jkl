@@ -152,7 +152,7 @@ FN LexNextNonWhitespaceCharacter (
     END
 
     IF byte == 0 THEN
-        LexStreamError ( "Unexpected EOF while parsing directive", 0, 0, 0 )
+        LexError ( NULLPTR, "Unexpected EOF while parsing directive\n" )
     END
 
     RETURN byte
@@ -173,11 +173,11 @@ FN LexCollectDirectiveToken (
             LexCharTreatment[byte] != CHAR_SPLIT AND
             LexCharTreatment[byte] != CHAR_COALESCE THEN
 
-            LexTokenError ( token, "Illegal character in token", 0, 0, 0 )
+            LexError ( token, "Illegal character in token\n" )
         END
 
         IF len == LEX_DIRECTIVE_MAX - 1 THEN
-            LexTokenError ( token, "Token length too great", 0, 0, 0 )
+            LexError ( token, "Token length too great\n" )
         END
 
         buffer^ = byte
@@ -207,8 +207,7 @@ FN LexGetPreprocessorString (
         byte := LexStreamNextCharacter ()
 
         IF byte == 0 THEN
-            LexTokenError ( token,
-                "Unexpected EOF while parsing string", 0, 0, 0 )
+            LexError ( token, "Unexpected EOF while parsing string\n" )
         END
 
         IF byte == '\"' AND NOT backslash THEN
@@ -248,7 +247,7 @@ FN LexCollectString (
     byte := LexNextNonWhitespaceCharacter ( token )
 
     IF byte != '\"' THEN
-        LexTokenError ( token, "Expected a string", 0, 0, 0 )
+        LexError ( token, "Expected a string\n" )
     END
 
     LexGetPreprocessorString (
@@ -297,7 +296,7 @@ FN LexGetComplexString (
         byte := LexStreamNextCharacter ()
 
         IF byte == 0 THEN
-            LexTokenError ( token, "Unexpected EOF while parsing string", 0, 0, 0 )
+            LexError ( token, "Unexpected EOF while parsing string\n" )
         END
 
         IF comment THEN
@@ -472,8 +471,7 @@ FN LexCollectMacroArgumentContents (
         byte = LexStreamNextCharacter ()
 
         IF byte == 0 THEN
-            LexTokenError ( token,
-                "Unexpected EOF while parsing string", 0, 0, 0 )
+            LexError ( token, "Unexpected EOF while parsing string\n" )
         END
     END
 
@@ -551,7 +549,7 @@ FN LexCollectValue (
         ) TO ^LexOperator
 
         IF NOT operator THEN
-            LexTokenError ( &optoken, "Unknown operator", 0, 0, 0 )
+            LexError ( &optoken, "Unknown operator\n" )
         END
 
         operator^.ParseRoutine (
@@ -577,7 +575,7 @@ FN LexCollectValue (
 
     WHILE LexCharTreatment[byte] != CHAR_WHITESPACE DO
         IF byte == 0 THEN
-            LexTokenError ( token, "Unexpected EOF", 0, 0, 0 )
+            LexError ( token, "Unexpected EOF\n" )
         END
 
         TlInsertDynamicBuffer (
@@ -635,11 +633,11 @@ FN LexCollectValue (
     TlUninitializeDynamicBuffer ( &simpletokbuf )
 
     IF NOT macro THEN
-        LexTokenError ( token, "Not a defined macro name", 0, 0, 0 )
+        LexError ( token, "Not a defined macro name\n" )
     END
 
     IF macro^.IsFunctionMacro THEN
-        LexTokenError ( token, "Function macros not permitted here", 0, 0, 0 )
+        LexError ( token, "Function macros not permitted here\n" )
     END
 
     // Directly copy the contents of the macro into the caller's buffer.
@@ -675,7 +673,7 @@ FN LexCollectValueNumeric (
     END
 
     IF buffer.Buffer[0] < '0' OR buffer.Buffer[0] > '9' THEN
-        LexTokenError ( token, "Expected numeric value", 0, 0, 0 )
+        LexError ( token, "Expected numeric value\n" )
     END
 
     num := LexCrunchNumber (
@@ -695,7 +693,7 @@ FN LexConsumeCloseParenthesis ()
     byte := LexNextNonWhitespaceCharacter ( &token )
 
     IF byte != ')' THEN
-        LexTokenError ( &token, "Expected close parenthesis", 0, 0, 0 )
+        LexError ( &token, "Expected close parenthesis\n" )
     END
 END
 
@@ -765,7 +763,7 @@ FN LexExpandMacro (
     LexMacroDepth += 1
 
     IF LexMacroDepth >= LEX_MACRO_DEPTH_MAX THEN
-        LexTokenError ( token, "Too many macros deep!", 0, 0, 0 )
+        LexError ( token, "Too many macros deep!\n" )
     END
 
     // Create new scopes.
@@ -811,8 +809,8 @@ FN LexExpandMacro (
         byte := LexNextNonWhitespaceCharacter ( &trashtoken )
 
         IF byte != '(' THEN
-            LexTokenError ( &trashtoken,
-                "Expected open parenthesis after function macro name", 0, 0, 0 )
+            LexError ( &trashtoken,
+                "Expected open parenthesis after function macro name\n" )
         END
 
         arg := macro^.ArgListHead
@@ -842,8 +840,8 @@ FN LexExpandMacro (
 
             WHILE NOT (foundclose & ARG_NAME_NONZERO) DO
                 IF foundclose & ARG_NAME_DONE THEN
-                    LexTokenError ( &trashtoken,
-                        "Too few arguments to function macro", 0, 0, 0 )
+                    LexError ( &trashtoken,
+                        "Too few arguments to function macro\n" )
                 END
 
                 foundclose = LexCollectMacroArgumentContents (
@@ -869,8 +867,8 @@ FN LexExpandMacro (
 
             IF foundclose & ARG_NAME_DONE THEN
                 IF arg THEN
-                    LexTokenError ( &trashtoken,
-                        "Too few arguments to function macro", 0, 0, 0 )
+                    LexError ( &trashtoken,
+                        "Too few arguments to function macro\n" )
                 END
 
             ELSEIF NOT arg THEN
@@ -1000,7 +998,7 @@ FN (LexDirectiveParseF) LexParseInclude ()
     )
 
     IF status THEN
-        LexTokenError ( &token, "Failed to include the file.", 0, 0, 0 )
+        LexError ( &token, "Failed to include the file.\n" )
     END
 
     // Copy the file path into the fileblock.
@@ -1106,7 +1104,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
     IF oldmacro AND
         oldmacro^.Entry.HashTable == &LexCurrentMacroScope^.HashTable THEN
 
-        LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
+        LexError ( &macro^.NameToken, "Macro already defined\n" )
     END
 
     macro^.IsFunctionMacro = FALSE
@@ -1209,11 +1207,11 @@ FN LexCollectMacroArgumentName (
         END
 
         IF LexCharTreatment[byte] != CHAR_NORMAL THEN
-            LexTokenError ( token, "Illegal character in token", 0, 0, 0 )
+            LexError ( token, "Illegal character in token\n" )
         END
 
         IF len == LEX_DIRECTIVE_MAX - 1 THEN
-            LexTokenError ( token, "Token length too great", 0, 0, 0 )
+            LexError ( token, "Token length too great\n" )
         END
 
         buffer^ = byte
@@ -1260,8 +1258,7 @@ FN LexCollectMacroArgumentList (
             ) TO ^LexMacroArgument
 
             IF NOT created THEN
-                LexTokenError ( &token,
-                    "Macro argument name already used", 0, 0, 0 )
+                LexError ( &token, "Macro argument name already used\n" )
             END
 
             // Copy the name into the argument structure.
@@ -1320,7 +1317,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     byte := LexNextNonWhitespaceCharacter ( &trashtoken )
 
     IF byte != '(' THEN
-        LexTokenError ( &trashtoken, "Expected an open parenthesis", 0, 0, 0 )
+        LexError ( &trashtoken, "Expected an open parenthesis\n" )
     END
 
     IF LexFalseCount THEN
@@ -1356,8 +1353,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     )
 
     IF length == 0 THEN
-        LexTokenError ( &macro^.NameToken,
-            "Must have at least 1 argument", 0, 0, 0 )
+        LexError ( &macro^.NameToken, "Must have at least 1 argument\n" )
     END
 
     oldmacro := CAST TlLookupSymbolTable (
@@ -1366,7 +1362,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     ) TO ^LexMacro
 
     IF oldmacro THEN
-        LexTokenError ( &macro^.NameToken, "Macro already defined", 0, 0, 0 )
+        LexError ( &macro^.NameToken, "Macro already defined\n" )
     END
 
     macro^.IsFunctionMacro = TRUE
@@ -1428,7 +1424,7 @@ END
 FN (LexDirectiveParseF) LexParseElse ()
 
     IF NOT LexIfStack.Count THEN
-        LexStreamError ( "ELSE with no matching IF", 0, 0, 0 )
+        LexError ( NULLPTR, "ELSE with no matching IF\n" )
     END
 
     status := LexIfStack.Buffer[LexIfStack.Count - 1]
@@ -1457,7 +1453,7 @@ END
 FN (LexDirectiveParseF) LexParseElseif ()
 
     IF NOT LexIfStack.Count THEN
-        LexStreamError ( "ELSEIF with no matching IF", 0, 0, 0 )
+        LexError ( NULLPTR, "ELSEIF with no matching IF\n" )
     END
 
     token : LexToken
@@ -1506,7 +1502,7 @@ END
 FN (LexDirectiveParseF) LexParseEnd ()
 
     IF NOT LexIfStack.Count THEN
-        LexStreamError ( "END with no matching IF", 0, 0, 0 )
+        LexError ( NULLPTR, "END with no matching IF\n" )
     END
 
     status := TlPopDynamicBuffer ( &LexIfStack )
@@ -1539,7 +1535,7 @@ FN (LexDirectiveParseF) LexParseError ()
         LEAVE
     END
 
-    LexTokenError ( &token, buffer.Buffer, 0, 0, 0 )
+    LexError ( &token, "%s", buffer.Buffer )
 END
 
 FN (LexDirectiveParseF) LexParsePrint ()
@@ -1561,8 +1557,7 @@ FN (LexDirectiveParseF) LexParsePrint ()
         LEAVE
     END
 
-    TlPrintString ( buffer.Buffer )
-    TlPrintString ( "\n" )
+    TlPrint ( "%s", buffer.Buffer )
 
     TlUninitializeDynamicBuffer ( &buffer )
 END
@@ -2375,7 +2370,7 @@ FN LexParseDirective ()
     ) TO ^LexDirective
 
     IF NOT directive THEN
-        LexTokenError ( &LexDirectiveToken, "Unknown directive", 0, 0, 0 )
+        LexError ( &LexDirectiveToken, "Unknown directive\n" )
     END
 
     directive^.ParseRoutine ()

@@ -230,19 +230,10 @@ EXTERN FN LexMatchToken (
     IN subtype : LexTokenSubtype,
 ) : UBYTE
 
-EXTERN FN LexStreamError (
-    IN str : ^UBYTE,
-    IN err1 : UWORD,
-    IN err2 : UWORD,
-    IN err3 : UWORD,
-)
-
-EXTERN FN LexTokenError (
+EXTERN FN LexError (
     IN token : ^LexToken,
-    IN str : ^UBYTE,
-    IN err1 : UWORD,
-    IN err2 : UWORD,
-    IN err3 : UWORD,
+    IN fmt : ^UBYTE,
+    ... argv argc
 )
 
 EXTERN FN LexCrunchNumber (

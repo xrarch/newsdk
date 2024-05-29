@@ -224,8 +224,8 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
                         // they have a root scope whose parent is the global
                         // scope.
 
-                        LexStreamError (
-                            "Macro terminated during nested scope", 0, 0, 0 )
+                        LexError ( NULLPTR,
+                            "Macro terminated during nested scope\n" )
                     END
 
                     // Delete the symbol scope.
@@ -237,8 +237,8 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
                     // current scope is no longer the global scope, so it must
                     // have terminated inappropriately.
 
-                    LexStreamError (
-                        "Macro terminated during nested scope", 0, 0, 0 )
+                    LexError ( NULLPTR,
+                        "Macro terminated during nested scope\n" )
                 END
 
                 // Delete the macro scope.
@@ -289,14 +289,12 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
         END
 
         IF byte == 0x00 THEN
-            LexStreamError (
-                "An invalid byte was found in the source file.",
-                byte, 0, 0 )
+            LexError ( NULLPTR,
+                "An invalid byte %d was found in the source file.\n", byte )
 
         ELSEIF byte == '\r' THEN
-            LexStreamError (
-                "DOS line endings were detected in the source file.",
-                0, 0, 0 )
+            LexError ( NULLPTR,
+                "DOS line endings were detected in the source file.\n" )
 
         ELSEIF byte == '\n' THEN
             stream^.LineNumber += 1

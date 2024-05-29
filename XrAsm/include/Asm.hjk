@@ -310,6 +310,6 @@ EXTERN AsmExternalFixupCount : UWORD
 
 #MACRO AsmEnsureSection ( errtoken ) [
     IF NOT AsmCurrentSection THEN
-        LexTokenError ( (errtoken), "No section declared", 0, 0, 0 )
+        LexError ( (errtoken), "No section declared\n" )
     END
 ]

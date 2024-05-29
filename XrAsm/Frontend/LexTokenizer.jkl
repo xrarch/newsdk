@@ -71,70 +71,41 @@ LexKeywordBumpIndex := 0
 
 LexLastSawWhitespace := TRUE
 
-FN LexPrintError (
-    IN filename : ^UBYTE,
-    IN linenumber : UWORD,
-    IN linepos : UWORD,
-    IN str : ^UBYTE,
-    IN err1 : UWORD,
-    IN err2 : UWORD,
-    IN err3 : UWORD,
+FN LexError (
+    IN token : ^LexToken,
+    IN fmt : ^UBYTE,
+    ... argv argc
 )
 
-    TlPrintString ( filename )
-    TlPrintString ( ":" )
-    TlPrintNumber ( linenumber )
-    TlPrintString ( ":" )
-    TlPrintNumber ( linepos )
-    TlPrintString ( ": " )
-    TlPrintString ( str )
-    TlPrintString ( " (" )
-    TlPrintNumber ( err1 )
-    TlPrintString ( " " )
-    TlPrintNumber ( err2 )
-    TlPrintString ( " " )
-    TlPrintNumber ( err3 )
-    TlPrintString ( ")\n" )
+    IF token THEN
+        TlPrintByHandle (
+            TlStdErr, // handle
+            "%s:%d:%d: ", // fmt
+            &token^.FileBlock^.IncludeName[0],
+            token^.LineNumber,
+            token^.LinePosition,
+        )
+
+    ELSE
+        stream := LexCurrentStream
+
+        TlPrintByHandle (
+            TlStdErr, // handle
+            "%s:%d:%d: ", // fmt
+            &stream^.FileBlock^.IncludeName[0],
+            stream^.LineNumber,
+            stream^.LinePosition,
+        )
+    END
+
+    TlPrintByVarTable (
+        TlStdErr, // handle
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
 
     TlErrorExit ()
-END
-
-FN LexStreamError (
-    IN str : ^UBYTE,
-    IN err1 : UWORD,
-    IN err2 : UWORD,
-    IN err3 : UWORD,
-)
-    stream := LexCurrentStream
-
-    LexPrintError (
-        &stream^.FileBlock^.IncludeName[0], // filename
-        stream^.LineNumber, // linenumber
-        stream^.LinePosition, // linepos
-        str, // str
-        err1, // err1
-        err2, // err2
-        err3, // err3
-    )
-END
-
-FN LexTokenError (
-    IN token : ^LexToken,
-    IN str : ^UBYTE,
-    IN err1 : UWORD,
-    IN err2 : UWORD,
-    IN err3 : UWORD,
-)
-
-    LexPrintError (
-        &token^.FileBlock^.IncludeName[0], // filename
-        token^.LineNumber, // linenumber
-        token^.LinePosition, // linepos
-        str, // str
-        err1, // err1
-        err2, // err2
-        err3, // err3
-    )
 END
 
 FN LexInsertKeyword (
@@ -405,7 +376,7 @@ FN LexGetStringTokenInternal (
         byte := LexGetCharacter ()
 
         IF NOT byte THEN
-            LexTokenError ( token, "String token terminated by EOF!", 0, 0, 0 )
+            LexError ( token, "String token terminated by EOF!\n" )
         END
 
         IF NOT isbackslash THEN
@@ -443,7 +414,7 @@ FN LexGetStringTokenInternal (
             TlInsertDynamicBuffer ( dynamicbuffer, byte )
         
         ELSEIF len == LEX_TOKEN_STRING_SIZE - 1 THEN
-            LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
+            LexError ( token, "Token length exceeds maximum.\n" )
         
         ELSE
             buffer[len] = byte
@@ -473,15 +444,13 @@ FN LexCrunchCharacterLiteral (
         num *= 256
 
         IF lastnum != 0 AND num / lastnum != 256 THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
+            LexError ( token, "Number does not fit in machine word.\n" )
         END
 
         num += buffer[i]
 
         IF num < lastnum THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
+            LexError ( token, "Number does not fit in machine word.\n" )
         END
 
         i += 1
@@ -511,7 +480,7 @@ FN LexCrunchNumber (
             // Hexadecimal.
 
             IF NOT buffer[2] THEN
-                LexTokenError ( token, "Unfinished hex number.", 0, 0, 0 )
+                LexError ( token, "Unfinished hex number.\n" )
             END
 
             i = 2
@@ -524,8 +493,7 @@ FN LexCrunchNumber (
                 // Check for overflow.
 
                 IF lastnum != 0 AND num / lastnum != 16 THEN
-                    LexTokenError ( token,
-                        "Number does not fit in machine word.", 0, 0, 0 )
+                    LexError ( token, "Number does not fit in machine word.\n" )
                 END
 
                 IF buffer[i] >= '0' AND buffer[i] <= '9' THEN
@@ -538,22 +506,20 @@ FN LexCrunchNumber (
                     num += buffer[i] - 'a' + 10
 
                 ELSE
-                    LexTokenError ( token, "Malformed hex number.", 0, 0, 0 )
+                    LexError ( token, "Malformed hex number.\n" )
                 END
 
                 // Check for overflow.
 
                 IF num < lastnum THEN
-                    LexTokenError ( token,
-                        "Number does not fit in machine word.", 0, 0, 0 )
+                    LexError ( token, "Number does not fit in machine word.\n" )
                 END
 
                 i += 1
             END
 
             IF (num & AsmTargetInfo^.ConstantMask) != num THEN
-                LexTokenError ( token,
-                    "Number does not fit in machine word.", 0, 0, 0 )
+                LexError ( token, "Number does not fit in machine word.\n" )
             END
 
             RETURN num
@@ -565,7 +531,7 @@ FN LexCrunchNumber (
 
         WHILE buffer[i] DO
             IF NOT (buffer[i] >= '0' AND buffer[i] <= '7') THEN
-                LexTokenError ( token, "Malformed octal number.", 0, 0, 0 )
+                LexError ( token, "Malformed octal number.\n" )
             END
 
             lastnum := num
@@ -575,8 +541,7 @@ FN LexCrunchNumber (
             // Check for overflow.
 
             IF lastnum != 0 AND num / lastnum != 8 THEN
-                LexTokenError ( token,
-                    "Number does not fit in machine word.", 0, 0, 0 )
+                LexError ( token, "Number does not fit in machine word.\n" )
             END
 
             num += buffer[i] - '0'
@@ -584,16 +549,14 @@ FN LexCrunchNumber (
             // Check for overflow.
 
             IF num < lastnum THEN
-                LexTokenError ( token,
-                    "Number does not fit in machine word.", 0, 0, 0 )
+                LexError ( token, "Number does not fit in machine word.\n" )
             END
 
             i += 1
         END
 
         IF (num & AsmTargetInfo^.ConstantMask) != num THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
+            LexError ( token, "Number does not fit in machine word.\n" )
         END
 
         RETURN num
@@ -603,7 +566,7 @@ FN LexCrunchNumber (
 
     WHILE buffer[i] DO
         IF NOT (buffer[i] >= '0' AND buffer[i] <= '9') THEN
-            LexTokenError ( token, "Malformed decimal number.", 0, 0, 0 )
+            LexError ( token, "Malformed decimal number.\n" )
         END
 
         lastnum := num
@@ -613,8 +576,7 @@ FN LexCrunchNumber (
         // Check for overflow.
 
         IF lastnum != 0 AND num / lastnum != 10 THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
+            LexError ( token, "Number does not fit in machine word.\n" )
         END
 
         num += buffer[i] - '0'
@@ -622,16 +584,14 @@ FN LexCrunchNumber (
         // Check for overflow.
 
         IF num < lastnum THEN
-            LexTokenError ( token,
-                "Number does not fit in machine word.", 0, 0, 0 )
+            LexError ( token, "Number does not fit in machine word.\n" )
         END
 
         i += 1
     END
 
     IF (num & AsmTargetInfo^.ConstantMask) != num THEN
-        LexTokenError ( token,
-            "Number does not fit in machine word.", 0, 0, 0 )
+        LexError ( token, "Number does not fit in machine word.\n" )
     END
 
     RETURN num
@@ -751,8 +711,8 @@ FN LexGetTokenContents (
 
         WHILE LexCharTreatment[byte] == CHAR_COALESCE DO
             IF len == LEX_TOKEN_STRING_SIZE - 1 THEN
-                LexTokenError ( token,
-                    "Token length exceeds maximum.", 0, 0, 0 )
+                LexError ( token,
+                    "Token length exceeds maximum.\n" )
             END
 
             buffer[len] = byte
@@ -783,7 +743,7 @@ FN LexGetTokenContents (
 
     WHILE LexCharTreatment[byte] == CHAR_NORMAL DO
         IF len == LEX_TOKEN_STRING_SIZE - 1 THEN
-            LexTokenError ( token, "Token length exceeds maximum.", 0, 0, 0 )
+            LexError ( token, "Token length exceeds maximum.\n" )
         END
 
         buffer[len] = byte
@@ -864,7 +824,7 @@ FN LexNextToken (
         ) TO ^LexKeyword
 
         IF NOT keyword THEN
-            LexTokenError ( token, "Unknown keyword", 0, 0, 0 )
+            LexError ( token, "Unknown keyword\n" )
         END
 
         token^.Type = keyword^.Type
@@ -951,7 +911,7 @@ FN LexNextToken (
         )
 
         IF status THEN
-            TlInternalError ( "Couldn't allocate symbol", 0, 0, 0 )
+            TlInternalError ( "Couldn't allocate symbol\n", 0, 0, 0 )
         END
 
         symbol^.Name = CAST (symbol + SIZEOF LexSymbol) TO ^UBYTE
@@ -1068,7 +1028,7 @@ FN LexPutbackToken (
     index := LexPutbackStackPtr
 
     IF index == LEX_PUTBACK_STACK_DEPTH THEN
-        TlInternalError ( "Lexer putback stack overflow", 0, 0, 0 )
+        TlInternalError ( "Lexer putback stack overflow\n", 0, 0, 0 )
     END
 
     LexCopyToken (

@@ -6,7 +6,7 @@
 
 #IF ( != BITS 64 )
 
-#ERROR "[BLD] C Transpilation Target requires 64 bit build"
+#ERROR "[BLD] C Transpilation Target requires 64 bit build\n"
 
 #END
 

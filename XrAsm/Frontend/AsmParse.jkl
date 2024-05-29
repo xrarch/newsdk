@@ -28,7 +28,7 @@ FN AsmConsumeComma ()
         TOKEN_COMMA, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a comma", 0, 0, 0 )
+        LexError ( &token, "Expected a comma\n" )
     END
 END
 
@@ -188,15 +188,15 @@ FN AsmInitializeLabel (
 
     IF NOT forward THEN
         IF NOT global AND NOT AsmLastLabel THEN
-            LexTokenError ( errtoken,
-                "Local label without corresponding global label", 0, 0, 0 )
+            LexError ( errtoken,
+                "Local label without corresponding global label\n" )
         END
 
         IF symbol^.Type != SYM_UNINITIALIZED AND
             symbol^.Type != SYM_FORWARD_LABEL AND
             symbol^.Visibility != LABEL_EXTERN THEN
 
-            LexTokenError ( errtoken, "Expected a new label name", 0, 0, 0 )
+            LexError ( errtoken, "Expected a new label name\n" )
         END
     END
 
@@ -296,11 +296,11 @@ FN AsmCheckSymbolCompatibility (
     IF sym1^.Visibility == LABEL_EXTERN OR
         sym2^.Visibility == LABEL_EXTERN THEN
 
-        LexTokenError ( errtoken, "Can't operate on extern labels", 0, 0, 0 )
+        LexError ( errtoken, "Can't operate on extern labels\n" )
     END 
 
     IF sym1^.Section != sym2^.Section THEN
-        LexTokenError ( errtoken, "Labels have incompatible sections", 0, 0, 0 )
+        LexError ( errtoken, "Labels have incompatible sections\n" )
     END
 END
 
@@ -370,8 +370,8 @@ FN (AsmEvalF) AsmEvalRightShift (
 
         IF left & mask != left THEN
             IF node^.WarnLevel == EVAL_ERROR THEN
-                LexTokenError ( &node^.Token,
-        "Bits are shifted off of this expression; check alignment.", 0, 0, 0 )
+                LexError ( &node^.Token,
+                "Bits are shifted off of this expression; check alignment.\n" )
             END
         END
     END
@@ -404,8 +404,8 @@ FN (AsmEvalF) AsmEvalBitAnd (
 
         IF left & right != left THEN
             IF node^.WarnLevel == EVAL_ERROR THEN
-                LexTokenError ( &node^.Token,
-                    "Bits are masked off of this expression.", 0, 0, 0 )
+                LexError ( &node^.Token,
+                    "Bits are masked off of this expression.\n" )
             END
         END
     END
@@ -601,7 +601,7 @@ FN AsmEvaluateNodeMustWork (
         OUT value, // value
         OUT refsymbol, // refsymbol
     ) THEN
-        LexTokenError ( &node^.Token, "Incalculable expression", 0, 0, 0 )
+        LexError ( &node^.Token, "Incalculable expression\n" )
     END
 END
 
@@ -651,7 +651,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         ELSEIF symbol^.Type != SYM_LABEL AND
             symbol^.Type != SYM_FORWARD_LABEL THEN
 
-            LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+            LexError ( &token, "Expected a label name\n" )
 
         ELSEIF symbol^.Visibility == LABEL_EXTERN AND
             NOT symbol^.Used THEN
@@ -663,8 +663,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
                 // N.B. This maximum is due to the ExternCount field of the XLO
                 //      header being 16 bits wide.
 
-                LexTokenError ( &token,
-                    "Extern count exceeded maximum (65536)", 0, 0, 0 )
+                LexError ( &token, "Extern count exceeded maximum (65536)\n" )
             END
 
             symbol^.Used = TRUE
@@ -693,8 +692,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
             // Yep. Collect local label name.
 
             IF NOT symbol^.LocalLabelScope THEN
-                LexTokenError ( &token,
-                    "This label has no local labels", 0, 0, 0 )
+                LexError ( &token, "This label has no local labels\n" )
             END
 
             oldscope := LexEnterScope ( symbol^.LocalLabelScope )
@@ -704,7 +702,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
                 TOKEN_IDENTIFIER, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &token, "Expected local label name", 0, 0, 0 )
+                LexError ( &token, "Expected local label name\n" )
             END
 
             symbol = CAST token.Payload TO ^LexSymbol
@@ -730,8 +728,8 @@ FN AsmParseAtom () : ^AsmExpressionNode
         // This is a local label of the current global label.
 
         IF NOT AsmLastLabel THEN
-            LexTokenError ( &token,
-                "Local label without corresponding global label", 0, 0, 0 )
+            LexError ( &token,
+                "Local label without corresponding global label\n" )
         END
 
         oldscope := LexEnterScope ( AsmLastLabel^.LocalLabelScope )
@@ -741,7 +739,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
             TOKEN_IDENTIFIER, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected local label name", 0, 0, 0 )
+            LexError ( &token, "Expected local label name\n" )
         END
 
         symbol := CAST token.Payload TO ^LexSymbol
@@ -780,7 +778,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
             TOKEN_RPAREN, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &token, "Expected a right parenthesis.", 0, 0, 0 )
+            LexError ( &token, "Expected a right parenthesis.\n" )
         END
 
     ELSEIF token.Type == TOKEN_OPER THEN
@@ -790,7 +788,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         operator := &AsmLeftOperators[token.Subtype]
 
         IF NOT operator^.Precedence THEN
-            LexTokenError ( &token, "Expected a left operator.", 0, 0, 0 )
+            LexError ( &token, "Expected a left operator.\n" )
         END
 
         atomnode = AsmCreateExpressionNode (
@@ -814,7 +812,7 @@ FN AsmParseAtom () : ^AsmExpressionNode
         END
 
     ELSE
-        LexTokenError ( &token, "Expected an atom", 0, 0, 0 )
+        LexError ( &token, "Expected an atom\n" )
     END
 
     RETURN atomnode
@@ -840,7 +838,7 @@ FN AsmParseExpression (
         IF NOT operator^.Precedence THEN
             // This must have been a left operator, which we didn't expect.
 
-            LexTokenError ( &optoken, "Unexpected left operator", 0, 0, 0 )
+            LexError ( &optoken, "Unexpected left operator\n" )
         END
 
         IF operator^.Precedence < minprecedence THEN
@@ -949,7 +947,7 @@ FN (AsmDirectiveF) AsmParseSection (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Unexpected token", 0, 0, 0 )
+        LexError ( &token, "Unexpected token\n" )
     END
 
     symbol := CAST token.Payload TO ^LexSymbol
@@ -957,7 +955,7 @@ FN (AsmDirectiveF) AsmParseSection (
     IF symbol^.Type != SYM_UNINITIALIZED AND
         symbol^.Type != SYM_SECTION THEN
 
-        LexTokenError ( &token, "Expected section name", 0, 0, 0 )
+        LexError ( &token, "Expected section name\n" )
     END
 
     section := symbol^.Section
@@ -996,8 +994,7 @@ FN (AsmDirectiveF) AsmParseSection (
             // N.B. This maximum is due to the SectionCount field of the XLO
             //      header being 8 bits wide.
 
-            LexTokenError ( errtoken,
-                "Maximum section count (255) exceeded", 0, 0, 0 )
+            LexError ( errtoken, "Maximum section count (255) exceeded\n" )
         END
 
         section^.Index = AsmSectionCount
@@ -1114,7 +1111,7 @@ FN (AsmDirectiveF) AsmParseDefine (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        LexError ( &token, "Expected a label name\n" )
     END
 
     symbol := CAST token.Payload TO ^LexSymbol
@@ -1122,7 +1119,7 @@ FN (AsmDirectiveF) AsmParseDefine (
     IF symbol^.Type != SYM_UNINITIALIZED AND
         symbol^.Type != SYM_FORWARD_LABEL THEN
 
-        LexTokenError ( &token, "Expected a new label name", 0, 0, 0 )
+        LexError ( &token, "Expected a new label name\n" )
     END
 
     valuenode := AsmParseAtom ()
@@ -1135,8 +1132,8 @@ FN (AsmDirectiveF) AsmParseDefine (
         OUT value, // value
         OUT refsymbol, // refsymbol
     ) THEN
-        LexTokenError ( &valuenode^.Token,
-            "Couldn't evaluate expression", 0, 0, 0 )
+        LexError ( &valuenode^.Token,
+            "Couldn't evaluate expression\n" )
     END
 
     symbol^.Type = SYM_LABEL
@@ -1167,12 +1164,12 @@ FN AsmParseStandardPath (
     stdpathstr := stdpath^.Buffer
 
     IF stdpathstr[0] == 0 THEN
-        LexTokenError ( errtoken, "Empty path string", 0, 0, 0 )
+        LexError ( errtoken, "Empty path string\n" )
     END
 
     IF stdpathstr[0] == '/' THEN
-        LexTokenError ( errtoken,
-            "Expected a relative path, found an absolute path", 0, 0, 0 )
+        LexError ( errtoken,
+            "Expected a relative path, found an absolute path\n" )
     END
 
     count := stdpath^.Count
@@ -1224,7 +1221,7 @@ FN (AsmDirectiveF) AsmParseIncBin (
         TOKEN_STRING, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+        LexError ( &token, "Expected a string\n" )
     END
 
     // All we do at this stage is remember the path and figure out the size of
@@ -1242,7 +1239,7 @@ FN (AsmDirectiveF) AsmParseIncBin (
     )
 
     IF status THEN
-        LexTokenError ( &token, "Failed to allocate full path buffer", 0, 0, 0 )
+        LexError ( &token, "Failed to allocate full path buffer\n" )
     END
 
     TlInitializeDynamicBuffer ( fullpath )
@@ -1265,7 +1262,7 @@ FN (AsmDirectiveF) AsmParseIncBin (
     )
 
     IF status THEN
-        LexTokenError ( &token, "Failed to open file", 0, 0, 0 )
+        LexError ( &token, "Failed to open file\n" )
     END
 
     elem := AsmCreateElement (
@@ -1299,8 +1296,7 @@ FN (AsmDirectiveF) AsmParseBytes (
         OUT howmany, // value
         OUT dumpster, // refsymbol
     ) THEN
-        LexTokenError ( &howmanynode^.Token,
-            "Incalculable expression", 0, 0, 0 )
+        LexError ( &howmanynode^.Token, "Incalculable expression\n" )
     END
 
     IF NOT AsmEvaluateNode (
@@ -1308,8 +1304,7 @@ FN (AsmDirectiveF) AsmParseBytes (
         OUT which, // value
         OUT dumpster, // refsymbol
     ) THEN
-        LexTokenError ( &whichnode^.Token,
-            "Incalculable expression", 0, 0, 0 )
+        LexError ( &whichnode^.Token, "Incalculable expression\n" )
     END
 
     elem := AsmCreateElement (
@@ -1334,21 +1329,21 @@ FN (AsmDirectiveF) AsmParseGlobal (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        LexError ( &token, "Expected a label name\n" )
     END
 
     symbol := CAST token.Payload TO ^LexSymbol
 
     IF symbol^.Type != SYM_LABEL THEN
-        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        LexError ( &token, "Expected a label name\n" )
     END
 
     IF symbol^.Visibility != LABEL_LOCAL THEN
-        LexTokenError ( &token, "Expected a local label", 0, 0, 0 )
+        LexError ( &token, "Expected a local label\n" )
     END
 
     IF NOT symbol^.Section THEN
-        LexTokenError ( &token, "Expected a real label", 0, 0, 0 )
+        LexError ( &token, "Expected a real label\n" )
     END
 
     symbol^.Visibility = LABEL_GLOBAL
@@ -1376,21 +1371,21 @@ FN (AsmDirectiveF) AsmParseExport (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        LexError ( &token, "Expected a label name\n" )
     END
 
     symbol := CAST token.Payload TO ^LexSymbol
 
     IF symbol^.Type != SYM_LABEL THEN
-        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        LexError ( &token, "Expected a label name\n" )
     END
 
     IF symbol^.Visibility != LABEL_LOCAL THEN
-        LexTokenError ( &token, "Expected a local label", 0, 0, 0 )
+        LexError ( &token, "Expected a local label\n" )
     END
 
     IF NOT symbol^.Section THEN
-        LexTokenError ( &token, "Expected a real label", 0, 0, 0 )
+        LexError ( &token, "Expected a real label\n" )
     END
 
     symbol^.Visibility = LABEL_EXPORT
@@ -1418,7 +1413,7 @@ FN (AsmDirectiveF) AsmParseExtern (
         TOKEN_IDENTIFIER, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a label name", 0, 0, 0 )
+        LexError ( &token, "Expected a label name\n" )
     END
 
     symbol := CAST token.Payload TO ^LexSymbol
@@ -1426,7 +1421,7 @@ FN (AsmDirectiveF) AsmParseExtern (
     IF symbol^.Type != SYM_UNINITIALIZED AND
         symbol^.Type != SYM_FORWARD_LABEL THEN
 
-        LexTokenError ( &token, "Expected a new label name", 0, 0, 0 )
+        LexError ( &token, "Expected a new label name\n" )
     END
 
     symbol^.Type = SYM_LABEL
@@ -1447,7 +1442,7 @@ FN (AsmDirectiveF) AsmParseDs (
         TOKEN_STRING, // type
         0, // subtype
     ) THEN
-        LexTokenError ( &token, "Expected a string", 0, 0, 0 )
+        LexError ( &token, "Expected a string\n" )
     END
 
     string := CAST token.Payload TO ^LexInternedString
@@ -1478,15 +1473,13 @@ FN (AsmDirectiveF) AsmParseAlign (
         OUT howmany, // value
         OUT dumpster, // refsymbol
     ) THEN
-        LexTokenError ( &howmanynode^.Token,
-            "Incalculable expression", 0, 0, 0 )
+        LexError ( &howmanynode^.Token, "Incalculable expression\n" )
     END
 
     po2 := TlIsPowerOfTwo ( howmany )
 
     IF po2 == -1 THEN
-        LexTokenError ( &howmanynode^.Token,
-            "Alignment must be a power of two", 0, 0, 0 )
+        LexError ( &howmanynode^.Token, "Alignment must be a power of two\n" )
     END
 
     AsmEnsureSection ( errtoken )
@@ -1545,8 +1538,7 @@ FN AsmParseElement () : UWORD
             TOKEN_COLON, // type
             0, // subtype
         ) THEN
-            LexTokenError ( &errtoken,
-                "Expected a colon after label name", 0, 0, 0 )
+            LexError ( &errtoken, "Expected a colon after label name\n" )
         END
 
         AsmInitializeLabel (
@@ -1584,8 +1576,7 @@ FN AsmParseElement () : UWORD
                 TOKEN_COLON, // type
                 0, // subtype
             ) THEN
-                LexTokenError ( &errtoken,
-                    "Expected a colon after label name", 0, 0, 0 )
+                LexError ( &errtoken, "Expected a colon after label name\n" )
             END
 
             AsmInitializeLabel (
@@ -1619,7 +1610,7 @@ FN AsmParseElement () : UWORD
         RETURN TRUE
 
     ELSE
-        LexTokenError ( &token, "Unexpected token", 0, 0, 0 )
+        LexError ( &token, "Unexpected token\n" )
     END
 
     RETURN TRUE
