@@ -4,23 +4,23 @@
 
 #INCLUDE "<inc>/Linker.hjk"
 
-LnkBinaryName : ^UBYTE = NULLPTR
-
 FN LnkUsage ()
-    TlPrintString ( "Usage: " )
-    TlPrintString ( LnkBinaryName )
-    TlPrintString ( " <command> <options ...>\n" )
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Usage: %s <command> <options ...>
 
-    TlPrintString ( "\nCommands:\n" )
-    TlPrintString ( "  info <imagename>: Print miscellaneous information about the image file.\n" )
-    TlPrintString ( "  symbols <imagename>: Dump the symbol table.\n" )
-    TlPrintString ( "  externs <imagename>: Dump the extern table.\n" )
-    TlPrintString ( "  relocs <imagename>: Dump the relocation table for each section.\n" )
-    TlPrintString ( "  fixups <imagename>: Dump the fixup table.\n" )
-    TlPrintString ( "  imports <imagename>: Dump the import table.\n" )
-    TlPrintString ( "  link <outputname> [objects ...] [-d <shared libs ...>]\n" )
-    TlPrintString ( "   [-move:section1=expr,section2=expr,...] XOR [-base:addr] XOR [-mapbase:addr]\n" )
-    TlPrintString ( "   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin] [-fxf] [-xlo]\n" )
+Commands:
+  info <imagename>: Print miscellaneous information about the image file.
+  symbols <imagename>: Dump the symbol table.
+  externs <imagename>: Dump the extern table.
+  relocs <imagename>: Dump the relocation table for each section.
+  fixups <imagename>: Dump the fixup table.
+  imports <imagename>: Dump the import table.
+  link <outputname> [objects ...] [-d <shared libs ...>]
+   [-move:section1=expr,section2=expr,...] XOR [-base:addr] XOR [-mapbase:addr]
+   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin] [-fxf] [-xlo]\n", // fmt
+        TlProgramName,
+    )
 
     TlErrorExit ()
 END
@@ -215,8 +215,6 @@ FN TlMain (
 )
 
     // Dispatch to the correct command.
-
-    LnkBinaryName = argv[0]
 
     IF argc < 3 THEN
         LnkUsage ()

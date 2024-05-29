@@ -78,7 +78,9 @@ EXTERN FN TlMain (
     IN argv : ^^UBYTE,
 )
 
-EXTERN FN TlInitialize ()
+EXTERN FN TlInitialize (
+    IN programname : ^UBYTE,
+)
 
 EXTERN FN TlMeasureString (
     IN str : ^UBYTE,
@@ -534,3 +536,69 @@ EXTERN FN TlSystem (
 
 
 EXTERN FN TlCurrentEpochTime () : UWORD
+
+
+// print stuff
+
+
+EXTERN TlProgramName : ^UBYTE
+
+EXTERN TlStdErr : ^VOID
+
+FNPTR TlPrintCallbackF (
+    IN byte : UBYTE,
+    IN context : ^VOID,
+)
+
+EXTERN FN TlPrintByCallbackByVarTable (
+    IN callback : TlPrintCallbackF,
+    IN context : ^VOID,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+EXTERN FN TlPrintByCallback (
+    IN callback : TlPrintCallbackF,
+    IN context : ^VOID,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN TlPrintByVarTable (
+    IN handle : ^VOID,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+EXTERN FN TlPrintByHandle (
+    IN handle : ^VOID,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN TlPrint (
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN TlFormatByVarTable (
+    IN dest : ^UBYTE,
+    IN bufsize : UWORD,
+    IN fmt : ^UBYTE,
+    IN argv : ^^VOID,
+    IN argc : UWORD,
+)
+
+EXTERN FN TlFormat (
+    IN dest : ^UBYTE,
+    IN bufsize : UWORD,
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+EXTERN FN TlError (
+    IN fmt : ^UBYTE,
+    ... argv argc
+)

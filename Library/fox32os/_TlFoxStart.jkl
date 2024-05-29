@@ -452,7 +452,7 @@ FN TlFoxStart ()
         argcount = 4
     END
 
-    TlInitialize ()
+    TlInitialize ( args[0] )
 
     TlMain (
         argcount, // argc
@@ -775,8 +775,9 @@ FN TlWriteFile (
     RETURN bytes
 END
 
-FN FoxPutc (
-    IN byte : UWORD,
+FN (TlPrintCallbackF) TlpPrintCallback (
+    IN byte : UBYTE,
+    IN context : ^VOID,
 )
 
     byteonstack : UBYTE[1]
@@ -794,7 +795,7 @@ FN TlPrintNumber (
 )
 
     IF num == 0 THEN
-        FoxPutc ( '0' )
+        TlpPrintCallback ( '0', NULLPTR )
 
         LEAVE
     END
@@ -812,7 +813,7 @@ FN TlPrintNumber (
     log10 += 1
 
     WHILE log10 DO
-        FoxPutc ( '0' + (num / divisor) % 10 )
+        TlpPrintCallback ( '0' + (num / divisor) % 10, NULLPTR )
 
         log10 -= 1
         divisor /= 10
@@ -824,7 +825,7 @@ FN TlPrintHex (
 )
 
     IF num == 0 THEN
-        FoxPutc ( '0' )
+        TlpPrintCallback ( '0', NULLPTR )
 
         LEAVE
     END
@@ -845,10 +846,10 @@ FN TlPrintHex (
         digit := (num / divisor) % 16
 
         IF digit >= 0 AND digit <= 9 THEN
-            FoxPutc ( '0' + digit )
+            TlpPrintCallback ( '0' + digit, NULLPTR )
         
         ELSE
-            FoxPutc ( 'A' + digit - 10 )
+            TlpPrintCallback ( 'A' + digit - 10, NULLPTR )
         END
 
         log16 -= 1

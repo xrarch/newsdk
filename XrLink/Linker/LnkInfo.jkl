@@ -30,28 +30,18 @@ FN LnkDumpInfo (
 
     header := CAST buf TO ^XloHeader
 
-    TlPrintString ( "DateStamp     " )
-    TlPrintHex ( header^.Timestamp )
-    TlPrintString ( "\n" )
-
-    TlPrintString ( "Architecture  " )
+    archname := "Unknown"
 
     IF header^.TargetArchitecture < XLO_ARCHITECTURE_MAX AND
         LnkArchitectureCodeToName[header^.TargetArchitecture] THEN
-        
-        TlPrintString ( LnkArchitectureCodeToName[header^.TargetArchitecture] )
 
-    ELSE
-        TlPrintString ( "Unknown" )
+        archname = LnkArchitectureCodeToName[header^.TargetArchitecture]
     END
 
-    TlPrintString ( "\n" )
-
-    TlPrintString ( "Head Length   " )
-    TlPrintNumber ( header^.HeadLength )
-    TlPrintString ( "\n" )
-
-    TlPrintString ( "Flags         " )
+    TlPrint ( "DateStamp     %08X\n", header^.Timestamp )
+    TlPrint ( "Architecture  %s\n", archname )
+    TlPrint ( "Head Length   %u\n", header^.HeadLength )
+    TlPrint ( "Flags         " )
 
     flags := header^.Flags
     i := 0
@@ -60,15 +50,14 @@ FN LnkDumpInfo (
     WHILE flags AND i < 32 DO
         IF flags & 1 THEN
             IF printed THEN
-                TlPrintString ( " | " )
+                TlPrint ( " | " )
             END
 
             IF LnkFlagToName[i] THEN
-                TlPrintString ( LnkFlagToName[i] )
+                TlPrint ( LnkFlagToName[i] )
             
             ELSE
-                TlPrintString ( "FLAG" )
-                TlPrintNumber ( i )
+                TlPrint ( "FLAG%d", i )
             END
 
             printed = TRUE
@@ -78,29 +67,18 @@ FN LnkDumpInfo (
         flags >>= 1
     END
 
-    TlPrintString ( "\n\nSections:\n" )
+    TlPrint ( "\n\nSections:\n" )
 
     i = 0
     section := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
     stringtab := buf + header^.StringTableOffset
 
     WHILE i < header^.SectionCount DO
-        TlPrintString ( stringtab + section^.NameOffset )
-        TlPrintString ( ":\n" )
-
-        TlPrintString ( "  Size     " )
-        TlPrintNumber ( section^.DataLength )
-        TlPrintString ( " bytes\n" )
-
-        TlPrintString ( "  Address  0x" )
-        TlPrintHex ( section^.VirtualAddress )
-        TlPrintString ( "\n" )
-
-        TlPrintString ( "  Offset   0x" )
-        TlPrintHex ( section^.FileOffset )
-        TlPrintString ( "\n" )
-
-        TlPrintString ( "  Flags    " )
+        TlPrint ( "%s:\n", &stringtab[section^.NameOffset] )
+        TlPrint ( "  Size     %u bytes\n", section^.DataLength)
+        TlPrint ( "  Address  0x%P\n", section^.VirtualAddress )
+        TlPrint ( "  Offset   0x%08X\n", section^.FileOffset )
+        TlPrint ( "  Flags    " )
 
         j := 0
         printed = FALSE
@@ -109,15 +87,14 @@ FN LnkDumpInfo (
         WHILE flags AND j < 32 DO
             IF flags & 1 THEN
                 IF printed THEN
-                    TlPrintString ( " | " )
+                    TlPrint ( " | " )
                 END
 
                 IF LnkSectionFlagToName[j] THEN
-                    TlPrintString ( LnkSectionFlagToName[j] )
+                    TlPrint ( LnkSectionFlagToName[j] )
                 
                 ELSE
-                    TlPrintString ( "FLAG" )
-                    TlPrintNumber ( j )
+                    TlPrint ( "FLAG%d", j )
                 END
 
                 printed = TRUE
@@ -127,7 +104,7 @@ FN LnkDumpInfo (
             flags >>= 1
         END
 
-        TlPrintString ( "\n\n" )
+        TlPrint ( "\n\n" )
 
         section += SIZEOF XloSectionHeader
         i += 1
@@ -149,23 +126,21 @@ FN LnkDumpSymbols (
 
     WHILE i < header^.SymbolCount DO
         IF symbol^.Type == XLO_SYMBOL_GLOBAL THEN
-            TlPrintString ( "G " )
+            TlPrint ( "G " )
 
         ELSEIF symbol^.Type == XLO_SYMBOL_EXPORT THEN
-            TlPrintString ( "E ")
+            TlPrint ( "E ")
         
         ELSE
-            TlPrintString ( "? " )
+            TlPrint ( "? " )
         END
 
         section := &sectiontab[symbol^.SectionIndex]
 
-        TlPrintHex ( symbol^.SectionOffset )
-        TlPrintString ( " " )
-        TlPrintString ( stringtab + section^.NameOffset )
-        TlPrintString ( " " )
-        TlPrintString ( stringtab + symbol^.NameOffset )
-        TlPrintString ( "\n" )
+        TlPrint ( "%08X %8s %s\n",
+            symbol^.SectionOffset,
+            stringtab + section^.NameOffset,
+            stringtab + symbol^.NameOffset )
 
         symbol += SIZEOF XloSymbolEntry
         i += 1
@@ -185,8 +160,7 @@ FN LnkDumpExterns (
     stringtab := buf + header^.StringTableOffset
 
     WHILE i < header^.ExternCount DO
-        TlPrintString ( stringtab + extern^.NameOffset )
-        TlPrintString ( "\n" )
+        TlPrint ( "%4d %s\n", i, stringtab + extern^.NameOffset )
 
         extern += SIZEOF XloExternEntry
         i += 1
@@ -223,68 +197,59 @@ FN LnkDumpRelocs (
     IF header^.Flags & XLO_FILE_FRAGMENT THEN
         extheader := CAST buf TO ^XloHeaderExtended
 
-        TlPrintString ( "EXTERN:\n" )
+        TlPrint ( "EXTERN:\n" )
 
         j = 0
         reloc =
             CAST buf + extheader^.UnresolvedFixupTableOffset TO ^XloRelocEntry
 
         WHILE j < extheader^.UnresolvedFixupCount DO
-            TlPrintHex ( reloc^.SectionOffset )
-            TlPrintString ( " " )
-            TlPrintString ( stringtab + sectiontab[reloc^.SectionIndex].NameOffset )
-            TlPrintString ( " " )
-            TlPrintString ( stringtab + externtab[reloc^.ExternIndex].NameOffset )
-            TlPrintString ( " " )
+            relocname := "UnknownType"
 
             IF reloc^.Type < XLO_RELOC_MAX AND
                 XloRelocTypeNames[reloc^.Type] THEN
 
-                TlPrintString ( XloRelocTypeNames[reloc^.Type] )
-
-            ELSE
-                TlPrintString ( "UnknownType" )
+                relocname = XloRelocTypeNames[reloc^.Type]
             END
 
-
-            TlPrintString ( "\n" )
+            TlPrint ( "%8s @ %08X %s of '%s'\n",
+                stringtab + sectiontab[reloc^.SectionIndex].NameOffset,
+                reloc^.SectionOffset,
+                relocname,
+                stringtab + externtab[reloc^.ExternIndex].NameOffset )
 
             reloc += SIZEOF XloRelocEntry
             j += 1
         END
 
-        TlPrintString ( "\n" )
+        TlPrint ( "\n" )
     END
 
     WHILE i < header^.SectionCount DO
-        TlPrintString ( stringtab + sectiontab[i].NameOffset )
-        TlPrintString ( ":\n" )
+        TlPrint ( "%s:\n", stringtab + sectiontab[i].NameOffset )
 
         j = 0
         reloc = CAST buf + sectiontab[i].RelocTableOffset TO ^XloRelocEntry
 
         WHILE j < sectiontab[i].RelocCount DO
-            TlPrintHex ( reloc^.SectionOffset )
-            TlPrintString ( " " )
-            TlPrintString ( stringtab + sectiontab[reloc^.SectionIndex].NameOffset )
-            TlPrintString ( " " )
+            relocname := "UnknownType"
 
             IF reloc^.Type < XLO_RELOC_MAX AND
                 XloRelocTypeNames[reloc^.Type] THEN
 
-                TlPrintString ( XloRelocTypeNames[reloc^.Type] )
-
-            ELSE
-                TlPrintString ( "UnknownType" )
+                relocname = XloRelocTypeNames[reloc^.Type]
             END
 
-            TlPrintString ( "\n" )
+            TlPrint ( "%8s @ %08X %s\n",
+                stringtab + sectiontab[reloc^.SectionIndex].NameOffset,
+                reloc^.SectionOffset,
+                relocname )
 
             reloc += SIZEOF XloRelocEntry
             j += 1
         END
 
-        TlPrintString ( "\n" )
+        TlPrint ( "\n" )
 
         i += 1
     END

@@ -13,11 +13,14 @@
 
 extern void TlInitialize ();
 extern void TlMain (uint64_t argc, uint64_t argv);
+extern void *TlStdErr;
 
 int main (int argc, char *argv[]) {
+    TlStdErr = stderr;
+
     // Initialize the Toolchain Library.
 
-    TlInitialize ();
+    TlInitialize ( argv[0] );
 
     // Run the tool.
 
@@ -42,6 +45,14 @@ void TlPrintHex (uint64_t num) {
 
 void TlPrintCharacter (uint8_t byte) {
     fprintf(stderr, "%c", byte);
+}
+
+void TlpPrintCallback (uint8_t byte, void *context) {
+    if (!context) {
+        context = stdout;
+    }
+
+    putc(byte, context);
 }
 
 uint64_t TlIsPathDirectory (uint8_t *path) {

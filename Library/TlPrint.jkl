@@ -1,23 +1,26 @@
 //
-// Implements printing and formatting routines for the Jackal RTL.
+// Implements printing and formatting routines for the Toolchain Library.
 //
 
-#INCLUDE "<inc>/Rtl.hjk"
+#INCLUDE "<inc>/Runtime.hjk"
 
-FNPTR RtlpFormatF (
-    IN callback : RtlPrintCallbackF,
+PUBLIC TlProgramName : ^UBYTE = "<unknown>"
+PUBLIC TlStdErr : ^VOID = NULLPTR
+
+FNPTR TlpFormatF (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-#DEFINE RTL_PRINT_ARG_NEG  1
-#DEFINE RTL_PRINT_ARG_ZERO 2
-#DEFINE RTL_PRINT_ARG      4
-#DEFINE RTL_PRINT_UPPER    8
+#DEFINE TL_PRINT_ARG_NEG  1
+#DEFINE TL_PRINT_ARG_ZERO 2
+#DEFINE TL_PRINT_ARG      4
+#DEFINE TL_PRINT_UPPER    8
 
-#MACRO RtlpPad ( char, callback, context, count ) [
+#MACRO TlpPad ( char, callback, context, count ) [
     i := count
 
     WHILE i DO
@@ -27,8 +30,8 @@ FNPTR RtlpFormatF (
     END
 ]
 
-FN (RtlpFormatF) RtlpFormatS (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatS (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
@@ -37,13 +40,13 @@ FN (RtlpFormatF) RtlpFormatS (
 
     len : UWORD
 
-    IF flag & RTL_PRINT_ARG THEN
-        len = RtlMeasureString ( value )
+    IF flag & TL_PRINT_ARG THEN
+        len = TlMeasureString ( value )
 
-        IF NOT (flag & RTL_PRINT_ARG_NEG) AND arg > len THEN
+        IF NOT (flag & TL_PRINT_ARG_NEG) AND arg > len THEN
             // Align to the right.
 
-            RtlpPad ( ' ', callback, context, arg - len )
+            TlpPad ( ' ', callback, context, arg - len )
         END
     END
 
@@ -53,15 +56,15 @@ FN (RtlpFormatF) RtlpFormatS (
         value += 1
     END
 
-    IF flag & RTL_PRINT_ARG_NEG AND arg > len THEN
+    IF flag & TL_PRINT_ARG_NEG AND arg > len THEN
         // Align to the left.
 
-        RtlpPad ( ' ', callback, context, arg - len )
+        TlpPad ( ' ', callback, context, arg - len )
     END
 END
 
-FN RtlpFormatInteger (
-    IN callback : RtlPrintCallbackF,
+FN TlpFormatInteger (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
@@ -76,7 +79,7 @@ FN RtlpFormatInteger (
 
     padchar := ' '
 
-    IF flag & RTL_PRINT_ARG_ZERO THEN
+    IF flag & TL_PRINT_ARG_ZERO THEN
         padchar = '0'
     END
 
@@ -108,11 +111,11 @@ FN RtlpFormatInteger (
         log10 += 1
     END
 
-    IF flag & RTL_PRINT_ARG THEN
-        IF NOT (flag & RTL_PRINT_ARG_NEG) AND arg > log10 + signedbias THEN
+    IF flag & TL_PRINT_ARG THEN
+        IF NOT (flag & TL_PRINT_ARG_NEG) AND arg > log10 + signedbias THEN
             // Align to the right.
 
-            RtlpPad ( padchar, callback, context, arg - (log10 + signedbias) )
+            TlpPad ( padchar, callback, context, arg - (log10 + signedbias) )
         END
     END
 
@@ -124,7 +127,7 @@ FN RtlpFormatInteger (
         digit := (number / divisor) % base
 
         IF digit > 9 THEN
-            IF flag & RTL_PRINT_UPPER THEN
+            IF flag & TL_PRINT_UPPER THEN
                 digit = digit - 10 + 'A'
 
             ELSE
@@ -141,22 +144,22 @@ FN RtlpFormatInteger (
         divisor /= base
     END
 
-    IF flag & RTL_PRINT_ARG_NEG AND arg > log10 + signedbias THEN
+    IF flag & TL_PRINT_ARG_NEG AND arg > log10 + signedbias THEN
         // Align to the left.
 
-        RtlpPad ( ' ', callback, context, arg - (log10 + signedbias) )
+        TlpPad ( ' ', callback, context, arg - (log10 + signedbias) )
     END
 END
 
-FN (RtlpFormatF) RtlpFormatD (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatD (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-    RtlpFormatInteger (
+    TlpFormatInteger (
         callback, // callback
         context, // context
         flag, // flag
@@ -167,15 +170,15 @@ FN (RtlpFormatF) RtlpFormatD (
     )
 END
 
-FN (RtlpFormatF) RtlpFormatU (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatU (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-    RtlpFormatInteger (
+    TlpFormatInteger (
         callback, // callback
         context, // context
         flag, // flag
@@ -186,15 +189,15 @@ FN (RtlpFormatF) RtlpFormatU (
     )
 END
 
-FN (RtlpFormatF) RtlpFormatX (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatX (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-    RtlpFormatInteger (
+    TlpFormatInteger (
         callback, // callback
         context, // context
         flag, // flag
@@ -205,8 +208,8 @@ FN (RtlpFormatF) RtlpFormatX (
     )
 END
 
-FN (RtlpFormatF) RtlpFormatP (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatP (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
@@ -221,10 +224,10 @@ FN (RtlpFormatF) RtlpFormatP (
 #END
     END
 
-    RtlpFormatInteger (
+    TlpFormatInteger (
         callback, // callback
         context, // context
-        RTL_PRINT_ARG_ZERO | RTL_PRINT_ARG, // flag
+        TL_PRINT_ARG_ZERO | TL_PRINT_ARG, // flag
         arg, // arg
         CAST value TO UWORD, // number
         FALSE, // signed
@@ -232,79 +235,79 @@ FN (RtlpFormatF) RtlpFormatP (
     )
 END
 
-FN (RtlpFormatF) RtlpFormatC (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatC (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-    IF flag & RTL_PRINT_ARG THEN
-        IF NOT (flag & RTL_PRINT_ARG_NEG) AND arg > 1 THEN
+    IF flag & TL_PRINT_ARG THEN
+        IF NOT (flag & TL_PRINT_ARG_NEG) AND arg > 1 THEN
             // Align to the right.
 
-            RtlpPad ( ' ', callback, context, arg - 1 )
+            TlpPad ( ' ', callback, context, arg - 1 )
         END
     END
 
     callback ( CAST value TO UBYTE, context )
 
-    IF flag & RTL_PRINT_ARG_NEG AND arg > 1 THEN
+    IF flag & TL_PRINT_ARG_NEG AND arg > 1 THEN
         // Align to the left.
 
-        RtlpPad ( ' ', callback, context, arg - 1 )
+        TlpPad ( ' ', callback, context, arg - 1 )
     END
 END
 
-FN (RtlpFormatF) RtlpFormatUpperX (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatUpperX (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-    RtlpFormatX (
+    TlpFormatX (
         callback, // callback
         context, // context
-        flag | RTL_PRINT_UPPER, // flag
+        flag | TL_PRINT_UPPER, // flag
         arg, // arg
         value, // value
     )
 END
 
-FN (RtlpFormatF) RtlpFormatUpperP (
-    IN callback : RtlPrintCallbackF,
+FN (TlpFormatF) TlpFormatUpperP (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN flag : UWORD,
     IN arg : UWORD,
     IN value : ^VOID,
 )
 
-    RtlpFormatP (
+    TlpFormatP (
         callback, // callback
         context, // context
-        flag | RTL_PRINT_UPPER, // flag
+        flag | TL_PRINT_UPPER, // flag
         arg, // arg
         value, // value
     )
 END
 
 #SECTION "text"
-RtlpFormatters : RtlpFormatF[128] = {
-    ['s'] = &RtlpFormatS,
-    ['d'] = &RtlpFormatD,
-    ['u'] = &RtlpFormatU,
-    ['x'] = &RtlpFormatX,
-    ['p'] = &RtlpFormatP,
-    ['c'] = &RtlpFormatC,
-    ['X'] = &RtlpFormatUpperX,
-    ['P'] = &RtlpFormatUpperP,
+TlpFormatters : TlpFormatF[128] = {
+    ['s'] = &TlpFormatS,
+    ['d'] = &TlpFormatD,
+    ['u'] = &TlpFormatU,
+    ['x'] = &TlpFormatX,
+    ['p'] = &TlpFormatP,
+    ['c'] = &TlpFormatC,
+    ['X'] = &TlpFormatUpperX,
+    ['P'] = &TlpFormatUpperP,
 }
 
-FN RtlPrintByCallbackByVarTable (
-    IN callback : RtlPrintCallbackF,
+FN TlPrintByCallbackByVarTable (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN fmt : ^UBYTE,
     IN argv : ^^VOID,
@@ -344,21 +347,21 @@ FN RtlPrintByCallbackByVarTable (
             flag := 0
 
             IF byte == '-' THEN
-                flag |= RTL_PRINT_ARG_NEG
+                flag |= TL_PRINT_ARG_NEG
 
                 fmt += 1
                 byte = fmt^
             END
 
             IF byte == '0' THEN
-                flag |= RTL_PRINT_ARG_ZERO
+                flag |= TL_PRINT_ARG_ZERO
 
                 fmt += 1
                 byte = fmt^
             END
 
             WHILE byte >= '0' AND byte <= '9' DO
-                flag |= RTL_PRINT_ARG
+                flag |= TL_PRINT_ARG
 
                 arg *= 10
                 arg += byte - '0'
@@ -369,9 +372,9 @@ FN RtlPrintByCallbackByVarTable (
 
             IF byte < 128 AND
                 i < argc AND
-                RtlpFormatters[byte] THEN
+                TlpFormatters[byte] THEN
 
-                RtlpFormatters[byte] (
+                TlpFormatters[byte] (
                     callback, // callback
                     context, // context
                     flag, // flag
@@ -390,14 +393,14 @@ FN RtlPrintByCallbackByVarTable (
     END
 END
 
-FN RtlPrintByCallback (
-    IN callback : RtlPrintCallbackF,
+FN TlPrintByCallback (
+    IN callback : TlPrintCallbackF,
     IN context : ^VOID,
     IN fmt : ^UBYTE,
     ... argv argc
 )
 
-    RtlPrintByCallbackByVarTable (
+    TlPrintByCallbackByVarTable (
         callback, // callback
         context, // context
         fmt, // fmt
@@ -406,15 +409,20 @@ FN RtlPrintByCallback (
     )
 END
 
-FN RtlPrintByVarTable (
+EXTERN FN (TlPrintCallbackF) TlpPrintCallback (
+    IN byte : UBYTE,
+    IN context : ^VOID,
+)
+
+FN TlPrintByVarTable (
     IN handle : ^VOID,
     IN fmt : ^UBYTE,
     IN argv : ^^VOID,
     IN argc : UWORD,
 )
 
-    RtlPrintByCallbackByVarTable (
-        &RtljPrintCallback, // callback
+    TlPrintByCallbackByVarTable (
+        &TlpPrintCallback, // callback
         handle, // context
         fmt, // fmt
         argv, // argv
@@ -422,13 +430,13 @@ FN RtlPrintByVarTable (
     )
 END
 
-FN RtlPrintByHandle (
+FN TlPrintByHandle (
     IN handle : ^VOID,
     IN fmt : ^UBYTE,
     ... argv argc
 )
 
-    RtlPrintByVarTable (
+    TlPrintByVarTable (
         handle, // handle
         fmt, // fmt
         argv, // argv
@@ -436,12 +444,12 @@ FN RtlPrintByHandle (
     )
 END
 
-FN RtlPrint (
+FN TlPrint (
     IN fmt : ^UBYTE,
     ... argv argc
 )
 
-    RtlPrintByVarTable (
+    TlPrintByVarTable (
         NULLPTR, // handle
         fmt, // fmt
         argv, // argv
@@ -449,17 +457,17 @@ FN RtlPrint (
     )
 END
 
-STRUCT RtlpFormatContext
+STRUCT TlpFormatContext
     BufferLeft : UWORD,
     Buffer : ^UBYTE,
 END
 
-FN (RtlPrintCallbackF) RtlFormatCallback (
+FN (TlPrintCallbackF) TlFormatCallback (
     IN byte : UBYTE,
     IN context : ^VOID,
 )
 
-    formatcontext := CAST context TO ^RtlpFormatContext
+    formatcontext := CAST context TO ^TlpFormatContext
 
     IF NOT formatcontext^.BufferLeft THEN
         LEAVE
@@ -470,7 +478,7 @@ FN (RtlPrintCallbackF) RtlFormatCallback (
     formatcontext^.BufferLeft -= 1
 END
 
-FN RtlFormatByVarTable (
+FN TlFormatByVarTable (
     IN dest : ^UBYTE,
     IN bufsize : UWORD,
     IN fmt : ^UBYTE,
@@ -484,13 +492,13 @@ FN RtlFormatByVarTable (
         LEAVE
     END
 
-    context : RtlpFormatContext
+    context : TlpFormatContext
 
     context.Buffer = dest
     context.BufferLeft = bufsize - 1
 
-    RtlPrintByCallbackByVarTable (
-        &RtlFormatCallback, // callback
+    TlPrintByCallbackByVarTable (
+        &TlFormatCallback, // callback
         &context, // context
         fmt, // fmt
         argv, // argv
@@ -502,18 +510,59 @@ FN RtlFormatByVarTable (
     context.Buffer^ = 0
 END
 
-FN RtlFormat (
+FN TlFormat (
     IN dest : ^UBYTE,
     IN bufsize : UWORD,
     IN fmt : ^UBYTE,
     ... argv argc
 )
 
-    RtlFormatByVarTable (
+    TlFormatByVarTable (
         dest, // dest
         bufsize, // bufsize
         fmt, // fmt
         argv, // argv
         argc, // argc
     )
+END
+
+FN TlError (
+    IN fmt : ^UBYTE,
+    ... argv argc
+)
+
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "%s: ", // fmt
+        TlProgramName,
+    )
+
+    TlPrintByVarTable (
+        TlStdErr, // handle
+        fmt, // fmt
+        argv, // argv
+        argc, // argc
+    )
+
+    TlErrorExit ()
+END
+
+FN TlInternalError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    TlError ( "Internal tool error: %s (%d %d %d)\n", str, err1, err2, err3 )
+END
+
+FN TlUserError (
+    IN str : ^UBYTE,
+    IN err1 : UWORD,
+    IN err2 : UWORD,
+    IN err3 : UWORD,
+)
+
+    TlError ( "User error: %s (%d %d %d)\n", str, err1, err2, err3 )
 END

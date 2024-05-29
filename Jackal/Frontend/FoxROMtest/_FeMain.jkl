@@ -337,7 +337,7 @@ FN Main ()
     EndFile = &testfileend
     TlBumpPtr = CAST 0x800000 TO ^VOID
 
-    TlInitialize ()
+    TlInitialize ( "unknown" )
 
     args : ^UBYTE[5]
     args[1] = "target=xr17032"

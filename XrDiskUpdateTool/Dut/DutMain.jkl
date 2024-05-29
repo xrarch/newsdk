@@ -7,12 +7,14 @@
 DutBinaryName : ^UBYTE = NULLPTR
 
 FN DutUsage ()
-    TlPrintString ( "Usage: " )
-    TlPrintString ( DutBinaryName )
-    TlPrintString ( " <command> <options ...>\n" )
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Usage: %s <command> <options ...>
 
-    TlPrintString ( "\nCommands:\n" )
-    TlPrintString ( "  info <imagename>: Print miscellaneous information about the disk image.\n" )
+Commands:
+  info <imagename>: Print miscellaneous information about the disk image.\n", // fmt
+        TlProgramName,
+    )
 
     TlErrorExit ()
 END
@@ -31,4 +33,6 @@ FN TlMain (
     END
 
     cmd := argv[1]
+
+    TlInternalError ( "NYI", 0, 0, 0 )
 END

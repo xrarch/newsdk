@@ -161,12 +161,8 @@ FN LnkFindSection (
         // Initialize the section structure.
 
         IF LnkSectionCount == 256 THEN
-            TlPrintString ( objectname )
-            TlPrintString ( ": " )
-            TlPrintString ( name )
-            TlPrintString ( ": Maximum section count exceeded\n" )
-
-            TlErrorExit ()
+            TlError ( "%s: %s: Maximum section count exceeded\n",
+                objectname, name )
         END
 
         section^.Size = 0
@@ -195,12 +191,7 @@ FN LnkFindSection (
         // Check that the section matches.
 
         IF flags != section^.Flags THEN
-            TlPrintString ( objectname )
-            TlPrintString ( ": Mismatched section '" )
-            TlPrintString ( name )
-            TlPrintString ( "'\n" )
-
-            TlErrorExit ()
+            TlError ( "%s: Mismatched section '%s'\n", objectname, name )
         END
     END
 
@@ -235,10 +226,7 @@ FN LnkAddStaticObject (
     header := CAST object^.Data TO ^XloHeader
 
     IF NOT (header^.Flags & XLO_FILE_FRAGMENT) THEN
-        TlPrintString ( filename )
-        TlPrintString ( ": Can't link non-fragment objects\n" )
-
-        TlErrorExit ()
+        TlError ( "%s: Can't link non-fragment objects\n", filename )
     END
 
     // Insert in list.
@@ -311,10 +299,7 @@ FN LnkAddDynamicObject (
     header := CAST library^.Data TO ^XloHeader
 
     IF header^.Flags & XLO_FILE_FRAGMENT THEN
-        TlPrintString ( filename )
-        TlPrintString ( ": Can't dynamically link with fragment\n" )
-
-        TlErrorExit ()
+        TlError ( "%s: Can't dynamically link against fragment\n", filename )
     END
 
     LnkLibraryCount += 1
@@ -572,11 +557,8 @@ FN LnkAllocateStorage ()
             sectionname := stringtable + section^.NameOffset
 
             IF section^.VirtualAddress != 0 THEN
-                TlPrintString ( object^.Path )
-                TlPrintString ( ": Section with non-zero base '" )
-                TlPrintString ( sectionname )
-                TlPrintString ( "'\n" )
-                TlErrorExit ()
+                TlError ( "%s: Section with non-zero base '%s'\n",
+                    object^.Path, sectionname )
             END
 
             // Find the final section.
@@ -922,15 +904,10 @@ FN LnkMergeSymbolTables ()
             IF NOT created THEN
                 // There's a symbol collision!
 
-                TlPrintString ( "Symbol '" )
-                TlPrintString ( stringtable + symbol^.NameOffset )
-                TlPrintString ( "' defined in both:\n " )
-                TlPrintString ( lnksymbol^.SourceObject^.Path )
-                TlPrintString ( "\n " )
-                TlPrintString ( object^.Path )
-                TlPrintString ( "\n" )
-
-                TlErrorExit ()
+                TlError ( "Symbol '%s' defined in both:\n %s\n %s\n",
+                    stringtable + symbol^.NameOffset,
+                    lnksymbol^.SourceObject^.Path,
+                    object^.Path )
             END
 
             // Initialize the symbol structure.
@@ -1019,10 +996,7 @@ FN LnkResolveExterns ()
                     lnkextern^.Index = LnkExternCount
 
                     IF LnkExternCount == 0xFFFF THEN
-                        TlPrintString (
-                            "Maximum extern count (65536) exceeded\n" )
-
-                        TlErrorExit ()
+                        TlError ( "Maximum extern count (65536) exceeded\n" )
                     END
 
                     LnkExternCount += 1
@@ -1340,8 +1314,7 @@ FN LnkResolveFixupTable ()
                             // Create the jump stub.
 
                             IF NOT LnkJumpStubSection THEN
-                                TlPrintString ( "No code section for stubs\n" )
-                                TlErrorExit ()
+                                TlError ( "No code section for stubs\n" )
                             END
 
                             lnkextern^.JumpStubOffset =
@@ -1474,7 +1447,10 @@ FN LnkDieCuzOfUnresolvedExterns ()
 
     // Print all of the unresolved symbols and die.
 
-    TlPrintString ( "Failed to resolve the following externs:\n" )
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Failed to resolve the following externs:\n", // fmt
+    )
 
     listhead := &LnkExternTable.OrderedListHead
     listentry := listhead^.Next
@@ -1483,11 +1459,12 @@ FN LnkDieCuzOfUnresolvedExterns ()
         lnkextern := CONTAINEROF listentry TO LnkExtern.Entry.OrderedEntry
 
         IF NOT lnkextern^.Library THEN
-            TlPrintString ( " " )
-            TlPrintString ( lnkextern^.SourceObject^.Path )
-            TlPrintString ( ": " )
-            TlPrintString ( lnkextern^.Entry.Key )
-            TlPrintString ( "\n" )
+            TlPrintByHandle (
+                TlStdErr, // handle
+                " %s: %s\n", // fmt
+                lnkextern^.SourceObject^.Path,
+                lnkextern^.Entry.Key,
+            )
         END
 
         listentry = listentry^.Next
@@ -1548,14 +1525,8 @@ FN LnkAssignMappedBases (
             sawbss = TRUE
         
         ELSEIF sawbss THEN
-            TlPrintString (
-                "mappedbase requires BSS sections to be at the end\n" )
-
-            TlErrorExit ()
+            TlError ( "-mappedbase: BSS sections must be final\n" )
         END
-
-        TlPrintHex ( base )
-        TlPrintString ( "\n" )
 
         lnksection^.VirtualAddress = base
 
@@ -1592,11 +1563,7 @@ FN LnkEvaluateExpr ()
     ) TO ^LnkSection
 
     IF NOT lnksection THEN
-        TlPrintString ( "move: " )
-        TlPrintString ( &LnkSectionName[0] )
-        TlPrintString ( ": no such section\n" )
-
-        TlErrorExit ()
+        TlError ( "-move: No such section '%s'\n", &LnkSectionName[0] )
     END
 
     expr := &LnkExprStr[0]
@@ -1620,9 +1587,7 @@ FN LnkEvaluateExpr ()
                     256, // bufsize
                     OUT val, // num
                 ) THEN
-                    TlPrintString ( "Move expression syntax error\n" )
-
-                    TlErrorExit ()
+                    TlError ( "-move: Expression syntax error\n" )
                 END
 
                 base += val
@@ -1636,11 +1601,7 @@ FN LnkEvaluateExpr ()
                 ) TO ^LnkSection
 
                 IF NOT refsection THEN
-                    TlPrintString ( "move: " )
-                    TlPrintString ( &atomstr[1] )
-                    TlPrintString ( ": no such section\n" )
-
-                    TlErrorExit ()
+                    TlError ( "-move: No such section '%s'\n", &atomstr[1] )
                 END
 
                 base += (refsection^.VirtualAddress +
@@ -1655,11 +1616,7 @@ FN LnkEvaluateExpr ()
                 ) TO ^LnkSection
 
                 IF NOT refsection THEN
-                    TlPrintString ( "move: " )
-                    TlPrintString ( &atomstr[1] )
-                    TlPrintString ( ": no such section\n" )
-
-                    TlErrorExit ()
+                    TlError ( "-move: No such section '%s'\n", &atomstr[1] )
                 END
 
                 base += (refsection^.Size + refsection^.DynamicData.Count)
@@ -1679,11 +1636,7 @@ FN LnkEvaluateExpr ()
                 ) TO ^LnkSection
 
                 IF NOT refsection THEN
-                    TlPrintString ( "move: " )
-                    TlPrintString ( atomstr )
-                    TlPrintString ( ": no such section\n" )
-
-                    TlErrorExit ()
+                    TlError ( "-move: No such section '%s'\n", atomstr )
                 END
 
                 base += refsection^.VirtualAddress
@@ -1697,9 +1650,7 @@ FN LnkEvaluateExpr ()
 
         ELSE
             IF pen >= 255 THEN
-                TlPrintString ( "Move expression atom too long\n" )
-
-                TlErrorExit ()
+                TlError ( "-move: Expression atom too long\n" )
             END
 
             atomstr[pen] = expr^
@@ -1727,9 +1678,7 @@ FN LnkEvaluateMoveExpression (
     WHILE TRUE DO
         IF expr^ == ',' OR expr^ == 0 THEN
             IF collectingsection THEN
-                TlPrintString ( "Move expression syntax error\n" )
-
-                TlErrorExit ()
+                TlError ( "-move: Expression syntax error\n" )
             END
 
             LnkExprStr[pen] = 0
@@ -1746,9 +1695,7 @@ FN LnkEvaluateMoveExpression (
 
         ELSEIF expr^ == '=' THEN
             IF NOT collectingsection THEN
-                TlPrintString ( "Move expression syntax error\n" )
-
-                TlErrorExit ()
+                TlError ( "-move: Expression syntax error\n" )
             END
 
             LnkSectionName[pen] = 0
@@ -1759,9 +1706,7 @@ FN LnkEvaluateMoveExpression (
 
         ELSE
             IF pen >= 255 THEN
-                TlPrintString ( "Move expression string too long\n" )
-
-                TlErrorExit ()
+                TlError ( "-move: Expression syntax error\n" )
             END
 
             IF collectingsection THEN
@@ -1890,10 +1835,7 @@ FN LnkOutputFxf ()
             bsssize += lnksection^.Size
 
         ELSEIF sawbss THEN
-            TlPrintString (
-                "FXF requires BSS sections to be at the end\n" )
-
-            TlErrorExit ()
+            TlError ( "-fxf: BSS sections must be final\n" )
 
         ELSE
             codesize += (lnksection^.Size + lnksection^.DynamicData.Count)
@@ -1978,10 +1920,7 @@ FN LnkOutputFxf ()
     )
 
     IF status THEN
-        TlPrintString ( LnkOutputName )
-        TlPrintString ( ": failed to open\n" )
-
-        TlErrorExit ()
+        TlError ( "%s: Failed to open\n", LnkOutputName )
     END
 
     // Output the header.
@@ -2052,10 +1991,7 @@ FN LnkOutputBinary ()
     )
 
     IF status THEN
-        TlPrintString ( LnkOutputName )
-        TlPrintString ( ": failed to open\n" )
-
-        TlErrorExit ()
+        TlError ( "%s: Failed to open\n", LnkOutputName )
     END
 
     listhead := &LnkSectionTable.OrderedListHead
@@ -2544,10 +2480,7 @@ FN LnkOutputXlo ()
     )
 
     IF status THEN
-        TlPrintString ( LnkOutputName )
-        TlPrintString ( ": failed to open\n" )
-
-        TlErrorExit ()
+        TlPrint ( "%s: Failed to open\n", LnkOutputName )
     END
 
     // Output the header.

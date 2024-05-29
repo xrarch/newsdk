@@ -6,7 +6,13 @@
 
 EXTERN TlSymbolTableZone : TlZone
 
-FN TlInitialize ()
+FN TlInitialize (
+    IN programname : ^UBYTE,
+)
+
+    // Save the program name.
+
+    TlProgramName = programname
 
     // Initialize the symbol table zone.
 

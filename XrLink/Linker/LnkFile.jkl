@@ -37,11 +37,8 @@ FN LnkLoadXloFile (
     )
 
     IF status THEN
-        TlPrintString ( "Failed to open object file '" )
-        TlPrintString ( filename )
-        TlPrintString ( "'\n" )
+        TlError ( "%s: Failed to open object file\n", filename )
 
-        TlErrorExit ()
     END
 
     // Now stat the file to acquire the size.
@@ -77,20 +74,15 @@ FN LnkLoadXloFile (
     header := CAST ptr TO ^XloHeader
 
     IF header^.Magic != XLO_MAGIC_NUMBER THEN
-        TlPrintString ( filename )
-        TlPrintString ( ": Not a valid XLO object file\n" )
-
-        TlErrorExit ()
+        TlError ( "%s: Not a valid XLO object file\n", filename )
     END
 
     IF NOT LnkArchitectureType THEN
         LnkArchitectureType = header^.TargetArchitecture
 
         IF header^.TargetArchitecture >= XLO_ARCHITECTURE_MAX THEN
-            TlPrintString ( filename )
-            TlPrintString ( ": Unknown architecture type\n" )
-
-            TlErrorExit ()
+            TlError ( "%s: Unknown architecture type (%d)\n",
+                filename, header^.TargetArchitecture )
         END
 
         LnkArchitecturePageMask =
@@ -99,18 +91,14 @@ FN LnkLoadXloFile (
         LnkArchitectureInTokyo = LnkArchitectureBitTable[LnkArchitectureType]
 
         IF NOT LnkArchitectureInTokyo THEN
-            TlPrintString ( filename )
-            TlPrintString ( ": Unknown architecture type\n" )
-            
-            TlErrorExit ()
+            TlError ( "%s: Unknown architecture type (%d)\n",
+                filename, header^.TargetArchitecture )
         END
 
 #IF ( == BITS 32 )
         IF LnkArchitectureInTokyo == 64 THEN
-            TlPrintString ( filename )
-            TlPrintString ( ": Can't link 64-bit architecture with 32-bit linker build\n" )
-
-            TlErrorExit ()
+            TlError ( "%s: Can't link 64-bit files using 32-bit linker build\n",
+                filename )
         END
 #END
 
@@ -122,10 +110,8 @@ FN LnkLoadXloFile (
         END
 
     ELSEIF LnkArchitectureType != header^.TargetArchitecture THEN
-        TlPrintString ( filename )
-        TlPrintString ( ": Incompatible architecture type\n" )
-
-        TlErrorExit ()
+        TlError ( "%s: Architecture incompatible with other object files\n",
+            filename )
     END
 
     RETURN ptr
