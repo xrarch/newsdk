@@ -7,5 +7,7 @@ TARGET "XrBuildTool"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		PREBUILT "./Prebuilt"
+
+		LINKOPT "-lpthread"
 	#END
 END

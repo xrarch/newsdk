@@ -1203,6 +1203,19 @@ FN (BtDagActionF) BtLinkExecutable (
             dagnode^.Target^.FileName.Count - 1, // length
         )
 
+        IF dagnode^.Target^.LinkOptions.Count THEN
+            TlInsertDynamicBuffer (
+                &cmdline, // array
+                ' ', // byte
+            )
+
+            TlCopyIntoDynamicBuffer (
+                &cmdline, // array
+                dagnode^.Target^.LinkOptions.Buffer, // srcbuf
+                dagnode^.Target^.LinkOptions.Count, // length
+            )
+        END
+
         head := &dagnode^.Target^.ObjectListHead
         listentry := head^.Next
 

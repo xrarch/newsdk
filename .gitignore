@@ -1,7 +1,7 @@
 **/.DS_Store
 **/*.o
 **/obj/**
-**/Prebuilt/*
+**/Prebuilt/**
 **/*.exe
 test/**
 **/*.fxf
