@@ -3,7 +3,5 @@ TARGET "XrDiskUpdateTool"
 	
 	DEPEND_LIBRARY ( 0 )
 
-	INCDIR "./include"
-
 	SOURCES "./Dut"
 END

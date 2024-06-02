@@ -2,7 +2,7 @@
 // Disk Update Tool initialization.
 //
 
-#INCLUDE "<inc>/Dut.hjk"
+#INCLUDE "Dut.hjk"
 
 FN DutUsage ()
     TlPrintByHandle (

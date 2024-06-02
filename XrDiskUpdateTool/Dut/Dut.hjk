@@ -1,0 +1,42 @@
+#INCLUDE "<inc>/Runtime.hjk"
+
+STRUCT DutDiskImage
+    Name : ^UBYTE,
+    Handle : ^VOID,
+
+    SectorCount : UWORD,
+    SectorSize : UWORD,
+END
+
+STRUCT DutPartition
+    Disk : ^DutDiskImage,
+
+    SectorOffset : UWORD,
+    SectorCount : UWORD,
+END
+
+#DEFINE APT_MAGIC 0x4E4D494D
+
+STRUCT AptEntry
+    Label : UBYTE[8],
+    SectorCount : ULONG,
+    Status : ULONG,
+END
+
+STRUCT AptBootBlock
+    BootCode : UBYTE[15],
+    FfIfVariant : UBYTE,
+    Partitions : AptEntry[8],
+    Magic : ULONG,
+    Label : UBYTE[16],
+END
+
+#DEFINE APT_A3X_OS_RECORD_MAGIC 0x45544E41
+#DEFINE APT_A4X_OS_RECORD_MAGIC 0x796D6173
+
+STRUCT AptOsRecord
+    Magic : ULONG,
+    OsName : UBYTE[16],
+    BootstrapSector : ULONG,
+    BootstrapCount : ULONG,
+END

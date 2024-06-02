@@ -207,10 +207,18 @@ FN LexGetPreprocessorString (
         END
 
         IF backslash THEN
-            TlInsertDynamicBuffer (
-                buffer, // array
-                byte, // byte
-            )
+            IF byte == 'n' THEN
+                TlInsertDynamicBuffer (
+                    buffer, // array
+                    '\n', // byte
+                )
+
+            ELSE
+                TlInsertDynamicBuffer (
+                    buffer, // array
+                    byte, // byte
+                )
+            END
 
             backslash = FALSE
 
