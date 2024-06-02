@@ -58,3 +58,9 @@ E.g.:
 
     /Mintia ./TestBase/Mintia 0 0
     /Home/Guest ./TestBase/Home/Guest 50 50
+
+==== LIST FILES ====
+
+The format of a list file is a sequence of lines of this form:
+
+    <path within disk image> <source path>

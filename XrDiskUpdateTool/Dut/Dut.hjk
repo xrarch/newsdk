@@ -28,6 +28,8 @@ STRUCT DutPartition
     Disk : ^DutDiskImage,
 
     SectorOffset : UWORD,
+
+    Id : UBYTE,
 END
 
 #DEFINE APT_MAGIC 0x4E4D494D
@@ -54,6 +56,11 @@ STRUCT AptOsRecord
     OsName : UBYTE[16],
     BootstrapSector : ULONG,
     BootstrapCount : ULONG,
+END
+
+STRUCT DutPartitionDescription
+    Label : ^UBYTE,
+    SectorCount : UWORD,
 END
 
 EXTERN FN DutOpenDiskImage (

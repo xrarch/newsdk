@@ -214,6 +214,7 @@ FN DutParsePartitionTable (
 
             part^.SectorOffset = base
             part^.Disk = image
+            part^.Id = i
 
             TlCopyString (
                 &part^.Common.Label[0], // dest
@@ -230,10 +231,107 @@ FN DutParsePartitionTable (
         END
 
         i += 1
-        blockpart += SIZEOF AptEntry
     END
 
     image^.Parsed = TRUE
 
     RETURN TRUE
+END
+
+FN DutFindPartitionById (
+    IN image : ^DutDiskImage,
+    IN id : UWORD,
+) : ^DutPartition
+
+    // Find partition by ID or return null pointer.
+
+    head := &image^.PartitionListHead
+    listentry := head^.Next
+
+    WHILE head != listentry DO
+        part := CONTAINEROF listentry TO DutPartition.Entry
+
+        IF part^.Id == id THEN
+            RETURN part
+        END
+
+        listentry = listentry^.Next
+    END
+
+    RETURN NULLPTR
+END
+
+FN DutPartitionDisk (
+    IN image : ^DutDiskImage,
+    IN desctable : ^DutPartitionDescription,
+    IN count : UWORD,
+    IN label : ^UBYTE,
+    IN handle : ^VOID,
+)
+
+    // Write a partition table to the disk image.
+
+    apt := CAST &DutTemporaryBuffer[0] TO ^AptBootBlock
+
+    IF handle THEN
+        // Read the boot sector binary in.
+
+        TlReadFile (
+            handle, // handle
+            1 << image^.Common.SectorLog, // bytes
+            &DutTemporaryBuffer[0], // ptr
+        )
+
+    ELSE
+        // Zero out the temporary buffer.
+
+        TlFillMemoryWithByte (
+            &DutTemporaryBuffer[0], // ptr
+            1 << image^.Common.SectorLog, // sz
+            0, // byte
+        )
+    END
+
+    // Initialize constant fields.
+
+    apt^.Magic = APT_MAGIC
+    apt^.FfIfVariant = 0xFF
+
+    // Copy the label.
+
+    TlCopyString (
+        &apt^.Label[0], // dest
+        label, // src
+        16, // bufsize
+    )
+
+    // Now initialize the partition table.
+
+    i := 0
+    base := 4
+
+    WHILE i < count DO
+        blockpart := &apt^.Partitions[i]
+
+        blockpart^.SectorCount = desctable^.SectorCount
+        blockpart^.Status = 2
+        
+        TlCopyString (
+            &blockpart^.Label[0], // dest
+            desctable^.Label, // src
+            8, // bufsize
+        )
+
+        base += desctable^.SectorCount
+        i += 1
+        desctable += SIZEOF DutPartitionDescription
+    END
+
+    // Write it out.
+
+    DutWriteSector (
+        &image^.Common, // volume
+        apt, // buf
+        0, // sector
+    )
 END

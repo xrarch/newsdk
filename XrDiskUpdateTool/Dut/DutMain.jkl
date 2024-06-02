@@ -10,7 +10,32 @@ FN DutUsage ()
         "Usage: %s <command> <options ...>
 
 Commands:
-  info <imagename>: Print miscellaneous information about the disk image.\n", // fmt
+  info <imagename>:
+    Print miscellaneous information about the disk image.
+
+  create <imagename> <sectors>
+  [-apt:disklabel;label1,sectors1;label2,sectors2;... [-boot:bootfile]]
+  [-fs:part,fsname,[manifest]]:
+    Create a disk image with the given name, size in sectors, partition layout,
+    boot sector, and initialize with one or more filesystems.
+
+  update <imagename> <partition> <manifest>:
+    Update all recursive subdirectories indicated by manifest file.
+
+  updatefiles <imagename> <partition> <listfile>:
+    Update all files indicated by list file.
+
+  ls <imagename> <partition> <path>:
+    List the contents of the specified filesystem directory.
+
+  read <imagename> <partition> <path>:
+    Read the contents of the specified file to stdout.
+
+  write <imagename> <partition> <path> <hostpath>:
+    Write the contents of the specified file from another file.
+
+  delete <imagename> <partition> <path>:
+    Delete the specified file.\n", // fmt
         TlProgramName,
     )
 
