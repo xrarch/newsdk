@@ -1,5 +1,9 @@
 TARGET "XrDiskUpdateTool"
-	FILE "<bld>/xrdut.exe"
+	#IF ( STRCMP PLATFORM "fox32os" )
+		FILE "<bld>/xrdut.fxf"
+	#ELSE
+		FILE "<bld>/xrdut.exe"
+	#END
 	
 	DEPEND_LIBRARY ( 0 )
 

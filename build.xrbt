@@ -17,21 +17,19 @@
 #EXPOSE PLATFORM
 
 #MACRO DEPEND_LIBRARY ( x ) [
+	DEPEND "Library"
 
-DEPEND "Library"
+	INCDIR "../Library/include"
 
-INCDIR "../Library/include"
+	OBJECTS "../Library"
 
-OBJECTS "../Library"
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		OBJECTS "../Library/CHost"
+	#END
 
-#IF ( STRCMP ARCHITECTURE "CHost" )
-	OBJECTS "../Library/CHost"
-#END
-
-#IF ( STRCMP PLATFORM "fox32os" )
-	OBJECTS "../Library/fox32os"
-#END
-
+	#IF ( STRCMP PLATFORM "fox32os" )
+		OBJECTS "../Library/fox32os"
+	#END
 ]
 
 #DEPEND "./Rtl/build.xrbt"

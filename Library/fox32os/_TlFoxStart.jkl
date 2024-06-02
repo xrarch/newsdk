@@ -324,6 +324,11 @@ FoxGetSize:
     mov a3, r0
     ret
 
+FoxWrapSeek:
+    mov r0, a0
+    mov r1, a1
+    jmp seek
+
 ]
 
 #DEFINE FOX_FILE_STRUCT_SIZE 64
@@ -357,6 +362,11 @@ EXTERN FN FoxWrapWrite (
 EXTERN FN FoxGetSize (
     IN filestruct : ^VOID,
 ) : UWORD
+
+EXTERN FN FoxWrapSeek (
+    IN offset : UWORD,
+    IN filestruct : ^VOID,
+)
 
 EXTERN FN FoxGetCurrentDiskId () : UWORD
 
@@ -714,6 +724,39 @@ FN TlOpenDestination (
     RETURN TL_SUCCESS
 END
 
+FN TlOpenDestinationAndTruncate (
+    IN filename : ^UBYTE,
+    IN size : UWORD,
+    OUT handle : ^VOID,
+) : TlStatus
+
+    WHILE filename[0] == '.' AND filename[1] == '/' DO
+        filename += 2
+    END
+
+    status := TlBumpAlloc (
+        FOX_FILE_STRUCT_SIZE, // bytes
+        OUT handle, // ptr
+    )
+
+    IF status THEN
+        RETURN status
+    END
+
+    status = FoxWrapCreate (
+        filename, // filename
+        FoxGetCurrentDiskId (), // diskid
+        handle, // filestruct
+        size, // size
+    )
+
+    IF status == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
+
+    RETURN TL_SUCCESS
+END
+
 FN TlClose (
     IN handle : ^VOID,
 )
@@ -763,6 +806,14 @@ FN TlWriteFile (
     )
 
     RETURN bytes
+END
+
+FN TlSeekFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+)
+
+    FoxWrapSeek ( bytes, handle )
 END
 
 FN (TlPrintCallbackF) TlpPrintCallback (

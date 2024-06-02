@@ -1,18 +1,33 @@
 #INCLUDE "<inc>/Runtime.hjk"
 
+#DEFINE DUT_DISK_REAL 1
+#DEFINE DUT_DISK_PARTITION 2
+
+STRUCT DutDiskCommon
+    Type : UWORD,
+    SectorCount : UWORD,
+    SectorLog : UWORD,
+    Label : UBYTE[64],
+END
+
 STRUCT DutDiskImage
-    Name : ^UBYTE,
+    Common : DutDiskCommon,
+
     Handle : ^VOID,
 
-    SectorCount : UWORD,
-    SectorSize : UWORD,
+    PartitionListHead : TlListEntry,
+
+    Parsed : UBYTE,
 END
 
 STRUCT DutPartition
+    Common : DutDiskCommon,
+
+    Entry : TlListEntry,
+
     Disk : ^DutDiskImage,
 
     SectorOffset : UWORD,
-    SectorCount : UWORD,
 END
 
 #DEFINE APT_MAGIC 0x4E4D494D
@@ -40,3 +55,25 @@ STRUCT AptOsRecord
     BootstrapSector : ULONG,
     BootstrapCount : ULONG,
 END
+
+EXTERN FN DutOpenDiskImage (
+    IN filename : ^UBYTE,
+    IN create : UWORD,
+    IN sectors : UWORD,
+) : ^DutDiskImage
+
+EXTERN FN DutReadSector (
+    IN volume : ^DutDiskCommon,
+    IN buf : ^VOID,
+    IN sector : UWORD,
+)
+
+EXTERN FN DutWriteSector (
+    IN volume : ^DutDiskCommon,
+    IN buf : ^VOID,
+    IN sector : UWORD,
+)
+
+EXTERN FN DutParsePartitionTable (
+    IN image : ^DutDiskImage,
+) : UWORD

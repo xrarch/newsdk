@@ -1,5 +1,9 @@
 TARGET "XrBuildTool"
-	FILE "<bld>/xrbt.exe"
+	#IF ( STRCMP PLATFORM "fox32os" )
+		FILE "<bld>/xrbt.fxf"
+	#ELSE
+		FILE "<bld>/xrbt.exe"
+	#END
 	
 	DEPEND_LIBRARY ( 0 )
 

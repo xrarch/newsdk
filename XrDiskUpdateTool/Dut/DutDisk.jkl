@@ -1,0 +1,239 @@
+//
+// Implements support for reading and writing partitioned disk images.
+//
+
+#INCLUDE "Dut.hjk"
+
+DutTemporaryBuffer : UBYTE[4096]
+
+FN DutOpenDiskImage (
+    IN filename : ^UBYTE,
+    IN create : UWORD,
+    IN sectors : UWORD,
+) : ^DutDiskImage
+
+    // First create a disk image structure.
+
+    image : ^DutDiskImage
+
+    status := TlBumpAlloc (
+        SIZEOF DutDiskImage + TlMeasureString ( filename ), // bytes
+        OUT image, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create disk image", 0, 0, 0 )
+    END
+
+    // Open the disk image. Stop having it be closed.
+
+    IF create THEN
+        status = TlOpenDestinationAndTruncate (
+            filename, // filename
+            sectors * 512, // size
+            OUT image^.Handle, // handle
+        )
+
+    ELSE
+        status = TlOpenSource (
+            filename, // filename
+            OUT image^.Handle, // handle
+        )
+    END
+
+    IF status THEN
+        TlError ( "%s: Failed to open\n", filename )
+    END
+
+    image^.Common.Type = DUT_DISK_REAL
+    image^.Common.SectorLog = 9
+    image^.Common.Label[0] = 0
+
+    image^.Parsed = FALSE
+
+    stat : TlStatRecord
+
+    status = TlStatFile (
+        filename, // path
+        &stat, // statrecord
+    )
+
+    IF status THEN
+        TlError ( "%s: Failed to stat\n", filename )
+    END
+
+    IF stat.FileType != TL_FT_FILE THEN
+        TlError ( "%s: Not a file\n", filename )
+    END
+
+    IF stat.SizeInBytes % 512 != 0 THEN
+        TlError ( "%s: Size isn't multiple of sector size (512)\n", filename )
+    END
+
+    image^.Common.SectorCount = stat.SizeInBytes / 512
+
+    RETURN image
+END
+
+FN DutReadSector (
+    IN volume : ^DutDiskCommon,
+    IN buf : ^VOID,
+    IN sector : UWORD,
+)
+
+    // Read a sector from the volume into the given buffer.
+
+    IF sector >= volume^.SectorCount THEN
+        TlError ( "Attempt to read sector %d beyond end of volume\n", sector )
+    END
+
+    image : ^DutDiskImage
+
+    IF volume^.Type == DUT_DISK_REAL THEN
+        image = CAST volume TO ^DutDiskImage
+
+    ELSE
+        prt := CAST volume TO ^DutPartition
+
+        image = prt^.Disk
+        sector += prt^.SectorOffset
+    END
+
+    TlSeekFile (
+        image^.Handle, // handle
+        sector << volume^.SectorLog, // bytes
+    )
+
+    TlReadFile (
+        image^.Handle, // handle
+        1 << volume^.SectorLog, // bytes
+        buf, // buffer
+    )
+END
+
+FN DutWriteSector (
+    IN volume : ^DutDiskCommon,
+    IN buf : ^VOID,
+    IN sector : UWORD,
+)
+
+    // Write a sector into the volume from the given buffer.
+
+    IF sector >= volume^.SectorCount THEN
+        TlError ( "Attempt to read sector %d beyond end of volume\n", sector )
+    END
+
+    image : ^DutDiskImage
+
+    IF volume^.Type == DUT_DISK_REAL THEN
+        image = CAST volume TO ^DutDiskImage
+
+    ELSE
+        prt := CAST volume TO ^DutPartition
+
+        image = prt^.Disk
+        sector += prt^.SectorOffset
+    END
+
+    TlSeekFile (
+        image^.Handle, // handle
+        sector << volume^.SectorLog, // bytes
+    )
+
+    TlWriteFile (
+        image^.Handle, // handle
+        1 << volume^.SectorLog, // bytes
+        buf, // buffer
+    )
+END
+
+FN DutParsePartitionTable (
+    IN image : ^DutDiskImage,
+) : UWORD
+
+    // Parse the partition table of the disk image. Return TRUE if successful,
+    // FALSE otherwise.
+
+    IF image^.Parsed THEN
+        // Already parsed.
+
+        RETURN TRUE
+    END
+
+    apt := CAST &DutTemporaryBuffer[0] TO ^AptBootBlock
+
+    DutReadSector (
+        &image^.Common, // volume
+        apt, // buf
+        0, // sector
+    )
+
+    IF apt^.Magic != APT_MAGIC OR
+        apt^.FfIfVariant != 0xFF THEN
+
+        RETURN FALSE
+    END
+
+    // Trust the partition table.
+
+    TlInitializeList ( &image^.PartitionListHead )
+
+    // Copy the disk label.
+
+    TlCopyString (
+        &image^.Common.Label[0], // dest
+        &apt^.Label[0], // src
+        16, // bufsize
+    )
+
+    // Fill in the partition info.
+
+    i := 0
+    base := 4
+
+    WHILE i < 8 DO
+        blockpart := &apt^.Partitions[i]
+
+        IF blockpart^.Status THEN
+            // Found a partition. Create a partition block that describes it.
+
+            part : ^DutPartition
+
+            status := TlBumpAlloc (
+                SIZEOF DutPartition, // bytes
+                OUT part, // ptr
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to allocate partition", 0, 0, 0 )
+            END
+
+            part^.Common.Type = DUT_DISK_PARTITION
+            part^.Common.SectorLog = image^.Common.SectorLog
+            part^.Common.SectorCount = blockpart^.SectorCount
+
+            part^.SectorOffset = base
+            part^.Disk = image
+
+            TlCopyString (
+                &part^.Common.Label[0], // dest
+                &blockpart^.Label[0], // src
+                8, // bufsize
+            )
+
+            TlInsertAtTailList (
+                &image^.PartitionListHead, // head
+                &part^.Entry, // entry
+            )
+
+            base += blockpart^.SectorCount
+        END
+
+        i += 1
+        blockpart += SIZEOF AptEntry
+    END
+
+    image^.Parsed = TRUE
+
+    RETURN TRUE
+END

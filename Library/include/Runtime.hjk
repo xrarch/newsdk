@@ -155,6 +155,12 @@ EXTERN FN TlOpenDestination (
     OUT handle : ^VOID,
 ) : TlStatus
 
+EXTERN FN TlOpenDestinationAndTruncate (
+    IN filename : ^UBYTE,
+    IN size : UWORD,
+    OUT handle : ^VOID,
+) : TlStatus
+
 EXTERN FN TlClose (
     IN handle : ^VOID,
 )
@@ -170,6 +176,11 @@ EXTERN FN TlWriteFile (
     IN bytes : UWORD,
     IN buffer : ^VOID,
 ) : UWORD
+
+EXTERN FN TlSeekFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+)
 
 EXTERN TlHeapHits : UWORD
 EXTERN TlBumpBytesUsed : UWORD

@@ -52,6 +52,12 @@ EXTERN FN fwrite (
     IN stream : ^VOID,
 ) : UWORD
 
+EXTERN FN fseek (
+    IN stream : ^VOID,
+    IN offset : UWORD,
+    IN whence : UWORD,
+) : UWORD
+
 EXTERN FN memset (
     IN ptr : ^VOID,
     IN c : UWORD,
@@ -66,6 +72,15 @@ EXTERN FN memcpy (
 
 EXTERN FN strlen (
     IN s : ^UBYTE,
+) : UWORD
+
+EXTERN FN fileno (
+    IN stream : ^VOID,
+) : UWORD
+
+EXTERN FN ftruncate (
+    IN fd : UWORD,
+    IN length : UWORD,
 ) : UWORD
 
 FN TlFillMemoryWithByte (
@@ -256,6 +271,29 @@ FN TlOpenDestination (
     RETURN TL_SUCCESS
 END
 
+FN TlOpenDestinationAndTruncate (
+    IN filename : ^UBYTE,
+    IN size : UWORD,
+    OUT handle : ^VOID,
+) : TlStatus
+
+    handle = fopen ( filename, "wb" )
+
+    IF handle == 0 THEN
+        RETURN TL_COULDNT_OPEN
+    END
+
+    fd := fileno ( handle )
+
+    IF ftruncate ( fd, size ) != 0 THEN
+        fclose ( handle )
+
+        RETURN TL_COULDNT_OPEN
+    END
+
+    RETURN TL_SUCCESS
+END
+
 FN TlClose (
     IN handle : ^VOID,
 )
@@ -285,6 +323,14 @@ FN TlWriteFile (
     // applicable.
 
     RETURN fwrite ( buffer, 1, bytes, handle )
+END
+
+FN TlSeekFile (
+    IN handle : ^VOID,
+    IN bytes : UWORD,
+)
+
+    fseek ( handle, bytes, 0 )
 END
 
 FN TlpStatFileHelper (

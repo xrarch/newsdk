@@ -30,5 +30,13 @@ FN TlMain (
 
     cmd := argv[1]
 
+    di := DutOpenDiskImage (
+        cmd, // name
+        FALSE, // create
+        0, // sectors
+    )
+
+    TlPrint ( "%d\n", DutParsePartitionTable ( di ) )
+
     TlInternalError ( "NYI", 0, 0, 0 )
 END
