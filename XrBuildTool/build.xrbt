@@ -6,12 +6,11 @@ TARGET "XrBuildTool"
 	#END
 	
 	DEPEND_LIBRARY ( 0 )
+	DEPEND_LIBRARY_THREADS ( 0 )
 
 	SOURCES "./src"
 
 	#IF ( STRCMP ARCHITECTURE "CHost" )
 		PREBUILT "./Prebuilt"
-
-		LINKOPT "-lpthread"
 	#END
 END

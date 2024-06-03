@@ -32,6 +32,14 @@
 	#END
 ]
 
+#MACRO DEPEND_LIBRARY_THREADS ( x ) [
+	#IF ( STRCMP ARCHITECTURE "CHost" )
+		OBJECTS "../Library/CHostThreads"
+
+		LINKOPT "-lpthread"
+	#END
+]
+
 #DEPEND "./Rtl/build.xrbt"
 #DEPEND "./Library/build.xrbt"
 #DEPEND "./Jackal/build.xrbt"
