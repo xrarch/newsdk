@@ -15,7 +15,7 @@ Commands:
 
   create <imagename> <sectors>
   [-apt:disklabel;label1,sectors1;label2,sectors2;... [-boot:bootfile]]
-  [-fs:part,fsname,[manifest]]:
+  [-fs:part,fsname[,manifest]]:
     Create a disk image with the given name, size in sectors, partition layout,
     boot sector, and initialize with one or more filesystems.
 

@@ -313,6 +313,16 @@ FN DutPartitionDisk (
     WHILE i < count DO
         blockpart := &apt^.Partitions[i]
 
+        IF desctable^.SectorCount == -1 THEN
+            // This partition contains the remainder of the disk.
+
+            IF i != count - 1 THEN
+                TlError ( "Partition with '-1' sector count must be final\n" )
+            END
+
+            desctable^.SectorCount = image^.Common.SectorCount - base
+        END
+
         blockpart^.SectorCount = desctable^.SectorCount
         blockpart^.Status = 2
         

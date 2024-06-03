@@ -953,8 +953,8 @@ FN (BtDagActionF) BtBuildJkl (
     IF BtCHost THEN
         TlCopyIntoDynamicBuffer (
             &cmdline, // array
-            "cc -Wno-incompatible-library-redeclaration -Wno-builtin-requires-header -Ofast -x c -c ", // srcbuf
-            87, // length
+            "cc -Ofast -x c -c ", // srcbuf
+            18, // length
         )
 
         TlCopyIntoDynamicBuffer (

@@ -44,6 +44,14 @@ FN TlStringToNumber (
     OUT num : UWORD,
 ) : UWORD
 
+    neg := FALSE
+
+    IF src^ == '-' THEN
+        src += 1
+        bufsize -= 1
+        neg = TRUE
+    END
+
     IF bufsize < 1 THEN
         RETURN FALSE
     END
@@ -87,16 +95,16 @@ FN TlStringToNumber (
         byte := src^
 
         IF byte == 0 THEN
-            RETURN TRUE
+            BREAK
         END
 
         num *= base
 
-        IF base == 16 THEN
-            IF byte >= '0' AND byte <= '9' THEN
-                num += byte - '0'
-            
-            ELSEIF byte >= 'A' AND byte <= 'F' THEN
+        IF byte >= '0' AND byte <= '9' THEN
+            num += byte - '0'
+
+        ELSEIF base == 16 THEN
+            IF byte >= 'A' AND byte <= 'F' THEN
                 num += byte - 'A' + 10
 
             ELSEIF byte >= 'a' AND byte <= 'f' THEN
@@ -105,9 +113,6 @@ FN TlStringToNumber (
             ELSE
                 RETURN FALSE
             END
-
-        ELSEIF byte >= '0' AND byte <= '9' THEN
-            num += byte - '0'
         
         ELSE
             RETURN FALSE
@@ -115,6 +120,10 @@ FN TlStringToNumber (
 
         src += 1
         bufsize -= 1
+    END
+
+    IF neg THEN
+        num = -num
     END
 
     RETURN TRUE
