@@ -2,9 +2,6 @@ Directory structure:
 
   include/ - Global header files.
 
-  */CHost/ - Host-specific code for the C transpilation host.
-  */Mintia/ - Host-specific code for the native MINTIA host.
-
   Frontend/ - Lexer and parser.
   Backend/ - Optimizer and generic backend algorithms.
   CTranspiler/ - C transpiler backend.
