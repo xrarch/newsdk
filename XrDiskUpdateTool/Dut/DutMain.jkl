@@ -429,6 +429,13 @@ FN DutCreateImage (
     END
 END
 
+FN DutDumpInfo (
+    IN imagename : ^UBYTE,
+)
+
+    TlInternalError ( "DutDumpInfo", 0, 0, 0 )
+END
+
 FN DutUpdate (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
@@ -497,7 +504,10 @@ FN TlMain (
 
     cmd := argv[1]
 
-    IF TlCompareString ( cmd, "create" ) == 0 THEN
+    IF TlCompareString ( cmd, "info" ) == 0 THEN
+        DutDumpInfo ( argv[2] )
+
+    ELSEIF TlCompareString ( cmd, "create" ) == 0 THEN
         IF argc < 4 THEN
             DutUsage ()
         END
