@@ -14,8 +14,8 @@ Commands:
     Print miscellaneous information about the disk image.
 
   create <imagename> <sectors>
-  [-apt:disklabel;label1,sectors1;label2,sectors2;... [-boot:bootfile]]
-  [-fs:part,fsname[,manifest]]:
+  [-apt:disklabel,label1:sectors1,label2:sectors2,... [-boot:bootfile]]
+  [-fs:part,fsname[,manifest1,manifest2,...]]:
     Create a disk image with the given name, size in sectors, partition layout,
     boot sector, and initialize with one or more filesystems.
 
@@ -42,6 +42,68 @@ Commands:
     TlErrorExit ()
 END
 
+DutBuffer1 : UBYTE[DUT_LABEL_MAX]
+DutBuffer2 : UBYTE[DUT_LABEL_MAX]
+
+STRUCT DutManifest
+    Entry : TlListEntry,
+
+    PathBuffer : TlDynamicBuffer,
+END
+
+STRUCT DutFsDescription
+    Entry : TlListEntry,
+
+    PartId : UWORD,
+    FsName : UBYTE[DUT_LABEL_MAX],
+
+    ManifestListHead : TlListEntry,
+END
+
+FN DutCreateFilesystems (
+    IN image : ^DutDiskImage,
+    IN fslisthead : ^TlListEntry,
+)
+
+    // Create filesystems on the image as specified.
+
+    listentry := fslisthead^.Next
+
+    WHILE listentry != fslisthead DO
+        fs := CONTAINEROF listentry TO DutFsDescription.Entry
+
+        volume : ^DutDiskCommon
+
+        IF fs^.PartId == -1 THEN
+            // -1 means to use the entire disk image.
+
+            volume = CAST image TO ^DutDiskCommon
+
+        ELSE
+            volume = CAST DutFindPartitionById (
+                image, // image
+                fs^.PartId, // id
+            ) TO ^DutDiskCommon
+
+            IF NOT volume THEN
+                TlError ( "No such partition %d\n", fs^.PartId )
+            END
+        END
+
+        // Now look up the filesystem name and call its format routine with the
+        // volume handle we just acquired.
+
+        // ...
+
+        // If there are manifest files specified, mount the filesystem and
+        // initialize its contents using them.
+
+        // ...
+
+        listentry = listentry^.Next
+    END
+END
+
 FN DutCreateImage (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -49,7 +111,322 @@ FN DutCreateImage (
 
     // Parse the arguments and generate a disk image as specified.
 
-    TlInternalError ( "DutCreateImage", 0, 0, 0 )
+    imagename := argv[2]
+
+    sectors : UWORD
+
+    IF NOT TlStringToNumber (
+        argv[3], // src
+        -1, // bufsize
+        OUT sectors, // num
+    ) THEN
+        DutUsage ()
+    END
+
+    i := 4
+    j : UWORD
+    apt := FALSE
+    status : TlStatus
+    desclisthead : TlListEntry
+    fslisthead : TlListEntry
+    bootfilehandle := NULLPTR
+    fs : ^DutFsDescription
+    manifest : ^DutManifest
+
+    TlInitializeList ( &fslisthead )
+
+    WHILE i < argc DO
+        arg := argv[i]
+
+        IF arg[0] != '-' THEN
+            DutUsage ()
+        END
+
+        IF TlCompareStringWithMax ( arg, "-apt:", 5 ) == 0 THEN
+            // Parse APT partition table specifiers.
+
+            apt = TRUE
+
+            arg += 5
+
+            // First component is disk label.
+
+            j = 0
+
+            WHILE arg^ != ',' AND arg^ != 0 DO
+                IF j == DUT_LABEL_MAX - 1 THEN
+                    TlError ( "-apt: Too many characters in disk label\n" )
+                END
+
+                DutBuffer2[j] = arg^
+
+                j += 1
+                arg += 1
+            END
+
+            DutBuffer2[j] = 0
+
+            IF NOT DutBuffer2[0] THEN
+                TlError ( "-apt: Disk label must be at least 1 character\n" )
+            END
+
+            IF arg^ == ',' THEN
+                arg += 1
+
+                // Parse the partition list.
+
+                TlInitializeList ( &desclisthead )
+
+                currentpart : ^DutPartitionDescription = NULLPTR
+                label := FALSE
+
+                WHILE TRUE DO
+                    IF NOT currentpart THEN
+                        status = TlBumpAlloc (
+                            SIZEOF DutPartitionDescription, // bytes
+                            OUT currentpart, // ptr
+                        )
+
+                        IF status THEN
+                            TlInternalError (
+                                "Failed to allocate part", 0, 0, 0 )
+                        END
+
+                        j = 0
+                        label = TRUE
+                    END
+
+                    IF arg^ == ':' THEN
+                        IF NOT label THEN
+                            TlError ( "Syntax error\n" )
+                        END
+
+                        currentpart^.Label[j] = 0
+
+                        IF currentpart^.Label[0] == 0 THEN
+                            TlError (
+                            "-apt: Part label must be at least 1 character\n" )
+                        END
+
+                        label = FALSE
+                        j = 0
+
+                    ELSEIF arg^ == ',' OR arg^ == 0 THEN
+                        IF label THEN
+                            TlError ( "Syntax error\n" )
+                        END
+
+                        DutBuffer1[j] = 0
+
+                        IF NOT TlStringToNumber (
+                            &DutBuffer1[0], // src
+                            -1, // bufsize
+                            OUT currentpart^.SectorCount, // num
+                        ) THEN
+                            TlError ( "Syntax error\n" )
+                        END
+
+                        TlInsertAtTailList (
+                            &desclisthead, // head
+                            &currentpart^.Entry, // entry
+                        )
+
+                        label = TRUE
+                        currentpart = NULLPTR
+
+                        IF arg^ == 0 THEN
+                            BREAK
+                        END
+
+                    ELSEIF label THEN
+                        IF j == DUT_LABEL_MAX - 1 THEN
+                            TlError (
+                                "-apt: Too many characters in part label\n" )
+                        END
+
+                        currentpart^.Label[j] = arg^
+                        j += 1
+
+                    ELSE
+                        IF j == DUT_LABEL_MAX - 1 THEN
+                            TlError (
+                                "-apt: Too many characters in part size\n" )
+                        END
+
+                        DutBuffer1[j] = arg^
+                        j += 1
+                    END
+
+                    arg += 1
+                END
+            END
+
+        ELSEIF TlCompareStringWithMax ( arg, "-boot:", 6 ) == 0 THEN
+            IF NOT apt THEN
+                TlError ( "-boot: only relevant when APT partitioning\n" )
+            END
+
+            IF bootfilehandle THEN
+                TlClose ( bootfilehandle )
+            END
+
+            status = TlOpenSource (
+                &arg[6], // filename
+                OUT bootfilehandle, // handle
+            )
+
+            IF status THEN
+                TlError ( "-boot: Failed to open '%s'\n", &arg[6] )
+            END
+
+        ELSEIF TlCompareStringWithMax ( arg, "-fs:", 4 ) == 0 THEN
+            arg += 4
+
+            j = 0
+
+            // Allocate fs block.
+
+            status = TlBumpAlloc (
+                SIZEOF DutFsDescription, // bytes
+                OUT fs, // ptr
+            )
+
+            IF status THEN
+                TlInternalError ( "Failed to allocate fs", 0, 0, 0 )
+            END
+
+            TlInitializeList ( &fs^.ManifestListHead )
+
+            // Collect partition number.
+
+            WHILE arg^ AND arg^ != ',' DO
+                IF j == DUT_LABEL_MAX - 1 THEN
+                    TlError ( "-fs: Too many characters in part number\n" )
+                END
+
+                DutBuffer1[j] = arg^
+
+                j += 1
+                arg += 1
+            END
+
+            DutBuffer1[j] = 0
+
+            IF NOT TlStringToNumber (
+                &DutBuffer1[0], // src
+                -1, // bufsize
+                OUT fs^.PartId, // num
+            ) THEN
+                TlError ( "-fs: Bad partition number\n" )
+            END
+
+            // Collect fs name.
+
+            IF arg[0] != ',' THEN
+                TlError ( "-fs: Syntax error\n" )
+            END
+
+            arg += 1
+
+            j = 0
+
+            WHILE arg^ AND arg^ != ',' DO
+                IF j == DUT_LABEL_MAX - 1 THEN
+                    TlError ( "-fs: Too many characters in fs name\n" )
+                END
+
+                fs^.FsName[j] = arg^
+
+                j += 1
+                arg += 1
+            END
+
+            fs^.FsName[j] = 0
+
+            IF fs^.FsName[0] == 0 THEN
+                TlError ( "-fs: Syntax error\n" )
+            END
+
+            // Collect manifest names.
+
+            WHILE arg^ == ',' DO
+                arg += 1
+
+                status = TlBumpAlloc (
+                    SIZEOF DutManifest, // bytes
+                    OUT manifest, // ptr
+                )
+
+                IF status THEN
+                    TlInternalError ( "Failed to allocate manifest", 0, 0, 0 )
+                END
+
+                TlInitializeDynamicBuffer ( &manifest^.PathBuffer )
+
+                WHILE arg^ AND arg^ != ',' DO
+                    TlInsertDynamicBuffer (
+                        &manifest^.PathBuffer, // array
+                        arg^, // byte
+                    )
+
+                    arg += 1
+                END
+
+                IF manifest^.PathBuffer.Count == 0 THEN
+                    TlError ( "-fs: Syntax error\n" )
+                END
+
+                TlInsertDynamicBuffer (
+                    &manifest^.PathBuffer, // array
+                    0, // byte
+                )
+
+                TlInsertAtTailList (
+                    &fs^.ManifestListHead, // head
+                    &manifest^.Entry, // entry
+                )
+            END
+
+            TlInsertAtTailList (
+                &fslisthead, // head
+                &fs^.Entry, // entry
+            )
+
+        ELSE
+            DutUsage ()
+        END
+
+        i += 1
+    END
+
+    di := DutOpenDiskImage (
+        imagename, // filename
+        TRUE, // create
+        sectors, // sectors
+    )
+
+    IF apt THEN
+        DutPartitionDisk (
+            di, // image
+            &desclisthead, // desclisthead
+            &DutBuffer2[0], // label
+            bootfilehandle, // handle
+        )
+
+        IF fslisthead.Next != &fslisthead THEN
+            IF NOT DutParsePartitionTable ( di ) THEN
+                TlInternalError (
+                    "Failed to parse partition table we just made", 0, 0, 0 )
+            END
+
+            // Create filesystems.
+
+            DutCreateFilesystems (
+                di, // image
+                &fslisthead, // fslisthead
+            )
+        END
+    END
 END
 
 FN DutUpdate (
@@ -114,13 +491,17 @@ FN TlMain (
 
     // Dispatch to the correct command.
 
-    IF argc < 3 THEN
+    IF argc < 2 THEN
         DutUsage ()
     END
 
     cmd := argv[1]
 
     IF TlCompareString ( cmd, "create" ) == 0 THEN
+        IF argc < 4 THEN
+            DutUsage ()
+        END
+
         DutCreateImage ( argc, argv )
 
     ELSEIF TlCompareString ( cmd, "update" ) == 0 THEN

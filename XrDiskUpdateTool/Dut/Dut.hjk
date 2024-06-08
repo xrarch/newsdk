@@ -58,9 +58,13 @@ STRUCT AptOsRecord
     BootstrapCount : ULONG,
 END
 
+#DEFINE DUT_LABEL_MAX 64
+
 STRUCT DutPartitionDescription
-    Label : ^UBYTE,
+    Entry : TlListEntry,
+
     SectorCount : UWORD,
+    Label : UBYTE[DUT_LABEL_MAX],
 END
 
 EXTERN FN DutOpenDiskImage (
@@ -85,10 +89,14 @@ EXTERN FN DutParsePartitionTable (
     IN image : ^DutDiskImage,
 ) : UWORD
 
+EXTERN FN DutFindPartitionById (
+    IN image : ^DutDiskImage,
+    IN id : UWORD,
+) : ^DutPartition
+
 EXTERN FN DutPartitionDisk (
     IN image : ^DutDiskImage,
-    IN desctable : ^DutPartitionDescription,
-    IN count : UWORD,
+    IN desclisthead : ^TlListEntry,
     IN label : ^UBYTE,
     IN handle : ^VOID,
 )

@@ -263,8 +263,7 @@ END
 
 FN DutPartitionDisk (
     IN image : ^DutDiskImage,
-    IN desctable : ^DutPartitionDescription,
-    IN count : UWORD,
+    IN desclisthead : ^TlListEntry,
     IN label : ^UBYTE,
     IN handle : ^VOID,
 )
@@ -280,6 +279,14 @@ FN DutPartitionDisk (
             handle, // handle
             1 << image^.Common.SectorLog, // bytes
             &DutTemporaryBuffer[0], // ptr
+        )
+
+        // Zero out all of the APT fields.
+
+        TlFillMemoryWithByte (
+            &apt^.Partitions[0], // ptr
+            SIZEOFVALUE apt^.Partitions, // sz
+            0, // byte
         )
 
     ELSE
@@ -307,20 +314,32 @@ FN DutPartitionDisk (
 
     // Now initialize the partition table.
 
-    i := 0
     base := 4
+    i := 0
+    listentry := desclisthead^.Next
 
-    WHILE i < count DO
+    WHILE listentry != desclisthead DO
+        desctable := CONTAINEROF listentry TO DutPartitionDescription.Entry
         blockpart := &apt^.Partitions[i]
+
+        IF base >= image^.Common.SectorCount THEN
+            TlError ( "Base of partition '%s' exceeds disk size\n",
+                &desctable^.Label[0] )
+        END
 
         IF desctable^.SectorCount == -1 THEN
             // This partition contains the remainder of the disk.
 
-            IF i != count - 1 THEN
+            IF listentry^.Next != desclisthead THEN
                 TlError ( "Partition with '-1' sector count must be final\n" )
             END
 
             desctable^.SectorCount = image^.Common.SectorCount - base
+        END
+
+        IF base + desctable^.SectorCount > image^.Common.SectorCount THEN
+            TlError ( "Partition '%s' extends beyond disk size\n",
+                &desctable^.Label[0] )
         END
 
         blockpart^.SectorCount = desctable^.SectorCount
@@ -328,13 +347,13 @@ FN DutPartitionDisk (
         
         TlCopyString (
             &blockpart^.Label[0], // dest
-            desctable^.Label, // src
+            &desctable^.Label[0], // src
             8, // bufsize
         )
 
         base += desctable^.SectorCount
+        listentry = listentry^.Next
         i += 1
-        desctable += SIZEOF DutPartitionDescription
     END
 
     // Write it out.
