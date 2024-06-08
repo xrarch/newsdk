@@ -84,3 +84,11 @@ EXTERN FN DutWriteSector (
 EXTERN FN DutParsePartitionTable (
     IN image : ^DutDiskImage,
 ) : UWORD
+
+EXTERN FN DutPartitionDisk (
+    IN image : ^DutDiskImage,
+    IN desctable : ^DutPartitionDescription,
+    IN count : UWORD,
+    IN label : ^UBYTE,
+    IN handle : ^VOID,
+)

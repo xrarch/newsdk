@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <time.h>
 
-extern void TlInitialize ();
+extern void TlInitialize (void *stuff);
 extern void TlMain (uint64_t argc, uint64_t argv);
 extern void *TlStdErr;
 

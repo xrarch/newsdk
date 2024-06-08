@@ -57,8 +57,21 @@ FN TlMain (
 
     di := DutOpenDiskImage (
         cmd, // name
-        FALSE, // create
-        0, // sectors
+        TRUE, // create
+        512, // sectors
+    )
+
+    desctable : DutPartitionDescription[1]
+
+    desctable[0].Label = "boot"
+    desctable[0].SectorCount = -1
+
+    DutPartitionDisk (
+        di, // image
+        &desctable[0], // desctable
+        1, // count
+        "Poop", // label
+        NULLPTR, // handle
     )
 
     TlPrint ( "%d\n", DutParsePartitionTable ( di ) )
