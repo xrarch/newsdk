@@ -216,6 +216,20 @@ FN DutParsePartitionTable (
             part^.Disk = image
             part^.Id = i
 
+            IF part^.SectorOffset >= image^.Common.SectorCount THEN
+                // Partition begins beyond end of image.
+
+                RETURN FALSE
+            END
+
+            IF part^.SectorOffset + part^.Common.SectorCount >
+                image^.Common.SectorCount THEN
+
+                // Partition ends beyond end of image.
+
+                RETURN FALSE
+            END
+
             TlCopyString (
                 &part^.Common.Label[0], // dest
                 &blockpart^.Label[0], // src
