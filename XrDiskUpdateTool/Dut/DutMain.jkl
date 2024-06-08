@@ -42,6 +42,71 @@ Commands:
     TlErrorExit ()
 END
 
+FN DutCreateImage (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Parse the arguments and generate a disk image as specified.
+
+    TlInternalError ( "DutCreateImage", 0, 0, 0 )
+END
+
+FN DutUpdate (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN manifest : ^UBYTE,
+)
+
+    TlInternalError ( "DutUpdate", 0, 0, 0 )
+END
+
+FN DutUpdateFiles (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN listfile : ^UBYTE,
+)
+
+    TlInternalError ( "DutUpdateFiles", 0, 0, 0 )
+END
+
+FN DutListFiles (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN path : ^UBYTE,
+)
+
+    TlInternalError ( "DutListFiles", 0, 0, 0 )
+END
+
+FN DutReadFile (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN path : ^UBYTE,
+)
+
+    TlInternalError ( "DutReadFile", 0, 0, 0 )
+END
+
+FN DutWriteFile (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN path : ^UBYTE,
+    IN hostpath : ^UBYTE,
+)
+
+    TlInternalError ( "DutWriteFile", 0, 0, 0 )
+END
+
+FN DutDeleteFile (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN path : ^UBYTE,
+)
+
+    TlInternalError ( "DutDeleteFile", 0, 0, 0 )
+END
+
 FN TlMain (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -55,26 +120,77 @@ FN TlMain (
 
     cmd := argv[1]
 
-    di := DutOpenDiskImage (
-        cmd, // name
-        TRUE, // create
-        512, // sectors
-    )
+    IF TlCompareString ( cmd, "create" ) == 0 THEN
+        DutCreateImage ( argc, argv )
 
-    desctable : DutPartitionDescription[1]
+    ELSEIF TlCompareString ( cmd, "update" ) == 0 THEN
+        IF argc != 5 THEN
+            DutUsage ()
+        END
 
-    desctable[0].Label = "boot"
-    desctable[0].SectorCount = -1
+        DutUpdate (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // manifest
+        )
 
-    DutPartitionDisk (
-        di, // image
-        &desctable[0], // desctable
-        1, // count
-        "Poop", // label
-        NULLPTR, // handle
-    )
+    ELSEIF TlCompareString ( cmd, "updatefiles" ) == 0 THEN
+        IF argc != 5 THEN
+            DutUsage ()
+        END
 
-    TlPrint ( "%d\n", DutParsePartitionTable ( di ) )
+        DutUpdateFiles (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // listfile
+        )
 
-    TlInternalError ( "NYI", 0, 0, 0 )
+    ELSEIF TlCompareString ( cmd, "ls" ) == 0 THEN
+        IF argc != 5 THEN
+            DutUsage ()
+        END
+
+        DutListFiles (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // path
+        )
+
+    ELSEIF TlCompareString ( cmd, "read" ) == 0 THEN
+        IF argc != 5 THEN
+            DutUsage ()
+        END
+
+        DutReadFile (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // path
+        )
+
+    ELSEIF TlCompareString ( cmd, "write" ) == 0 THEN
+        IF argc != 6 THEN
+            DutUsage ()
+        END
+
+        DutWriteFile (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // path
+            argv[5], // hostpath
+        )
+
+    ELSEIF TlCompareString ( cmd, "delete" ) == 0 THEN
+        IF argc != 5 THEN
+            DutUsage ()
+        END
+
+        DutDeleteFile (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // path
+        )
+
+    ELSE
+        DutUsage ()
+    END
 END
