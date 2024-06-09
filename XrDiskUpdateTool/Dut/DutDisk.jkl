@@ -222,6 +222,12 @@ FN DutParsePartitionTable (
                 RETURN FALSE
             END
 
+            IF part^.Common.SectorCount >= image^.Common.SectorCount THEN
+                // Partition size larger than that of image.
+
+                RETURN FALSE
+            END
+
             IF part^.SectorOffset + part^.Common.SectorCount >
                 image^.Common.SectorCount THEN
 
@@ -353,6 +359,11 @@ FN DutPartitionDisk (
             END
 
             desctable^.SectorCount = image^.Common.SectorCount - base
+        END
+
+        IF desctable^.SectorCount >= image^.Common.SectorCount THEN
+            TlError ( "Size of partition '%s' exceeds disk size\n",
+                &desctable^.Label[0] )
         END
 
         IF base + desctable^.SectorCount > image^.Common.SectorCount THEN
