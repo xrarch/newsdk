@@ -4,7 +4,7 @@
 
 #INCLUDE "Dut.hjk"
 
-DutTemporaryBuffer : UBYTE[4096]
+PUBLIC DutTemporaryBuffer : UBYTE[4096]
 
 FN DutOpenDiskImage (
     IN filename : ^UBYTE,
@@ -258,6 +258,10 @@ FN DutFindPartitionById (
 ) : ^DutPartition
 
     // Find partition by ID or return null pointer.
+
+    IF NOT image^.Parsed THEN
+        RETURN NULLPTR
+    END
 
     head := &image^.PartitionListHead
     listentry := head^.Next

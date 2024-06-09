@@ -58,6 +58,8 @@ STRUCT AptOsRecord
     BootstrapCount : ULONG,
 END
 
+EXTERN DutTemporaryBuffer : UBYTE[4096]
+
 #DEFINE DUT_LABEL_MAX 64
 
 STRUCT DutPartitionDescription
