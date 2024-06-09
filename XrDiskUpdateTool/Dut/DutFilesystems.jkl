@@ -1,0 +1,29 @@
+//
+// Generic filesystems support.
+//
+
+#INCLUDE "Dut.hjk"
+
+DutFilesystemTable : ^DutFilesystem[] = {
+    // &DutAisixFs,
+    NULLPTR, // MUST be here, as a sentinel
+}
+
+FN DutLookupFilesystem (
+    IN fsname : ^UBYTE,
+) : ^DutFilesystem
+
+    i := 0
+    fs := &DutFilesystemTable[0]
+
+    WHILE fs^ DO
+        IF TlCompareString ( fs^^.Name, fsname ) == 0 THEN
+            RETURN fs^
+        END
+
+        i += 1
+        fs += SIZEOF ^VOID
+    END
+
+    RETURN NULLPTR
+END

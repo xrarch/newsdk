@@ -62,6 +62,14 @@ EXTERN DutTemporaryBuffer : UBYTE[4096]
 
 #DEFINE DUT_LABEL_MAX 64
 
+STRUCT DutFilesystem
+    Name : ^UBYTE,
+END
+
+EXTERN FN DutLookupFilesystem (
+    IN fsname : ^UBYTE,
+) : ^DutFilesystem
+
 STRUCT DutPartitionDescription
     Entry : TlListEntry,
 
