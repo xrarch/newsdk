@@ -50,9 +50,9 @@ ENUM JklPrimitiveType : UBYTE
     PRIM_TYPE_ULONG,
     PRIM_TYPE_UQUAD,
 
-    PRIM_TYPE_UNSIGNED_MAX, // unsigned types top
-
     PRIM_TYPE_POINTER,
+
+    PRIM_TYPE_UNSIGNED_MAX, // unsigned types top
 
     PRIM_TYPE_MAX, // MUST be at the end
 END
