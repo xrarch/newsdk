@@ -3075,17 +3075,34 @@ FN (AsmEmitF) XrEmitFunction (
 
     inst := irfunc^.LirHead
 
+    dead := FALSE
+
     WHILE inst DO
-        IF inst^.Type == LIR_LABEL AND NOT inst^.Body.Label.References THEN
+        IF inst^.Type == LIR_LABEL THEN
+            IF NOT inst^.Body.Label.References THEN
+                inst = inst^.Next
+
+                CONTINUE
+
+            ELSE
+                dead = FALSE
+            END
+
+        ELSEIF dead THEN
             inst = inst^.Next
 
             CONTINUE
-        END
 
-        IF inst^.Type == LIR_BRANCH AND XrElideUselessJump ( inst ) THEN
-            inst = inst^.Next
+        ELSEIF inst^.Type == LIR_BRANCH THEN
+            IF XrElideUselessJump ( inst ) THEN
+                inst = inst^.Next
 
-            CONTINUE
+                CONTINUE
+            END
+
+            IF inst^.MachineInstruction == XR_B THEN
+                dead = TRUE
+            END
         END
 
         XrEmitInstruction ( inst )

@@ -49,3 +49,7 @@ EXTERN FN IrCreateConstantBefore (
 EXTERN FN IrRemoveInstruction (
     IN inst : ^IrInstruction,
 )
+
+EXTERN FN IrSimplifyToJump (
+    IN inst : ^IrInstruction,
+)

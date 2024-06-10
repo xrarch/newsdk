@@ -1,0 +1,136 @@
+//
+// IR clean-up peephole pass.
+//
+
+#INCLUDE "Be.hjk"
+
+FN IrResolveLabel (
+    IN label : ^IrInstruction,
+    OUT newlabel : ^IrInstruction,
+) : UWORD
+
+    // Follow any chain of unconditional branches to get the "real" label.
+
+    resolved := FALSE
+    newlabel = label
+    origlabel := label
+
+    WHILE TRUE DO
+        // First slide to the next non-label instruction.
+
+        next := label
+
+        WHILE TRUE DO
+            next = next^.Next
+
+            IF NOT next OR next^.Type != IR_LABEL THEN
+                BREAK
+            END
+        END
+
+        IF NOT next THEN
+            RETURN resolved
+        END
+
+        // If this instruction is an unconditional jump, follow it.
+
+        IF next^.Type == IR_JUMP THEN
+            label = next^.Body.Jump.Label
+            newlabel = label
+            resolved = TRUE
+
+            IF label == origlabel THEN
+                // We went in a cycle. Stop now.
+
+                RETURN resolved
+            END
+
+        ELSE
+            RETURN resolved
+        END
+    END
+END
+
+FN IrCleanUpForFunction (
+    IN funcsym : ^LexSymbol,
+) : UWORD
+
+    // Clean up the IR for a function in a single pass.
+
+    irfunc := CAST funcsym^.InitialValue TO ^IrFunction
+
+    dead := FALSE
+    cleaned := FALSE
+
+    inst := irfunc^.Head
+
+    WHILE inst DO
+        IF inst^.Type == IR_LABEL THEN
+            dead = FALSE
+
+        ELSEIF dead THEN
+            // Remove dead instruction.
+
+            cleaned = TRUE
+
+            IrRemoveInstruction ( inst )
+
+        ELSEIF inst^.Type == IR_JUMP THEN
+            dead = TRUE
+
+            IF IrResolveLabel (
+                inst^.Body.Jump.Label, // label
+                OUT inst^.Body.Jump.Label, // newlabel
+            ) THEN
+                cleaned = TRUE
+            END
+
+        ELSEIF (inst^.Type > IR_BINARY_BRANCH_LOW_NUMBER AND
+            inst^.Type < IR_BINARY_BRANCH_HIGH_NUMBER) THEN
+
+            IF IrResolveLabel (
+                inst^.Body.Branch.TrueLabel, // label
+                OUT inst^.Body.Branch.TrueLabel, // newlabel
+            ) THEN
+                cleaned = TRUE
+            END
+
+            IF IrResolveLabel (
+                inst^.Body.Branch.FalseLabel, // label
+                OUT inst^.Body.Branch.FalseLabel, // newlabel
+            ) THEN
+                cleaned = TRUE
+            END
+
+            IF inst^.Body.Branch.TrueLabel == inst^.Body.Branch.FalseLabel THEN
+                // Turn into an unconditional jump.
+
+                unilabel := inst^.Body.Branch.TrueLabel
+
+                IrSimplifyToJump ( inst )
+
+                inst^.Body.Jump.Label = unilabel
+
+                dead = TRUE
+                cleaned = TRUE
+            END
+        END
+
+        inst = inst^.Next
+    END
+
+    RETURN cleaned
+END
+
+FN IrCleanUp ()
+
+    // For each function definition, clean up IR.
+
+    funcsym := PrsFunctionListHead
+
+    WHILE funcsym DO
+        IrCleanUpForFunction ( funcsym )
+
+        funcsym = funcsym^.NextFunction
+    END
+END

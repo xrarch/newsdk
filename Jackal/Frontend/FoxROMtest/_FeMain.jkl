@@ -232,11 +232,12 @@ FN KvDrawCharacter (
     )
 END
 
-FN Putc (
-    IN c : UBYTE,
+FN (TlPrintCallbackF) TlpPrintCallback (
+    IN byte : UBYTE,
+    IN context : ^VOID,
 )
 
-    IF c == '\n' THEN
+    IF byte == '\n' THEN
         Y += 8
         X = 0
 
@@ -259,7 +260,7 @@ FN Putc (
     END
 
     KvDrawCharacter (
-        c, // char
+        byte, // char
         X, // x
         Y, // y
         &LdrFox32Font, // font
@@ -275,7 +276,7 @@ FN Puts (
     i := 0
 
     WHILE str[i] DO
-        Putc ( str[i] )
+        TlpPrintCallback ( str[i], NULLPTR )
 
         i += 1
     END
@@ -325,7 +326,7 @@ TlBumpHits : UWORD = 0
 FN Main ()
     // AbiTest ()
 
-    TlPrintString ( "reset\n" )
+    TlPrint ( "reset\n" )
 
     memcpy (
         &_data, // dest
@@ -347,9 +348,7 @@ FN Main ()
 
     TlMain ( 5, &args[0] )
 
-    TlPrintString ( "Bump allocator bytes usage: " )
-    TlPrintNumber ( TlBumpBytesUsed )
-    TlPrintString ( "\n" )
+    TlPrint ( "Bump allocator bytes usage: %d\n", TlBumpBytesUsed )
 
     WHILE TRUE DO END
 END
@@ -358,43 +357,6 @@ FN TlErrorExit ()
     Puts ( "Error" )
 
     WHILE TRUE DO END
-END
-
-FN TlPrintNumber (
-    IN num : UWORD,
-)
-
-    IF num == 0 THEN
-        Putc ( '0' )
-
-        LEAVE
-    END
-
-    log10 := 0
-    divisor := 1
-    n := num
-
-    WHILE n >= 10 DO
-        divisor *= 10
-        n /= 10
-        log10 += 1
-    END
-
-    log10 += 1
-
-    WHILE log10 DO
-        Putc ( '0' + (num / divisor) % 10 )
-
-        log10 -= 1
-        divisor /= 10
-    END
-END
-
-FN TlPrintString (
-    IN str : ^UBYTE,
-)
-
-    Puts ( str )
 END
 
 FN TlFillMemoryWithByte (
@@ -577,7 +539,7 @@ FN TlWriteFile (
 ) : UWORD
 
     WHILE bytes DO
-        Putc ( (CAST buffer TO ^UBYTE)^ )
+        TlpPrintCallback ( (CAST buffer TO ^UBYTE)^, NULLPTR )
 
         buffer += 1
         bytes -= 1

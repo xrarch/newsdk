@@ -358,6 +358,7 @@ END
 EXTERN FN IrGenerate ()
 EXTERN FN IrSimplify ()
 EXTERN FN IrEliminateDeadVariables ()
+EXTERN FN IrCleanUp ()
 
 FN TlMain (
     IN argc : ULONG,
@@ -386,9 +387,14 @@ FN TlMain (
 
     IrSimplify ()
 
-    // Perform final pass over IR for dead variable elimination.
+    // Perform dead variable elimination.
 
     IrEliminateDeadVariables ()
+
+    // Perform final pass over IR for branch resolution and trivial dead code
+    // elimination.
+
+    IrCleanUp ()
 
     // Open the output file.
 
