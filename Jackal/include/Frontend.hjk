@@ -8,6 +8,10 @@ FNPTR JklValueNumberF (
     IN constant : UWORD,
 ) : UBYTE
 
+FNPTR JklIsUnconditionalF (
+    IN inst : ^LirInstruction,
+) : UBYTE
+
 EXTERN FeLibraryDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN FeIncludeDirectory : UBYTE[FE_PATH_BUFFER_SIZE]
 
@@ -60,6 +64,7 @@ STRUCT JklTargetInfoRecord
     Name : ^UBYTE,
     EntryFunc : JklTargetF,
     ValueNumberConstantFunc : JklValueNumberF,
+    IsUnconditionalFunc : JklIsUnconditionalF,
     LirInfo : ^LirTargetInfoRecord,
     ConstantMask : UWORD,
     FoldStackAddr : UBYTE,

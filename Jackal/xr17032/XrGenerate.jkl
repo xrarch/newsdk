@@ -14,12 +14,18 @@ EXTERN FN (JklValueNumberF) XrValueNumber (
 ) : UBYTE
 
 // FORWARD
+EXTERN FN (JklIsUnconditionalF) XrIsUnconditional (
+    IN inst : ^LirInstruction,
+) : UBYTE
+
+// FORWARD
 EXTERN XrLirInfo : LirTargetInfoRecord
 
 PUBLIC XrTargetInfo : JklTargetInfoRecord = {
     [Name] = "xr17032",
     [EntryFunc] = &XrCompile,
     [ValueNumberConstantFunc] = &XrValueNumber,
+    [IsUnconditionalFunc] = &XrIsUnconditional,
     [FoldStackAddr] = TRUE,
     [LirInfo] = &XrLirInfo,
     [ConstantMask] = 0xFFFFFFFF,
@@ -3042,6 +3048,13 @@ FN XrEmitInstruction (
     END
 END
 
+FN (JklIsUnconditionalF) XrIsUnconditional (
+    IN inst : ^LirInstruction,
+) : UBYTE
+
+    RETURN inst^.MachineInstruction == XR_B
+END
+
 FN XrElideUselessJump (
     IN inst : ^LirInstruction,
 ) : UWORD
@@ -3224,6 +3237,10 @@ FN (JklTargetF) XrCompile ()
         // Generate the prologue and epilogue.
 
         XrGenerateAbiStuff ( funcsym, irfunc )
+
+        // Perform peephole pass.
+
+        LirPeepholeForFunction ( irfunc )
 
         funcsym = funcsym^.NextFunction
     END

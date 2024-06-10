@@ -26,6 +26,11 @@ FN IrResolveLabel (
             IF NOT next OR next^.Type != IR_LABEL THEN
                 BREAK
             END
+
+            label = next
+            newlabel = next
+
+            resolved = TRUE
         END
 
         IF NOT next THEN
@@ -60,6 +65,7 @@ FN IrCleanUpForFunction (
     irfunc := CAST funcsym^.InitialValue TO ^IrFunction
 
     dead := FALSE
+    again := FALSE
     cleaned := FALSE
 
     inst := irfunc^.Head
@@ -71,36 +77,44 @@ FN IrCleanUpForFunction (
         ELSEIF dead THEN
             // Remove dead instruction.
 
-            cleaned = TRUE
-
             IrRemoveInstruction ( inst )
+
+            cleaned = TRUE
 
         ELSEIF inst^.Type == IR_JUMP THEN
             dead = TRUE
 
-            IF IrResolveLabel (
+            IrResolveLabel (
                 inst^.Body.Jump.Label, // label
                 OUT inst^.Body.Jump.Label, // newlabel
-            ) THEN
-                cleaned = TRUE
+            )
+
+            next := inst^.Next
+
+            WHILE next AND next^.Type == IR_LABEL DO
+                IF inst^.Body.Jump.Label == next THEN
+                    IrRemoveInstruction ( inst )
+
+                    cleaned = TRUE
+
+                    BREAK
+                END
+
+                next = next^.Next
             END
 
         ELSEIF (inst^.Type > IR_BINARY_BRANCH_LOW_NUMBER AND
             inst^.Type < IR_BINARY_BRANCH_HIGH_NUMBER) THEN
 
-            IF IrResolveLabel (
+            IrResolveLabel (
                 inst^.Body.Branch.TrueLabel, // label
                 OUT inst^.Body.Branch.TrueLabel, // newlabel
-            ) THEN
-                cleaned = TRUE
-            END
+            )
 
-            IF IrResolveLabel (
+            IrResolveLabel (
                 inst^.Body.Branch.FalseLabel, // label
                 OUT inst^.Body.Branch.FalseLabel, // newlabel
-            ) THEN
-                cleaned = TRUE
-            END
+            )
 
             IF inst^.Body.Branch.TrueLabel == inst^.Body.Branch.FalseLabel THEN
                 // Turn into an unconditional jump.
@@ -111,12 +125,18 @@ FN IrCleanUpForFunction (
 
                 inst^.Body.Jump.Label = unilabel
 
-                dead = TRUE
-                cleaned = TRUE
+                // Step back one instruction to cause this new unconditional jump
+                // to be processed.
+
+                again = TRUE
             END
         END
 
-        inst = inst^.Next
+        IF NOT again THEN
+            inst = inst^.Next
+        END
+
+        again = FALSE
     END
 
     RETURN cleaned

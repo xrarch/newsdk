@@ -1,0 +1,145 @@
+//
+// LIR clean-up peephole pass.
+//
+
+#INCLUDE "<inc>/Target.hjk"
+
+FN LirResolveLabel (
+    IN label : ^LirInstruction,
+    OUT newlabel : ^LirInstruction,
+) : UWORD
+
+    // Follow any chain of unconditional branches to get the "real" label.
+
+    resolved := FALSE
+    newlabel = label
+    origlabel := label
+    isunconditional := JklTargetInfo^.IsUnconditionalFunc
+
+    WHILE TRUE DO
+        // First slide to the next non-label instruction.
+
+        next := label
+
+        WHILE TRUE DO
+            next = next^.Next
+
+            IF NOT next OR next^.Type != LIR_LABEL THEN
+                BREAK
+            END
+
+            label = next
+            newlabel = next
+
+            resolved = TRUE
+        END
+
+        IF NOT next THEN
+            RETURN resolved
+        END
+
+        // If this instruction is an unconditional jump, follow it.
+
+        IF next^.Type == LIR_BRANCH AND
+            isunconditional ( next ) THEN
+
+            label = next^.TypeBody.Branch.Label
+            newlabel = label
+            resolved = TRUE
+
+            IF label == origlabel THEN
+                // We went in a cycle. Stop now.
+
+                RETURN resolved
+            END
+
+        ELSE
+            RETURN resolved
+        END
+    END
+END
+
+FN LirpPeepholeForFunction (
+    IN irfunc : ^IrFunction,
+) : UWORD
+
+    inst := irfunc^.LirHead
+
+    dead := FALSE
+    cleaned := FALSE
+    isunconditional := JklTargetInfo^.IsUnconditionalFunc
+
+    WHILE inst DO
+        IF inst^.Type == LIR_LABEL THEN
+            IF NOT inst^.Body.Label.References THEN
+                LirRemoveInstruction ( inst )
+
+            ELSE
+                dead = FALSE
+            END
+
+        ELSEIF dead THEN
+            // Remove dead instruction.
+
+            IF inst^.Type == LIR_BRANCH THEN
+                label := inst^.TypeBody.Branch.Label
+
+                label^.Body.Label.References -= 1
+
+                IF label^.Body.Label.References == 0 THEN
+                    LirRemoveInstruction ( label )
+                END
+            END
+
+            cleaned = TRUE
+
+            LirRemoveInstruction ( inst )
+
+        ELSEIF inst^.Type == LIR_BRANCH THEN
+            IF isunconditional ( inst ) THEN
+                dead = TRUE
+            END
+
+            LirResolveLabel (
+                inst^.TypeBody.Branch.Label, // label
+                OUT inst^.TypeBody.Branch.Label, // newlabel
+            )
+
+            next := inst^.Next
+
+            WHILE next AND next^.Type == LIR_LABEL DO
+                IF inst^.TypeBody.Branch.Label == next THEN
+                    LirRemoveInstruction ( inst )
+
+                    cleaned = TRUE
+
+                    BREAK
+                END
+
+                next = next^.Next
+            END
+        END
+
+        inst = inst^.Next
+    END
+
+    RETURN cleaned
+END
+
+FN LirPeepholeForFunction (
+    IN irfunc : ^IrFunction,
+)
+
+    // Clean up the LIR with a simple peephole pass to eliminate obviously
+    // unreachable code and so on. May run up to 3 times.
+
+    i := 1
+
+    WHILE LirpPeepholeForFunction ( irfunc ) DO
+        IF i == 3 THEN
+            BREAK
+        END
+
+        i += 1
+    END
+END

@@ -192,6 +192,10 @@ EXTERN FN LirMoveHint (
     IN reg2 : ^LirRegister,
 )
 
+EXTERN FN LirPeepholeForFunction (
+    IN irfunc : ^IrFunction,
+)
+
 ENUM LirAbiUsage : UBYTE
     LIR_REG_UNUSABLE, // MUST be first in the enum
     LIR_REG_CALLEE_SAVED,

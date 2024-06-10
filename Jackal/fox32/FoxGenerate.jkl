@@ -20,12 +20,18 @@ EXTERN FN (JklValueNumberF) FoxValueNumber (
 ) : UBYTE
 
 // FORWARD
+EXTERN FN (JklIsUnconditionalF) FoxIsUnconditional (
+    IN inst : ^LirInstruction,
+) : UBYTE
+
+// FORWARD
 EXTERN FoxLirInfo : LirTargetInfoRecord
 
 PUBLIC FoxTargetInfo : JklTargetInfoRecord = {
     [Name] = "fox32",
     [EntryFunc] = &FoxCompile,
     [ValueNumberConstantFunc] = &FoxValueNumber,
+    [IsUnconditionalFunc] = &FoxIsUnconditional,
     [FoldStackAddr] = TRUE,
     [LirInfo] = &FoxLirInfo,
     [ConstantMask] = 0xFFFFFFFF,
@@ -2729,6 +2735,15 @@ FN FoxEmitInstruction (
     END
 END
 
+FN (JklIsUnconditionalF) FoxIsUnconditional (
+    IN inst : ^LirInstruction,
+) : UBYTE
+
+    RETURN (inst^.MachineInstruction == FOX_RJMP OR
+        inst^.MachineInstruction == FOX_JMP) AND
+        inst^.Body.Machine.Fox.Condition == FOX_COND_ALWAYS
+END
+
 FN FoxElideUselessJump (
     IN inst : ^LirInstruction,
 ) : UWORD
@@ -2914,6 +2929,10 @@ FN (JklTargetF) FoxCompile ()
         // Generate the prologue and epilogue.
 
         FoxGenerateAbiStuff ( funcsym, irfunc )
+
+        // Peephole optimize the LIR.
+
+        LirPeepholeForFunction ( irfunc )
 
         funcsym = funcsym^.NextFunction
     END
