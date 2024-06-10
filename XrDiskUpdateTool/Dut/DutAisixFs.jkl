@@ -177,7 +177,7 @@ FN (DutFilesystemFormatF) DutAisixFsFormat (
         i += 1
     END
 
-    // Hand-craft root directory inode.
+    // Hand-craft the root directory inode.
 
     inode : ^AfsInode
 
@@ -206,7 +206,18 @@ FN (DutFilesystemFormatF) DutAisixFsFormat (
     )
 END
 
+FN (DutFilesystemMountF) DutAisixFsMount (
+    IN mount : ^DutMount,
+) : UWORD
+
+    // Mount the volume.
+
+    RETURN FALSE
+END
+
 PUBLIC DutAisixFs : DutFilesystem = {
     [Name] = "aisixfs",
     [Format] = &DutAisixFsFormat,
+    [Mount] = &DutAisixFsMount,
+    [Unmount] = NULLPTR,
 }

@@ -59,6 +59,7 @@ STRUCT AptOsRecord
 END
 
 EXTERN DutTemporaryBuffer : UBYTE[4096]
+EXTERN DutZeroBuffer : UBYTE[4096]
 
 #DEFINE DUT_LABEL_MAX 64
 
@@ -66,10 +67,36 @@ FNPTR DutFilesystemFormatF (
     IN volume : ^DutDiskCommon,
 )
 
+FNPTR DutFilesystemMountF (
+    IN mount : ^DutMount,
+) : UWORD
+
+FNPTR DutFilesystemUnmountF (
+    IN mount : ^DutMount,
+)
+
+STRUCT DutAisixFsContext
+    
+END
+
+UNION DutMountContext
+    Afs : DutAisixFsContext,
+END
+
+STRUCT DutMount
+    Volume : ^DutDiskCommon,
+    Cache : ^DutCache,
+    Fs : ^DutFilesystem,
+
+    Context : DutMountContext,
+END
+
 STRUCT DutFilesystem
     Name : ^UBYTE,
 
     Format : DutFilesystemFormatF,
+    Mount : DutFilesystemMountF,
+    Unmount : DutFilesystemUnmountF,
 END
 
 EXTERN FN DutLookupFilesystem (
@@ -140,4 +167,11 @@ EXTERN FN DutDirtyBlock (
     IN block : ^DutCacheBlock,
 )
 
-EXTERN DutZeroBuffer : UBYTE[4096]
+EXTERN FN DutMountFilesystem (
+    IN volume : ^DutDiskCommon,
+    IN fs : ^DutFilesystem,
+) : ^DutMount
+
+EXTERN FN DutUnmountFilesystem (
+    IN mount : ^DutMount,
+)

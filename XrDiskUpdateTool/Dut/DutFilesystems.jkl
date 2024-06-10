@@ -30,3 +30,62 @@ FN DutLookupFilesystem (
     RETURN NULLPTR
 END
 
+FN DutMountFilesystem (
+    IN volume : ^DutDiskCommon,
+    IN fs : ^DutFilesystem,
+) : ^DutMount
+
+    // Allocate a mount block.
+
+    mount : ^DutMount
+
+    status := TlAlloc (
+        SIZEOF DutMount, // bytes
+        OUT mount, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate mount block", 0, 0, 0 )
+    END
+
+    mount^.Volume = volume
+    mount^.Cache = DutCreateCache ( volume )
+    mount^.Fs = fs
+
+    // Call the filesystem.
+
+    IF fs^.Mount ( mount ) THEN
+        RETURN mount
+    END
+
+    DutDeleteCache (
+        mount^.Cache, // cache
+        FALSE, // doflush
+    )
+
+    TlFree ( mount )
+
+    RETURN NULLPTR
+END
+
+FN DutUnmountFilesystem (
+    IN mount : ^DutMount,
+)
+
+    // Call the filesystem.
+
+    IF mount^.Fs^.Unmount THEN
+        mount^.Fs^.Unmount ( mount )
+    END
+
+    // Flush and destroy the mount cache.
+
+    DutDeleteCache (
+        mount^.Cache, // cache
+        TRUE, // doflush
+    )
+
+    // Deallocate the mount block.
+
+    TlFree ( mount )
+END

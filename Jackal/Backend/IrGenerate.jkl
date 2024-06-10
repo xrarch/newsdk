@@ -363,22 +363,25 @@ FN IrGenerateBranch (
     IN truelabel : ^IrInstruction,
     IN falselabel : ^IrInstruction,
     IN type : IrInstructionType,
+    IN genload : UWORD,
 )
 
     // Generate a branch instruction based on a property of two variables.
 
-    IF var1^.Annotation == IR_VAR_ADDRESS_CALC THEN
-        var1 = IrGenerateLoad (
-            var1, // var
-            IrEvaluateTypeForAccess ( node ), // type
-        )
-    END
+    IF genload THEN
+        IF var1^.Annotation == IR_VAR_ADDRESS_CALC THEN
+            var1 = IrGenerateLoad (
+                var1, // var
+                IrEvaluateTypeForAccess ( node ), // type
+            )
+        END
 
-    IF var2 AND var2^.Annotation == IR_VAR_ADDRESS_CALC THEN
-        var2 = IrGenerateLoad (
-            var2, // var
-            IrEvaluateTypeForAccess ( node ), // type
-        )
+        IF var2 AND var2^.Annotation == IR_VAR_ADDRESS_CALC THEN
+            var2 = IrGenerateLoad (
+                var2, // var
+                IrEvaluateTypeForAccess ( node ), // type
+            )
+        END
     END
 
     inst := IrCreateInstruction (
@@ -577,7 +580,6 @@ FN IrGenerateOperatorInst (
     RETURN var
 END
 
-
 // FORWARD
 EXTERN FN IrGenerateExpression (
     IN node : ^PrsAstNode,
@@ -722,6 +724,7 @@ FN (IrExpressionGenerationF) IrGenerateIdentifier (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            TRUE, // genload
         )
 
         RETURN NULLPTR
@@ -962,6 +965,7 @@ FN (IrExpressionGenerationF) IrGenerateEquiv (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_EQUALS, // type
+            FALSE, // genload
         )
 
         RETURN NULLPTR
@@ -1000,6 +1004,7 @@ FN (IrExpressionGenerationF) IrGenerateNotEquiv (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NOT_EQUALS, // type
+            FALSE, // genload
         )
 
         RETURN NULLPTR
@@ -1062,6 +1067,7 @@ FN IrGenerateComparison (
                 truelabel, // truelabel
                 falselabel, // falselabel
                 signedbranchtype, // type
+                FALSE, // genload
             )
 
         ELSE
@@ -1072,6 +1078,7 @@ FN IrGenerateComparison (
                 truelabel, // truelabel
                 falselabel, // falselabel
                 unsignedbranchtype, // type
+                FALSE, // genload
             )
         END
 
@@ -1201,6 +1208,7 @@ FN IrGenerateArithmetic (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            FALSE, // genload
         )
 
         RETURN NULLPTR
@@ -1236,6 +1244,7 @@ FN IrGenerateUnaryArithmetic (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            FALSE, // genload
         )
 
         RETURN NULLPTR
@@ -1403,6 +1412,7 @@ FN (IrExpressionGenerationF) IrGenerateCompoundTypeIndex (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            TRUE, // genload
         )
 
         RETURN NULLPTR
@@ -1481,6 +1491,7 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            TRUE, // genload
         )
 
         RETURN NULLPTR
@@ -1511,6 +1522,7 @@ FN (IrExpressionGenerationF) IrGeneratePtrDereference (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            TRUE, // genload
         )
 
         RETURN NULLPTR
@@ -1830,6 +1842,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
             truelabel, // truelabel
             falselabel, // falselabel
             IR_BRANCH_NONZERO, // type
+            TRUE, // genload
         )
 
         RETURN NULLPTR

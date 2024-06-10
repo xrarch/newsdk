@@ -104,8 +104,7 @@ FN DutCreateFilesystems (
             END
         END
 
-        // Now look up the filesystem name and call its format routine with the
-        // volume handle we just acquired.
+        // Now look up the filesystem name.
 
         fsd := DutLookupFilesystem ( &fs^.FsName[0] )
 
@@ -113,12 +112,31 @@ FN DutCreateFilesystems (
             TlError ( "No such filesystem %s\n", &fs^.FsName[0] )
         END
 
+        // Call the filesystem's format routine with the volume handle we just
+        // acquired.
+
         fsd^.Format ( volume )
 
-        // If there are manifest files specified, mount the filesystem and
-        // initialize its contents using them.
+        IF &fs^.ManifestListHead != fs^.ManifestListHead.Next THEN
+            // There are manifest files specified, so mount the filesystem.
 
-        // ...
+            mount := DutMountFilesystem (
+                volume, // volume
+                fsd, // fs
+            )
+
+            IF NOT mount THEN
+                TlError ( "Failed to mount filesystem\n" )
+            END
+
+            // Now initialize the filesystem hierarchy using the manifest files.
+
+            // ...
+
+            // Unmount the filesystem.
+
+            DutUnmountFilesystem ( mount )
+        END
 
         listentry = listentry^.Next
     END
