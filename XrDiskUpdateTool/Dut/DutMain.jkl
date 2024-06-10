@@ -107,7 +107,13 @@ FN DutCreateFilesystems (
         // Now look up the filesystem name and call its format routine with the
         // volume handle we just acquired.
 
-        // ...
+        fsd := DutLookupFilesystem ( &fs^.FsName[0] )
+
+        IF NOT fsd THEN
+            TlError ( "No such filesystem %s\n", &fs^.FsName[0] )
+        END
+
+        fsd^.Format ( volume )
 
         // If there are manifest files specified, mount the filesystem and
         // initialize its contents using them.

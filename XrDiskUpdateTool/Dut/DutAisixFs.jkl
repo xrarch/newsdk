@@ -1,0 +1,212 @@
+//
+// AisixFS support.
+//
+
+#INCLUDE "Dut.hjk"
+
+#DEFINE AFS_INODE_FILE 1
+#DEFINE AFS_INODE_DIR 2
+
+STRUCT AfsSuperblock
+    Version : ULONG,
+    Magic : ULONG,
+    Dirty : ULONG,
+    ReservedBlocks : ULONG,
+    FatStart : ULONG,
+    FatSize : ULONG,
+    Istart : ULONG,
+    Icount : ULONG,
+    DataStart : ULONG,
+    DataSize : ULONG,
+    VolSize : ULONG,
+END
+
+STRUCT AfsDirent
+    INumber : ULONG,
+    Name : UBYTE[60],
+END
+
+STRUCT AfsInode
+    Type : ULONG,
+    Permissions : ULONG,
+    Uid : ULONG,
+    Iparent : ULONG,
+    Timestamp : ULONG,
+    StartBlock : ULONG,
+    Gid : ULONG,
+    ByteSize : ULONG,
+END
+
+FN AfsSetBlockStatus (
+    IN cache : ^DutCache,
+    IN block : UWORD,
+    IN fatstart : UWORD,
+    IN status : ULONG,
+)
+
+    // Set the FAT entry for the specified block.
+
+    bn := (block * 4) / 512 + fatstart
+
+    data : ^ULONG
+
+    fatblock := DutReadCache (
+        cache, // cache
+        bn, // lba
+        OUT data, // data
+    )
+
+    data[block % 128] = status
+
+    DutDirtyBlock ( fatblock )
+END
+
+FN (DutFilesystemFormatF) DutAisixFsFormat (
+    IN volume : ^DutDiskCommon,
+)
+
+    IF volume^.SectorLog != 9 THEN
+        TlError ( "AisixFS only works with 512 byte blocks\n" )
+    END
+
+    cache := DutCreateCache ( volume )
+
+    // Initialize the superblock.
+
+    sb : ^AfsSuperblock
+
+    block := DutReadCache (
+        cache, // cache
+        0, // lba
+        OUT sb, // data
+    )
+
+    // Calculate some parameters.
+
+    reservedblocks := 8 // includes superblock
+    fatsize := ((volume^.SectorCount * 4) + 511) / 512
+    fatstart := reservedblocks
+    istart := fatstart + fatsize
+    icount := (volume^.SectorCount + 31) / 32
+    isize := ((icount * SIZEOF AfsInode) + 511) / 512
+    datastart := istart + isize
+
+    sb^.Magic = 0xAFBBAFBB
+    sb^.Version = 6
+    sb^.ReservedBlocks = reservedblocks
+    sb^.FatStart = fatstart
+    sb^.FatSize = fatsize
+    sb^.Istart = istart
+    sb^.Icount = icount
+    sb^.DataStart = datastart
+    sb^.DataSize = volume^.SectorCount - datastart
+    sb^.VolSize = volume^.SectorCount
+
+    DutDirtyBlock ( block )
+
+    // Zero the FAT.
+
+    i := 0
+
+    WHILE i < fatsize DO
+        DutWriteSector (
+            volume, // volume
+            &DutZeroBuffer[0], // buf
+            fatstart + i, // sector
+        )
+
+        i += 1
+    END
+
+    // Zero the inode list.
+
+    i = 0
+
+    WHILE i < isize DO
+        DutWriteSector (
+            volume, // volume
+            &DutZeroBuffer[0], // buf
+            istart + i, // sector
+        )
+
+        i += 1
+    END
+
+    // Mark boot blocks reserved.
+
+    i = 0
+
+    WHILE i < reservedblocks DO
+        AfsSetBlockStatus (
+            cache, // cache
+            i, // block
+            fatstart, // fatstart
+            0xFFFFFFFF, // status
+        )
+
+        i += 1
+    END
+
+    // Mark FAT reserved.
+
+    i = 0
+
+    WHILE i < fatsize DO
+        AfsSetBlockStatus (
+            cache, // cache
+            fatstart + i, // block
+            fatstart, // fatstart
+            0xFFFFFFFF, // status
+        )
+
+        i += 1
+    END
+
+    // Mark inode list reserved.
+
+    i = 0
+
+    WHILE i < isize DO
+        AfsSetBlockStatus (
+            cache, // cache
+            istart + i, // block
+            fatstart, // fatstart
+            0xFFFFFFFF, // status
+        )
+
+        i += 1
+    END
+
+    // Hand-craft root directory inode.
+
+    inode : ^AfsInode
+
+    block = DutReadCache (
+        cache, // cache
+        istart, // lba
+        OUT inode, // data
+    )
+
+    inode[1].Uid = 0
+    inode[1].Gid = 0
+    inode[1].Permissions = 0755
+    inode[1].Iparent = 1
+    inode[1].Type = AFS_INODE_DIR
+    inode[1].Timestamp = TlCurrentEpochTime ()
+    inode[1].ByteSize = 0
+    inode[1].StartBlock = 0xFFFFFFFF
+
+    DutDirtyBlock ( block )
+
+    // Delete cache and flush changes.
+
+    DutDeleteCache (
+        cache, // cache
+        TRUE, // doflush
+    )
+END
+
+PUBLIC DutAisixFs : DutFilesystem = {
+    [Name] = "aisixfs",
+    [Format] = &DutAisixFsFormat,
+}

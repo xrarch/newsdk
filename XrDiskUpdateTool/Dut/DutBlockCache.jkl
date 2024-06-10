@@ -1,0 +1,248 @@
+//
+// Implements simple block caching for the disk update tool.
+//
+
+#INCLUDE "Dut.hjk"
+
+STRUCT DutCacheBlock
+    HashEntry : TlListEntry,
+    OrderedEntry : TlListEntry,
+
+    DirtyEntry : TlListEntry,
+
+    Cache : ^DutCache,
+
+    Lba : UWORD,
+    IsDirty : UWORD,
+END
+
+STRUCT DutCache
+    Volume : ^DutDiskCommon,
+
+    OrderedListHead : TlListEntry,
+    BucketHeads : TlListEntry[TL_HASH_SIZE],
+
+    DirtyListHead : TlListEntry,
+END
+
+FN DutHash (
+    IN key : UWORD,
+) : UWORD
+
+    hash : UWORD = key
+    hash $= hash >> 7
+    hash $= hash >> 14
+    hash $= hash >> 21
+    hash $= hash >> 28
+    hash %= TL_HASH_SIZE
+
+    RETURN hash
+END
+
+FN DutInsertBlock (
+    IN cache : ^DutCache,
+    IN block : ^DutCacheBlock,
+    IN lba : UWORD,
+)
+
+    hash := DutHash ( lba )
+
+    block^.Lba = lba
+    block^.Cache = cache
+    block^.IsDirty = FALSE
+
+    // Insert entry into doubly linked hash bucket list, at the head.
+
+    TlInsertAtHeadList (
+        &cache^.BucketHeads[hash], // head
+        &block^.HashEntry,
+    )
+
+    // Insert entry into ordered list, at the tail.
+
+    TlInsertAtTailList (
+        &cache^.OrderedListHead, // head
+        &block^.OrderedEntry, // entry
+    )
+END
+
+FN DutLookupBlock (
+    IN cache : ^DutCache,
+    IN lba : UWORD,
+) : ^DutCacheBlock
+
+    hash := DutHash ( lba )
+
+    head := &cache^.BucketHeads[hash]
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        entry := CONTAINEROF listentry TO DutCacheBlock.HashEntry
+
+        IF lba == entry^.Lba THEN
+            RETURN entry
+        END
+
+        listentry = listentry^.Next
+    END
+
+    RETURN NULLPTR
+END
+
+FN DutCreateCache (
+    IN volume : ^DutDiskCommon,
+) : ^DutCache
+
+    // Create a cache.
+
+    cache : ^DutCache
+
+    status := TlAlloc (
+        SIZEOF DutCache, // bytes
+        OUT cache, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to create cache", 0, 0, 0 )
+    END
+
+    cache^.Volume = volume
+
+    // Initialize the hash table.
+
+    TlInitializeList ( &cache^.OrderedListHead )
+
+    i := 0
+
+    WHILE i < TL_HASH_SIZE DO
+        TlInitializeList ( &cache^.BucketHeads[i] )
+
+        i += 1
+    END
+
+    // Initialize the dirty list.
+
+    TlInitializeList ( &cache^.DirtyListHead )
+
+    RETURN cache
+END
+
+FN DutFlushCache (
+    IN cache : ^DutCache,
+)
+
+    // Iterate the dirty list and flush all of the blocks.
+
+    listhead := &cache^.DirtyListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        block := CONTAINEROF listentry TO DutCacheBlock.DirtyEntry
+
+        block^.IsDirty = FALSE
+
+        DutWriteSector (
+            cache^.Volume, // volume
+            block + SIZEOF DutCacheBlock, // buf
+            block^.Lba, // sector
+        )
+
+        listentry = listentry^.Next
+    END
+
+    TlInitializeList ( &cache^.DirtyListHead )
+END
+
+FN DutDeleteCache (
+    IN cache : ^DutCache,
+    IN doflush : UWORD,
+)
+
+    // Delete a cache.
+
+    IF doflush THEN
+        // Iterate the dirty list and flush all of the blocks.
+
+        DutFlushCache ( cache )
+    END
+
+    // Free all of the blocks.
+
+    head := &cache^.OrderedListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        // Capture the next entry now since we will destroy the entry.
+
+        nextentry := listentry^.Next
+
+        block := CONTAINEROF listentry TO DutCacheBlock.OrderedEntry
+
+        TlFree ( block )
+
+        listentry = nextentry
+    END
+
+    // Free the cache structure.
+
+    TlFree ( cache )
+END
+
+FN DutReadCache (
+    IN cache : ^DutCache,
+    IN lba : UWORD,
+    OUT data : ^VOID,
+) : ^DutCacheBlock
+
+    // Read a block from the cache.
+
+    block := CAST DutLookupBlock (
+        cache, // cache
+        lba, // lba
+    ) TO ^DutCacheBlock
+
+    IF NOT block THEN
+        // Create it.
+
+        status := TlAlloc (
+            SIZEOF DutCacheBlock + (1 << cache^.Volume^.SectorLog), // bytes
+            OUT block, // ptr
+        )
+
+        IF status THEN
+            TlInternalError ( "Failed to allocate cache block", 0, 0, 0 )
+        END
+
+        DutInsertBlock (
+            cache, // cache
+            block, // block
+            lba, // lba
+        )
+
+        DutReadSector (
+            cache^.Volume, // volume
+            block + SIZEOF DutCacheBlock, // buf
+            lba, // sector
+        )
+    END
+
+    data = block + SIZEOF DutCacheBlock
+
+    RETURN block
+END
+
+FN DutDirtyBlock (
+    IN block : ^DutCacheBlock,
+)
+
+    IF block^.IsDirty THEN
+        LEAVE
+    END
+
+    block^.IsDirty = TRUE
+
+    TlInsertAtTailList (
+        &block^.Cache^.DirtyListHead, // head
+        &block^.DirtyEntry, // entry
+    )
+END

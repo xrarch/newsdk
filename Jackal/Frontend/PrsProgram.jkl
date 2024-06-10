@@ -363,6 +363,12 @@ FN PrsCheckType (
     // First strip away any names.
 
     WHILE type1^.Subtype == TYPE_NAMED DO
+        IF type2^.Subtype == TYPE_NAMED AND
+            type1^.Body.Named.Symbol == type2^.Body.Named.Symbol THEN
+
+            RETURN FALSE
+        END
+
         IF type1^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 
@@ -374,6 +380,12 @@ FN PrsCheckType (
     END
 
     WHILE type2^.Subtype == TYPE_NAMED DO
+        IF type1^.Subtype == TYPE_NAMED AND
+            type1^.Body.Named.Symbol == type2^.Body.Named.Symbol THEN
+
+            RETURN FALSE
+        END
+
         IF type2^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
             // Forward declared type that we don't know anything about yet.
 

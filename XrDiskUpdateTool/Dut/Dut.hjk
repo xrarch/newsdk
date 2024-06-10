@@ -62,8 +62,14 @@ EXTERN DutTemporaryBuffer : UBYTE[4096]
 
 #DEFINE DUT_LABEL_MAX 64
 
+FNPTR DutFilesystemFormatF (
+    IN volume : ^DutDiskCommon,
+)
+
 STRUCT DutFilesystem
     Name : ^UBYTE,
+
+    Format : DutFilesystemFormatF,
 END
 
 EXTERN FN DutLookupFilesystem (
@@ -110,3 +116,28 @@ EXTERN FN DutPartitionDisk (
     IN label : ^UBYTE,
     IN handle : ^VOID,
 )
+
+EXTERN FN DutCreateCache (
+    IN volume : ^DutDiskCommon,
+) : ^DutCache
+
+EXTERN FN DutFlushCache (
+    IN cache : ^DutCache,
+)
+
+EXTERN FN DutDeleteCache (
+    IN cache : ^DutCache,
+    IN doflush : UWORD,
+)
+
+EXTERN FN DutReadCache (
+    IN cache : ^DutCache,
+    IN lba : UWORD,
+    OUT data : ^VOID,
+) : ^DutCacheBlock
+
+EXTERN FN DutDirtyBlock (
+    IN block : ^DutCacheBlock,
+)
+
+EXTERN DutZeroBuffer : UBYTE[4096]

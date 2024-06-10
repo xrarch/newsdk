@@ -4,8 +4,10 @@
 
 #INCLUDE "Dut.hjk"
 
+EXTERN DutAisixFs : DutFilesystem
+
 DutFilesystemTable : ^DutFilesystem[] = {
-    // &DutAisixFs,
+    &DutAisixFs,
     NULLPTR, // MUST be here, as a sentinel
 }
 
@@ -27,3 +29,4 @@ FN DutLookupFilesystem (
 
     RETURN NULLPTR
 END
+

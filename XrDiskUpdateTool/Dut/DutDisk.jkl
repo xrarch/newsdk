@@ -5,6 +5,7 @@
 #INCLUDE "Dut.hjk"
 
 PUBLIC DutTemporaryBuffer : UBYTE[4096]
+PUBLIC DutZeroBuffer : UBYTE[4096]
 
 FN DutOpenDiskImage (
     IN filename : ^UBYTE,
