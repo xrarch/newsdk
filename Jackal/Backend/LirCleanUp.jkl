@@ -111,6 +111,10 @@ FN LirpPeepholeForFunction (
                 IF inst^.TypeBody.Branch.Label == next THEN
                     LirRemoveInstruction ( inst )
 
+                    next^.Body.Label.References -= 1
+
+                    dead = FALSE
+
                     cleaned = TRUE
 
                     BREAK
