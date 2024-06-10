@@ -388,18 +388,16 @@ FN FoxFillOperandForAccess (
 
     ELSEIF inst2^.Type == IR_ADDR THEN
         // Gotta be a named imm.
-        // TODO investigate intentionally sharing common constants to
-        //      reduce code size.
 
-        operand^.AccessType = FOX_ACCESS_IMM_PTR_NAME
-        operand^.Constant = CAST inst2^.Body.Addr.Symbol TO UWORD
+        IF src2^.Opt.Dve.References == 1 THEN
+            operand^.AccessType = FOX_ACCESS_IMM_PTR_NAME
+            operand^.Constant = CAST inst2^.Body.Addr.Symbol TO UWORD
 
-        RETURN NULLPTR
+            RETURN NULLPTR
+        END
 
     ELSEIF inst2^.Type == IR_CONSTANT THEN
         // Numeric imm.
-        // TODO investigate intentionally sharing common constants to
-        //      reduce code size.
 
         operand^.AccessType = FOX_ACCESS_IMM_PTR
         operand^.Constant = inst2^.Body.Constant.Constant
@@ -463,6 +461,8 @@ FN FoxFillOperand (
         RETURN LirGetRegister ( var )
     END
 
+    bitsize := lirinst^.Body.Machine.Fox.BitSize
+
     // Var is a temporary. Check for cases.
 
     IF inst^.Type == IR_LOAD THEN
@@ -475,8 +475,6 @@ FN FoxFillOperand (
         // access is either unsigned or 32 bits.
 
         IF var^.Opt.Dve.References == 1 THEN
-            bitsize := lirinst^.Body.Machine.Fox.BitSize
-
             IF (bitsize == FOX_BITS_UNKNOWN OR
                 bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type]) AND
                 ((inst^.Body.LoadStore.Type > PRIM_TYPE_UNSIGNED AND
@@ -492,11 +490,21 @@ FN FoxFillOperand (
             END
         END
 
+    ELSEIF inst^.Type == IR_STRING_ADDR THEN
+        // This will get resolved to a label pointing to a string during
+        // code emission.
+
+        IF allowimm AND var^.Opt.Dve.References == 1 THEN
+            operand^.AccessType = FOX_ACCESS_IMM_STRING
+            operand^.Constant = CAST inst^.Body.String.String TO UWORD
+
+            RETURN NULLPTR
+        END
+
     ELSEIF inst^.Type == IR_ADDR THEN
         // Gotta be a named imm.
-        // TODO investigate sharing to reduce code size
 
-        IF allowimm THEN
+        IF allowimm AND var^.Opt.Dve.References == 1 THEN
             operand^.AccessType = FOX_ACCESS_IMM_NAME
             operand^.Constant = CAST inst^.Body.Addr.Symbol TO UWORD
 
@@ -505,7 +513,6 @@ FN FoxFillOperand (
 
     ELSEIF inst^.Type == IR_CONSTANT THEN
         // Gotta be a numeric imm.
-        // TODO investigate sharing to reduce code size
 
         IF allowimm THEN
             operand^.AccessType = FOX_ACCESS_IMM
@@ -608,7 +615,7 @@ FN (LirSelectF) FoxSelectAddr (
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
-        FOX_MOV, // machtype
+        FOX_MOVZ, // machtype
     )
 
     lirinst^.Defines = defreg
@@ -619,6 +626,8 @@ FN (LirSelectF) FoxSelectAddr (
     
         lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM_NAME
 
+        lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
     ELSEIF inst^.Type == IR_STRING_ADDR THEN
         // This will get resolved to a label pointing to a string during
         // code emission.
@@ -627,16 +636,27 @@ FN (LirSelectF) FoxSelectAddr (
             CAST inst^.Body.String.String TO UWORD
 
         lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM_STRING
+
+        lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
     
     ELSEIF inst^.Type == IR_CONSTANT THEN
         lirinst^.Body.Machine.Fox.Op2.Constant = inst^.Body.Constant.Constant
 
         lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_IMM
+
+        IF inst^.Body.Constant.Constant < 0x100 THEN
+            lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_8
+
+        ELSEIF inst^.Body.Constant.Constant < 0x10000 THEN
+            lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_16
+
+        ELSE
+            lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+        END
     END
 
     lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-    lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
     LirInsertInstructionTail ( lirinst )
 
