@@ -22,7 +22,7 @@ STRUCT AfsSuperblock
 END
 
 STRUCT AfsDirent
-    INumber : ULONG,
+    Inumber : ULONG,
     Name : UBYTE[60],
 END
 
@@ -35,6 +35,46 @@ STRUCT AfsInode
     StartBlock : ULONG,
     Gid : ULONG,
     ByteSize : ULONG,
+END
+
+STRUCT AfsInodeContext
+    Inode : ^AfsInode,
+    Iblock : ^DutCacheBlock,
+    Mount : ^DutMount,
+    LookupCache : ^ULONG,
+    LookupCacheSize : ULONG,
+END
+
+FN AfsInitializeInodeContext (
+    IN icontext : ^AfsInodeContext,
+    IN inum : UWORD,
+    IN mount : ^DutMount,
+)
+
+    bn := (inum * SIZEOF AfsInode) / 512 + mount^.Context.Afs.Istart
+
+    itable : ^AfsInode
+
+    icontext^.Iblock = DutReadCache (
+        mount^.Cache, // cache
+        bn, // lba
+        OUT itable, // data
+    )
+
+    icontext^.Inode = &itable[inum % (512 / SIZEOF AfsInode)]
+
+    icontext^.Mount = mount
+    icontext^.LookupCache = NULLPTR
+    icontext^.LookupCacheSize = 0
+END
+
+FN AfsUninitializeInodeContext (
+    IN icontext : ^AfsInodeContext,
+)
+
+    IF icontext^.LookupCache THEN
+        TlFree ( icontext^.LookupCache )
+    END
 END
 
 FN AfsSetBlockStatus (
@@ -59,6 +99,465 @@ FN AfsSetBlockStatus (
     data[block % 128] = status
 
     DutDirtyBlock ( fatblock )
+END
+
+FN AfsGetBlockStatus (
+    IN cache : ^DutCache,
+    IN block : UWORD,
+    IN fatstart : UWORD,
+) : ULONG
+
+    // Get the FAT entry for the specified block.
+
+    bn := (block / 128) + fatstart
+
+    data : ^ULONG
+
+    fatblock := DutReadCache (
+        cache, // cache
+        bn, // lba
+        OUT data, // data
+    )
+
+    RETURN data[block % 128]
+END
+
+FN AfsAllocateBlock (
+    IN mount : ^DutMount,
+    IN link : UWORD,
+) : UWORD
+
+    j := 0
+
+    WHILE j < 2 DO
+        i : UWORD
+        max : UWORD
+
+        IF j == 0 THEN
+            i = mount^.Context.Afs.AllocHint
+            max = mount^.Volume^.SectorCount
+
+        ELSEIF mount^.Context.Afs.AllocHint THEN
+            i = 0
+            max = mount^.Context.Afs.AllocHint
+
+        ELSE
+            BREAK
+        END
+
+        WHILE i < max DO
+            status := AfsGetBlockStatus (
+                mount^.Cache, // cache
+                i, // block
+                mount^.Context.Afs.FatStart, // fatstart
+            )
+
+            IF status == 0 THEN
+                mount^.Context.Afs.AllocHint = i + 1
+
+                AfsSetBlockStatus (
+                    mount^.Cache, // cache
+                    i, // block
+                    mount^.Context.Afs.FatStart, // fatstart
+                    link, // status
+                )
+
+                // Zero out the block.
+
+                data : ^UBYTE
+
+                block := DutReadCache (
+                    mount^.Cache, // cache
+                    i, // lba
+                    OUT data, // data
+                )
+
+                TlFillMemoryWithByte (
+                    data, // ptr
+                    512, // sz
+                    0, // byte
+                )
+
+                DutDirtyBlock ( block )
+
+                RETURN i
+            END
+
+            i += 1
+        END
+
+        j += 1
+    END
+
+    RETURN 0xFFFFFFFF
+END
+
+FN AfsSetLookupCacheEntry (
+    IN icontext : ^AfsInodeContext,
+    IN bn : UWORD,
+    IN lba : UWORD,
+)
+
+    // Set the specified block number of the lookup cache with the given LBA.
+
+    size := icontext^.LookupCacheSize
+
+    IF bn < size THEN
+        icontext^.LookupCache[bn] = lba
+
+        LEAVE
+    END
+
+    // Have to extend it.
+
+    oldsize := size
+
+    IF size == 0 THEN
+        size = 8
+    END
+
+    WHILE bn >= size DO
+        size *= 2
+    END
+
+    newptr : ^ULONG
+
+    status := TlAlloc (
+        size * SIZEOF ULONG, // bytes
+        OUT newptr, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to extend lookup cache", size, 0, 0 )
+    END
+
+    // Copy old stuff into the new block.
+
+    TlCopyMemory (
+        newptr, // dest
+        icontext^.LookupCache, // src
+        oldsize * SIZEOF ULONG, // sz
+    )
+
+    // Free old cache.
+
+    TlFree ( icontext^.LookupCache )
+
+    // Zero out new length.
+
+    TlFillMemoryWithByte (
+        newptr + oldsize * SIZEOF ULONG, // dest
+        (size - oldsize) * SIZEOF ULONG, // sz
+        0, // byte
+    )
+
+    // Set block number.
+
+    newptr[bn] = lba
+
+    // Set new stuff.
+
+    icontext^.LookupCache = newptr
+    icontext^.LookupCacheSize = size
+END
+
+FN AfsGetBlock (
+    IN icontext : ^AfsInodeContext,
+    IN bn : UWORD,
+    IN writing : UWORD,
+) : UWORD
+
+    // Translate a block number offset within a file to its LBA on disk.
+
+    cache := icontext^.LookupCache
+    size := icontext^.LookupCacheSize
+
+    IF bn < size AND cache[bn] THEN
+        RETURN cache[bn]
+    END
+
+    lba : UWORD
+    prevblock : UWORD
+    index := bn
+
+    IF size THEN
+        // Start from the last cached block.
+
+        IF index >= size THEN
+            index = size - 1
+        END
+
+        WHILE NOT cache[index] AND index DO
+            index -= 1
+        END
+
+    ELSE
+        index = 0
+    END
+
+    IF index == 0 THEN
+        // We have to start from the start block.
+
+        lba = icontext^.Inode^.StartBlock
+
+        IF lba == 0xFFFFFFFF THEN
+            // Allocate start block.
+
+            IF NOT writing THEN
+                TlInternalError ( "balloc on read", 0, 0, 0 )
+            END
+
+            lba = AfsAllocateBlock (
+                icontext^.Mount, // mount
+                0xFFFFFFFF, // link
+            )
+
+            IF lba == 0xFFFFFFFF THEN
+                // Out of disk space.
+
+                RETURN -1
+            END
+
+            // Set start block in inode.
+
+            icontext^.Inode^.StartBlock = lba
+
+            DutDirtyBlock ( icontext^.Iblock )
+        END
+    
+        AfsSetLookupCacheEntry (
+            icontext, // icontext
+            0, // bn
+            lba, // lba
+        )
+    END
+
+    lba = cache[index]
+    index += 1
+
+    WHILE index <= bn DO
+        prevblock = lba
+
+        lba = AfsGetBlockStatus (
+            icontext^.Mount^.Cache, // cache
+            lba, // block
+            icontext^.Mount^.Context.Afs.FatStart, // fatstart
+        )
+
+        IF lba == 0xFFFFFFFF THEN
+            IF NOT writing THEN
+                TlInternalError ( "balloc on read", 0, 0, 0 )
+            END
+
+            lba = AfsAllocateBlock (
+                icontext^.Mount, // mount
+                0xFFFFFFFF, // link
+            )
+
+            IF lba == 0xFFFFFFFF THEN
+                // Out of disk space.
+
+                RETURN -1
+            END
+
+            // Set link on previous block.
+
+            AfsSetBlockStatus (
+                icontext^.Mount^.Cache, // cache
+                prevblock, // block
+                icontext^.Mount^.Context.Afs.FatStart, // fatstart
+                lba, // status
+            )
+        END
+
+        AfsSetLookupCacheEntry (
+            icontext, // icontext
+            index, // bn
+            lba, // lba
+        )
+
+        index += 1
+    END
+
+    RETURN lba
+END
+
+FN AfsReadInode (
+    IN icontext : ^AfsInodeContext,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+    inode := icontext^.Inode
+
+    IF offset >= inode^.ByteSize THEN
+        RETURN 0
+    END
+
+    IF offset + len > inode^.ByteSize THEN
+        len = inode^.ByteSize - offset
+    END
+
+    count := 0
+
+    WHILE count < len DO
+        lba := AfsGetBlock (
+            icontext, // context
+            offset / 512, // bn
+            FALSE, // writing
+        )
+
+        IF lba == 0xFFFFFFFF THEN
+            // Failed to get next block.
+
+            RETURN 0xFFFFFFFF
+        END
+
+        amt := 512 - (offset % 512)
+
+        IF amt > len - count THEN
+            amt = len - count
+        END
+
+        data : ^UBYTE
+
+        block := DutReadCache (
+            icontext^.Mount^.Cache, // cache
+            lba, // lba
+            OUT data, // data
+        )
+
+        TlCopyMemory (
+            buf, // dest
+            &data[offset % 512], // src
+            amt, // sz
+        )
+
+        offset += amt
+        count += amt
+        buf += amt
+    END
+
+    RETURN len
+END
+
+FN AfsWriteInode (
+    IN icontext : ^AfsInodeContext,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+    inode := icontext^.Inode
+
+    count := 0
+
+    WHILE count < len DO
+        lba := AfsGetBlock (
+            icontext, // context
+            offset / 512, // bn
+            TRUE, // writing
+        )
+
+        IF lba == 0xFFFFFFFF THEN
+            // Failed to get next block.
+
+            RETURN 0xFFFFFFFF
+        END
+
+        amt := 512 - (offset % 512)
+
+        IF amt > len - count THEN
+            amt = len - count
+        END
+
+        data : ^UBYTE
+
+        block := DutReadCache (
+            icontext^.Mount^.Cache, // cache
+            lba, // lba
+            OUT data, // data
+        )
+
+        TlCopyMemory (
+            &data[offset % 512], // dest
+            buf, // src
+            amt, // sz
+        )
+
+        DutDirtyBlock ( block )
+
+        offset += amt
+        count += amt
+        buf += amt
+    END
+
+    IF offset + len > inode^.ByteSize THEN
+        inode^.ByteSize = offset + len
+
+        DutDirtyBlock ( icontext^.Iblock )
+    END
+
+    RETURN len
+END
+
+FN AfsCreateInode (
+    IN mount : ^DutMount,
+    OUT inode : ^AfsInode,
+    OUT iblock : ^DutCacheBlock,
+) : UWORD
+
+    // Allocate an inode and return the number, or -1 if not found.
+
+    i := 0
+    max := mount^.Context.Afs.Icount
+    curbn := -1
+    itable : ^AfsInode
+
+    WHILE i < max DO
+        bn := i / (512 / SIZEOF AfsInode)
+
+        IF curbn != bn THEN
+            iblock = DutReadCache (
+                mount^.Cache, // cache
+                mount^.Context.Afs.Istart + bn, // lba
+                OUT itable, // data
+            )
+
+            curbn = bn
+        END
+
+        inode = &itable[i % (512 / SIZEOF AfsInode)]
+
+        IF inode^.Type == 0 THEN
+            // Free! Take it.
+
+            RETURN i
+        END
+
+        i += 1
+    END
+
+    RETURN -1
+END
+
+FN AfsCreateDirectoryEntry (
+    IN icontext : ^AfsInodeContext,
+    OUT dirent : ^AfsDirent,
+    OUT dblock : ^DutCacheBlock,
+) : UWORD
+
+    // Allocate a directory entry.
+
+    i := 0
+    max := icontext^.Inode^.ByteSize / SIZEOF AfsDirent
+
+    WHILE i < max DO
+
+
+        i += 1
+    END
 END
 
 FN (DutFilesystemFormatF) DutAisixFsFormat (
@@ -234,6 +733,8 @@ FN (DutFilesystemMountF) DutAisixFsMount (
 
     mount^.Context.Afs.FatStart = sb^.FatStart
     mount^.Context.Afs.Istart = sb^.Istart
+    mount^.Context.Afs.Icount = (sb^.Icount * 512) / SIZEOF AfsInode
+    mount^.Context.Afs.AllocHint = 0
 
     RETURN TRUE
 END
@@ -242,12 +743,126 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
     IN file : ^DutFile,
     IN path : ^UBYTE,
     IN create : UWORD,
+    OUT error : ^UBYTE,
 ) : UWORD
 
     // Resolve the path and fill in the file block so that it can be used for
     // future operations. Return TRUE upon success and FALSE otherwise.
     // If create is TRUE, create all directories along the path if needed, and
     // create the file itself.
+
+    pcomp : UBYTE[60]
+    inum := 1
+    dirent : AfsDirent
+    icontext : AfsInodeContext
+    error = NULLPTR
+    isdir := FALSE
+
+    WHILE TRUE DO
+        // Grab a path component.
+
+        isdir = FALSE
+
+        len := 0
+
+        WHILE path[0] == '/' DO
+            path += 1
+        END
+
+        WHILE path[0] AND path[0] != '/' DO
+            IF len == 59 THEN
+                error = "Path component too long"
+
+                RETURN FALSE
+            END
+
+            pcomp[len] = path[0]
+            path += 1
+            len += 1
+        END
+
+        IF path[0] == '/' THEN
+            isdir = TRUE
+        END
+
+        pcomp[len] = 0
+
+        IF len == 0 THEN
+            // No more path.
+
+            BREAK
+        END
+
+        // Initialize an inode context for this directory.
+
+        AfsInitializeInodeContext (
+            &icontext, // icontext
+            inum, // inum
+            file^.Mount, // mount
+        )
+
+        IF icontext.Inode^.Type != AFS_INODE_DIR THEN
+            error = "Not a directory"
+
+            AfsUninitializeInodeContext ( &icontext )
+
+            RETURN FALSE
+        END
+
+        offset := 0
+
+        WHILE TRUE DO
+            // Read next dirent.
+
+            readlen := AfsReadInode (
+                &icontext, // icontext
+                offset, // offset
+                SIZEOF AfsDirent, // len
+                &dirent, // buf
+            )
+
+            IF readlen == 0xFFFFFFFF THEN
+                // Failed to read.
+
+                error = "I/O error while reading"
+
+                AfsUninitializeInodeContext ( &icontext )
+
+                RETURN FALSE
+            END
+
+            IF readlen < SIZEOF AfsDirent THEN
+                // Got to the end and didn't find it.
+
+                IF NOT create THEN
+                    error = "File not found"
+
+                    AfsUninitializeInodeContext ( &icontext )
+
+                    RETURN FALSE
+                END
+
+                // Allocate a directory entry.
+
+
+            END
+
+            IF TlCompareStringWithMax (
+                &pcomp[0], // str1
+                &dirent.Name[0], // str2
+                60, // count
+            ) == 0 THEN
+
+                // Found it.
+
+                inum = dirent.Inumber
+
+                BREAK
+            END
+        END
+
+        AfsUninitializeInodeContext ( &icontext )
+    END
 
     RETURN FALSE
 END

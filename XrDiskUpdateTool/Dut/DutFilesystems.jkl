@@ -94,6 +94,7 @@ FN DutOpenFile (
     IN mount : ^DutMount,
     IN path : ^UBYTE,
     IN create : UWORD,
+    OUT error : ^UBYTE,
 ) : ^DutFile
 
     // Allocate a file block.
@@ -118,6 +119,7 @@ FN DutOpenFile (
         file, // file
         path, // path
         create, // create
+        OUT error, // error
     ) THEN
         RETURN file
     END

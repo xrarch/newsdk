@@ -463,7 +463,7 @@ FN LexCollectMacroArgumentContents (
             byte = ' '
         END
 
-        IF NOT comment AND NOT backslash THEN
+        IF NOT comment THEN
             TlInsertDynamicBuffer (
                 buffer, // array
                 byte, // byte

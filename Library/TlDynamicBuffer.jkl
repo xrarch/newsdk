@@ -24,7 +24,7 @@ FN TlUninitializeDynamicBuffer (
     END
 END
 
-FN TlInsertDynamicBuffer (
+FN TlpInsertDynamicBuffer (
     IN array : ^TlDynamicBuffer,
     IN byte : UBYTE,
 )

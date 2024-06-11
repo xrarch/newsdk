@@ -79,6 +79,7 @@ FNPTR DutFilesystemOpenF (
     IN file : ^DutFile,
     IN path : ^UBYTE,
     IN create : UWORD,
+    OUT error : ^UBYTE,
 ) : UWORD
 
 STRUCT DutAisixFsFileContext
@@ -99,6 +100,8 @@ END
 STRUCT DutAisixFsContext
     FatStart : ULONG,
     Istart : ULONG,
+    AllocHint : ULONG,
+    Icount : ULONG,
 END
 
 UNION DutMountContext
@@ -203,4 +206,5 @@ EXTERN FN DutOpenFile (
     IN mount : ^DutMount,
     IN path : ^UBYTE,
     IN create : UWORD,
+    OUT error : ^UBYTE,
 ) : ^DutFile

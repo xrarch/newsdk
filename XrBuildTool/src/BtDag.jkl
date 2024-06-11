@@ -189,7 +189,9 @@ FN BtAnyDepsLater (
     stat := BtStatFile ( depspath )
 
     IF NOT stat THEN
-        TlInternalError ( "Failed to stat deps file", 0, 0, 0 )
+        TlClose ( handle )
+
+        RETURN TRUE
     END
 
     ptr : ^UBYTE
@@ -230,7 +232,14 @@ FN BtAnyDepsLater (
         depstat := BtStatFile ( &BtDepsLineBuffer[0] )
 
         IF NOT depstat THEN
-            TlInternalError ( "Failed to stat dependent header", 0, 0, 0 )
+            TlPrint ( "%s: NOTE: Failed to stat header %s\n", TlProgramName,
+                &BtDepsLineBuffer[0] )
+
+            TlFree ( ptr )
+
+            TlClose ( handle )
+
+            RETURN TRUE
         END
 
         IF depstat^.ModificationTime >= srctime THEN
@@ -238,11 +247,15 @@ FN BtAnyDepsLater (
 
             TlFree ( ptr )
 
+            TlClose ( handle )
+
             RETURN TRUE
         END
     END
 
     TlFree ( ptr )
+
+    TlClose ( handle )
 
     RETURN FALSE
 END

@@ -323,10 +323,19 @@ EXTERN FN TlUninitializeDynamicBuffer (
     IN array : ^TlDynamicBuffer,
 )
 
-EXTERN FN TlInsertDynamicBuffer (
+EXTERN FN TlpInsertDynamicBuffer (
     IN array : ^TlDynamicBuffer,
     IN byte : UBYTE,
 )
+
+#MACRO TlInsertDynamicBuffer ( array, byte ) [
+    IF (array)^.Count + 1 < (array)^.BufferSize THEN
+        (array)^.Buffer[(array)^.Count] = byte
+        NOTHING (array)^.Count += 1
+    ELSE
+        TlpInsertDynamicBuffer ( array, byte )
+    END
+]
 
 EXTERN FN TlCopyIntoDynamicBuffer (
     IN array : ^TlDynamicBuffer,
