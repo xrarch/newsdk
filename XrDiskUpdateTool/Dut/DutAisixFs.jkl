@@ -586,7 +586,7 @@ FN AfsAllocateInode (
                 i = 1
             END
 
-        ELSEIF j == 1 AND mount^.Context.Afs.Ihint THEN
+        ELSEIF mount^.Context.Afs.Ihint THEN
             i = 1
             max = mount^.Context.Afs.Ihint
 
@@ -680,6 +680,35 @@ FN AfsCreateDirectoryEntry (
     END
 
     RETURN max * SIZEOF AfsDirent
+END
+
+FN AfsEnsureEmpty (
+    IN icontext : ^AfsInodeContext,
+) : UWORD
+
+    dirent : AfsDirent
+    offset := 0
+
+    WHILE TRUE DO
+        len := AfsReadInode (
+            icontext, // icontext
+            offset, // offset
+            SIZEOF AfsDirent, // len
+            &dirent, // buf
+        )
+
+        IF len < SIZEOF AfsDirent THEN
+            BREAK
+        END
+
+        IF dirent.Inumber THEN
+            RETURN FALSE
+        END
+
+        offset += SIZEOF AfsDirent
+    END
+
+    RETURN TRUE
 END
 
 FN (DutFilesystemFormatF) DutAisixFsFormat (
@@ -1291,6 +1320,28 @@ FN (DutFilesystemDeleteF) DutAisixFsDelete (
         RETURN FALSE
     END
 
+    icontext2 : AfsInodeContext
+
+    AfsInitializeInodeContext (
+        &icontext2, // icontext
+        inum, // inum
+        mount, // mount
+    )
+
+    IF icontext2.Inode^.Type == AFS_INODE_DIR THEN
+        // Make sure it's empty.
+
+        IF NOT AfsEnsureEmpty ( &icontext2 ) THEN
+            error = "Directory not empty"
+
+            AfsUninitializeInodeContext ( &icontext )
+
+            AfsUninitializeInodeContext ( &icontext2 )
+
+            RETURN FALSE
+        END
+    END
+
     // Free the dirent.
 
     dirent.Inumber = 0
@@ -1304,17 +1355,11 @@ FN (DutFilesystemDeleteF) DutAisixFsDelete (
 
     AfsUninitializeInodeContext ( &icontext )
 
-    AfsInitializeInodeContext (
-        &icontext, // icontext
-        inum, // inum
-        mount, // mount
-    )
-
     // Free the inode.
 
-    AfsDeleteInode ( &icontext )
+    AfsDeleteInode ( &icontext2 )
 
-    AfsUninitializeInodeContext ( &icontext )
+    AfsUninitializeInodeContext ( &icontext2 )
 
     RETURN TRUE
 END
