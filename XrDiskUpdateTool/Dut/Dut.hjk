@@ -82,12 +82,42 @@ FNPTR DutFilesystemOpenF (
     OUT error : ^UBYTE,
 ) : UWORD
 
-STRUCT DutAisixFsFileContext
-    Inumber : UWORD,
+FNPTR DutFilesystemCloseF (
+    IN file : ^DutFile,
+)
+
+FNPTR DutFilesystemWriteF (
+    IN file : ^DutFile,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+FNPTR DutFilesystemReadF (
+    IN file : ^DutFile,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+FNPTR DutFilesystemListF (
+    IN file : ^DutFile,
+) : UWORD
+
+FNPTR DutFilesystemTruncateF (
+    IN file : ^DutFile,
+) : UWORD
+
+STRUCT AfsInodeContext
+    Inode : ^AfsInode,
+    Iblock : ^DutCacheBlock,
+    Mount : ^DutMount,
+    LookupCache : ^ULONG,
+    LookupCacheSize : ULONG,
 END
 
 UNION DutFileContext
-    Afs : DutAisixFsFileContext,
+    Afs : AfsInodeContext,
 END
 
 STRUCT DutFile
@@ -123,6 +153,11 @@ STRUCT DutFilesystem
     Mount : DutFilesystemMountF,
     Unmount : DutFilesystemUnmountF,
     Open : DutFilesystemOpenF,
+    Close : DutFilesystemCloseF,
+    Read : DutFilesystemReadF,
+    Write : DutFilesystemWriteF,
+    List : DutFilesystemListF,
+    Truncate : DutFilesystemTruncateF,
 END
 
 EXTERN FN DutLookupFilesystem (
@@ -189,6 +224,10 @@ EXTERN FN DutReadCache (
     OUT data : ^VOID,
 ) : ^DutCacheBlock
 
+EXTERN FN DutReleaseBlock (
+    IN block : ^DutCacheBlock,
+)
+
 EXTERN FN DutDirtyBlock (
     IN block : ^DutCacheBlock,
 )
@@ -208,3 +247,33 @@ EXTERN FN DutOpenFile (
     IN create : UWORD,
     OUT error : ^UBYTE,
 ) : ^DutFile
+
+EXTERN FN DutCloseFile (
+    IN file : ^DutFile,
+)
+
+EXTERN FN DutReadFile (
+    IN file : ^DutFile,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+EXTERN FN DutWriteFile (
+    IN file : ^DutFile,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+EXTERN FN DutListFiles (
+    IN file : ^DutFile,
+) : UWORD
+
+EXTERN FN DutMountUnknownFilesystem (
+    IN volume : ^DutDiskCommon,
+) : ^DutMount
+
+EXTERN FN DutTruncateFile (
+    IN file : ^DutFile,
+) : UWORD

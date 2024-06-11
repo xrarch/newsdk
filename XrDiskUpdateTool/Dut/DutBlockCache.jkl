@@ -4,16 +4,20 @@
 
 #INCLUDE "Dut.hjk"
 
+#DEFINE DUT_RECLAIM_MAX 512
+
 STRUCT DutCacheBlock
     HashEntry : TlListEntry,
     OrderedEntry : TlListEntry,
 
     DirtyEntry : TlListEntry,
+    ReclaimEntry : TlListEntry,
 
     Cache : ^DutCache,
 
     Lba : UWORD,
     IsDirty : UWORD,
+    Refs : UWORD,
 END
 
 STRUCT DutCache
@@ -23,6 +27,8 @@ STRUCT DutCache
     BucketHeads : TlListEntry[TL_HASH_SIZE],
 
     DirtyListHead : TlListEntry,
+    ReclaimListHead : TlListEntry,
+    ReclaimCount : UWORD,
 END
 
 FN DutHash (
@@ -50,6 +56,7 @@ FN DutInsertBlock (
     block^.Lba = lba
     block^.Cache = cache
     block^.IsDirty = FALSE
+    block^.Refs = 1
 
     // Insert entry into doubly linked hash bucket list, at the head.
 
@@ -80,6 +87,16 @@ FN DutLookupBlock (
         entry := CONTAINEROF listentry TO DutCacheBlock.HashEntry
 
         IF lba == entry^.Lba THEN
+            IF entry^.Refs == 0 THEN
+                // Remove from reclaim list.
+
+                TlRemoveEntryList ( &entry^.ReclaimEntry )
+
+                cache^.ReclaimCount -= 1
+            END
+
+            entry^.Refs += 1
+
             RETURN entry
         END
 
@@ -107,6 +124,7 @@ FN DutCreateCache (
     END
 
     cache^.Volume = volume
+    cache^.ReclaimCount = 0
 
     // Initialize the hash table.
 
@@ -123,6 +141,10 @@ FN DutCreateCache (
     // Initialize the dirty list.
 
     TlInitializeList ( &cache^.DirtyListHead )
+
+    // Initialize the reclaim list.
+
+    TlInitializeList ( &cache^.ReclaimListHead )
 
     RETURN cache
 END
@@ -153,6 +175,42 @@ FN DutFlushCache (
     TlInitializeList ( &cache^.DirtyListHead )
 END
 
+FN DutReclaimCacheBlocks (
+    IN cache : ^DutCache,
+)
+
+    // Reclaim cache blocks until the count drops below the threshold.
+
+    listhead := &cache^.ReclaimListHead
+    listentry := listhead^.Next
+
+    WHILE cache^.ReclaimCount >= DUT_RECLAIM_MAX DO
+        block := CONTAINEROF listentry TO DutCacheBlock.ReclaimEntry
+
+        IF block^.IsDirty THEN
+            // Write it back first.
+
+            DutWriteSector (
+                cache^.Volume, // volume
+                block + SIZEOF DutCacheBlock, // buf
+                block^.Lba, // sector
+            )
+
+            TlRemoveEntryList ( &block^.DirtyEntry )
+        END
+
+        listentry = listentry^.Next
+
+        TlRemoveEntryList ( &block^.ReclaimEntry )
+        TlRemoveEntryList ( &block^.OrderedEntry )
+        TlRemoveEntryList ( &block^.HashEntry )
+
+        cache^.ReclaimCount -= 1
+
+        TlFree ( block )
+    END
+END
+
 FN DutDeleteCache (
     IN cache : ^DutCache,
     IN doflush : UWORD,
@@ -172,15 +230,11 @@ FN DutDeleteCache (
     listentry := head^.Next
 
     WHILE listentry != head DO
-        // Capture the next entry now since we will destroy the entry.
-
-        nextentry := listentry^.Next
-
         block := CONTAINEROF listentry TO DutCacheBlock.OrderedEntry
 
-        TlFree ( block )
+        listentry = listentry^.Next
 
-        listentry = nextentry
+        TlFree ( block )
     END
 
     // Free the cache structure.
@@ -203,6 +257,12 @@ FN DutReadCache (
 
     IF NOT block THEN
         // Create it.
+
+        IF cache^.ReclaimCount >= DUT_RECLAIM_MAX THEN
+            // Delete a block.
+
+            DutReclaimCacheBlocks ( cache )
+        END
 
         status := TlAlloc (
             SIZEOF DutCacheBlock + (1 << cache^.Volume^.SectorLog), // bytes
@@ -245,4 +305,22 @@ FN DutDirtyBlock (
         &block^.Cache^.DirtyListHead, // head
         &block^.DirtyEntry, // entry
     )
+END
+
+FN DutReleaseBlock (
+    IN block : ^DutCacheBlock,
+)
+
+    block^.Refs -= 1
+
+    IF block^.Refs == 0 THEN
+        // Insert on reclaim list.
+
+        TlInsertAtTailList (
+            &block^.Cache^.ReclaimListHead, // head
+            &block^.ReclaimEntry, // entry
+        )
+
+        block^.Cache^.ReclaimCount += 1
+    END
 END

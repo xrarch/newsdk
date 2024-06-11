@@ -15,7 +15,6 @@ FN DutLookupFilesystem (
     IN fsname : ^UBYTE,
 ) : ^DutFilesystem
 
-    i := 0
     fs := &DutFilesystemTable[0]
 
     WHILE fs^ DO
@@ -23,7 +22,6 @@ FN DutLookupFilesystem (
             RETURN fs^
         END
 
-        i += 1
         fs += SIZEOF ^VOID
     END
 
@@ -64,6 +62,30 @@ FN DutMountFilesystem (
     )
 
     TlFree ( mount )
+
+    RETURN NULLPTR
+END
+
+FN DutMountUnknownFilesystem (
+    IN volume : ^DutDiskCommon,
+) : ^DutMount
+
+    // Try each filesystem in order.
+
+    fs := &DutFilesystemTable[0]
+
+    WHILE fs^ DO
+        mount := DutMountFilesystem (
+            volume, // volume
+            fs^, // fs
+        )
+
+        IF mount THEN
+            RETURN mount
+        END
+
+        fs += SIZEOF ^VOID
+    END
 
     RETURN NULLPTR
 END
@@ -127,4 +149,57 @@ FN DutOpenFile (
     TlFree ( file )
 
     RETURN NULLPTR
+END
+
+FN DutCloseFile (
+    IN file : ^DutFile,
+)
+
+    file^.Mount^.Fs^.Close ( file )
+
+    TlFree ( file )
+END
+
+FN DutReadFile (
+    IN file : ^DutFile,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+    RETURN file^.Mount^.Fs^.Read (
+        file, // file
+        offset, // offset
+        len, // len
+        buf, // buf
+    )
+END
+
+FN DutWriteFile (
+    IN file : ^DutFile,
+    IN offset : UWORD,
+    IN len : UWORD,
+    IN buf : ^VOID,
+) : UWORD
+
+    RETURN file^.Mount^.Fs^.Write (
+        file, // file
+        offset, // offset
+        len, // len
+        buf, // buf
+    )
+END
+
+FN DutListFiles (
+    IN file : ^DutFile,
+) : UWORD
+
+    RETURN file^.Mount^.Fs^.List ( file )
+END
+
+FN DutTruncateFile (
+    IN file : ^DutFile,
+) : UWORD
+
+    RETURN file^.Mount^.Fs^.Truncate ( file )
 END

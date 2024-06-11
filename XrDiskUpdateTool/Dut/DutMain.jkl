@@ -739,6 +739,49 @@ FN DutCreateImage (
     END
 END
 
+FN DutMountFromImageAndPart (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+) : ^DutMount
+
+    partid : UWORD
+
+    IF NOT TlStringToNumber (
+        partition, // src
+        -1, // bufsize
+        OUT partid, // num
+    ) THEN
+        TlError ( "Bad partition number\n" )
+    END
+
+    di := DutOpenDiskImage (
+        imagename, // filename
+        FALSE, // create
+        0, // sectors
+    )
+
+    IF partid != -1 THEN
+        DutParsePartitionTable ( di )
+    END
+
+    volume := CAST DutFindPartitionById (
+        di, // image
+        partid, // id
+    ) TO ^DutDiskCommon
+
+    IF NOT volume THEN
+        TlError ( "No such partition %d\n", partid )
+    END
+
+    mount := DutMountUnknownFilesystem ( volume )
+
+    IF NOT mount THEN
+        TlError ( "Failed to mount filesystem\n" )
+    END
+
+    RETURN mount
+END
+
 FN DutDumpInfo (
     IN imagename : ^UBYTE,
 )
@@ -764,32 +807,154 @@ FN DutUpdateFiles (
     TlInternalError ( "DutUpdateFiles", 0, 0, 0 )
 END
 
-FN DutListFiles (
+FN DutList (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
     IN path : ^UBYTE,
 )
 
-    TlInternalError ( "DutListFiles", 0, 0, 0 )
+    mount := DutMountFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    error : ^UBYTE
+
+    file := DutOpenFile (
+        mount, // mount
+        path, // path
+        FALSE, // create
+        OUT error, // error
+    )
+
+    IF NOT file THEN
+        TlError ( "%s: %s\n", path, error )
+    END
+
+    DutListFiles ( file )
 END
 
-FN DutReadFile (
+FN DutRead (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
     IN path : ^UBYTE,
 )
 
-    TlInternalError ( "DutReadFile", 0, 0, 0 )
+    mount := DutMountFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    error : ^UBYTE
+
+    file := DutOpenFile (
+        mount, // mount
+        path, // path
+        FALSE, // create
+        OUT error, // error
+    )
+
+    IF NOT file THEN
+        TlError ( "%s: %s\n", path, error )
+    END
+
+    offset := 0
+
+    WHILE TRUE DO
+        len := DutReadFile (
+            file, // file
+            offset, // offset
+            4096, // len
+            &DutTemporaryBuffer[0], // buf
+        )
+
+        i := 0
+
+        WHILE i < len DO
+            TlPrint ( "%c", DutTemporaryBuffer[i] )
+            i += 1
+        END
+
+        IF len < 4096 THEN
+            BREAK
+        END
+
+        offset += 4096
+    END
+
+    DutCloseFile ( file )
+
+    DutUnmountFilesystem ( mount )
 END
 
-FN DutWriteFile (
+FN DutWrite (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
     IN path : ^UBYTE,
     IN hostpath : ^UBYTE,
 )
 
-    TlInternalError ( "DutWriteFile", 0, 0, 0 )
+    handle : ^VOID
+
+    status := TlOpenSource (
+        hostpath, // path
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: Failed to open host file\n", hostpath )
+    END
+
+    mount := DutMountFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    error : ^UBYTE
+
+    file := DutOpenFile (
+        mount, // mount
+        path, // path
+        TRUE, // create
+        OUT error, // error
+    )
+
+    IF NOT file THEN
+        TlError ( "%s: %s\n", path, error )
+    END
+
+    DutTruncateFile ( file )
+
+    offset := 0
+
+    WHILE TRUE DO
+        len := TlReadFile (
+            handle, // handle
+            4096, // bytes
+            &DutTemporaryBuffer[0], // buffer
+        )
+
+        IF len == 0 THEN
+            BREAK
+        END
+
+        wrotelen := DutWriteFile (
+            file, // file
+            offset, // offset
+            len, // len
+            &DutTemporaryBuffer[0], // buf
+        )
+
+        IF wrotelen == 0xFFFFFFFF THEN
+            TlError ( "I/O error\n" )
+        END
+
+        offset += 4096
+    END
+
+    DutCloseFile ( file )
+
+    DutUnmountFilesystem ( mount )
 END
 
 FN DutDeleteFile (
@@ -851,7 +1016,7 @@ FN TlMain (
             DutUsage ()
         END
 
-        DutListFiles (
+        DutList (
             argv[2], // imagename
             argv[3], // partition
             argv[4], // path
@@ -862,7 +1027,7 @@ FN TlMain (
             DutUsage ()
         END
 
-        DutReadFile (
+        DutRead (
             argv[2], // imagename
             argv[3], // partition
             argv[4], // path
@@ -873,7 +1038,7 @@ FN TlMain (
             DutUsage ()
         END
 
-        DutWriteFile (
+        DutWrite (
             argv[2], // imagename
             argv[3], // partition
             argv[4], // path
