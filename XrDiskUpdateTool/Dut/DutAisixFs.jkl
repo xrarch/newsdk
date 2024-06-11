@@ -46,7 +46,7 @@ FN AfsSetBlockStatus (
 
     // Set the FAT entry for the specified block.
 
-    bn := (block * 4) / 512 + fatstart
+    bn := (block / 128) + fatstart
 
     data : ^ULONG
 
@@ -212,7 +212,30 @@ FN (DutFilesystemMountF) DutAisixFsMount (
 
     // Mount the volume.
 
-    RETURN FALSE
+    // Basically we should read the superblock, validate it, and fill in our
+    // member of the mount structure's context union with relevant fields from
+    // it.
+
+    sb : ^AfsSuperblock
+
+    block := DutReadCache (
+        mount^.Cache, // cache
+        0, // lba
+        OUT sb, // data
+    )
+
+    IF sb^.Magic != 0xAFBBAFBB THEN
+        RETURN FALSE
+    END
+
+    IF sb^.Version != 6 THEN
+        RETURN FALSE
+    END
+
+    mount^.Context.Afs.FatStart = sb^.FatStart
+    mount^.Context.Afs.Istart = sb^.Istart
+
+    RETURN TRUE
 END
 
 PUBLIC DutAisixFs : DutFilesystem = {

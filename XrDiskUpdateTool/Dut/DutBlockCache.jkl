@@ -196,10 +196,10 @@ FN DutReadCache (
 
     // Read a block from the cache.
 
-    block := CAST DutLookupBlock (
+    block := DutLookupBlock (
         cache, // cache
         lba, // lba
-    ) TO ^DutCacheBlock
+    ) 
 
     IF NOT block THEN
         // Create it.

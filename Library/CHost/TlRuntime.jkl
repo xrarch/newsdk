@@ -52,7 +52,7 @@ EXTERN FN fwrite (
     IN stream : ^VOID,
 ) : UWORD
 
-EXTERN FN fseek (
+EXTERN FN fseeko (
     IN stream : ^VOID,
     IN offset : UWORD,
     IN whence : UWORD,
@@ -248,7 +248,7 @@ FN TlOpenSource (
     OUT handle : ^VOID,
 ) : TlStatus
 
-    handle = fopen ( filename, "r" )
+    handle = fopen ( filename, "r+b" )
 
     IF handle == 0 THEN
         RETURN TL_COULDNT_OPEN
@@ -262,7 +262,7 @@ FN TlOpenDestination (
     OUT handle : ^VOID,
 ) : TlStatus
 
-    handle = fopen ( filename, "wb" )
+    handle = fopen ( filename, "w+b" )
 
     IF handle == 0 THEN
         RETURN TL_COULDNT_OPEN
@@ -277,7 +277,7 @@ FN TlOpenDestinationAndTruncate (
     OUT handle : ^VOID,
 ) : TlStatus
 
-    handle = fopen ( filename, "wb" )
+    handle = fopen ( filename, "w+b" )
 
     IF handle == 0 THEN
         RETURN TL_COULDNT_OPEN
@@ -330,7 +330,7 @@ FN TlSeekFile (
     IN bytes : UWORD,
 )
 
-    fseek ( handle, bytes, 0 )
+    fseeko ( handle, bytes, 0 )
 END
 
 FN TlpStatFileHelper (

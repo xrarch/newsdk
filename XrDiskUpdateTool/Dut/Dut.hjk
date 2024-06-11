@@ -76,7 +76,8 @@ FNPTR DutFilesystemUnmountF (
 )
 
 STRUCT DutAisixFsContext
-    
+    FatStart : ULONG,
+    Istart : ULONG,
 END
 
 UNION DutMountContext
