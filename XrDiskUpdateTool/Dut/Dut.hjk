@@ -108,6 +108,12 @@ FNPTR DutFilesystemTruncateF (
     IN file : ^DutFile,
 ) : UWORD
 
+FNPTR DutFilesystemDeleteF (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    OUT error : ^UBYTE,
+) : UWORD
+
 STRUCT AfsInodeContext
     Inode : ^AfsInode,
     Iblock : ^DutCacheBlock,
@@ -132,6 +138,7 @@ STRUCT DutAisixFsContext
     Istart : ULONG,
     AllocHint : ULONG,
     Icount : ULONG,
+    Ihint : ULONG,
 END
 
 UNION DutMountContext
@@ -158,6 +165,7 @@ STRUCT DutFilesystem
     Write : DutFilesystemWriteF,
     List : DutFilesystemListF,
     Truncate : DutFilesystemTruncateF,
+    Delete : DutFilesystemDeleteF,
 END
 
 EXTERN FN DutLookupFilesystem (
@@ -276,4 +284,10 @@ EXTERN FN DutMountUnknownFilesystem (
 
 EXTERN FN DutTruncateFile (
     IN file : ^DutFile,
+) : UWORD
+
+EXTERN FN DutDeleteFile (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    OUT error : ^UBYTE,
 ) : UWORD

@@ -203,3 +203,16 @@ FN DutTruncateFile (
 
     RETURN file^.Mount^.Fs^.Truncate ( file )
 END
+
+FN DutDeleteFile (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    OUT error : ^UBYTE,
+) : UWORD
+
+    RETURN mount^.Fs^.Delete (
+        mount, // mount
+        path, // path
+        OUT error, // error
+    )
+END

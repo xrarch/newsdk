@@ -957,13 +957,30 @@ FN DutWrite (
     DutUnmountFilesystem ( mount )
 END
 
-FN DutDeleteFile (
+FN DutDelete (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
     IN path : ^UBYTE,
 )
 
-    TlInternalError ( "DutDeleteFile", 0, 0, 0 )
+    mount := DutMountFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    error : ^UBYTE
+
+    status := DutDeleteFile (
+        mount, // mount
+        path, // path
+        OUT error, // error
+    )
+
+    IF NOT status THEN
+        TlError ( "%s: %s\n", path, error )
+    END
+
+    DutUnmountFilesystem ( mount )
 END
 
 FN TlMain (
@@ -1050,7 +1067,7 @@ FN TlMain (
             DutUsage ()
         END
 
-        DutDeleteFile (
+        DutDelete (
             argv[2], // imagename
             argv[3], // partition
             argv[4], // path
