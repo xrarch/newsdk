@@ -89,3 +89,40 @@ FN DutUnmountFilesystem (
 
     TlFree ( mount )
 END
+
+FN DutOpenFile (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    IN create : UWORD,
+) : ^DutFile
+
+    // Allocate a file block.
+
+    file : ^DutFile
+
+    status := TlAlloc (
+        SIZEOF DutFile, // bytes
+        OUT file, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate file block", 0, 0, 0 )
+    END
+
+    file^.Mount = mount
+    file^.Size = -1
+
+    // Call the filesystem to fill in the file block.
+
+    IF mount^.Fs^.Open (
+        file, // file
+        path, // path
+        create, // create
+    ) THEN
+        RETURN file
+    END
+
+    TlFree ( file )
+
+    RETURN NULLPTR
+END

@@ -75,6 +75,27 @@ FNPTR DutFilesystemUnmountF (
     IN mount : ^DutMount,
 )
 
+FNPTR DutFilesystemOpenF (
+    IN file : ^DutFile,
+    IN path : ^UBYTE,
+    IN create : UWORD,
+) : UWORD
+
+STRUCT DutAisixFsFileContext
+    Inumber : UWORD,
+END
+
+UNION DutFileContext
+    Afs : DutAisixFsFileContext,
+END
+
+STRUCT DutFile
+    Mount : ^DutMount,
+    Size : UWORD,
+
+    Context : DutFileContext,
+END
+
 STRUCT DutAisixFsContext
     FatStart : ULONG,
     Istart : ULONG,
@@ -98,6 +119,7 @@ STRUCT DutFilesystem
     Format : DutFilesystemFormatF,
     Mount : DutFilesystemMountF,
     Unmount : DutFilesystemUnmountF,
+    Open : DutFilesystemOpenF,
 END
 
 EXTERN FN DutLookupFilesystem (
@@ -176,3 +198,9 @@ EXTERN FN DutMountFilesystem (
 EXTERN FN DutUnmountFilesystem (
     IN mount : ^DutMount,
 )
+
+EXTERN FN DutOpenFile (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    IN create : UWORD,
+) : ^DutFile

@@ -31,7 +31,7 @@
 8. 0 is falsey, non-zero is truthy. The numeric result of == operations and
    other conditionals is not guaranteed to be 1 in the true case, just
    non-zero. This means that equivalence with the constant TRUE should not be
-   tested directly.
+   tested directly; idioms of the kind `x == TRUE` will often be broken.
 
 9. "In-flight" expressions are of UWORD or WORD type until the result is
    assigned to something; i.e., there is no intermediate wrapping.

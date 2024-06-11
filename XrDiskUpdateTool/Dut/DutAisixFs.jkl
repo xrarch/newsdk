@@ -214,7 +214,7 @@ FN (DutFilesystemMountF) DutAisixFsMount (
 
     // Basically we should read the superblock, validate it, and fill in our
     // member of the mount structure's context union with relevant fields from
-    // it.
+    // it. For AisixFS this is *really* simple.
 
     sb : ^AfsSuperblock
 
@@ -238,9 +238,24 @@ FN (DutFilesystemMountF) DutAisixFsMount (
     RETURN TRUE
 END
 
+FN (DutFilesystemOpenF) DutAisixFsOpen (
+    IN file : ^DutFile,
+    IN path : ^UBYTE,
+    IN create : UWORD,
+) : UWORD
+
+    // Resolve the path and fill in the file block so that it can be used for
+    // future operations. Return TRUE upon success and FALSE otherwise.
+    // If create is TRUE, create all directories along the path if needed, and
+    // create the file itself.
+
+    RETURN FALSE
+END
+
 PUBLIC DutAisixFs : DutFilesystem = {
     [Name] = "aisixfs",
     [Format] = &DutAisixFsFormat,
     [Mount] = &DutAisixFsMount,
     [Unmount] = NULLPTR,
+    [Open] = &DutAisixFsOpen,
 }
