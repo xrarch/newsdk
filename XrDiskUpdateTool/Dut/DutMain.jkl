@@ -15,12 +15,12 @@ Commands:
 
   create <imagename> <sectors>
   [-apt:disklabel,label1:sectors1,label2:sectors2,... [-boot:bootfile]]
-  [-fs:part,fsname[,manifest1,manifest2,...]]
-  [-os:part,labelfile,bootstrapfile,sector,length]:
+  [-fs:part,fsname[,srcbase,manifest1,manifest2,...]]
+  [-os:part,labelfile,bootstrapfile,sector]:
     Create a disk image with the given name, size in sectors, partition layout,
     boot sector, and initialize with one or more filesystems.
 
-  update <imagename> <partition> <manifest>:
+  updatehierarchy <imagename> <partition> <base> <manifestfile>:
     Update all recursive subdirectories indicated by manifest file.
 
   updatefiles <imagename> <partition> <listfile>:
@@ -58,6 +58,7 @@ STRUCT DutFsDescription
     PartId : UWORD,
     FsName : UBYTE[DUT_LABEL_MAX],
 
+    SrcBaseBuffer : TlDynamicBuffer,
     ManifestListHead : TlListEntry,
 END
 
@@ -68,7 +69,6 @@ STRUCT DutOsDescription
     LabelFile : ^VOID,
     BootstrapFile : ^VOID,
     BootstrapSector : UWORD,
-    BootstrapLength : UWORD,
 
     LabelFileName : TlDynamicBuffer,
     BootstrapFileName : TlDynamicBuffer,
@@ -196,12 +196,26 @@ FN DutMakeBootable (
 
         i := 0
 
-        WHILE i < os^.BootstrapLength DO
-            TlReadFile (
+        WHILE TRUE DO
+            len := TlReadFile (
                 os^.BootstrapFile, // handle
                 512, // bytes
                 &DutTemporaryBuffer[0], // buffer
             )
+
+            IF len == 0 THEN
+                BREAK
+            END
+
+            IF len < 512 THEN
+                // Zero out the upper part.
+
+                TlFillMemoryWithByte (
+                    &DutTemporaryBuffer[len], // ptr
+                    512 - len, // sz
+                    0, // byte
+                )
+            END
 
             DutWriteSector (
                 volume, // volume
@@ -409,6 +423,8 @@ FN DutCreateImage (
                 TlInternalError ( "Failed to allocate fs", 0, 0, 0 )
             END
 
+            TlInitializeDynamicBuffer ( &fs^.SrcBaseBuffer )
+
             TlInitializeList ( &fs^.ManifestListHead )
 
             // Collect partition number.
@@ -459,6 +475,28 @@ FN DutCreateImage (
 
             IF fs^.FsName[0] == 0 THEN
                 TlError ( "-fs: Syntax error\n" )
+            END
+
+            IF arg^ == ',' THEN
+                // Collect source base.
+
+                WHILE arg^ AND arg^ != ',' DO
+                    TlInsertDynamicBuffer (
+                        &fs^.SrcBaseBuffer, // array
+                        arg^, // byte
+                    )
+
+                    arg += 1
+                END
+
+                IF fs^.SrcBaseBuffer.Count == 0 THEN
+                    TlError ( "-fs: Syntax error\n" )
+                END
+
+                TlInsertDynamicBuffer (
+                    &fs^.SrcBaseBuffer, // array
+                    0, // byte
+                )
             END
 
             // Collect manifest names.
@@ -659,33 +697,6 @@ FN DutCreateImage (
                 TlError ( "-os: Bad bootstrap sector offset\n" )
             END
 
-            arg += 1
-
-            // Collect bootstrap length.
-
-            j = 0
-
-            WHILE arg^ DO
-                IF j == DUT_LABEL_MAX - 1 THEN
-                    TlError ( "-os: Too many characters in boot length\n" )
-                END
-
-                DutBuffer1[j] = arg^
-
-                j += 1
-                arg += 1
-            END
-
-            DutBuffer1[j] = 0
-
-            IF NOT TlStringToNumber (
-                &DutBuffer1[0], // src
-                -1, // bufsize
-                OUT os^.BootstrapLength, // num
-            ) THEN
-                TlError ( "-os: Bad bootstrap length\n" )
-            END
-
             // Insert in list.
 
             TlInsertAtTailList (
@@ -828,13 +839,14 @@ FN DutDumpInfo (
     END
 END
 
-FN DutUpdate (
+FN DutUpdateHierarchy (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
+    IN sourcebase : ^UBYTE,
     IN manifest : ^UBYTE,
 )
 
-    TlInternalError ( "DutUpdate", 0, 0, 0 )
+    TlInternalError ( "DutUpdateHierarchy", 0, 0, 0 )
 END
 
 FN DutUpdateFiles (
@@ -1045,15 +1057,16 @@ FN TlMain (
 
         DutCreateImage ( argc, argv )
 
-    ELSEIF TlCompareString ( cmd, "update" ) == 0 THEN
-        IF argc != 5 THEN
+    ELSEIF TlCompareString ( cmd, "updatehierarchy" ) == 0 THEN
+        IF argc != 6 THEN
             DutUsage ()
         END
 
-        DutUpdate (
+        DutUpdateHierarchy (
             argv[2], // imagename
             argv[3], // partition
-            argv[4], // manifest
+            argv[4], // sourcebase
+            argv[5], // manifest
         )
 
     ELSEIF TlCompareString ( cmd, "updatefiles" ) == 0 THEN
