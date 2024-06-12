@@ -1198,41 +1198,27 @@ FN BtPathIsNothing (
     // Return TRUE if all the path components are . or ..
     // Otherwise return FALSE.
 
-    pcomp : UBYTE[4]
     len := 0
 
-    WHILE TRUE DO
-        IF path^ == '/' OR path^ == 0 THEN
-            IF len != 0 THEN
-                pcomp[len] = 0
-
-                IF pcomp[0] == '.' AND pcomp[1] == 0 THEN
-                    // Another dot component.
-
-                ELSEIF pcomp[0] == '.' AND
-                    pcomp[1] == '.' AND
-                    pcomp[2] == 0 THEN
-
-                    // Another dotdot component.
-
-                ELSE
-                    // Something else.
-
-                    RETURN FALSE
-                END
-            END
-
-            IF path^ == 0 THEN
-                BREAK
-            END
+    WHILE path^ DO
+        IF path^ == '/' THEN
+            // Reset component length.
 
             len = 0
 
         ELSEIF len == 2 THEN
+            // Component is over 2 characters. Not . or ..
+
+            RETURN FALSE
+
+        ELSEIF path^ != '.' THEN
+            // Character isn't a dot. Not . or ..
+
             RETURN FALSE
 
         ELSE
-            pcomp[len] = path^
+            // Increment dot count for this component.
+
             len += 1
         END
 
