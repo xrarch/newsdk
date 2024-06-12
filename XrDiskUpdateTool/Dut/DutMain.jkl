@@ -792,6 +792,8 @@ FN DutDumpInfo (
         0, // sectors
     )
 
+    TlPrint ( "Disk Size: %d sectors\n", di^.Common.SectorCount )
+
     IF NOT DutParsePartitionTable ( di ) THEN
         TlError ( "%s: No partition table\n", imagename )
     END
