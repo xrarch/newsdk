@@ -1265,6 +1265,17 @@ FN (BtDagActionF) BtLinkExecutable (
                 buf[i] = 0
 
                 // Now create the path as a directory.
+                // We will tend to recreate directories a lot (which is a no-op)
+                // but to reduce syscall overhead we avoid doing it for "nothing
+                // paths" (those that consist only of . and .. components) and
+                // also use a hash set to try to avoid multiple attempts to
+                // create the same directories in a single invocation of the
+                // build tool.
+                //
+                // We will, again, still sometimes try to create the same
+                // directories multiple times, but this is harmless (just some
+                // wasted CPU cycles which are dwarfed by compilation times
+                // anyway).
 
                 IF NOT BtPathIsNothing ( buf ) THEN
                     created : UBYTE
