@@ -1064,7 +1064,20 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
 
                 ELSE
                     inode^.Type = AFS_INODE_FILE
-                    inode^.Permissions = 0644
+
+                    ext := TlGetPathExtension ( &pcomp[0] )
+
+                    IF TlCompareString ( ext, "exe" ) == 0 OR
+                        TlCompareString ( ext, "sys" ) == 0 OR
+                        TlCompareString ( ext, "dll" ) == 0 THEN
+
+                        // It's an executable.
+
+                        inode^.Permissions = 0755
+
+                    ELSE
+                        inode^.Permissions = 0644
+                    END
                 END
 
                 inode^.Uid = 0
@@ -1181,6 +1194,28 @@ FN (DutFilesystemListF) DutAisixFsTruncate (
 ) : UWORD
 
     AfsTruncateInode ( &file^.Context.Afs )
+END
+
+FN (DutFilesystemSetPermissionsF) DutAisixFsSetPermissions (
+    IN file : ^DutFile,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
+)
+
+    IF permissions != -1 THEN
+        file^.Context.Afs.Inode^.Permissions = permissions
+    END
+
+    IF uid != -1 THEN
+        file^.Context.Afs.Inode^.Uid = uid
+    END
+
+    IF gid != -1 THEN
+        file^.Context.Afs.Inode^.Gid = gid
+    END
+
+    DutDirtyBlock ( file^.Context.Afs.Iblock )
 END
 
 FN (DutFilesystemDeleteF) DutAisixFsDelete (
@@ -1376,4 +1411,5 @@ PUBLIC DutAisixFs : DutFilesystem = {
     [List] = &DutAisixFsList,
     [Truncate] = &DutAisixFsTruncate,
     [Delete] = &DutAisixFsDelete,
+    [SetPermissions] = &DutAisixFsSetPermissions,
 }

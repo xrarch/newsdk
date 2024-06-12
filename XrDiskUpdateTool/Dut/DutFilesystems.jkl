@@ -216,3 +216,18 @@ FN DutDeleteFile (
         OUT error, // error
     )
 END
+
+FN DutSetPermissionsFile (
+    IN file : ^DutFile,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
+)
+
+    file^.Mount^.Fs^.SetPermissions (
+        file, // file
+        permissions, // permissions
+        uid, // uid
+        gid, // gid
+    )
+END

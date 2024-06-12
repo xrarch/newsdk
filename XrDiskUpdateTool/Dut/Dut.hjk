@@ -114,6 +114,13 @@ FNPTR DutFilesystemDeleteF (
     OUT error : ^UBYTE,
 ) : UWORD
 
+FNPTR DutFilesystemSetPermissionsF (
+    IN file : ^DutFile,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
+)
+
 STRUCT AfsInodeContext
     Inode : ^AfsInode,
     Iblock : ^DutCacheBlock,
@@ -166,6 +173,7 @@ STRUCT DutFilesystem
     List : DutFilesystemListF,
     Truncate : DutFilesystemTruncateF,
     Delete : DutFilesystemDeleteF,
+    SetPermissions : DutFilesystemSetPermissionsF,
 END
 
 EXTERN FN DutLookupFilesystem (
@@ -291,3 +299,10 @@ EXTERN FN DutDeleteFile (
     IN path : ^UBYTE,
     OUT error : ^UBYTE,
 ) : UWORD
+
+EXTERN FN DutSetPermissionsFile (
+    IN file : ^DutFile,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
+)

@@ -786,7 +786,44 @@ FN DutDumpInfo (
     IN imagename : ^UBYTE,
 )
 
-    TlInternalError ( "DutDumpInfo", 0, 0, 0 )
+    di := DutOpenDiskImage (
+        imagename, // filename
+        FALSE, // create
+        0, // sectors
+    )
+
+    IF NOT DutParsePartitionTable ( di ) THEN
+        TlError ( "%s: No partition table\n", imagename )
+    END
+
+    TlPrint ( "Disk Label: %s\n", &di^.Common.Label[0] )
+
+    TlPrint ( "Partitions:\n" )
+
+    head := &di^.PartitionListHead
+    listentry := head^.Next
+
+    WHILE head != listentry DO
+        part := CONTAINEROF listentry TO DutPartition.Entry
+
+        TlPrint ( "  '%s': %d to %d (%d sectors)\n",
+            &part^.Common.Label[0],
+            part^.SectorOffset,
+            part^.SectorOffset + part^.Common.SectorCount - 1,
+            part^.Common.SectorCount )
+
+        // Try to mount a filesystem.
+
+        mount := DutMountUnknownFilesystem ( CAST part TO ^DutDiskCommon )
+
+        IF mount THEN
+            TlPrint ( "       Formatted as %s\n", mount^.Fs^.Name )
+
+            DutUnmountFilesystem ( mount )
+        END
+
+        listentry = listentry^.Next
+    END
 END
 
 FN DutUpdate (
