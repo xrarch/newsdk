@@ -676,6 +676,10 @@ FN DutRead (
             &DutTemporaryBuffer[0], // buf
         )
 
+        IF len == -1 THEN
+            TlError ( "I/O error\n" )
+        END
+
         i := 0
 
         WHILE i < len DO
@@ -753,7 +757,7 @@ FN DutWrite (
             &DutTemporaryBuffer[0], // buf
         )
 
-        IF wrotelen == 0xFFFFFFFF THEN
+        IF wrotelen == -1 THEN
             TlError ( "I/O error\n" )
         END
 

@@ -1139,12 +1139,18 @@ FN (DutFilesystemReadF) DutAisixFsRead (
     IN buf : ^VOID,
 ) : UWORD
 
-    RETURN AfsReadInode (
+    status := AfsReadInode (
         &file^.Context.Afs, // icontext
         offset, // offset
         len, // len
         buf, // buf
     )
+
+    IF status == 0xFFFFFFFF THEN
+        RETURN -1
+    END
+
+    RETURN status
 END
 
 FN (DutFilesystemWriteF) DutAisixFsWrite (
@@ -1154,12 +1160,18 @@ FN (DutFilesystemWriteF) DutAisixFsWrite (
     IN buf : ^VOID,
 ) : UWORD
 
-    RETURN AfsWriteInode (
+    status := AfsWriteInode (
         &file^.Context.Afs, // icontext
         offset, // offset
         len, // len
         buf, // buf
     )
+
+    IF status == 0xFFFFFFFF THEN
+        RETURN -1
+    END
+
+    RETURN status
 END
 
 FN (DutFilesystemListF) DutAisixFsList (
