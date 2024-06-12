@@ -17,7 +17,9 @@ BtPathToAssembler : TlDynamicBuffer
 BtPathToLinker : TlDynamicBuffer
 
 BtLeafListHead : TlListEntry
+BtCreatedPathHashTable : TlHashTable
 
+BtCreatedPathMutex := NULLPTR
 BtLeafListMutex := NULLPTR
 BtLeafSemaphore := NULLPTR
 BtPrintMutex := NULLPTR
@@ -1185,6 +1187,61 @@ FN (BtDagActionF) BtBuildS (
     END
 END
 
+STRUCT BtCreatedPathEntry
+    Entry : TlHashTableEntry,
+END
+
+FN BtPathIsNothing (
+    IN path : ^UBYTE,
+) : UWORD
+
+    // Return TRUE if all the path components are . or ..
+    // Otherwise return FALSE.
+
+    pcomp : UBYTE[4]
+    len := 0
+
+    WHILE TRUE DO
+        IF path^ == '/' OR path^ == 0 THEN
+            IF len != 0 THEN
+                pcomp[len] = 0
+
+                IF pcomp[0] == '.' AND pcomp[1] == 0 THEN
+                    // Another dot component.
+
+                ELSEIF pcomp[0] == '.' AND
+                    pcomp[1] == '.' AND
+                    pcomp[2] == 0 THEN
+
+                    // Another dotdot component.
+
+                ELSE
+                    // Something else.
+
+                    RETURN FALSE
+                END
+            END
+
+            IF path^ == 0 THEN
+                BREAK
+            END
+
+            len = 0
+
+        ELSEIF len == 2 THEN
+            RETURN FALSE
+
+        ELSE
+            pcomp[len] = path^
+            len += 1
+        END
+
+        path += 1
+    END
+
+    RETURN TRUE
+END
+
 FN (BtDagActionF) BtLinkExecutable (
     IN dagnode : ^BtDagNode,
 )
@@ -1196,6 +1253,76 @@ FN (BtDagActionF) BtLinkExecutable (
     TlPrint ( "Linking %s\n", dagnode^.Target^.FileName.Buffer )
 
     TlReleaseMutex ( BtPrintMutex )
+
+    // Try to create all the directories that will be required in the path
+    // to this file.
+
+    parentpath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &parentpath )
+
+    TlCopyParentPath (
+        dagnode^.Target^.FileName.Buffer, // srcpath
+        &parentpath, // destpath
+    )
+
+    i := 0
+    buf := parentpath.Buffer
+
+    inslash := buf[0] == '/'
+
+    WHILE i < parentpath.Count DO
+        IF buf[i] == '/' THEN
+            IF NOT inslash THEN
+                // Found the end of a component. Write a null terminator.
+
+                buf[i] = 0
+
+                // Now create the path as a directory.
+
+                IF NOT BtPathIsNothing ( buf ) THEN
+                    created : UBYTE
+
+                    TlAcquireMutex ( BtCreatedPathMutex )
+
+                    createdpath := CAST TlLookupOrAllocateEntryHashTable (
+                        &BtCreatedPathHashTable, // hashtable
+                        SIZEOF BtCreatedPathEntry + i + 1, // entrysize
+                        buf, // key
+                        OUT created, // created
+                    ) TO ^BtCreatedPathEntry
+
+                    IF created THEN
+                        key := CAST createdpath +
+                            SIZEOF BtCreatedPathEntry TO ^UBYTE
+
+                        TlCopyString (
+                            key, // dest
+                            buf, // src
+                            -1, // bufsize
+                        )
+
+                        createdpath^.Entry.Key = key
+
+                        TlCreateDirectory ( buf )
+                    END
+
+                    TlReleaseMutex ( BtCreatedPathMutex )
+                END
+
+                buf[i] = '/'
+            END
+
+            inslash = TRUE
+
+        ELSE
+            inslash = FALSE
+        END
+
+        i += 1
+    END
+
+    TlUninitializeDynamicBuffer ( &parentpath )
 
     cmdline : TlDynamicBuffer
 
@@ -1534,6 +1661,12 @@ FN BtBuildDag ()
     // Initialize the leaf list first.
 
     TlInitializeList ( &BtLeafListHead )
+
+    // Initialize the created path hash set.
+
+    TlInitializeHashTable ( &BtCreatedPathHashTable )
+
+    BtCreatedPathMutex = TlCreateMutex ()
 
     dagroot := BtBuildDagForTarget ( BtSelectedTarget )
 

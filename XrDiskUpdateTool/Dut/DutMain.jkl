@@ -15,10 +15,13 @@ Commands:
 
   create <imagename> <sectors>
   [-apt:disklabel,label1:sectors1,label2:sectors2,... [-boot:bootfile]]
-  [-fs:part,fsname[,srcbase,manifest1,manifest2,...]]
-  [-os:part,labelfile,bootstrapfile,sector]:
+  [-fs:part,fsname[,srcbase,manifest1,manifest2,...]]:
     Create a disk image with the given name, size in sectors, partition layout,
     boot sector, and initialize with one or more filesystems.
+
+  writesectors <imagename> <partition> <sector> <file>:
+    Write a file directly to the specified partition, starting at the specified
+    sector.
 
   updatehierarchy <imagename> <partition> <base> <manifestfile>:
     Update all recursive subdirectories indicated by manifest file.
@@ -142,94 +145,6 @@ FN DutCreateFilesystems (
     END
 END
 
-FN DutMakeBootable (
-    IN image : ^DutDiskImage,
-    IN oslisthead : ^TlListEntry,
-)
-
-    // Create bootable partitions on the image as specified.
-
-    listentry := oslisthead^.Next
-
-    WHILE listentry != oslisthead DO
-        os := CONTAINEROF listentry TO DutOsDescription.Entry
-
-        volume : ^DutDiskCommon
-
-        IF os^.PartId == -1 THEN
-            // -1 means to use the entire disk image.
-
-            volume = CAST image TO ^DutDiskCommon
-
-        ELSE
-            volume = CAST DutFindPartitionById (
-                image, // image
-                os^.PartId, // id
-            ) TO ^DutDiskCommon
-
-            IF NOT volume THEN
-                TlError ( "No such partition %d\n", os^.PartId )
-            END
-        END
-
-        // Write the OS label.
-
-        TlReadFile (
-            os^.LabelFile, // handle
-            1024, // bytes
-            &DutTemporaryBuffer[0], // buffer
-        )
-
-        DutWriteSector (
-            volume, // volume
-            &DutTemporaryBuffer[0], // buffer
-            1, // sector
-        )
-
-        DutWriteSector (
-            volume, // volume
-            &DutTemporaryBuffer[512], // buffer
-            2, // sector
-        )
-
-        // Write the bootstrap.
-
-        i := 0
-
-        WHILE TRUE DO
-            len := TlReadFile (
-                os^.BootstrapFile, // handle
-                512, // bytes
-                &DutTemporaryBuffer[0], // buffer
-            )
-
-            IF len == 0 THEN
-                BREAK
-            END
-
-            IF len < 512 THEN
-                // Zero out the upper part.
-
-                TlFillMemoryWithByte (
-                    &DutTemporaryBuffer[len], // ptr
-                    512 - len, // sz
-                    0, // byte
-                )
-            END
-
-            DutWriteSector (
-                volume, // volume
-                &DutTemporaryBuffer[0], // buffer
-                os^.BootstrapSector + i, // sector
-            )
-
-            i += 1
-        END
-
-        listentry = listentry^.Next
-    END
-END
-
 FN DutCreateImage (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -255,13 +170,11 @@ FN DutCreateImage (
     status : TlStatus
     desclisthead : TlListEntry
     fslisthead : TlListEntry
-    oslisthead : TlListEntry
     bootfilehandle := NULLPTR
     fs : ^DutFsDescription
     manifest : ^DutManifest
 
     TlInitializeList ( &fslisthead )
-    TlInitializeList ( &oslisthead )
 
     WHILE i < argc DO
         arg := argv[i]
@@ -544,166 +457,6 @@ FN DutCreateImage (
                 &fs^.Entry, // entry
             )
 
-        ELSEIF TlCompareStringWithMax ( arg, "-os:", 4 ) == 0 THEN
-            arg += 4
-
-            // Allocate os block.
-
-            os : ^DutOsDescription
-
-            status = TlBumpAlloc (
-                SIZEOF DutOsDescription, // bytes
-                OUT os, // ptr
-            )
-
-            IF status THEN
-                TlInternalError ( "Failed to allocate os", 0, 0, 0 )
-            END
-
-            TlInitializeDynamicBuffer ( &os^.LabelFileName )
-            TlInitializeDynamicBuffer ( &os^.BootstrapFileName )
-
-            // Collect partition number.
-
-            j = 0
-
-            WHILE arg^ != ',' DO
-                IF NOT arg^ THEN
-                    TlError ( "-os: Syntax error\n" )
-                END
-
-                IF j == DUT_LABEL_MAX - 1 THEN
-                    TlError ( "-os: Too many characters in part number\n" )
-                END
-
-                DutBuffer1[j] = arg^
-
-                j += 1
-                arg += 1
-            END
-
-            DutBuffer1[j] = 0
-
-            IF NOT TlStringToNumber (
-                &DutBuffer1[0], // src
-                -1, // bufsize
-                OUT os^.PartId, // num
-            ) THEN
-                TlError ( "-os: Bad partition number\n" )
-            END
-
-            arg += 1
-
-            // Collect label file name.
-
-            WHILE arg^ != ',' DO
-                IF NOT arg^ THEN
-                    TlError ( "-os: Syntax error\n" )
-                END
-
-                TlInsertDynamicBuffer (
-                    &os^.LabelFileName, // array
-                    arg^, // byte
-                )
-
-                j += 1
-                arg += 1
-            END
-
-            TlInsertDynamicBuffer (
-                &os^.LabelFileName, // array
-                0, // byte
-            )
-
-            IF os^.LabelFileName.Count == 0 THEN
-                TlError ( "-os: Syntax error\n" )
-            END
-
-            status = TlOpenSource (
-                os^.LabelFileName.Buffer, // filename
-                OUT os^.LabelFile, // handle
-            )
-
-            IF status THEN
-                TlError ( "-os: Failed to open '%s'\n",
-                    os^.LabelFileName.Buffer )
-            END
-
-            arg += 1
-
-            // Collect bootstrap file name.
-
-            WHILE arg^ != ',' DO
-                IF NOT arg^ THEN
-                    TlError ( "-os: Syntax error\n" )
-                END
-
-                TlInsertDynamicBuffer (
-                    &os^.BootstrapFileName, // array
-                    arg^, // byte
-                )
-
-                j += 1
-                arg += 1
-            END
-
-            TlInsertDynamicBuffer (
-                &os^.BootstrapFileName, // array
-                0, // byte
-            )
-
-            IF os^.BootstrapFileName.Count == 0 THEN
-                TlError ( "-os: Syntax error\n" )
-            END
-
-            status = TlOpenSource (
-                os^.BootstrapFileName.Buffer, // filename
-                OUT os^.BootstrapFile, // handle
-            )
-
-            IF status THEN
-                TlError ( "-os: Failed to open '%s'\n",
-                    os^.BootstrapFileName.Buffer )
-            END
-
-            arg += 1
-
-            // Collect bootstrap sector offset.
-
-            j = 0
-
-            WHILE arg^ != ',' DO
-                IF NOT arg^ THEN
-                    TlError ( "-os: Syntax error\n" )
-                END
-
-                IF j == DUT_LABEL_MAX - 1 THEN
-                    TlError ( "-os: Too many characters in boot offset\n" )
-                END
-
-                DutBuffer1[j] = arg^
-
-                j += 1
-                arg += 1
-            END
-
-            DutBuffer1[j] = 0
-
-            IF NOT TlStringToNumber (
-                &DutBuffer1[0], // src
-                -1, // bufsize
-                OUT os^.BootstrapSector, // num
-            ) THEN
-                TlError ( "-os: Bad bootstrap sector offset\n" )
-            END
-
-            // Insert in list.
-
-            TlInsertAtTailList (
-                &oslisthead, // head
-                &os^.Entry, // entry
-            )
-
         ELSE
             DutUsage ()
         END
@@ -739,21 +492,12 @@ FN DutCreateImage (
             &fslisthead, // fslisthead
         )
     END
-
-    IF oslisthead.Next != &oslisthead THEN
-        // Make partitions bootable.
-
-        DutMakeBootable (
-            di, // image
-            &oslisthead, // oslisthead
-        )
-    END
 END
 
-FN DutMountFromImageAndPart (
+FN DutVolumeFromImageAndPart (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
-) : ^DutMount
+) : ^DutDiskCommon
 
     partid : UWORD
 
@@ -783,6 +527,19 @@ FN DutMountFromImageAndPart (
     IF NOT volume THEN
         TlError ( "No such partition %d\n", partid )
     END
+
+    RETURN volume
+END
+
+FN DutMountFromImageAndPart (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+) : ^DutMount
+
+    volume := DutVolumeFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
 
     mount := DutMountUnknownFilesystem ( volume )
 
@@ -1034,6 +791,72 @@ FN DutDelete (
     DutUnmountFilesystem ( mount )
 END
 
+FN DutWriteSectors (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+    IN sector : ^UBYTE,
+    IN file : ^UBYTE,
+)
+
+    volume := DutVolumeFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    sectornum : UWORD
+
+    IF NOT TlStringToNumber (
+        sector, // src
+        -1, // bufsize
+        OUT sectornum, // num
+    ) THEN
+        TlError ( "Bad sector number\n" )
+    END
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        file, // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: Failed to open\n", file )
+    END
+
+    i := 0
+
+    WHILE TRUE DO
+        len := TlReadFile (
+            handle, // handle
+            512, // bytes
+            &DutTemporaryBuffer[0], // buffer
+        )
+
+        IF len == 0 THEN
+            BREAK
+        END
+
+        IF len < 512 THEN
+            // Zero out the upper part.
+
+            TlFillMemoryWithByte (
+                &DutTemporaryBuffer[len], // ptr
+                512 - len, // sz
+                0, // byte
+            )
+        END
+
+        DutWriteSector (
+            volume, // volume
+            &DutTemporaryBuffer[0], // buffer
+            sectornum + i, // sector
+        )
+
+        i += 1
+    END
+END
+
 FN TlMain (
     IN argc : ULONG,
     IN argv : ^^UBYTE,
@@ -1056,6 +879,18 @@ FN TlMain (
         END
 
         DutCreateImage ( argc, argv )
+
+    ELSEIF TlCompareString ( cmd, "writesectors") == 0 THEN
+        IF argc != 6 THEN
+            DutUsage ()
+        END
+
+        DutWriteSectors (
+            argv[2], // imagename
+            argv[3], // partition
+            argv[4], // sector
+            argv[5], // file
+        )
 
     ELSEIF TlCompareString ( cmd, "updatehierarchy" ) == 0 THEN
         IF argc != 6 THEN
