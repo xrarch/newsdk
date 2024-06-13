@@ -746,7 +746,7 @@ FN (AsmTargetParseF) FoxParseInstruction (
         FALSE, // hasoffset
     )
 
-    IF elem^.Body.Fox.Op1.Relative THEN
+    IF elem^.Body.Fox.Op1.Relative AND NOT elem^.Body.Fox.ExplicitBits THEN
         // Increment the target word of the section, which we use as a count of
         // relative jumps.
 
@@ -957,9 +957,10 @@ END
 
 FN FoxRelativeReductionForSection (
     IN section : ^AsmSection,
-)
+) : UWORD
 
     squishbytes := 0
+    reduced := FALSE
 
     // Walk the element chain.
 
@@ -982,7 +983,8 @@ FN FoxRelativeReductionForSection (
             (elem^.ErrorToken.Subtype == FOX_RJMP OR
             elem^.ErrorToken.Subtype == FOX_RLOOP OR
             elem^.ErrorToken.Subtype == FOX_RCALL) AND
-            NOT elem^.Body.Fox.ExplicitBits THEN
+            NOT elem^.Body.Fox.ExplicitBits AND
+            elem^.Body.Fox.Bits != FOX_BITS_8 THEN
 
             // Try to reduce to 8 and 16 bits.
 
@@ -999,16 +1001,30 @@ FN FoxRelativeReductionForSection (
                 IF rel < 128 OR rel >= 0xFFFFFF80 THEN
                     // Reduce to 8.
 
+                    IF elem^.Body.Fox.Bits == FOX_BITS_16 THEN
+                        squishbytes += 1
+                    ELSE
+                        squishbytes += 3
+                    END
+
                     elem^.Body.Fox.Bits = FOX_BITS_8
 
-                    squishbytes += 3
+                    reduced = TRUE
 
-                ELSEIF rel < 32768 OR rel >= 0xFFFF8000 THEN
+                    // Decrement the count of candidates for reduction.
+
+                    section^.TargetWord -= 1
+
+                ELSEIF elem^.Body.Fox.Bits > FOX_BITS_16 AND
+                    (rel < 32768 OR rel >= 0xFFFF8000) THEN
+
                     // Reduce to 16.
 
                     elem^.Body.Fox.Bits = FOX_BITS_16
 
                     squishbytes += 2
+
+                    reduced = TRUE
                 END
             END
         END
@@ -1018,6 +1034,8 @@ FN FoxRelativeReductionForSection (
 
     section^.FileOffset -= squishbytes
     section^.MemoryOffset -= squishbytes
+
+    RETURN reduced
 END
 
 FN (AsmTargetHookF) FoxRelativeReduction ()
@@ -1031,8 +1049,10 @@ FN (AsmTargetHookF) FoxRelativeReduction ()
     WHILE listentry != head DO
         section := CONTAINEROF listentry TO AsmSection.SectionListEntry
 
-        IF section^.TargetWord THEN
-            FoxRelativeReductionForSection ( section )
+        reduced := TRUE
+
+        WHILE section^.TargetWord AND reduced DO
+            reduced = FoxRelativeReductionForSection ( section )
         END
 
         listentry = listentry^.Next
