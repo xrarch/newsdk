@@ -178,6 +178,8 @@ STRUCT AsmSection
 
     DataBuffer : ^UBYTE,
 
+    TargetWord : UWORD,
+
     // Current offsets. File offset increases monotonically and reflects the
     // placement of the data within the file. Memory offset can be set by .org
     // and other things.

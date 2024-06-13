@@ -19,11 +19,15 @@ EXTERN FN (AsmTargetEncodeF) FoxEncodeInstruction (
     IN dataptr : ^UBYTE,
 )
 
+// FORWARD
+EXTERN FN (AsmTargetHookF) FoxRelativeReduction ()
+
 PUBLIC FoxTargetInfo : AsmTargetInfoRecord = {
     [Name] = "fox32",
     [KeywordsFunc] = &FoxRegisterKeywords,
     [ParseFunc] = &FoxParseInstruction,
     [EncodeFunc] = &FoxEncodeInstruction,
+    [HookFunc] = &FoxRelativeReduction,
     [ConstantMask] = 0xFFFFFFFF,
     [PointerSize] = 4,
     [ObjectFileAlignment] = 4,
@@ -624,6 +628,7 @@ FN FoxCreateInstruction (
     elem^.Body.Fox.HasOffset = 0
     elem^.Body.Fox.Opcode = 0
     elem^.Body.Fox.Bits = FOX_BITS_32
+    elem^.Body.Fox.ExplicitBits = FALSE
     
     elem^.Body.Fox.Op1.Type = 0
     elem^.Body.Fox.Op1.RelocationType = 0
@@ -698,6 +703,8 @@ FN (AsmTargetParseF) FoxParseInstruction (
             LexPutbackToken ( &ptoken )
 
         ELSE
+            elem^.Body.Fox.ExplicitBits = TRUE
+
             IF NOT LexMatchToken (
                 &ptoken, // token
                 TOKEN_NUMBER, // type
@@ -739,6 +746,13 @@ FN (AsmTargetParseF) FoxParseInstruction (
         FALSE, // hasoffset
     )
 
+    IF elem^.Body.Fox.Op1.Relative THEN
+        // Increment the target word of the section, which we use as a count of
+        // relative jumps.
+
+        AsmCurrentSection^.TargetWord += 1
+    END
+
     IF FoxSpecialImm[token^.Subtype] THEN
         // INC or DEC.
 
@@ -757,7 +771,10 @@ FN (AsmTargetParseF) FoxParseInstruction (
                 LexError ( &ptoken, "Expected a number\n" )
             END
 
-            IF ptoken.Payload == 2 THEN
+            IF ptoken.Payload == 1 THEN
+                elem^.Body.Fox.Op2.Type = 0
+
+            ELSEIF ptoken.Payload == 2 THEN
                 elem^.Body.Fox.Op2.Type = 1
 
             ELSEIF ptoken.Payload == 4 THEN
@@ -936,4 +953,88 @@ FN (AsmTargetEncodeF) FoxEncodeInstruction (
         section, // section
         instruction^.MemoryOffset, // instbase
     )
+END
+
+FN FoxRelativeReductionForSection (
+    IN section : ^AsmSection,
+)
+
+    squishbytes := 0
+
+    // Walk the element chain.
+
+    head := &section^.ElementListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        elem := CONTAINEROF listentry TO AsmElement.Entry
+
+        elem^.FileOffset -= squishbytes
+        elem^.MemoryOffset -= squishbytes
+
+        IF elem^.ErrorToken.Type == TOKEN_LABEL THEN
+            symbol := CAST elem^.ErrorToken.Payload TO ^LexSymbol
+
+            symbol^.FileOffset -= squishbytes
+            symbol^.MemoryOffset -= squishbytes
+
+        ELSEIF elem^.ErrorToken.Type == TOKEN_INSTRUCTION AND
+            (elem^.ErrorToken.Subtype == FOX_RJMP OR
+            elem^.ErrorToken.Subtype == FOX_RLOOP OR
+            elem^.ErrorToken.Subtype == FOX_RCALL) AND
+            NOT elem^.Body.Fox.ExplicitBits THEN
+
+            // Try to reduce to 8 and 16 bits.
+
+            val : UWORD
+            refsymbol : ^LexSymbol
+
+            IF AsmEvaluateNode (
+                elem^.Body.Fox.Op1.ImmExpr, // node
+                OUT val, // value
+                OUT refsymbol, // refsymbol
+            ) THEN
+                rel : UWORD = (val - elem^.MemoryOffset) & 0xFFFFFFFF
+
+                IF rel < 128 OR rel >= 0xFFFFFF80 THEN
+                    // Reduce to 8.
+
+                    elem^.Body.Fox.Bits = FOX_BITS_8
+
+                    squishbytes += 3
+
+                ELSEIF rel < 32768 OR rel >= 0xFFFF8000 THEN
+                    // Reduce to 16.
+
+                    elem^.Body.Fox.Bits = FOX_BITS_16
+
+                    squishbytes += 2
+                END
+            END
+        END
+
+        listentry = listentry^.Next
+    END
+
+    section^.FileOffset -= squishbytes
+    section^.MemoryOffset -= squishbytes
+END
+
+FN (AsmTargetHookF) FoxRelativeReduction ()
+    
+    // Run down each section's element chains. Try to reduce relative
+    // instructions such as RJMP to 8 and 16 bit variants.
+
+    head := &AsmSectionListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        section := CONTAINEROF listentry TO AsmSection.SectionListEntry
+
+        IF section^.TargetWord THEN
+            FoxRelativeReductionForSection ( section )
+        END
+
+        listentry = listentry^.Next
+    END
 END

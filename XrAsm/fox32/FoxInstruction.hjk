@@ -21,4 +21,5 @@ STRUCT FoxInstructionBody
 
     Opcode : UBYTE,
     Bits : UBYTE,
+    ExplicitBits : UBYTE,
 END

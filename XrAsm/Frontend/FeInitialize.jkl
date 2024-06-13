@@ -331,6 +331,12 @@ FN TlMain (
 
     AsmParse ()
 
+    // Phase 1.5: Execute target hook.
+
+    IF AsmTargetInfo^.HookFunc THEN
+        AsmTargetInfo^.HookFunc ()
+    END
+
     // Phase 2: Build the section data.
 
     AsmBuildData ()

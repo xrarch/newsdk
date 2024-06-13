@@ -326,6 +326,9 @@ FN AsmBuildDataForSection (
                 &buf[elem^.FileOffset], // dataptr
             )
 
+        ELSEIF elem^.ErrorToken.Type == TOKEN_LABEL THEN
+            // Ignore it.
+
         ELSE
             TlInternalError ( "Unknown element type", elem^.ErrorToken.Type, 0, 0 )
         END

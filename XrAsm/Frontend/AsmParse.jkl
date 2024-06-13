@@ -237,6 +237,16 @@ FN AsmInitializeLabel (
         symbol^.FileOffset = AsmCurrentSection^.FileOffset
         symbol^.MemoryOffset = AsmCurrentSection^.MemoryOffset
         symbol^.Section = AsmCurrentSection
+
+        // Add an element to the list so that this label's offset can be updated
+        // later if needed. The label symbol is recorded through the token.
+
+        elem := AsmCreateElement (
+            errtoken, // token
+            0, // size
+        )
+
+        elem^.ErrorToken.Type = TOKEN_LABEL
     END
 END
 
@@ -975,6 +985,8 @@ FN (AsmDirectiveF) AsmParseSection (
         END
 
         symbol^.Section = section
+
+        section^.TargetWord = 0
 
         // Initialize the section structure.
 

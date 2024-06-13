@@ -33,6 +33,8 @@ ENUM LexTokenType : UBYTE
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
     TOKEN_NUMBER, // payload is the number value
 
+    TOKEN_LABEL, // virtual
+
     TOKEN_EOF,
     TOKEN_TYPE_MAX, // MUST be at the end
 END

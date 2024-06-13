@@ -27,6 +27,8 @@ FNPTR AsmTargetEncodeF (
 
 FNPTR AsmTargetKeywordsF ()
 
+FNPTR AsmTargetHookF ()
+
 EXTERN AsmTargetInfo : ^AsmTargetInfoRecord
 
 STRUCT AsmTargetInfoRecord
@@ -34,6 +36,7 @@ STRUCT AsmTargetInfoRecord
     ParseFunc : AsmTargetParseF,
     EncodeFunc : AsmTargetEncodeF,
     KeywordsFunc : AsmTargetKeywordsF,
+    HookFunc : AsmTargetHookF,
     ConstantMask : UWORD,
     PointerSize : UWORD,
     ObjectFileAlignment : UWORD,

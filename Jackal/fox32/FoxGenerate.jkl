@@ -1630,9 +1630,11 @@ FN (LirSelectF) FoxSelectArithmetic (
 
     defreg := FoxGenerateArithmeticMove ( inst )
 
+    machtype := FoxIrInstToFoxOp[inst^.Type]
+
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
-        FoxIrInstToFoxOp[inst^.Type], // machtype
+        machtype, // machtype
     )
 
     lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
@@ -1648,6 +1650,32 @@ FN (LirSelectF) FoxSelectArithmetic (
         inst^.Source2, // var
         TRUE, // allowimm
     )
+
+    IF lirinst^.Body.Machine.Fox.Op2.AccessType == FOX_ACCESS_IMM THEN
+        constant := lirinst^.Body.Machine.Fox.Op2.Constant
+
+        IF machtype == FOX_ADD THEN
+            // Check if it can be turned into one of the fancy INCs.
+
+            IF constant == 1 OR
+                constant == 2 OR
+                constant == 4 OR
+                constant == 8 THEN
+
+                lirinst^.MachineInstruction = FOX_INC
+            END
+
+        ELSEIF machtype == FOX_SUB THEN
+
+            IF constant == 1 OR
+                constant == 2 OR
+                constant == 4 OR
+                constant == 8 THEN
+
+                lirinst^.MachineInstruction = FOX_DEC
+            END
+        END
+    END
 
     LirInsertInstructionTail ( lirinst )
 
