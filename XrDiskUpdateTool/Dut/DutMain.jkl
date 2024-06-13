@@ -833,7 +833,7 @@ FN DutWriteSectors (
     WHILE TRUE DO
         len := TlReadFile (
             handle, // handle
-            512, // bytes
+            1 << volume^.SectorLog, // bytes
             &DutTemporaryBuffer[0], // buffer
         )
 
@@ -841,12 +841,12 @@ FN DutWriteSectors (
             BREAK
         END
 
-        IF len < 512 THEN
+        IF len < (1 << volume^.SectorLog) THEN
             // Zero out the upper part.
 
             TlFillMemoryWithByte (
                 &DutTemporaryBuffer[len], // ptr
-                512 - len, // sz
+                (1 << volume^.SectorLog) - len, // sz
                 0, // byte
             )
         END
