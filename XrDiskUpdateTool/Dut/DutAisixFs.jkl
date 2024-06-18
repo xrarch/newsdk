@@ -190,7 +190,7 @@ FN AfsAllocateBlock (
         j += 1
     END
 
-    RETURN 0xFFFFFFFF
+    RETURN -1
 END
 
 FN AfsFreeChain (
@@ -364,7 +364,7 @@ FN AfsGetBlock (
 
             lba = AfsAllocateBlock ( icontext^.Mount )
 
-            IF lba == 0xFFFFFFFF THEN
+            IF lba == -1 THEN
                 // Out of disk space.
 
                 RETURN -1
@@ -409,7 +409,7 @@ FN AfsGetBlock (
 
             lba = AfsAllocateBlock ( icontext^.Mount )
 
-            IF lba == 0xFFFFFFFF THEN
+            IF lba == -1 THEN
                 // Out of disk space.
 
                 RETURN -1
@@ -467,10 +467,10 @@ FN AfsReadInode (
             FALSE, // writing
         )
 
-        IF lba == 0xFFFFFFFF THEN
+        IF lba == -1 THEN
             // Failed to get next block.
 
-            RETURN 0xFFFFFFFF
+            RETURN -1
         END
 
         amt := 512 - (offset % 512)
@@ -521,10 +521,10 @@ FN AfsWriteInode (
             TRUE, // writing
         )
 
-        IF lba == 0xFFFFFFFF THEN
+        IF lba == -1 THEN
             // Failed to get next block.
 
-            RETURN 0xFFFFFFFF
+            RETURN -1
         END
 
         amt := 512 - (offset % 512)
@@ -979,7 +979,7 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
                 &dirent, // buf
             )
 
-            IF readlen == 0xFFFFFFFF THEN
+            IF readlen == -1 THEN
                 // Failed to read.
 
                 error = "I/O error on dirent"
@@ -1139,18 +1139,12 @@ FN (DutFilesystemReadF) DutAisixFsRead (
     IN buf : ^VOID,
 ) : UWORD
 
-    status := AfsReadInode (
+    RETURN AfsReadInode (
         &file^.Context.Afs, // icontext
         offset, // offset
         len, // len
         buf, // buf
     )
-
-    IF status == 0xFFFFFFFF THEN
-        RETURN -1
-    END
-
-    RETURN status
 END
 
 FN (DutFilesystemWriteF) DutAisixFsWrite (
@@ -1160,18 +1154,12 @@ FN (DutFilesystemWriteF) DutAisixFsWrite (
     IN buf : ^VOID,
 ) : UWORD
 
-    status := AfsWriteInode (
+    RETURN AfsWriteInode (
         &file^.Context.Afs, // icontext
         offset, // offset
         len, // len
         buf, // buf
     )
-
-    IF status == 0xFFFFFFFF THEN
-        RETURN -1
-    END
-
-    RETURN status
 END
 
 FN (DutFilesystemListF) DutAisixFsList (
@@ -1320,7 +1308,7 @@ FN (DutFilesystemDeleteF) DutAisixFsDelete (
                 &dirent, // buf
             )
 
-            IF readlen == 0xFFFFFFFF THEN
+            IF readlen == -1 THEN
                 // Failed to read.
 
                 error = "I/O error on dirent"

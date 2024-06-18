@@ -494,6 +494,80 @@ FN DutCreateImage (
     END
 END
 
+FN DutCopyFileIntoVolume (
+    IN srcpath : ^UBYTE,
+    IN destpath : ^UBYTE,
+    IN mount : ^DutMount,
+) : UWORD
+
+    // Copy a file into the volume at the specified path.
+
+    // Open the source file.
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        srcpath, // path
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        RETURN FALSE
+    END
+
+    // Open the destination file on the disk image.
+
+    error : ^UBYTE
+
+    destfile := DutOpenFile (
+        mount, // mount
+        destpath, // path
+        TRUE, // create
+        OUT error, // error
+    )
+
+    IF NOT destfile THEN
+        TlError ( "%s: %s\n", destpath, error )
+    END
+
+    // Write the contents.
+
+    DutTruncateFile ( destfile )
+
+    offset := 0
+
+    WHILE TRUE DO
+        len := TlReadFile (
+            handle, // handle
+            4096, // bytes
+            &DutTemporaryBuffer[0], // buffer
+        )
+
+        IF len == 0 THEN
+            BREAK
+        END
+
+        wrotelen := DutWriteFile (
+            destfile, // file
+            offset, // offset
+            len, // len
+            &DutTemporaryBuffer[0], // buf
+        )
+
+        IF wrotelen == -1 THEN
+            TlError ( "I/O error\n" )
+        END
+
+        offset += 4096
+    END
+
+    DutCloseFile ( destfile )
+
+    TlClose ( handle )
+
+    RETURN TRUE
+END
+
 FN DutVolumeFromImageAndPart (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
@@ -596,6 +670,214 @@ FN DutDumpInfo (
     END
 END
 
+FN DutLoadFileData (
+    IN filename : ^UBYTE,
+) : ^UBYTE
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        filename, // path
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: failed to open\n", filename )
+    END
+
+    stat : TlStatRecord
+
+    status = TlStatFile (
+        filename, // path
+        &stat, // statrecord
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to stat file", 0, 0, 0 )
+    END
+
+    buf : ^UBYTE
+
+    status = TlBumpAlloc (
+        stat.SizeInBytes + 1, // bytes
+        OUT buf, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate file data", 0, 0, 0 )
+    END
+
+    TlReadFile (
+        handle, // handle
+        stat.SizeInBytes, // bytes
+        buf, // buf
+    )
+
+    buf[stat.SizeInBytes] = 0
+
+    RETURN buf
+END
+
+FNPTR DutCallbackPerLineF (
+    IN buf : ^UBYTE,
+    IN context : ^VOID,
+)
+
+STRUCT DutUpdateFilesContext
+    Mount : ^DutMount,
+END
+
+FN (DutCallbackPerLineF) DutUpdateFilesCallback (
+    IN buf : ^UBYTE,
+    IN context : ^VOID,
+)
+
+    ctx := CAST context TO ^DutUpdateFilesContext
+
+    WHILE buf^ == ' ' OR buf^ == '\t' DO
+        // Skip whitespace.
+
+        buf += 1
+    END
+
+    IF buf^ == 0 OR buf^ == '#' THEN
+        // Nothing relevant on this line.
+
+        LEAVE
+    END
+
+    destpath := buf
+    oldchar1 := buf
+    oldc1 := 0
+
+    // Find the end of this whitespace-denominated field.
+
+    WHILE TRUE DO
+        oldc1 = buf^
+
+        IF oldc1 == ' ' OR oldc1 == '\t' THEN
+            oldchar1 = buf
+
+            // Close the field with a null terminator.
+
+            buf^ = 0
+
+            buf += 1
+
+            BREAK
+        END
+
+        IF oldc1 == 0 THEN
+            TlError ( "Syntax error 1\n" )
+        END
+
+        buf += 1
+    END
+
+    WHILE buf^ == ' ' OR buf^ == '\t' DO
+        // Skip whitespace.
+
+        buf += 1
+    END
+
+    IF buf^ == 0 OR buf^ == '#' THEN
+        TlError ( "Syntax error 2\n" )
+    END
+
+    // Find the end of the next.
+
+    srcpath := buf
+    oldchar2 := buf
+    oldc2 := 0
+
+    WHILE TRUE DO
+        oldc2 = buf^
+
+        IF oldc2 == ' ' OR oldc2 == '\t' OR oldc2 == 0 THEN
+            oldchar2 = buf
+
+            // Close the field with a null terminator.
+
+            buf^ = 0
+
+            buf += 1
+
+            BREAK
+        END
+
+        buf += 1
+    END
+
+    // Copy the file in.
+
+    IF NOT DutCopyFileIntoVolume (
+        srcpath, // srcpath
+        destpath, // destpath
+        ctx^.Mount, // mount
+    ) THEN
+
+        TlPrintByHandle (
+            TlStdErr, // handle
+            "%s: %s: Warning: Failed to update\n", // fmt
+            TlProgramName,
+            srcpath,
+        )
+    END
+
+    // Replace the buffer characters.
+
+    oldchar1^ = oldc1
+    oldchar2^ = oldc2
+END
+
+FN DutCallbackPerLine (
+    IN buf : ^UBYTE,
+    IN callback : DutCallbackPerLineF,
+    IN context : ^VOID,
+)
+
+    // For each line in the buffer, call the callback function.
+
+    innl := TRUE
+    linestart := buf
+
+    WHILE TRUE DO
+        c := buf^
+
+        IF c == 0 OR c == '\n' THEN
+            // Close the buffer.
+
+            buf^ = 0
+
+            // Callback.
+
+            callback (
+                linestart, // buf
+                context, // context
+            )
+
+            IF c == 0 THEN
+                BREAK
+            END
+
+            // Replace the newline.
+
+            buf^ = '\n'
+
+            innl = TRUE
+
+            linestart = buf + 1
+
+        ELSEIF innl THEN
+            linestart = buf
+
+            innl = FALSE
+        END
+
+        buf += 1
+    END
+END
+
 FN DutUpdateHierarchy (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
@@ -612,7 +894,24 @@ FN DutUpdateFiles (
     IN listfile : ^UBYTE,
 )
 
-    TlInternalError ( "DutUpdateFiles", 0, 0, 0 )
+    mount := DutMountFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    context : DutUpdateFilesContext
+
+    context.Mount = mount
+
+    buf := DutLoadFileData ( listfile )
+
+    DutCallbackPerLine (
+        buf, // buf
+        &DutUpdateFilesCallback, // callback
+        &context, // context
+    )
+
+    DutUnmountFilesystem ( mount )
 END
 
 FN DutList (
@@ -706,65 +1005,19 @@ FN DutWrite (
     IN hostpath : ^UBYTE,
 )
 
-    handle : ^VOID
-
-    status := TlOpenSource (
-        hostpath, // path
-        OUT handle, // handle
-    )
-
-    IF status THEN
-        TlError ( "%s: Failed to open host file\n", hostpath )
-    END
-
     mount := DutMountFromImageAndPart (
         imagename, // imagename
         partition, // partition
     )
 
-    error : ^UBYTE
-
-    file := DutOpenFile (
+    IF NOT DutCopyFileIntoVolume (
+        hostpath, // srcpath
+        path, // destpath
         mount, // mount
-        path, // path
-        TRUE, // create
-        OUT error, // error
-    )
+    ) THEN
 
-    IF NOT file THEN
-        TlError ( "%s: %s\n", path, error )
+        TlError ( "%s: Failed to open host file\n", hostpath )
     END
-
-    DutTruncateFile ( file )
-
-    offset := 0
-
-    WHILE TRUE DO
-        len := TlReadFile (
-            handle, // handle
-            4096, // bytes
-            &DutTemporaryBuffer[0], // buffer
-        )
-
-        IF len == 0 THEN
-            BREAK
-        END
-
-        wrotelen := DutWriteFile (
-            file, // file
-            offset, // offset
-            len, // len
-            &DutTemporaryBuffer[0], // buf
-        )
-
-        IF wrotelen == -1 THEN
-            TlError ( "I/O error\n" )
-        END
-
-        offset += 4096
-    END
-
-    DutCloseFile ( file )
 
     DutUnmountFilesystem ( mount )
 END
