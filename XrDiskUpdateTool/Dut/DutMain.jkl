@@ -17,13 +17,14 @@ Commands:
   [-apt:disklabel,label1:sectors1,label2:sectors2,... [-boot:bootfile]]
   [-fs:part,fsname[,srcbase,manifest1,manifest2,...]]:
     Create a disk image with the given name, size in sectors, partition layout,
-    boot sector, and initialize with one or more filesystems.
+    boot sector, and initialize with one or more filesystems. Source base is
+    ignored for manifest file paths prefixed with a dash '-' character.
 
   writesectors <imagename> <partition> <sector> <file>:
     Write a file directly to the specified partition, starting at the specified
     sector.
 
-  updatehierarchy <imagename> <partition> <base> <manifestfile>:
+  updatehierarchy <imagename> <partition> <manifestfile> [base]:
     Update all recursive subdirectories indicated by manifest file.
 
   updatefiles <imagename> <partition> <listfile>:
@@ -75,6 +76,544 @@ STRUCT DutOsDescription
 
     LabelFileName : TlDynamicBuffer,
     BootstrapFileName : TlDynamicBuffer,
+END
+
+
+FN DutCopyFileIntoVolume (
+    IN srcpath : ^UBYTE,
+    IN destpath : ^UBYTE,
+    IN mount : ^DutMount,
+    IN uid : UWORD,
+    IN gid : UWORD,
+) : UWORD
+
+    // Copy a file into the volume at the specified path.
+
+    // Open the source file.
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        srcpath, // path
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        RETURN FALSE
+    END
+
+    // Open the destination file on the disk image.
+
+    error : ^UBYTE
+
+    destfile := DutOpenFileSetPermissions (
+        mount, // mount
+        destpath, // path
+        TRUE, // create
+        -1, // permissions
+        uid, // uid
+        gid, // gid
+        OUT error, // error
+    )
+
+    IF NOT destfile THEN
+        TlError ( "%s: %s\n", destpath, error )
+    END
+
+    // Write the contents.
+
+    DutTruncateFile ( destfile )
+
+    offset := 0
+
+    WHILE TRUE DO
+        len := TlReadFile (
+            handle, // handle
+            4096, // bytes
+            &DutTemporaryBuffer[0], // buffer
+        )
+
+        IF len == 0 THEN
+            BREAK
+        END
+
+        wrotelen := DutWriteFile (
+            destfile, // file
+            offset, // offset
+            len, // len
+            &DutTemporaryBuffer[0], // buf
+        )
+
+        IF wrotelen == -1 THEN
+            TlError ( "I/O error\n" )
+        END
+
+        offset += 4096
+    END
+
+    DutCloseFile ( destfile )
+
+    TlClose ( handle )
+
+    RETURN TRUE
+END
+
+FN DutVolumeFromImageAndPart (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+) : ^DutDiskCommon
+
+    partid : UWORD
+
+    IF NOT TlStringToNumber (
+        partition, // src
+        -1, // bufsize
+        OUT partid, // num
+    ) THEN
+        TlError ( "Bad partition number\n" )
+    END
+
+    di := DutOpenDiskImage (
+        imagename, // filename
+        FALSE, // create
+        0, // sectors
+    )
+
+    IF partid != -1 THEN
+        DutParsePartitionTable ( di )
+    END
+
+    volume := CAST DutFindPartitionById (
+        di, // image
+        partid, // id
+    ) TO ^DutDiskCommon
+
+    IF NOT volume THEN
+        TlError ( "No such partition %d\n", partid )
+    END
+
+    RETURN volume
+END
+
+FN DutMountFromImageAndPart (
+    IN imagename : ^UBYTE,
+    IN partition : ^UBYTE,
+) : ^DutMount
+
+    volume := DutVolumeFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    mount := DutMountUnknownFilesystem ( volume )
+
+    IF NOT mount THEN
+        TlError ( "Failed to mount filesystem\n" )
+    END
+
+    RETURN mount
+END
+
+FN DutLoadFileData (
+    IN filename : ^UBYTE,
+) : ^UBYTE
+
+    handle : ^VOID
+
+    status := TlOpenSource (
+        filename, // path
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: failed to open\n", filename )
+    END
+
+    stat : TlStatRecord
+
+    status = TlStatFile (
+        filename, // path
+        &stat, // statrecord
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to stat file", 0, 0, 0 )
+    END
+
+    buf : ^UBYTE
+
+    status = TlAlloc (
+        stat.SizeInBytes + 1, // bytes
+        OUT buf, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate file data", 0, 0, 0 )
+    END
+
+    TlReadFile (
+        handle, // handle
+        stat.SizeInBytes, // bytes
+        buf, // buf
+    )
+
+    buf[stat.SizeInBytes] = 0
+
+    RETURN buf
+END
+
+FNPTR DutCallbackPerLineF (
+    IN buf : ^UBYTE,
+    IN context : ^VOID,
+    IN linenum : UWORD,
+)
+
+STRUCT DutUpdateFilesContext
+    Mount : ^DutMount,
+    SourceBase : ^UBYTE,
+    SrcBaseLen : UWORD,
+    FileName : ^UBYTE,
+    Uid : UWORD,
+    Gid : UWORD,
+    DestPath : ^UBYTE,
+    DestPathLen : UWORD,
+END
+
+FN (TlIterateDirectoryCallbackF) DutUpdateHierarchyDirCallback (
+    IN fullpath : ^UBYTE,
+    IN filename : ^UBYTE,
+    IN context : ^VOID,
+)
+
+    ctx := CAST context TO ^DutUpdateFilesContext
+
+    dest : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &dest )
+
+    IF ctx^.DestPathLen THEN
+        TlCopyIntoDynamicBuffer (
+            &dest, // array
+            ctx^.DestPath, // srcbuf
+            ctx^.DestPathLen, // length
+        )
+
+        IF dest.Buffer[dest.Count - 1] != '/' THEN
+            TlInsertDynamicBuffer (
+                &dest, // array
+                '/', // byte
+            )
+        END
+    END
+
+    TlCopyIntoDynamicBuffer (
+        &dest, // array
+        filename, // srcbuf
+        TlMeasureString ( filename ) + 1, // length
+    )
+
+    IF TlIsPathDirectory ( fullpath ) THEN
+        // Recurse.
+
+        innerctx : DutUpdateFilesContext
+
+        innerctx.Mount = ctx^.Mount
+        innerctx.Uid = ctx^.Uid
+        innerctx.Gid = ctx^.Gid
+        innerctx.DestPath = dest.Buffer
+        innerctx.DestPathLen = dest.Count - 1
+
+        IF TlIterateDirectory (
+            fullpath, // path
+            &DutUpdateHierarchyDirCallback, // callback
+            &innerctx, // context
+        ) THEN
+            TlError ( "%s: Failed to iterate directory\n", fullpath )
+        END
+
+        TlUninitializeDynamicBuffer ( &dest )
+
+        LEAVE
+    END
+
+    // TlPrint ( "Writing %s to %s\n", fullpath, dest.Buffer )
+
+    DutCopyFileIntoVolume (
+        fullpath, // srcpath
+        dest.Buffer, // destpath
+        ctx^.Mount, // mount
+        ctx^.Uid, // uid
+        ctx^.Gid, // gid
+    )
+
+    TlUninitializeDynamicBuffer ( &dest )
+END
+
+FN DutTokenizeIntoDynamicBuffer (
+    IN array : ^TlDynamicBuffer,
+    IN buf : ^UBYTE,
+) : ^UBYTE
+
+    // Read the next whitespace delineated token into the dynamic buffer.
+
+    WHILE buf^ == ' ' OR buf^ == '\t' DO
+        // Skip whitespace.
+
+        buf += 1
+    END
+
+    IF buf^ == 0 OR buf^ == '#' THEN
+        // Nothing relevant on this line.
+
+        RETURN NULLPTR
+    END
+
+    WHILE TRUE DO
+        IF buf^ == ' ' OR
+            buf^ == '\t' OR
+            buf^ == 0 OR
+            buf^ == '#' THEN
+
+            TlInsertDynamicBuffer (
+                array, // array
+                0, // byte
+            )
+
+            RETURN buf
+        END
+
+        TlInsertDynamicBuffer (
+            array, // array
+            buf^, // byte
+        )
+
+        buf += 1
+    END
+END
+
+FN (DutCallbackPerLineF) DutUpdateFilesCallback (
+    IN buf : ^UBYTE,
+    IN context : ^VOID,
+    IN linenum : UWORD,
+)
+
+    ctx := CAST context TO ^DutUpdateFilesContext
+
+    srcpath : TlDynamicBuffer
+    destpath : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &destpath )
+
+    next := DutTokenizeIntoDynamicBuffer (
+        &destpath, // array
+        buf, // buf
+    )
+
+    IF NOT next THEN
+        // Nothing here.
+
+        TlUninitializeDynamicBuffer ( &destpath )
+
+        LEAVE
+    END
+
+    TlInitializeDynamicBuffer ( &srcpath )
+
+    next = DutTokenizeIntoDynamicBuffer (
+        &srcpath, // array
+        next, // buf
+    )
+
+    IF NOT next THEN
+        TlError ( "%s:%d: Expected source path\n", ctx^.FileName, linenum )
+    END
+
+    // Copy the file in.
+
+    IF NOT DutCopyFileIntoVolume (
+        srcpath.Buffer, // srcpath
+        destpath.Buffer, // destpath
+        ctx^.Mount, // mount
+        -1, // uid
+        -1, // gid
+    ) THEN
+
+        TlPrintByHandle (
+            TlStdErr, // handle
+            "%s: %s: Warning: Failed to update\n", // fmt
+            TlProgramName,
+            srcpath.Buffer,
+        )
+    END
+
+    TlUninitializeDynamicBuffer ( &srcpath )
+    TlUninitializeDynamicBuffer ( &destpath )
+END
+
+FN (DutCallbackPerLineF) DutUpdateHierarchyCallback (
+    IN buf : ^UBYTE,
+    IN context : ^VOID,
+    IN linenum : UWORD,
+)
+
+    ctx := CAST context TO ^DutUpdateFilesContext
+
+    srcpath : TlDynamicBuffer
+    destpath : TlDynamicBuffer
+    uidstr : TlDynamicBuffer
+    gidstr : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &destpath )
+
+    next := DutTokenizeIntoDynamicBuffer (
+        &destpath, // array
+        buf, // buf
+    )
+
+    IF NOT next THEN
+        // Nothing here.
+
+        TlUninitializeDynamicBuffer ( &destpath )
+
+        LEAVE
+    END
+
+    TlInitializeDynamicBuffer ( &srcpath )
+    TlInitializeDynamicBuffer ( &uidstr )
+    TlInitializeDynamicBuffer ( &gidstr )
+
+    // Pre-pend the source base.
+
+    IF ctx^.SrcBaseLen THEN
+        TlCopyIntoDynamicBuffer (
+            &srcpath, // array
+            ctx^.SourceBase, // srcbuf
+            ctx^.SrcBaseLen, // count
+        )
+
+        IF srcpath.Buffer[srcpath.Count - 1] != '/' THEN
+            TlInsertDynamicBuffer (
+                &srcpath, // array
+                '/', // byte
+            )
+        END
+    END
+
+    next = DutTokenizeIntoDynamicBuffer (
+        &srcpath, // array
+        next, // buf
+    )
+
+    IF NOT next THEN
+        TlError ( "%s:%d: Expected source path\n", ctx^.FileName, linenum )
+    END
+
+    next = DutTokenizeIntoDynamicBuffer (
+        &uidstr, // array
+        next, // buf
+    )
+
+    IF NOT next THEN
+        TlError ( "%s:%d: Expected UID\n", ctx^.FileName, linenum )
+    END
+
+    next = DutTokenizeIntoDynamicBuffer (
+        &gidstr, // array
+        next, // buf
+    )
+
+    IF NOT next THEN
+        TlError ( "%s:%d: Expected GID\n", ctx^.FileName, linenum )
+    END
+
+    uid : UWORD
+    gid : UWORD
+
+    IF NOT TlStringToNumber (
+        uidstr.Buffer, // src
+        -1, // bufsize
+        OUT uid, // num
+    ) THEN
+        TlError ( "%s:%d: Bad UID number\n", ctx^.FileName, linenum )
+    END
+
+    IF NOT TlStringToNumber (
+        gidstr.Buffer, // src
+        -1, // bufsize
+        OUT gid, // num
+    ) THEN
+        TlError ( "%s:%d: Bad GID number\n", ctx^.FileName, linenum )
+    END
+
+    TlUninitializeDynamicBuffer ( &uidstr )
+    TlUninitializeDynamicBuffer ( &gidstr )
+
+    ctx^.Uid = uid
+    ctx^.Gid = gid
+    ctx^.DestPath = destpath.Buffer
+    ctx^.DestPathLen = destpath.Count - 1
+
+    IF TlIterateDirectory (
+        srcpath.Buffer, // path
+        &DutUpdateHierarchyDirCallback, // callback
+        ctx, // context
+    ) THEN
+        TlError ( "%s: Failed to iterate directory\n", srcpath.Buffer )
+    END
+
+    TlUninitializeDynamicBuffer ( &destpath )
+    TlUninitializeDynamicBuffer ( &srcpath )
+END
+
+FN DutCallbackPerLine (
+    IN buf : ^UBYTE,
+    IN callback : DutCallbackPerLineF,
+    IN context : ^VOID,
+)
+
+    // For each line in the buffer, call the callback function.
+
+    innl := TRUE
+    linestart := buf
+    linenum := 1
+
+    WHILE TRUE DO
+        c := buf^
+
+        IF c == 0 OR c == '\n' THEN
+            // Close the buffer.
+
+            buf^ = 0
+
+            // Callback.
+
+            callback (
+                linestart, // buf
+                context, // context
+                linenum, // linenum
+            )
+
+            IF c == 0 THEN
+                BREAK
+            END
+
+            // Replace the newline.
+
+            linenum += 1
+            buf^ = '\n'
+
+            innl = TRUE
+
+            linestart = buf + 1
+
+        ELSEIF innl THEN
+            linestart = buf
+
+            innl = FALSE
+        END
+
+        buf += 1
+    END
 END
 
 FN DutCreateFilesystems (
@@ -132,9 +671,48 @@ FN DutCreateFilesystems (
                 TlError ( "Failed to mount filesystem\n" )
             END
 
+            srcbaselen := TlMeasureString ( fs^.SrcBaseBuffer.Buffer )
+
             // Now initialize the filesystem hierarchy using the manifest files.
 
-            // ...
+            mfsthead := &fs^.ManifestListHead
+            mfstentry := mfsthead^.Next
+
+            WHILE mfstentry != mfsthead DO
+                manifest := CONTAINEROF mfstentry TO DutManifest.Entry
+
+                mfstpath := manifest^.PathBuffer.Buffer
+
+                context : DutUpdateFilesContext
+
+                IF mfstpath[0] == '-' THEN
+                    // Source base disabled.
+
+                    mfstpath += 1
+
+                    context.SourceBase = ""
+                    context.SrcBaseLen = 0
+
+                ELSE
+                    context.SourceBase = fs^.SrcBaseBuffer.Buffer
+                    context.SrcBaseLen = srcbaselen
+                END
+
+                context.Mount = mount
+                context.FileName = mfstpath
+
+                buf := DutLoadFileData ( mfstpath )
+
+                DutCallbackPerLine (
+                    buf, // buf
+                    &DutUpdateHierarchyCallback, // callback
+                    &context, // context
+                )
+
+                TlFree ( buf )
+
+                mfstentry = mfstentry^.Next
+            END
 
             // Unmount the filesystem.
 
@@ -393,6 +971,8 @@ FN DutCreateImage (
             IF arg^ == ',' THEN
                 // Collect source base.
 
+                arg += 1
+
                 WHILE arg^ AND arg^ != ',' DO
                     TlInsertDynamicBuffer (
                         &fs^.SrcBaseBuffer, // array
@@ -400,10 +980,6 @@ FN DutCreateImage (
                     )
 
                     arg += 1
-                END
-
-                IF fs^.SrcBaseBuffer.Count == 0 THEN
-                    TlError ( "-fs: Syntax error\n" )
                 END
 
                 TlInsertDynamicBuffer (
@@ -438,7 +1014,7 @@ FN DutCreateImage (
                 END
 
                 IF manifest^.PathBuffer.Count == 0 THEN
-                    TlError ( "-fs: Syntax error\n" )
+                    TlError ( "-fs: Syntax error 1\n" )
                 END
 
                 TlInsertDynamicBuffer (
@@ -494,136 +1070,6 @@ FN DutCreateImage (
     END
 END
 
-FN DutCopyFileIntoVolume (
-    IN srcpath : ^UBYTE,
-    IN destpath : ^UBYTE,
-    IN mount : ^DutMount,
-) : UWORD
-
-    // Copy a file into the volume at the specified path.
-
-    // Open the source file.
-
-    handle : ^VOID
-
-    status := TlOpenSource (
-        srcpath, // path
-        OUT handle, // handle
-    )
-
-    IF status THEN
-        RETURN FALSE
-    END
-
-    // Open the destination file on the disk image.
-
-    error : ^UBYTE
-
-    destfile := DutOpenFile (
-        mount, // mount
-        destpath, // path
-        TRUE, // create
-        OUT error, // error
-    )
-
-    IF NOT destfile THEN
-        TlError ( "%s: %s\n", destpath, error )
-    END
-
-    // Write the contents.
-
-    DutTruncateFile ( destfile )
-
-    offset := 0
-
-    WHILE TRUE DO
-        len := TlReadFile (
-            handle, // handle
-            4096, // bytes
-            &DutTemporaryBuffer[0], // buffer
-        )
-
-        IF len == 0 THEN
-            BREAK
-        END
-
-        wrotelen := DutWriteFile (
-            destfile, // file
-            offset, // offset
-            len, // len
-            &DutTemporaryBuffer[0], // buf
-        )
-
-        IF wrotelen == -1 THEN
-            TlError ( "I/O error\n" )
-        END
-
-        offset += 4096
-    END
-
-    DutCloseFile ( destfile )
-
-    TlClose ( handle )
-
-    RETURN TRUE
-END
-
-FN DutVolumeFromImageAndPart (
-    IN imagename : ^UBYTE,
-    IN partition : ^UBYTE,
-) : ^DutDiskCommon
-
-    partid : UWORD
-
-    IF NOT TlStringToNumber (
-        partition, // src
-        -1, // bufsize
-        OUT partid, // num
-    ) THEN
-        TlError ( "Bad partition number\n" )
-    END
-
-    di := DutOpenDiskImage (
-        imagename, // filename
-        FALSE, // create
-        0, // sectors
-    )
-
-    IF partid != -1 THEN
-        DutParsePartitionTable ( di )
-    END
-
-    volume := CAST DutFindPartitionById (
-        di, // image
-        partid, // id
-    ) TO ^DutDiskCommon
-
-    IF NOT volume THEN
-        TlError ( "No such partition %d\n", partid )
-    END
-
-    RETURN volume
-END
-
-FN DutMountFromImageAndPart (
-    IN imagename : ^UBYTE,
-    IN partition : ^UBYTE,
-) : ^DutMount
-
-    volume := DutVolumeFromImageAndPart (
-        imagename, // imagename
-        partition, // partition
-    )
-
-    mount := DutMountUnknownFilesystem ( volume )
-
-    IF NOT mount THEN
-        TlError ( "Failed to mount filesystem\n" )
-    END
-
-    RETURN mount
-END
-
 FN DutDumpInfo (
     IN imagename : ^UBYTE,
 )
@@ -670,222 +1116,34 @@ FN DutDumpInfo (
     END
 END
 
-FN DutLoadFileData (
-    IN filename : ^UBYTE,
-) : ^UBYTE
-
-    handle : ^VOID
-
-    status := TlOpenSource (
-        filename, // path
-        OUT handle, // handle
-    )
-
-    IF status THEN
-        TlError ( "%s: failed to open\n", filename )
-    END
-
-    stat : TlStatRecord
-
-    status = TlStatFile (
-        filename, // path
-        &stat, // statrecord
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to stat file", 0, 0, 0 )
-    END
-
-    buf : ^UBYTE
-
-    status = TlBumpAlloc (
-        stat.SizeInBytes + 1, // bytes
-        OUT buf, // ptr
-    )
-
-    IF status THEN
-        TlInternalError ( "Failed to allocate file data", 0, 0, 0 )
-    END
-
-    TlReadFile (
-        handle, // handle
-        stat.SizeInBytes, // bytes
-        buf, // buf
-    )
-
-    buf[stat.SizeInBytes] = 0
-
-    RETURN buf
-END
-
-FNPTR DutCallbackPerLineF (
-    IN buf : ^UBYTE,
-    IN context : ^VOID,
-)
-
-STRUCT DutUpdateFilesContext
-    Mount : ^DutMount,
-END
-
-FN (DutCallbackPerLineF) DutUpdateFilesCallback (
-    IN buf : ^UBYTE,
-    IN context : ^VOID,
-)
-
-    ctx := CAST context TO ^DutUpdateFilesContext
-
-    WHILE buf^ == ' ' OR buf^ == '\t' DO
-        // Skip whitespace.
-
-        buf += 1
-    END
-
-    IF buf^ == 0 OR buf^ == '#' THEN
-        // Nothing relevant on this line.
-
-        LEAVE
-    END
-
-    destpath := buf
-    oldchar1 := buf
-    oldc1 := 0
-
-    // Find the end of this whitespace-denominated field.
-
-    WHILE TRUE DO
-        oldc1 = buf^
-
-        IF oldc1 == ' ' OR oldc1 == '\t' THEN
-            oldchar1 = buf
-
-            // Close the field with a null terminator.
-
-            buf^ = 0
-
-            buf += 1
-
-            BREAK
-        END
-
-        IF oldc1 == 0 THEN
-            TlError ( "Syntax error 1\n" )
-        END
-
-        buf += 1
-    END
-
-    WHILE buf^ == ' ' OR buf^ == '\t' DO
-        // Skip whitespace.
-
-        buf += 1
-    END
-
-    IF buf^ == 0 OR buf^ == '#' THEN
-        TlError ( "Syntax error 2\n" )
-    END
-
-    // Find the end of the next.
-
-    srcpath := buf
-    oldchar2 := buf
-    oldc2 := 0
-
-    WHILE TRUE DO
-        oldc2 = buf^
-
-        IF oldc2 == ' ' OR oldc2 == '\t' OR oldc2 == 0 THEN
-            oldchar2 = buf
-
-            // Close the field with a null terminator.
-
-            buf^ = 0
-
-            buf += 1
-
-            BREAK
-        END
-
-        buf += 1
-    END
-
-    // Copy the file in.
-
-    IF NOT DutCopyFileIntoVolume (
-        srcpath, // srcpath
-        destpath, // destpath
-        ctx^.Mount, // mount
-    ) THEN
-
-        TlPrintByHandle (
-            TlStdErr, // handle
-            "%s: %s: Warning: Failed to update\n", // fmt
-            TlProgramName,
-            srcpath,
-        )
-    END
-
-    // Replace the buffer characters.
-
-    oldchar1^ = oldc1
-    oldchar2^ = oldc2
-END
-
-FN DutCallbackPerLine (
-    IN buf : ^UBYTE,
-    IN callback : DutCallbackPerLineF,
-    IN context : ^VOID,
-)
-
-    // For each line in the buffer, call the callback function.
-
-    innl := TRUE
-    linestart := buf
-
-    WHILE TRUE DO
-        c := buf^
-
-        IF c == 0 OR c == '\n' THEN
-            // Close the buffer.
-
-            buf^ = 0
-
-            // Callback.
-
-            callback (
-                linestart, // buf
-                context, // context
-            )
-
-            IF c == 0 THEN
-                BREAK
-            END
-
-            // Replace the newline.
-
-            buf^ = '\n'
-
-            innl = TRUE
-
-            linestart = buf + 1
-
-        ELSEIF innl THEN
-            linestart = buf
-
-            innl = FALSE
-        END
-
-        buf += 1
-    END
-END
-
 FN DutUpdateHierarchy (
     IN imagename : ^UBYTE,
     IN partition : ^UBYTE,
-    IN sourcebase : ^UBYTE,
     IN manifest : ^UBYTE,
+    IN sourcebase : ^UBYTE,
 )
 
-    TlInternalError ( "DutUpdateHierarchy", 0, 0, 0 )
+    mount := DutMountFromImageAndPart (
+        imagename, // imagename
+        partition, // partition
+    )
+
+    context : DutUpdateFilesContext
+
+    context.Mount = mount
+    context.SourceBase = sourcebase
+    context.SrcBaseLen = TlMeasureString ( sourcebase )
+    context.FileName = manifest
+
+    buf := DutLoadFileData ( manifest )
+
+    DutCallbackPerLine (
+        buf, // buf
+        &DutUpdateHierarchyCallback, // callback
+        &context, // context
+    )
+
+    DutUnmountFilesystem ( mount )
 END
 
 FN DutUpdateFiles (
@@ -902,6 +1160,7 @@ FN DutUpdateFiles (
     context : DutUpdateFilesContext
 
     context.Mount = mount
+    context.FileName = listfile
 
     buf := DutLoadFileData ( listfile )
 
@@ -1014,6 +1273,8 @@ FN DutWrite (
         hostpath, // srcpath
         path, // destpath
         mount, // mount
+        -1, // uid
+        -1, // gid
     ) THEN
 
         TlError ( "%s: Failed to open host file\n", hostpath )
@@ -1150,15 +1411,21 @@ FN TlMain (
         )
 
     ELSEIF TlCompareString ( cmd, "updatehierarchy" ) == 0 THEN
-        IF argc != 6 THEN
+        IF argc != 6 AND argc != 5 THEN
             DutUsage ()
+        END
+
+        srcbase := ""
+
+        IF argc == 6 THEN
+            srcbase = argv[5]
         END
 
         DutUpdateHierarchy (
             argv[2], // imagename
             argv[3], // partition
-            argv[4], // sourcebase
-            argv[5], // manifest
+            argv[4], // manifest
+            srcbase, // srcbase
         )
 
     ELSEIF TlCompareString ( cmd, "updatefiles" ) == 0 THEN

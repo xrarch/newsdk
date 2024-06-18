@@ -901,6 +901,9 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
     IN file : ^DutFile,
     IN path : ^UBYTE,
     IN create : UWORD,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
     OUT error : ^UBYTE,
 ) : UWORD
 
@@ -1065,18 +1068,23 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
                 ELSE
                     inode^.Type = AFS_INODE_FILE
 
-                    ext := TlGetPathExtension ( &pcomp[0] )
-
-                    IF TlCompareString ( ext, "exe" ) == 0 OR
-                        TlCompareString ( ext, "sys" ) == 0 OR
-                        TlCompareString ( ext, "dll" ) == 0 THEN
-
-                        // It's an executable.
-
-                        inode^.Permissions = 0755
+                    IF permissions != -1 THEN
+                        inode^.Permissions = permissions
 
                     ELSE
-                        inode^.Permissions = 0644
+                        ext := TlGetPathExtension ( &pcomp[0] )
+
+                        IF TlCompareString ( ext, "exe" ) == 0 OR
+                            TlCompareString ( ext, "sys" ) == 0 OR
+                            TlCompareString ( ext, "dll" ) == 0 THEN
+
+                            // It's an executable.
+
+                            inode^.Permissions = 0755
+
+                        ELSE
+                            inode^.Permissions = 0644
+                        END
                     END
                 END
 
@@ -1086,6 +1094,14 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
                 inode^.StartBlock = 0xFFFFFFFF
                 inode^.Gid = 0
                 inode^.ByteSize = 0
+
+                IF uid != -1 THEN
+                    inode^.Uid = uid
+                END
+
+                IF gid != -1 THEN
+                    inode^.Gid = gid
+                END
 
                 DutDirtyBlock ( iblock )
 

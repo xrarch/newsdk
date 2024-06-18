@@ -78,7 +78,7 @@ uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t,
             continue;
         }
 
-        char fullpath[256];
+        char fullpath[512];
 
         sprintf (&fullpath[0], "%s/%s", path, dp->d_name);
 

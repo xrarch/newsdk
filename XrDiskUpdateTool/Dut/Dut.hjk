@@ -79,6 +79,9 @@ FNPTR DutFilesystemOpenF (
     IN file : ^DutFile,
     IN path : ^UBYTE,
     IN create : UWORD,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
     OUT error : ^UBYTE,
 ) : UWORD
 
@@ -256,6 +259,16 @@ EXTERN FN DutMountFilesystem (
 EXTERN FN DutUnmountFilesystem (
     IN mount : ^DutMount,
 )
+
+EXTERN FN DutOpenFileSetPermissions (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    IN create : UWORD,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
+    OUT error : ^UBYTE,
+) : ^DutFile
 
 EXTERN FN DutOpenFile (
     IN mount : ^DutMount,

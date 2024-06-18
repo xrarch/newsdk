@@ -112,10 +112,13 @@ FN DutUnmountFilesystem (
     TlFree ( mount )
 END
 
-FN DutOpenFile (
+FN DutOpenFileSetPermissions (
     IN mount : ^DutMount,
     IN path : ^UBYTE,
     IN create : UWORD,
+    IN permissions : UWORD,
+    IN uid : UWORD,
+    IN gid : UWORD,
     OUT error : ^UBYTE,
 ) : ^DutFile
 
@@ -141,6 +144,9 @@ FN DutOpenFile (
         file, // file
         path, // path
         create, // create
+        permissions, // permissions
+        uid, // uid
+        gid, // gid
         OUT error, // error
     ) THEN
         RETURN file
@@ -149,6 +155,24 @@ FN DutOpenFile (
     TlFree ( file )
 
     RETURN NULLPTR
+END
+
+FN DutOpenFile (
+    IN mount : ^DutMount,
+    IN path : ^UBYTE,
+    IN create : UWORD,
+    OUT error : ^UBYTE,
+) : ^DutFile
+
+    RETURN DutOpenFileSetPermissions (
+        mount, // mount
+        path, // path
+        create, // create
+        -1, // permissions
+        -1, // uid
+        -1, // gid
+        OUT error, // error
+    )
 END
 
 FN DutCloseFile (

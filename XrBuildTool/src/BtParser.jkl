@@ -47,6 +47,16 @@ FN BtParseStandardPath (
 
     count := stdpath^.Count
 
+    WHILE stdpathstr[0] == '.' AND stdpathstr[1] == '/' DO
+        stdpathstr += 2
+        count -= 2
+
+        WHILE stdpathstr[0] == '/' DO
+            stdpathstr += 1
+            count -= 1
+        END
+    END
+
     IF stdpathstr[0] != '<' THEN
         // Must be a relative path.
 
@@ -113,18 +123,7 @@ FN BtParseStandardPath (
         LexError ( errtoken, "Unknown path prefix\n" )
     END
 
-    IF NOT fullpath^.Count THEN
-        TlInsertDynamicBuffer (
-            fullpath, // array
-            '.', // byte
-        )
-
-        TlInsertDynamicBuffer (
-            fullpath, // array
-            '/', // byte
-        )
-
-    ELSEIF fullpath^.Buffer[fullpath^.Count - 1] != '/' THEN
+    IF fullpath^.Count AND fullpath^.Buffer[fullpath^.Count - 1] != '/' THEN
         TlInsertDynamicBuffer (
             fullpath, // array
             '/', // byte

@@ -206,14 +206,16 @@ FN FeInitialize (
 
     TlUninitializeDynamicBuffer ( &parentpath )
 
-    // Use the parent path length to copy the final component of the path to the
-    // beginning.
+    IF parentlen THEN
+        // Use the parent path length to copy the final component of the path to
+        // the beginning.
 
-    TlCopyString (
-        &FeInputFile[0], // dest
-        &FeInputFile[parentlen], // src
-        -1, // bufsize
-    )
+        TlCopyString (
+            &FeInputFile[0], // dest
+            &FeInputFile[parentlen], // src
+            -1, // bufsize
+        )
+    END
 
     // Initialize the lexer.
 
