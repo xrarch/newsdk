@@ -53,7 +53,7 @@ PUBLIC FoxTargetInfo : JklTargetInfoRecord = {
         [PRIM_TYPE_QUAD] = FALSE,
     },
     [PrimitiveAlignment] = {
-        [PRIM_TYPE_VOID] = 0,
+        [PRIM_TYPE_VOID] = 1,
         [PRIM_TYPE_UBYTE] = 1,
         [PRIM_TYPE_UINT] = 2,
         [PRIM_TYPE_ULONG] = 4,

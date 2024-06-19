@@ -328,7 +328,12 @@ FN (TlIterateDirectoryCallbackF) DutUpdateHierarchyDirCallback (
             &DutUpdateHierarchyDirCallback, // callback
             &innerctx, // context
         ) THEN
-            TlError ( "%s: Failed to iterate directory\n", fullpath )
+            TlPrintByHandle (
+                TlStdErr, // handle
+                "%s: %s: WARNING: Failed to iterate directory\n", // fmt
+                TlProgramName,
+                fullpath,
+            )
         END
 
         TlUninitializeDynamicBuffer ( &dest )
@@ -558,7 +563,12 @@ FN (DutCallbackPerLineF) DutUpdateHierarchyCallback (
         &DutUpdateHierarchyDirCallback, // callback
         ctx, // context
     ) THEN
-        TlError ( "%s: Failed to iterate directory\n", srcpath.Buffer )
+        TlPrintByHandle (
+            TlStdErr, // handle
+            "%s: %s: WARNING: Failed to iterate directory\n", // fmt
+            TlProgramName,
+            srcpath.Buffer
+        )
     END
 
     TlUninitializeDynamicBuffer ( &destpath )

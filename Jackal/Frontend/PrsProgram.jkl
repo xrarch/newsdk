@@ -96,7 +96,7 @@ FN PrsCreateType () : ^LexSemanticType
     type^.CachedIsDeclarable = FALSE
     type^.CachedIsValue = FALSE
     type^.Size = TYPE_SIZE_UNINIT
-    type^.MinimumAlignment = 0
+    type^.MinimumAlignment = 1
 
     RETURN type
 END
@@ -4158,7 +4158,7 @@ FN PrsParseCompoundType (
 
     symbol^.SemanticType = type
 
-    minalignment := 0
+    minalignment := 1
 
     offset : UWORD = 0
 
