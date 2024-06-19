@@ -32,6 +32,6 @@ XrLink      - The linker.
 - [x] Self-hosted build tool `xrbt` to replace `make`.
 - [x] New generic assembler written in Jackal with XR/17032 and Fox32 support.
 - [x] New linker written in Jackal with XR/17032 and Fox32 support.
-- [ ] Disk image creation and partitioning tool. Also with support for formatting, reading, and writing AisixFS.
-- [ ] `xrbt` support for automatically creating and updating rebuilt files in disk images if configured to do so.
+- [x] Disk image creation and partitioning tool. Also with support for formatting, reading, and writing AisixFS.
+- [x] `xrbt` support for automatically creating and updating rebuilt files in disk images if configured to do so.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.
