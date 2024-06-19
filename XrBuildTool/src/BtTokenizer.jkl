@@ -190,6 +190,7 @@ FN LexInitialize ()
     LexInsertKeyword ( "PREBUILT", TOKEN_TARGET_INFO, TOKEN_PREBUILT, 0 )
     LexInsertKeyword ( "OBJECTS", TOKEN_TARGET_INFO, TOKEN_OBJECTS, 0 )
     LexInsertKeyword ( "ACTION", TOKEN_TARGET_INFO, TOKEN_ACTION, 0 )
+    LexInsertKeyword ( "IMAGEACTION", TOKEN_TARGET_INFO, TOKEN_IMAGEACTION, 0 )
 END
 
 FN (LexGetCharacterF) LexGetCharacter () : UBYTE

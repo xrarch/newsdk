@@ -24,11 +24,13 @@ BtCreatedPathMutex := NULLPTR
 BtLeafListMutex := NULLPTR
 BtLeafSemaphore := NULLPTR
 BtPrintMutex := NULLPTR
+BtActionMutex := NULLPTR
 BtDiskToolBufferMutex := NULLPTR
 BtLeafCount := 0
 BtNodeCount := 0
 
 BtTerminateWorkers := FALSE
+BtCreatedDiskImage := FALSE
 
 FN BtConnectDagNodes (
     IN fromnode : ^BtDagNode,
@@ -751,6 +753,15 @@ FN BtBuildDagForTarget (
 
     dagnode = context.DagNode
 
+    IF NOT dagnode AND target^.ImageAction AND BtCreatedDiskImage THEN
+        // This target has image actions. Make sure they run.
+
+        dagnode = BtCreateDagNode (
+            target, // target
+            DAG_NULL, // type
+        )
+    END
+
     // Now cache the DAG node and return.
 
     target^.DagNode = dagnode
@@ -775,9 +786,17 @@ FN BtRunActions (
     WHILE listhead != listentry DO
         action := CONTAINEROF listentry TO BtActionRecord.Entry
 
+        // Serialize all ACTIONs with respect to eachother.
+
+        TlAcquireMutex ( BtActionMutex )
+
         IF BtRunCommand ( action^.ActionBuffer ) THEN
+            TlReleaseMutex ( BtActionMutex )
+
             RETURN TRUE
         END
+
+        TlReleaseMutex ( BtActionMutex )
 
         listentry = listentry^.Next
     END
@@ -1671,6 +1690,8 @@ FN BtCreateDiskImage ()
     END
 
     TlUninitializeDynamicBuffer ( &cmdline )
+
+    BtCreatedDiskImage = TRUE
 END
 
 FN BtUpdateDiskImage ()
@@ -1890,6 +1911,8 @@ FN BtBuildDag ()
     TlInitializeHashTable ( &BtCreatedPathHashTable )
 
     BtCreatedPathMutex = TlCreateMutex ()
+
+    BtActionMutex = TlCreateMutex ()
 
     dagroot := BtBuildDagForTarget ( BtSelectedTarget )
 

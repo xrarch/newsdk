@@ -728,6 +728,13 @@ FN (BtTargetInfoF) BtTargetInfoAction ()
     )
 END
 
+FN (BtTargetInfoF) BtTargetInfoImageAction ()
+
+    // Parse an IMAGEACTION info specifier.
+
+    BtCurrentTarget^.ImageAction = TRUE
+END
+
 BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_FILE] = &BtTargetInfoFile,
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
@@ -741,6 +748,7 @@ BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_PREBUILT] = &BtTargetInfoPrebuilt,
     [TOKEN_OBJECTS] = &BtTargetInfoObjects,
     [TOKEN_ACTION] = &BtTargetInfoAction,
+    [TOKEN_IMAGEACTION] = &BtTargetInfoImageAction,
 }
 
 FN BtParseTarget () : UBYTE
@@ -808,6 +816,7 @@ FN BtParseTarget () : UBYTE
     target^.CheckedForUpdate = FALSE
     target^.HasFileName = FALSE
     target^.HasPrebuiltCopies = FALSE
+    target^.ImageAction = FALSE
 
     TlInitializeList ( &target^.DependsOnListHead )
     TlInitializeList ( &target^.SourcesListHead )

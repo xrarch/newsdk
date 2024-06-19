@@ -567,6 +567,7 @@ END
 
 FN AfsAllocateInode (
     IN mount : ^DutMount,
+    IN loader : UWORD,
     OUT inode : ^AfsInode,
     OUT iblock : ^DutCacheBlock,
 ) : UWORD
@@ -577,17 +578,26 @@ FN AfsAllocateInode (
     i : UWORD
     max : UWORD
 
+    min := 3
+
+    IF loader THEN
+        // Make sure the bootloader gets inode 2.
+
+        mount^.Context.Afs.Ihint = 0
+        min = 2
+    END
+
     WHILE j < 2 DO
         IF j == 0 THEN
             i = mount^.Context.Afs.Ihint
             max = mount^.Context.Afs.Icount
 
-            IF i == 0 THEN
-                i = 1
+            IF i < min THEN
+                i = min
             END
 
         ELSEIF mount^.Context.Afs.Ihint THEN
-            i = 1
+            i = min
             max = mount^.Context.Afs.Ihint
 
         ELSE
@@ -1003,6 +1013,12 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
                     RETURN FALSE
                 END
 
+                isloader := FALSE
+
+                IF TlCompareString ( &pcomp[0], "loader.bin" ) == 0 THEN
+                    isloader = TRUE
+                END
+
                 // Create the file. First allocate an inode.
 
                 inode : ^AfsInode
@@ -1010,6 +1026,7 @@ FN (DutFilesystemOpenF) DutAisixFsOpen (
 
                 newinum := AfsAllocateInode (
                     file^.Mount, // mount
+                    isloader, // loader
                     OUT inode, // inode
                     OUT iblock, // iblock
                 )
