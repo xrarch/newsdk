@@ -19,10 +19,11 @@ Subsequent compilations of the tools can be performed as:
 Where toolname is one of the following choices:
 
 ```
-Jackal      - The Jackal compiler.
-XrBuildTool - The build system.
-XrAsm       - The assembler.
-XrLink      - The linker.
+Jackal           - The Jackal compiler.
+XrBuildTool      - The build system.
+XrAsm            - The assembler.
+XrLink           - The linker.
+XrDiskUpdateTool - The disk tool.
 ```
 
 ## Implementation Plan
