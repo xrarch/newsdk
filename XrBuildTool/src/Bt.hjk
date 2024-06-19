@@ -57,6 +57,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_DYLINK,
     TOKEN_PREBUILT,
     TOKEN_OBJECTS,
+    TOKEN_ACTION,
 
     TOKEN_SUBTYPE_MAX, // MUST be at the end
 END
@@ -269,6 +270,12 @@ STRUCT BtSourcesRecord
     ObjectsOnly : UBYTE,
 END
 
+STRUCT BtActionRecord
+    Entry : TlListEntry,
+
+    ActionBuffer : ^UBYTE,
+END
+
 STRUCT BtExposedMacroRecord
     Entry : TlListEntry,
 
@@ -289,6 +296,7 @@ STRUCT BtTarget
     FileName : TlDynamicBuffer,
     PrebuiltCopiesPath : TlDynamicBuffer,
     ObjectListHead : TlListEntry,
+    ActionListHead : TlListEntry,
 
     ExposedMacroListHead : TlListEntry,
 

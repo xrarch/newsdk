@@ -761,11 +761,35 @@ FNPTR BtDagActionF (
     IN dagnode : ^BtDagNode,
 )
 
+FN BtRunActions (
+    IN target : ^BtTarget,
+) : UWORD
+
+    // Run the action commands if any.
+
+    listhead := &target^.ActionListHead
+    listentry := listhead^.Next
+
+    WHILE listhead != listentry DO
+        action := CONTAINEROF listentry TO BtActionRecord.Entry
+
+        IF BtRunCommand ( action^.ActionBuffer ) THEN
+            RETURN TRUE
+        END
+
+        listentry = listentry^.Next
+    END
+
+    RETURN FALSE
+END
+
 FN (BtDagActionF) BtBuildNull (
     IN dagnode : ^BtDagNode,
 )
 
-    // Do nothing.
+    IF BtRunActions ( dagnode^.Target ) THEN
+        BtTerminateWorkers = TRUE
+    END
 END
 
 FN (BtDagActionF) BtBuildJkl (
@@ -1470,6 +1494,12 @@ FN (BtDagActionF) BtLinkExecutable (
     // Now do the command.
 
     IF BtRunCommand ( cmdline.Buffer ) THEN
+        BtTerminateWorkers = TRUE
+
+        LEAVE
+    END
+
+    IF BtRunActions ( dagnode^.Target ) THEN
         BtTerminateWorkers = TRUE
     END
 END

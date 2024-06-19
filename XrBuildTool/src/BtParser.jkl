@@ -665,6 +665,45 @@ FN (BtTargetInfoF) BtTargetInfoPrebuilt ()
     BtCurrentTarget^.HasPrebuiltCopies = TRUE
 END
 
+FN (BtTargetInfoF) BtTargetInfoAction ()
+
+    // Parse an ACTION info specifier.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexError ( &token, "Expected a string\n" )
+    END
+
+    string := CAST token.Payload TO ^LexInternedString
+
+    // Allocate an action record.
+
+    entry : ^BtActionRecord
+
+    status := TlBumpAlloc (
+        SIZEOF BtActionRecord, // bytes
+        OUT entry, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate action record", 0, 0, 0 )
+    END
+
+    entry^.ActionBuffer = string^.DynamicBuffer.Buffer
+
+    // Add to the action list.
+
+    TlInsertAtTailList (
+        &BtCurrentTarget^.ActionListHead, // head
+        &entry^.Entry, // entry
+    )
+END
+
 BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_FILE] = &BtTargetInfoFile,
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
@@ -677,6 +716,7 @@ BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_DYLINK] = &BtTargetInfoDyLink,
     [TOKEN_PREBUILT] = &BtTargetInfoPrebuilt,
     [TOKEN_OBJECTS] = &BtTargetInfoObjects,
+    [TOKEN_ACTION] = &BtTargetInfoAction,
 }
 
 FN BtParseTarget () : UBYTE
@@ -748,6 +788,7 @@ FN BtParseTarget () : UBYTE
     TlInitializeList ( &target^.SourcesListHead )
     TlInitializeList ( &target^.ObjectListHead )
     TlInitializeList ( &target^.ExposedMacroListHead )
+    TlInitializeList ( &target^.ActionListHead )
 
     // Set as the current target.
 
