@@ -252,6 +252,11 @@ EXTERN BtJobCount : UWORD
 
 EXTERN BtVerbose : UWORD
 
+EXTERN BtUseDiskTool : UWORD
+EXTERN BtDiskImageName : ^UBYTE
+EXTERN BtDiskImageCreationOptions : ^UBYTE
+EXTERN BtDiskImageUpdatePartition : ^UBYTE
+
 EXTERN FN BtStatFile (
     IN fullpath : ^UBYTE,
 ) : ^TlStatRecord
@@ -294,6 +299,7 @@ STRUCT BtTarget
     DependsOnListHead : TlListEntry,
     SourcesListHead : TlListEntry,
     FileName : TlDynamicBuffer,
+    RelFileName : TlDynamicBuffer,
     PrebuiltCopiesPath : TlDynamicBuffer,
     ObjectListHead : TlListEntry,
     ActionListHead : TlListEntry,

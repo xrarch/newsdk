@@ -15,7 +15,8 @@ EXTERN BtArchNameSuffix : UBYTE[FE_PATH_BUFFER_SIZE]
 BtPathToJklCompiler : TlDynamicBuffer
 BtPathToAssembler : TlDynamicBuffer
 BtPathToLinker : TlDynamicBuffer
-
+BtPathToDiskTool : TlDynamicBuffer
+BtDiskToolUpdateBuffer : TlDynamicBuffer
 BtLeafListHead : TlListEntry
 BtCreatedPathHashTable : TlHashTable
 
@@ -23,6 +24,7 @@ BtCreatedPathMutex := NULLPTR
 BtLeafListMutex := NULLPTR
 BtLeafSemaphore := NULLPTR
 BtPrintMutex := NULLPTR
+BtDiskToolBufferMutex := NULLPTR
 BtLeafCount := 0
 BtNodeCount := 0
 
@@ -1501,6 +1503,39 @@ FN (BtDagActionF) BtLinkExecutable (
 
     IF BtRunActions ( dagnode^.Target ) THEN
         BtTerminateWorkers = TRUE
+
+        LEAVE
+    END
+
+    IF BtUseDiskTool AND dagnode^.Target^.RelFileName.Count != 0 THEN
+        // Should be updated in the disk image.
+        // Create a line in the disk tool updatefiles buffer.
+
+        TlAcquireMutex ( BtDiskToolBufferMutex )
+
+        TlCopyIntoDynamicBuffer (
+            &BtDiskToolUpdateBuffer, // array
+            dagnode^.Target^.RelFileName.Buffer, // srcbuf
+            dagnode^.Target^.RelFileName.Count - 1, // length
+        )
+
+        TlInsertDynamicBuffer (
+            &BtDiskToolUpdateBuffer, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &BtDiskToolUpdateBuffer, // array
+            dagnode^.Target^.FileName.Buffer, // srcbuf
+            dagnode^.Target^.FileName.Count, // length
+        )
+
+        TlInsertDynamicBuffer (
+            &BtDiskToolUpdateBuffer, // array
+            '\n', // byte
+        )
+
+        TlReleaseMutex ( BtDiskToolBufferMutex )
     END
 END
 
@@ -1586,6 +1621,135 @@ FN (TlTerminationHandlerF) BtTerminationHandler ()
     BtTerminateWorkers = TRUE
 END
 
+FN BtCreateDiskImage ()
+
+    IF TlPathExists ( BtDiskImageName ) THEN
+        // Already exists.
+
+        LEAVE
+    END
+
+    // Create it.
+
+    TlPrint ( "Creating image %s...\n", BtDiskImageName )
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtPathToDiskTool.Buffer, // srcbuf
+        BtPathToDiskTool.Count, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " create ", // srcbuf
+        8, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtDiskImageName, // srcbuf
+        TlMeasureString ( BtDiskImageName ), // length
+    )
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        ' ', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtDiskImageCreationOptions, // srcbuf
+        TlMeasureString ( BtDiskImageCreationOptions ) + 1, // length
+    )
+
+    IF BtRunCommand ( cmdline.Buffer ) THEN
+        TlError ( "%s: Failed to create disk image\n", BtDiskImageName )
+    END
+
+    TlUninitializeDynamicBuffer ( &cmdline )
+END
+
+FN BtUpdateDiskImage ()
+
+    // Write out the update buffer.
+
+    handle : ^VOID
+
+    status := TlOpenDestination (
+        "_DELTA.ful", // filename
+        OUT handle, // handle
+    )
+
+    IF status THEN
+        TlError ( "Failed to open DELTA file to update disk image\n" )
+    END
+
+    TlWriteFile (
+        handle, // handle
+        BtDiskToolUpdateBuffer.Count, // bytes
+        BtDiskToolUpdateBuffer.Buffer, // buffer
+    )
+
+    TlClose ( handle )
+
+    // Construct update command line.
+
+    cmdline : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &cmdline )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtPathToDiskTool.Buffer, // srcbuf
+        BtPathToDiskTool.Count, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " updatefiles ", // srcbuf
+        13, // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtDiskImageName, // srcbuf
+        TlMeasureString ( BtDiskImageName ), // length
+    )
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        ' ', // byte
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        BtDiskImageUpdatePartition, // srcbuf
+        TlMeasureString ( BtDiskImageUpdatePartition ), // length
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &cmdline, // array
+        " _DELTA.ful", // srcbuf
+        12, // length
+    )
+
+    // Update.
+
+    IF BtRunCommand ( cmdline.Buffer ) THEN
+        TlError ( "%s: Failed to update disk image\n", BtDiskImageName )
+    END
+
+    TlUninitializeDynamicBuffer ( &cmdline )
+
+    // Delete delta file.
+
+    BtCleanUpFile ( "_DELTA.ful" )
+END
+
 FN BtBuildDag ()
 
     // Build some paths.
@@ -1656,6 +1820,38 @@ FN BtBuildDag ()
         "bin/xrlink.exe", // srcbuf
         14, // length
     )
+
+    // Create the image if needed.
+
+    IF BtUseDiskTool THEN
+        // Build a path to the disk tool.
+
+        BtDiskToolBufferMutex = TlCreateMutex ()
+
+        TlInitializeDynamicBuffer ( &BtPathToDiskTool )
+        TlInitializeDynamicBuffer ( &BtDiskToolUpdateBuffer )
+
+        TlCopyIntoDynamicBuffer (
+            &BtPathToDiskTool, // array
+            &BtSdkBase[0], // srcbuf
+            TlMeasureString ( &BtSdkBase[0] ), // length
+        )
+
+        IF BtPathToDiskTool.Buffer[BtPathToDiskTool.Count - 1] != '/' THEN
+            TlInsertDynamicBuffer (
+                &BtPathToDiskTool, // array
+                '/', // byte
+            )
+        END
+
+        TlCopyIntoDynamicBuffer (
+            &BtPathToDiskTool, // array
+            "bin/xrdut.exe", // srcbuf
+            13, // length
+        )
+
+        BtCreateDiskImage ()
+    END
 
     // The update DAG represents all of the 'objects' that need to be updated to
     // bring the selected target up to date. A node represents one of these
@@ -1778,5 +1974,9 @@ FN BtBuildDag ()
 
             i += 1
         END
+    END
+
+    IF BtUseDiskTool AND BtDiskToolUpdateBuffer.Count THEN
+        BtUpdateDiskImage ()
     END
 END

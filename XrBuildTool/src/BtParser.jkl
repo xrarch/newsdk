@@ -12,6 +12,10 @@ PUBLIC BtCHost := FALSE
 PUBLIC BtArchHasSuffix := FALSE
 PUBLIC BtCleanUp := FALSE
 PUBLIC BtVerbose := FALSE
+PUBLIC BtUseDiskTool := FALSE
+PUBLIC BtDiskImageName : ^UBYTE
+PUBLIC BtDiskImageCreationOptions : ^UBYTE
+PUBLIC BtDiskImageUpdatePartition : ^UBYTE
 
 PUBLIC BtTargetArchitectureName : UBYTE[BT_ARCH_BUFFER_SIZE]
 PUBLIC BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
@@ -24,6 +28,7 @@ PUBLIC BtSelectedTarget : ^BtTarget
 FN BtParseStandardPath (
     IN stdpath : ^TlDynamicBuffer,
     IN fullpath : ^TlDynamicBuffer,
+    IN relpath : ^TlDynamicBuffer,
     IN errtoken : ^LexToken,
 )
 
@@ -65,7 +70,7 @@ FN BtParseStandardPath (
             fullpath, // destpath
         )
 
-    ELSEIF TlCompareStringWithMax ( stdpathstr, "<sdk>/", 5 ) == 0 THEN
+    ELSEIF TlCompareStringWithMax ( stdpathstr, "<sdk>/", 6 ) == 0 THEN
         // Relative to the SDK base.
 
         macro := CAST TlLookupSymbolTable (
@@ -91,7 +96,7 @@ FN BtParseStandardPath (
         stdpathstr += 6
         count -= 6
 
-    ELSEIF TlCompareStringWithMax ( stdpathstr, "<bld>/", 5 ) == 0 THEN
+    ELSEIF TlCompareStringWithMax ( stdpathstr, "<bld>/", 6 ) == 0 THEN
         // Relative to the build base.
 
         macro := CAST TlLookupSymbolTable (
@@ -113,6 +118,14 @@ FN BtParseStandardPath (
             &macro^.Contents.Buffer[0], // srcbuf
             macro^.Contents.Count - 1, // length
         )
+
+        IF relpath THEN
+            TlCopyIntoDynamicBuffer (
+                relpath, // array
+                stdpathstr + 5, // srcbuf
+                count - 5, // length
+            )
+        END
 
         stdpathstr += 6
         count -= 6
@@ -158,9 +171,13 @@ FN (BtTargetInfoF) BtTargetInfoFile ()
     TlUninitializeDynamicBuffer ( &BtCurrentTarget^.FileName )
     TlInitializeDynamicBuffer ( &BtCurrentTarget^.FileName )
 
+    TlUninitializeDynamicBuffer ( &BtCurrentTarget^.RelFileName )
+    TlInitializeDynamicBuffer ( &BtCurrentTarget^.RelFileName )
+
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         &BtCurrentTarget^.FileName, // fullpath
+        &BtCurrentTarget^.RelFileName, // relpath
         &token, // errtoken
     )
 
@@ -270,6 +287,7 @@ FN (BtTargetInfoF) BtTargetInfoSources ()
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         filepath, // fullpath
+        NULLPTR, // relpath
         &token, // errtoken
     )
 
@@ -325,6 +343,7 @@ FN (BtTargetInfoF) BtTargetInfoObjects ()
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         filepath, // fullpath
+        NULLPTR, // relpath
         &token, // errtoken
     )
 
@@ -365,6 +384,7 @@ FN (BtTargetInfoF) BtTargetInfoJklInclude ()
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         &filepath, // fullpath
+        NULLPTR, // relpath
         &token, // errtoken
     )
 
@@ -413,6 +433,7 @@ FN (BtTargetInfoF) BtTargetInfoLibDir ()
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         &filepath, // fullpath
+        NULLPTR, // relpath
         &token, // errtoken
     )
 
@@ -533,6 +554,7 @@ FN (BtTargetInfoF) BtTargetInfoLink ()
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         &filepath, // fullpath
+        NULLPTR, // relpath
         &token, // errtoken
     )
 
@@ -597,6 +619,7 @@ FN (BtTargetInfoF) BtTargetInfoDyLink ()
     BtParseStandardPath (
         &ctstring^.DynamicBuffer, // stdpath
         &filepath, // fullpath
+        NULLPTR, // relpath
         &ctpathtoken, // errtoken
     )
 
@@ -659,6 +682,7 @@ FN (BtTargetInfoF) BtTargetInfoPrebuilt ()
     BtParseStandardPath (
         &string^.DynamicBuffer, // stdpath
         &BtCurrentTarget^.PrebuiltCopiesPath, // fullpath
+        NULLPTR, // relpath
         &token, // errtoken
     )
 
@@ -779,6 +803,7 @@ FN BtParseTarget () : UBYTE
     TlInitializeDynamicBuffer ( &target^.DyLinkPaths )
     TlInitializeDynamicBuffer ( &target^.FileName )
     TlInitializeDynamicBuffer ( &target^.PrebuiltCopiesPath )
+    TlInitializeDynamicBuffer ( &target^.RelFileName )
 
     target^.CheckedForUpdate = FALSE
     target^.HasFileName = FALSE
@@ -1017,5 +1042,44 @@ FN BtLookupConfigMacros ()
         END
 
         BtVerbose = TRUE
+    END
+
+    // now DISK_TOOL_IMAGE_NAME.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "DISK_TOOL_IMAGE_NAME", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlError ( "DISK_TOOL_IMAGE_NAME is a function macro for some reason\n" )
+        END
+
+        BtUseDiskTool = TRUE
+
+        BtDiskImageName = macro^.Contents.Buffer
+
+        macro = CAST TlLookupSymbolTable (
+            LexCurrentMacroScope, // symboltable
+            "DISK_TOOL_CREATION_OPTIONS", // name
+        ) TO ^LexMacro
+
+        IF NOT macro OR macro^.IsFunctionMacro THEN
+            TlError ( "Expected DISK_TOOL_CREATION_OPTIONS to exist\n" )
+        END
+
+        BtDiskImageCreationOptions = macro^.Contents.Buffer
+
+        macro = CAST TlLookupSymbolTable (
+            LexCurrentMacroScope, // symboltable
+            "DISK_TOOL_UPDATE_PARTITION", // name
+        ) TO ^LexMacro
+
+        IF NOT macro OR macro^.IsFunctionMacro THEN
+            TlError ( "Expected DISK_TOOL_UPDATE_PARTITION to exist\n" )
+        END
+
+        BtDiskImageUpdatePartition = macro^.Contents.Buffer
     END
 END
