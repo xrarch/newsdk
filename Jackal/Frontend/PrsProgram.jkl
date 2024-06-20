@@ -405,6 +405,27 @@ FN PrsCheckType (
     IF type1^.Subtype != type2^.Subtype THEN
         // Not the same type of type.
 
+        IF NOT equivalence THEN
+            IF type1^.Subtype == TYPE_PRIMITIVE AND
+                type2^.Subtype == TYPE_POINTER AND
+                type1^.Body.Primitive.Type ==
+                JklTargetInfo^.LargestPrimitive THEN
+
+                // Implicit cast from pointer to UWORD is fine.
+
+                RETURN FALSE
+            END
+
+            IF type2^.Subtype == TYPE_PRIMITIVE AND
+                type1^.Subtype == TYPE_POINTER AND
+                type2^.Body.Primitive.Inducible THEN
+
+                // Implicit cast from constant to pointer is fine.
+
+                RETURN FALSE
+            END
+        END
+
         LexError ( errtoken, "%sIncompatible types\n", errstring )
     END
 
