@@ -23,6 +23,7 @@ CtTargetInfo : JklTargetInfoRecord = {
     [EntryFunc] = &CtTranspile,
     [ValueNumberConstantFunc] = &CtValueNumber,
     [ConstantMask] = 0xFFFFFFFFFFFFFFFF,
+    [PointerMask] = 0xFFFFFFFFFFFFFFFF,
     [FoldStackAddr] = FALSE,
     [StackAlignment] = 8,
     [PointerAlignment] = 8,

@@ -35,6 +35,7 @@ PUBLIC FoxTargetInfo : JklTargetInfoRecord = {
     [FoldStackAddr] = TRUE,
     [LirInfo] = &FoxLirInfo,
     [ConstantMask] = 0xFFFFFFFF,
+    [PointerMask] = 0xFFFFFFFF,
     [StackAlignment] = 4,
     [PointerAlignment] = 4,
     [PointerSize] = 4,

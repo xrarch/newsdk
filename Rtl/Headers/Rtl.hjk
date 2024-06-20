@@ -1,3 +1,76 @@
+#IF ( == BITS 64 )
+    #DEFINE RTL_MACHINE_WORD_MAX 0xFFFFFFFFFFFFFFFF
+    #DEFINE RTL_MACHINE_WORD_WIDTH 64
+    #DEFINE RTL_MACHINE_WORD_LOG 3
+
+#ELSEIF ( == BITS 32 )
+    #DEFINE RTL_MACHINE_WORD_MAX 0xFFFFFFFF
+    #DEFINE RTL_MACHINE_WORD_WIDTH 32
+    #DEFINE RTL_MACHINE_WORD_LOG 2
+
+#ELSE
+    #ERROR ( STRCAT "[BLD] Bad bitness: " BITS )
+#END
+
+#IF ( STRCMP ARCHITECTURE "xr17032" )
+    #DEFINE RTL_PAGE_SHIFT 12
+
+#ELSEIF ( STRCMP ARCHITECTURE "fox32" )
+    #DEFINE RTL_PAGE_SHIFT 12
+
+#ELSE
+    #ERROR ( STRCAT "[BLD] Unknown architecture: " ARCHITECTURE )
+#END
+
+#DEFINE RTL_MACHINE_WORD_SIZE ( << 1 RTL_MACHINE_WORD_LOG )
+
+#DEFINE RTL_PAGE_SIZE ( << 1 RTL_PAGE_SHIFT )
+
+#DEFINE RTL_ARCH_STRING ( STRCAT ( STRCAT "\"" ARCHITECTURE ) "\"" )
+
+#MACRO RtlInitializeList ( head ) [
+    listhead := (head)
+
+    listhead^.Prev = listhead
+    listhead^.Next = listhead
+]
+
+#MACRO RtlInsertAtTailList ( head, entry ) [
+    listhead := (head)
+    listentry := (entry)
+    last := listhead^.Prev
+
+    listentry^.Prev = last
+    listentry^.Next = listhead
+    last^.Next = listentry
+    listhead^.Prev = listentry
+]
+
+#MACRO RtlInsertAtHeadList ( head, entry ) [
+    listhead := (head)
+    listentry := (entry)
+    first := listhead^.Next
+
+    listentry^.Next = first
+    listentry^.Prev = listhead
+    first^.Prev = (entry)
+    listhead^.Next = (entry)
+]
+
+#MACRO RtlRemoveEntryList ( entry ) [
+    listentry := (entry)
+
+    prev := listentry^.Prev
+    next := listentry^.Next
+    prev^.Next = next
+    next^.Prev = prev
+]
+
+STRUCT RtlListEntry
+    Next : ^RtlListEntry,
+    Prev : ^RtlListEntry,
+END
+
 FNPTR RtlPrintCallbackF (
     IN byte : UBYTE,
     IN context : ^VOID,

@@ -253,6 +253,12 @@ FN TrgInitialize ()
         IF TlCompareString ( &FeTargetString[0], target^^.Name ) == 0 THEN
             JklTargetInfo = target^
 
+            JklPrimitiveTypeMasks[PRIM_TYPE_POINTER] =
+                JklTargetInfo^.PointerMask
+
+            JklSignExtendedTypeMasks[PRIM_TYPE_POINTER] =
+                JklTargetInfo^.PointerMask
+
             LEAVE
         END
 

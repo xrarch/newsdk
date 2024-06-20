@@ -29,6 +29,7 @@ PUBLIC XrTargetInfo : JklTargetInfoRecord = {
     [FoldStackAddr] = TRUE,
     [LirInfo] = &XrLirInfo,
     [ConstantMask] = 0xFFFFFFFF,
+    [PointerMask] = 0xFFFFFFFF,
     [StackAlignment] = 4,
     [PointerAlignment] = 4,
     [PointerSize] = 4,

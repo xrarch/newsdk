@@ -67,6 +67,7 @@ STRUCT JklTargetInfoRecord
     IsUnconditionalFunc : JklIsUnconditionalF,
     LirInfo : ^LirTargetInfoRecord,
     ConstantMask : UWORD,
+    PointerMask : UWORD,
     FoldStackAddr : UBYTE,
     StackAlignment : UBYTE,
     PointerAlignment : UBYTE,
