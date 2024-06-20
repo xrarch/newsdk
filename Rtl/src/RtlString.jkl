@@ -4,7 +4,7 @@
 
 #INCLUDE "<inc>/Rtl.hjk"
 
-FN RtlCompareString (
+EXPORT FN RtlCompareString (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,
 ) : UWORD
@@ -24,7 +24,7 @@ FN RtlCompareString (
     END
 END
 
-FN RtlCompareStringWithMax (
+EXPORT FN RtlCompareStringWithMax (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,
     IN count : UWORD,
@@ -47,7 +47,7 @@ FN RtlCompareStringWithMax (
     RETURN 0
 END
 
-FN RtlMeasureString (
+EXPORT FN RtlMeasureString (
     IN str : ^UBYTE,
 ) : UWORD
 
@@ -60,7 +60,7 @@ FN RtlMeasureString (
     RETURN cnt
 END
 
-FN RtlCopyString (
+EXPORT FN RtlCopyString (
     IN dest : ^UBYTE,
     IN src : ^UBYTE,
     IN bufsize : UWORD,
@@ -85,7 +85,7 @@ FN RtlCopyString (
     dest^ = 0
 END
 
-FN RtlStringToNumber (
+EXPORT FN RtlStringToNumber (
     IN src : ^UBYTE,
     IN bufsize : UWORD,
     OUT num : UWORD,
@@ -176,7 +176,7 @@ FN RtlStringToNumber (
     RETURN TRUE
 END
 
-FN RtlTokenize (
+EXPORT FN RtlTokenize (
     IN buffer : ^UBYTE,
     IN tokenbuffer : ^UBYTE,
     IN bufsize : UWORD,

@@ -8,7 +8,7 @@
 //a1 - size
 //a2 - ulong
 RtlFillMemoryWithUlong:
-.global RtlFillMemoryWithUlong
+.export RtlFillMemoryWithUlong
 	push fp
 	mov  fp, sp
 
@@ -40,7 +40,7 @@ RtlFillMemoryWithUlong:
 //a1 - src
 //a2 - sz
 RtlCopyBytes:
-.global RtlCopyBytes
+.export RtlCopyBytes
 	push fp
 	mov  fp, sp
 
@@ -73,7 +73,6 @@ RtlCopyBytes:
 //a1 - src
 //a2 - size
 RtlpCopyBytesBackwards:
-.global RtlpCopyBytesBackwards
 	push fp
 	mov  fp, sp
 
@@ -118,7 +117,7 @@ RtlpCopyBytesBackwards:
 //a1 - src
 //a2 - size
 RtlMoveBytes:
-.global RtlMoveBytes
+.export RtlMoveBytes
 	cmp  a2, 0
 	ifz  rjmp .done
 

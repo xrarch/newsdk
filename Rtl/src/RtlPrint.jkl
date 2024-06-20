@@ -303,7 +303,7 @@ RtlpFormatters : RtlpFormatF[128] = {
     ['P'] = &RtlpFormatUpperP,
 }
 
-FN RtlPrintByCallbackByVarTable (
+EXPORT FN RtlPrintByCallbackByVarTable (
     IN callback : RtlPrintCallbackF,
     IN context : ^VOID,
     IN fmt : ^UBYTE,
@@ -390,7 +390,7 @@ FN RtlPrintByCallbackByVarTable (
     END
 END
 
-FN RtlPrintByCallback (
+EXPORT FN RtlPrintByCallback (
     IN callback : RtlPrintCallbackF,
     IN context : ^VOID,
     IN fmt : ^UBYTE,
@@ -406,7 +406,7 @@ FN RtlPrintByCallback (
     )
 END
 
-FN RtlPrintByVarTable (
+EXPORT FN RtlPrintByVarTable (
     IN handle : ^VOID,
     IN fmt : ^UBYTE,
     IN argv : ^^VOID,
@@ -422,7 +422,7 @@ FN RtlPrintByVarTable (
     )
 END
 
-FN RtlPrintByHandle (
+EXPORT FN RtlPrintByHandle (
     IN handle : ^VOID,
     IN fmt : ^UBYTE,
     ... argv argc
@@ -436,7 +436,7 @@ FN RtlPrintByHandle (
     )
 END
 
-FN RtlPrint (
+EXPORT FN RtlPrint (
     IN fmt : ^UBYTE,
     ... argv argc
 )
@@ -454,7 +454,7 @@ STRUCT RtlpFormatContext
     Buffer : ^UBYTE,
 END
 
-FN (RtlPrintCallbackF) RtlFormatCallback (
+FN (RtlPrintCallbackF) RtlpFormatCallback (
     IN byte : UBYTE,
     IN context : ^VOID,
 )
@@ -470,7 +470,7 @@ FN (RtlPrintCallbackF) RtlFormatCallback (
     formatcontext^.BufferLeft -= 1
 END
 
-FN RtlFormatByVarTable (
+EXPORT FN RtlFormatByVarTable (
     IN dest : ^UBYTE,
     IN bufsize : UWORD,
     IN fmt : ^UBYTE,
@@ -490,7 +490,7 @@ FN RtlFormatByVarTable (
     context.BufferLeft = bufsize - 1
 
     RtlPrintByCallbackByVarTable (
-        &RtlFormatCallback, // callback
+        &RtlpFormatCallback, // callback
         &context, // context
         fmt, // fmt
         argv, // argv
@@ -502,7 +502,7 @@ FN RtlFormatByVarTable (
     context.Buffer^ = 0
 END
 
-FN RtlFormat (
+EXPORT FN RtlFormat (
     IN dest : ^UBYTE,
     IN bufsize : UWORD,
     IN fmt : ^UBYTE,

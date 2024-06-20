@@ -71,6 +71,11 @@ STRUCT RtlListEntry
     Prev : ^RtlListEntry,
 END
 
+STRUCT RtlBitmapHeader
+    Data : ^UBYTE,
+    SizeInBits : UWORD,
+END
+
 FNPTR RtlPrintCallbackF (
     IN byte : UBYTE,
     IN context : ^VOID,
@@ -180,3 +185,50 @@ EXTERN FN (RtlPrintCallbackF) RtljPrintCallback (
     IN byte : UBYTE,
     IN context : ^VOID,
 )
+
+
+// Bitmap stuff
+
+
+EXTERN FN RtlInitializeBitmap (
+    IN header : ^RtlBitmapHeader,
+    IN sizeinbits : UWORD,
+    IN data : ^UBYTE,
+)
+
+EXTERN FN RtlDumpBitmap (
+    IN header : ^RtlBitmapHeader,
+)
+
+EXTERN FN RtlClearBitmap (
+    IN header : ^RtlBitmapHeader,
+)
+
+EXTERN FN RtlFindRunBitmap (
+    IN header : ^RtlBitmapHeader,
+    IN runlength : UWORD,
+    IN hint : UWORD,
+) : UWORD
+
+EXTERN FN RtlSetBitsBitmap (
+    IN header : ^RtlBitmapHeader,
+    IN index : UWORD,
+    IN runlength : UWORD,
+)
+
+EXTERN FN RtlClearBitsBitmap (
+    IN header : ^RtlBitmapHeader,
+    IN index : UWORD,
+    IN runlength : UWORD,
+)
+
+EXTERN FN RtlGetBitBitmap (
+    IN header : ^RtlBitmapHeader,
+    IN index : UWORD,
+) : UWORD
+
+EXTERN FN RtlCheckClearBitsBitmap (
+    IN header : ^RtlBitmapHeader,
+    IN index : UWORD,
+    IN runlength : UWORD,
+) : UWORD

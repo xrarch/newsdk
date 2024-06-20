@@ -8,7 +8,7 @@
 // a1 - size
 // a2 - ulong
 RtlFillMemoryWithUlong:
-.global RtlFillMemoryWithUlong
+.export RtlFillMemoryWithUlong
     beq  a1, .b1done
 
 .gzero:
@@ -101,7 +101,7 @@ RtlFillMemoryWithUlong:
 // a1 - src
 // a2 - sz
 RtlCopyBytes:
-.global RtlCopyBytes
+.export RtlCopyBytes
     beq  a2, .zerosize
 
     xor  t0, a1, a0
@@ -707,7 +707,7 @@ RtlpCopyBytesBackwards:
     ret
 
 RtlMoveBytes:
-.global RtlMoveBytes
+.export RtlMoveBytes
     slt t0, a1, a0
     bne t0, .backwards
     j   RtlCopyBytes
