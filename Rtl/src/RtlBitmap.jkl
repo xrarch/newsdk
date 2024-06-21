@@ -187,149 +187,142 @@ EXPORT FN RtlFindRunBitmap (
 
     hint >>= 3
 
-    i := 0
+    startindex := hint
+    endindex := sizeinbytes
 
-    WHILE i < 2 DO
-        startindex : UWORD
-        endindex : UWORD
+@retry
 
-        IF i == 0 THEN
-            startindex = hint
-            endindex = sizeinbytes
+    endbitindex : UWORD
+    prevbyte : UWORD
+    curbyte : UWORD
+    theotherbyte : UWORD
+    bitmaskorstartindex : UWORD
+    offset : UWORD
 
-        ELSEIF hint THEN
-            startindex = 0
+    currentposition = &header^.Data[startindex]
 
-            IF runlength == 1 THEN
-                endindex = hint
+    IF runlength < 10 THEN
+        prevbyte = 0xFF
+
+        offset = startindex << 3
+        endbitindex = endindex << 3
+
+        WHILE offset < endbitindex DO
+            curbyte = currentposition^
+            currentposition += 1
+
+            IF contigzeroes[curbyte] >= runlength THEN
+                // We can satisfy this with this single byte.
+
+                bitmaskorstartindex = RtlpBitmapFillMasks[runlength]
+
+                WHILE curbyte & bitmaskorstartindex DO
+                    bitmaskorstartindex <<= 1
+                    offset += 1
+                END
+
+                RETURN offset
+
+            ELSEIF highzeroes[prevbyte] + lowzeroes[curbyte] >=
+                runlength THEN
+                
+                // This byte and the last byte work.
+
+                bitmaskorstartindex = offset - highzeroes[prevbyte]
+
+                IF bitmaskorstartindex + runlength <= sizeinbits THEN
+                    RETURN bitmaskorstartindex
+                END
+            END
+
+            offset += 8
+            prevbyte = curbyte
+        END
+
+    ELSEIF runlength < 15 THEN
+        prevbyte = 0xFF
+        theotherbyte = 0xFF
+
+        offset = startindex << 3
+        endbitindex = endindex << 3
+
+        WHILE offset < endbitindex DO
+            curbyte = currentposition^
+            currentposition += 1
+
+            IF highzeroes[prevbyte] + lowzeroes[curbyte] >= runlength THEN
+                // Fits in this byte and the last byte.
+
+                bitmaskorstartindex = offset - highzeroes[prevbyte]
+
+                IF bitmaskorstartindex + runlength <= sizeinbits THEN
+                    RETURN bitmaskorstartindex
+                END
+            END
+
+            theotherbyte = prevbyte
+            prevbyte = curbyte
+            offset += 8
+        END
+
+    ELSE
+        zeroneeded := (runlength - 7) >> 3
+        zerobytesrun := 0
+
+        // Store the start of run byte in curbyte.
+        curbyte = 0xFF
+
+        bitmaskorstartindex = startindex - 1
+
+        // Store current index in theotherbyte.
+        theotherbyte = startindex
+
+        WHILE theotherbyte < endindex DO
+            IF zerobytesrun >= zeroneeded THEN
+                IF highzeroes[curbyte] + (zerobytesrun << 3) +
+                    lowzeroes[currentposition^] >= runlength THEN
+
+                    bitmaskorstartindex =
+                        (bitmaskorstartindex << 3) +
+                        (8 - highzeroes[curbyte])
+
+                    IF runlength + bitmaskorstartindex <= sizeinbits THEN
+                        RETURN bitmaskorstartindex
+                    END
+                END
+            END
+
+            IF currentposition^ == 0 THEN
+                zerobytesrun += 1
 
             ELSE
-                endindex = ((runlength - 2) >> 3) + hint + 1
-
-                IF endindex > sizeinbytes THEN
-                    endindex = sizeinbytes
-                END
+                curbyte = currentposition^
+                zerobytesrun = 0
+                bitmaskorstartindex = theotherbyte
             END
 
-        ELSE
-            RETURN -1
+            theotherbyte += 1
+            currentposition += 1
         END
+    END
 
-        endbitindex : UWORD
-        prevbyte : UWORD
-        curbyte : UWORD
-        theotherbyte : UWORD
-        bitmaskorstartindex : UWORD
-        offset : UWORD
+    IF hint THEN
+        startindex = 0
 
-        currentposition = &header^.Data[startindex]
-
-        IF runlength < 10 THEN
-            prevbyte = 0xFF
-
-            offset = startindex << 3
-            endbitindex = endindex << 3
-
-            WHILE offset < endbitindex DO
-                curbyte = currentposition^
-                currentposition += 1
-
-                IF contigzeroes[curbyte] >= runlength THEN
-                    // We can satisfy this with this single byte.
-
-                    bitmaskorstartindex = RtlpBitmapFillMasks[runlength]
-
-                    WHILE curbyte & bitmaskorstartindex DO
-                        bitmaskorstartindex <<= 1
-                        offset += 1
-                    END
-
-                    RETURN offset
-
-                ELSEIF highzeroes[prevbyte] + lowzeroes[curbyte] >=
-                    runlength THEN
-                    
-                    // This byte and the last byte work.
-
-                    bitmaskorstartindex = offset - highzeroes[prevbyte]
-
-                    IF bitmaskorstartindex + runlength <= sizeinbits THEN
-                        RETURN bitmaskorstartindex
-                    END
-                END
-
-                offset += 8
-                prevbyte = curbyte
-            END
-
-        ELSEIF runlength < 15 THEN
-            prevbyte = 0xFF
-            theotherbyte = 0xFF
-
-            offset = startindex << 3
-            endbitindex = endindex << 3
-
-            WHILE offset < endbitindex DO
-                curbyte = currentposition^
-                currentposition += 1
-
-                IF highzeroes[prevbyte] + lowzeroes[curbyte] >= runlength THEN
-                    // Fits in this byte and the last byte.
-
-                    bitmaskorstartindex = offset - highzeroes[prevbyte]
-
-                    IF bitmaskorstartindex + runlength <= sizeinbits THEN
-                        RETURN bitmaskorstartindex
-                    END
-                END
-
-                theotherbyte = prevbyte
-                prevbyte = curbyte
-                offset += 8
-            END
+        IF runlength == 1 THEN
+            endindex = hint
 
         ELSE
-            zeroneeded := (runlength - 7) >> 3
-            zerobytesrun := 0
+            endindex = ((runlength - 2) >> 3) + hint + 1
 
-            // Store the start of run byte in curbyte.
-            curbyte = 0xFF
-
-            bitmaskorstartindex = startindex - 1
-
-            // Store current index in theotherbyte.
-            theotherbyte = startindex
-
-            WHILE theotherbyte < endindex DO
-                IF zerobytesrun >= zeroneeded THEN
-                    IF highzeroes[curbyte] + (zerobytesrun << 3) +
-                        lowzeroes[currentposition^] >= runlength THEN
-
-                        bitmaskorstartindex =
-                            (bitmaskorstartindex << 3) +
-                            (8 - highzeroes[curbyte])
-
-                        IF runlength + bitmaskorstartindex <= sizeinbits THEN
-                            RETURN bitmaskorstartindex
-                        END
-                    END
-                END
-
-                IF currentposition^ == 0 THEN
-                    zerobytesrun += 1
-
-                ELSE
-                    curbyte = currentposition^
-                    zerobytesrun = 0
-                    bitmaskorstartindex = theotherbyte
-                END
-
-                theotherbyte += 1
-                currentposition += 1
+            IF endindex > sizeinbytes THEN
+                endindex = sizeinbytes
             END
         END
 
-        i += 1
+        hint = 0
+
+        GOTO retry
     END
 
     RETURN -1

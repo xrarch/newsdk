@@ -232,3 +232,15 @@ EXTERN FN RtlCheckClearBitsBitmap (
     IN index : UWORD,
     IN runlength : UWORD,
 ) : UWORD
+
+
+// Path stuff
+
+
+EXTERN FN RtlGetPathExtension (
+    IN path : ^UBYTE,
+) : ^UBYTE
+
+EXTERN FN RtlGetFileName (
+    IN path : ^UBYTE,
+) : ^UBYTE
