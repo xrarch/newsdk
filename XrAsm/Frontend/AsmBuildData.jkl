@@ -9,7 +9,7 @@ PUBLIC AsmExternalFixupCount := 0
 
 FN AsmAddRelocation (
     IN offset : UWORD,
-    IN relocationtype : AsmRelocationType,
+    IN relocationtype : XloRelocationType,
     IN section : ^AsmSection,
     IN symbol : ^LexSymbol,
 )

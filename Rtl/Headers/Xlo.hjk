@@ -1,0 +1,123 @@
+ENUM XloRelocationType : UBYTE
+    XLO_RELOC_NONE = 0,
+
+    XLO_RELOC_PTR = 1,
+
+    XLO_RELOC_XR17032_ABSJ = 2,
+    XLO_RELOC_XR17032_LA = 3,
+    XLO_RELOC_XR17032_FAR_INT = 4,
+    XLO_RELOC_XR17032_FAR_LONG = 5,
+
+    XLO_RELOC_FOX32_CALL = 6,
+
+    XLO_RELOC_MAX,
+END
+
+#DEFINE XLO_ARCHITECTURE_XR17032 1
+#DEFINE XLO_ARCHITECTURE_FOX32 2
+#DEFINE XLO_ARCHITECTURE_APHELION 3
+#DEFINE XLO_ARCHITECTURE_AMD64 4
+#DEFINE XLO_ARCHITECTURE_MAX 5
+
+#DEFINE XLO_SECTION_ZERO 1
+#DEFINE XLO_SECTION_CODE 2
+#DEFINE XLO_SECTION_MAP 4
+
+#DEFINE XLO_SYMBOL_GLOBAL 1
+#DEFINE XLO_SYMBOL_EXPORT 2
+#DEFINE XLO_SYMBOL_SPECIAL 255
+
+#DEFINE XLO_EXTERN_UNRESOLVED 1
+#DEFINE XLO_EXTERN_IMPORTED 2
+#DEFINE XLO_EXTERN_RESOLVED 255
+
+#DEFINE XLO_FILE_FRAGMENT 1
+
+#DEFINE XLO_MAGIC_NUMBER 0x6174737F
+
+STRUCT PACKED XloHeader
+    // N.B. This structure MUST be 64-bit aligned in size.
+
+    Magic : ULONG,
+    SymbolTableOffset : ULONG,
+    SymbolCount : ULONG,
+    StringTableOffset : ULONG,
+    StringTableSize : ULONG,
+    TargetArchitecture : ULONG,
+    HeadLength : ULONG,
+    ImportTableOffset : ULONG,
+    Flags : ULONG,
+    Timestamp : ULONG,
+    SectionTableOffset : ULONG,
+    ExternTableOffset : ULONG,
+    ExternCount : ULONG,
+    SectionCount : UINT,
+    ImportCount : UINT,
+END
+
+STRUCT PACKED XloHeaderExtended
+    // N.B. This structure MUST be 64-bit aligned in size.
+
+    Hdr : XloHeader,
+
+    UnresolvedFixupTableOffset : ULONG,
+    UnresolvedFixupCount : ULONG,
+END
+
+STRUCT PACKED XloSectionHeader
+    // N.B. This structure MUST be 64-bit aligned in size.
+
+#IF ( == BITS 64 )
+    VirtualAddress : UQUAD,
+#ELSE
+    VirtualAddress : ULONG,
+    Reserved : ULONG,
+#END
+
+    NameOffset : ULONG,
+    FileOffset : ULONG,
+    DataLength : ULONG,
+    RelocTableOffset : ULONG,
+    RelocCount : ULONG,
+    Flags : ULONG,
+END
+
+STRUCT PACKED XloSymbolEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
+    SectionIndex : UBYTE,
+    Type : UBYTE,
+    Flags : UBYTE,
+    Padding : UBYTE,
+    SectionOffset : ULONG,
+    NameOffset : ULONG,
+END
+
+STRUCT PACKED XloExternEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
+    NameOffset : ULONG,
+    Type : UBYTE,
+    Padding : UBYTE,
+    ImportIndex : UINT,
+    Padding2 : ULONG,
+    Padding3 : ULONG,
+END
+
+STRUCT PACKED XloImportEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
+    NameOffset : ULONG,
+    ExpectedTimestamp : ULONG,
+    FixupTableOffset : ULONG,
+    FixupCount : ULONG,
+END
+
+STRUCT PACKED XloRelocEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
+    SectionOffset : ULONG,
+    ExternIndex : UINT,
+    Type : UBYTE,
+    SectionIndex : UBYTE,
+END
