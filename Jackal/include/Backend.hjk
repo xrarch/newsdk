@@ -155,6 +155,7 @@ STRUCT IrLabelBody
     Symbol : ^LexSymbol,
     LirLabel : ^LirInstruction,
     Number : ULONG,
+    GenCount : ULONG,
 END
 
 STRUCT IrJumpBody

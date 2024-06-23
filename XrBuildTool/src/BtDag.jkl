@@ -1290,6 +1290,10 @@ FN (BtDagActionF) BtLinkExecutable (
 
     TlReleaseMutex ( BtPrintMutex )
 
+    // Delete the file if it already exists.
+
+    BtCleanUpFile ( dagnode^.Target^.FileName.Buffer )
+
     // Try to create all the directories that will be required in the path
     // to this file.
 

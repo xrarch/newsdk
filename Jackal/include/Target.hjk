@@ -85,6 +85,7 @@ END
 STRUCT LirLabelBody
     References : ULONG,
     Number : ULONG,
+    GenCount : ULONG,
 END
 
 UNION LirInstructionBody

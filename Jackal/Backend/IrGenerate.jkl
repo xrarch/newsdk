@@ -128,6 +128,8 @@ FN IrCreateLabel () : ^IrInstruction
     label^.Body.Label.Symbol = NULLPTR
     label^.Body.Label.LirLabel = NULLPTR
     label^.Body.Label.Number = IrLabelNumber
+    label^.Body.Label.GenCount = 0
+
     IrLabelNumber += 1
 
     RETURN label

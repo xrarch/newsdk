@@ -217,6 +217,7 @@ FN LirGetLabel (
 
     lirinst^.Body.Label.References = 0
     lirinst^.Body.Label.Number = 0xFFFFFFFF
+    lirinst^.Body.Label.GenCount = 0
 
     RETURN lirinst
 END

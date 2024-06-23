@@ -4,6 +4,8 @@
 
 #INCLUDE "<inc>/Target.hjk"
 
+LirResolveGenCount : ULONG = 0
+
 FN LirResolveLabel (
     IN label : ^LirInstruction,
     OUT newlabel : ^LirInstruction,
@@ -13,8 +15,10 @@ FN LirResolveLabel (
 
     resolved := FALSE
     newlabel = label
-    origlabel := label
     isunconditional := JklTargetInfo^.IsUnconditionalFunc
+
+    LirResolveGenCount += 1
+    curgen := LirResolveGenCount
 
     WHILE TRUE DO
         // First slide to the next non-label instruction.
@@ -47,11 +51,13 @@ FN LirResolveLabel (
             newlabel = label
             resolved = TRUE
 
-            IF label == origlabel THEN
+            IF label^.Body.Label.GenCount == curgen THEN
                 // We went in a cycle. Stop now.
 
                 RETURN resolved
             END
+
+            label^.Body.Label.GenCount = curgen
 
         ELSE
             RETURN resolved

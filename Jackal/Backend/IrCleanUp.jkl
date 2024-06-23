@@ -4,6 +4,8 @@
 
 #INCLUDE "Be.hjk"
 
+IrResolveGenCount : ULONG = 0
+
 FN IrResolveLabel (
     IN label : ^IrInstruction,
     OUT newlabel : ^IrInstruction,
@@ -13,7 +15,9 @@ FN IrResolveLabel (
 
     resolved := FALSE
     newlabel = label
-    origlabel := label
+
+    IrResolveGenCount += 1
+    curgen := IrResolveGenCount
 
     WHILE TRUE DO
         // First slide to the next non-label instruction.
@@ -44,11 +48,13 @@ FN IrResolveLabel (
             newlabel = label
             resolved = TRUE
 
-            IF label == origlabel THEN
+            IF label^.Body.Label.GenCount == curgen THEN
                 // We went in a cycle. Stop now.
 
                 RETURN resolved
             END
+
+            label^.Body.Label.GenCount = curgen
 
         ELSE
             RETURN resolved
