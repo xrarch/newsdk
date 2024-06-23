@@ -130,3 +130,13 @@ STRUCT PACKED XloRelocEntry
     Type : UBYTE,
     SectionIndex : UBYTE,
 END
+
+STRUCT PACKED XloImportFixupEntry
+    // N.B. This structure MUST be 32-bit aligned in size.
+
+    SectionOffset : ULONG,
+    ExternIndex : UINT,
+    Type : UBYTE,
+    SectionIndex : UBYTE,
+    OriginalValue : ULONG,
+END

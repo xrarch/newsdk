@@ -8,12 +8,19 @@ FNPTR XloRelocF (
     IN ptr : ^VOID,
     IN value : UWORD,
     IN bits : UWORD,
+    IN absolute : UWORD,
 )
+
+FNPTR XloFetchF (
+    IN ptr : ^VOID,
+    IN bits : UWORD,
+) : UWORD
 
 FN (XloRelocF) XloPerformRelocPtr (
     IN ptr : ^VOID,
     IN value : UWORD,
     IN bits : UWORD,
+    IN absolute : UWORD,
 )
 
     IF bits == 32 THEN
@@ -21,7 +28,12 @@ FN (XloRelocF) XloPerformRelocPtr (
 
         data := CAST ptr TO ^ULONG
 
-        data^ += value
+        IF absolute THEN
+            data^ = value
+        
+        ELSE
+            data^ += value
+        END
 
         LEAVE
     END
@@ -31,7 +43,29 @@ FN (XloRelocF) XloPerformRelocPtr (
 #IF ( == BLD_BITS 64 )
     data := CAST ptr TO ^UQUAD
 
-    data^ += value
+    IF absolute THEN
+        data^ = value
+    
+    ELSE
+        data^ += value
+    END
+#END
+
+END
+
+FN (XloFetchF) XloFetchRelocPtr (
+    IN ptr : ^VOID,
+    IN bits : UWORD,
+) : UWORD
+
+    IF bits == 32 THEN
+        RETURN (CAST ptr TO ^ULONG)^
+    END
+
+    // Must be 64.
+
+#IF ( == BLD_BITS 64 )
+    RETURN (CAST ptr TO ^UQUAD)^
 #END
 
 END
@@ -40,7 +74,40 @@ FN (XloRelocF) XloPerformRelocXrAbsj (
     IN ptr : ^VOID,
     IN value : UWORD,
     IN bits : UWORD,
+    IN absolute : UWORD,
 )
+
+    // Relocate XR17032 absolute jump.
+    // The pointer is the base of the jump instruction.
+
+    instptr := CAST ptr TO ^ULONG
+    inst := instptr^
+
+    oldvalue : UWORD
+
+    IF absolute THEN
+        oldvalue = value >> 2
+
+    ELSE
+        // Isolate the jump target.
+
+        oldvalue = inst >> 3
+
+        // Add the offset.
+
+        oldvalue += value >> 2
+    END
+
+    // Re-encode the instruction with the new jump target and the original
+    // jump opcode.
+
+    instptr^ = (oldvalue << 3) | (inst & 0x7)
+END
+
+FN (XloFetchF) XloFetchRelocXrAbsj (
+    IN ptr : ^VOID,
+    IN bits : UWORD,
+) : UWORD
 
     // Relocate XR17032 absolute jump.
     // The pointer is the base of the jump instruction.
@@ -52,21 +119,51 @@ FN (XloRelocF) XloPerformRelocXrAbsj (
 
     oldvalue := inst >> 3
 
-    // Add the offset.
-
-    oldvalue += value >> 2
-
-    // Re-encode the instruction with the new jump target and the original
-    // jump opcode.
-
-    instptr^ = (oldvalue << 3) | (inst & 0x7)
+    RETURN oldvalue << 2
 END
 
 FN (XloRelocF) XloPerformRelocXrLa (
     IN ptr : ^VOID,
     IN value : UWORD,
     IN bits : UWORD,
+    IN absolute : UWORD,
 )
+
+    // Relocate XR17032 LA pseudo-instruction.
+    // The pointer is the base of the instruction pair.
+    // The first instruction loads the upper 16 bits and the second instruction
+    // loads the lower 16 bits.
+
+    instptr := CAST ptr TO ^ULONG
+    
+    insthi := instptr[0]
+    instlo := instptr[1]
+
+    oldvalue : UWORD
+
+    IF absolute THEN
+        oldvalue = value
+
+    ELSE
+        // Isolate the old value.
+
+        oldvalue = (insthi & 0xFFFF0000) | (instlo >> 16)
+
+        // Add the offset.
+
+        oldvalue += value
+    END
+
+    // Re-encode the instructions with the new value and the original opcodes.
+
+    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
+    instptr[1] = ((oldvalue & 0xFFFF) << 16) | (instlo & 0xFFFF)
+END
+
+FN (XloFetchF) XloFetchRelocXrLa (
+    IN ptr : ^VOID,
+    IN bits : UWORD,
+) : UWORD
 
     // Relocate XR17032 LA pseudo-instruction.
     // The pointer is the base of the instruction pair.
@@ -80,23 +177,51 @@ FN (XloRelocF) XloPerformRelocXrLa (
 
     // Isolate the old value.
 
-    oldvalue := (insthi & 0xFFFF0000) | (instlo >> 16)
-
-    // Add the offset.
-
-    oldvalue += value
-
-    // Re-encode the instructions with the new value and the original opcodes.
-
-    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = ((oldvalue & 0xFFFF) << 16) | (instlo & 0xFFFF)
+    RETURN (insthi & 0xFFFF0000) | (instlo >> 16)
 END
 
 FN (XloRelocF) XloPerformRelocXrFarInt (
     IN ptr : ^VOID,
     IN value : UWORD,
     IN bits : UWORD,
+    IN absolute : UWORD,
 )
+
+    // Relocate XR17032 "far int" pseudo-instructions.
+    // The pointer is the base of the instruction pair.
+    // The first instruction loads the upper 16 bits and the second instruction
+    // loads the lower 16 bits, shifted right by 1.
+
+    instptr := CAST ptr TO ^ULONG
+    
+    insthi := instptr[0]
+    instlo := instptr[1]
+
+    oldvalue : UWORD
+
+    IF absolute THEN
+        oldvalue = value
+
+    ELSE
+        // Isolate the old value.
+
+        oldvalue = (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
+
+        // Add the offset.
+
+        oldvalue += value
+    END
+
+    // Re-encode the instructions with the new value and the original opcodes.
+
+    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
+    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 1) | (instlo & 0xFFFF)
+END
+
+FN (XloFetchF) XloFetchRelocXrFarInt (
+    IN ptr : ^VOID,
+    IN bits : UWORD,
+) : UWORD
 
     // Relocate XR17032 "far int" pseudo-instructions.
     // The pointer is the base of the instruction pair.
@@ -110,23 +235,51 @@ FN (XloRelocF) XloPerformRelocXrFarInt (
 
     // Isolate the old value.
 
-    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
-
-    // Add the offset.
-
-    oldvalue += value
-
-    // Re-encode the instructions with the new value and the original opcodes.
-
-    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 1) | (instlo & 0xFFFF)
+    RETURN (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
 END
 
 FN (XloRelocF) XloPerformRelocXrFarLong (
     IN ptr : ^VOID,
     IN value : UWORD,
     IN bits : UWORD,
+    IN absolute : UWORD,
 )
+
+    // Relocate XR17032 "far long" pseudo-instructions.
+    // The pointer is the base of the instruction pair.
+    // The first instruction loads the upper 16 bits and the second instruction
+    // loads the lower 16 bits, shifted right by 2.
+
+    instptr := CAST ptr TO ^ULONG
+    
+    insthi := instptr[0]
+    instlo := instptr[1]
+
+    oldvalue : UWORD
+
+    IF absolute THEN
+        oldvalue = value
+
+    ELSE
+        // Isolate the old value.
+
+        oldvalue = (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
+
+        // Add the offset.
+
+        oldvalue += value
+    END
+
+    // Re-encode the instructions with the new value and the original opcodes.
+
+    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
+    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 2) | (instlo & 0xFFFF)
+END
+
+FN (XloFetchF) XloFetchRelocXrFarLong (
+    IN ptr : ^VOID,
+    IN bits : UWORD,
+) : UWORD
 
     // Relocate XR17032 "far long" pseudo-instructions.
     // The pointer is the base of the instruction pair.
@@ -140,16 +293,7 @@ FN (XloRelocF) XloPerformRelocXrFarLong (
 
     // Isolate the old value.
 
-    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
-
-    // Add the offset.
-
-    oldvalue += value
-
-    // Re-encode the instructions with the new value and the original opcodes.
-
-    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 2) | (instlo & 0xFFFF)
+    RETURN (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
 END
 
 XloPerformRelocationTable : XloRelocF[] = {
@@ -161,4 +305,15 @@ XloPerformRelocationTable : XloRelocF[] = {
     [XLO_RELOC_XR17032_FAR_LONG] = &XloPerformRelocXrFarLong,
 
     [XLO_RELOC_FOX32_CALL] = &XloPerformRelocPtr,
+}
+
+XloFetchRelocationTable : XloFetchF[] = {
+    [XLO_RELOC_PTR] = &XloFetchRelocPtr,
+
+    [XLO_RELOC_XR17032_ABSJ] = &XloFetchRelocXrAbsj,
+    [XLO_RELOC_XR17032_LA] = &XloFetchRelocXrLa,
+    [XLO_RELOC_XR17032_FAR_INT] = &XloFetchRelocXrFarInt,
+    [XLO_RELOC_XR17032_FAR_LONG] = &XloFetchRelocXrFarLong,
+
+    [XLO_RELOC_FOX32_CALL] = &XloFetchRelocPtr,
 }

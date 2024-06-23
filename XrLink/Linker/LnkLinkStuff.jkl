@@ -77,7 +77,7 @@ STRUCT LnkLibrary
     Path : ^UBYTE,
     Data : ^UBYTE,
 
-    FixupTable : ^XloRelocEntry,
+    FixupTable : ^XloImportFixupEntry,
 
     FixupListHead : TlListEntry,
     FixupCount : UWORD,
@@ -109,6 +109,7 @@ STRUCT LnkRelocation
     SectionOffset : UWORD,
     Type : UWORD,
     Extern : ^LnkExtern,
+    OriginalValue : ULONG,
 END
 
 #DEFINE LNK_SYMBOL_BASE 1
@@ -337,6 +338,7 @@ FN LnkRelocateInternalSection (
             base + targetsection^.FileOffset + reloc^.SectionOffset, // ptr
             offset, // value
             LnkArchitectureInTokyo, // bits
+            FALSE, // absolute
         )
 
         count -= 1
@@ -926,6 +928,8 @@ FN (LnkCreateStubF) LnkCreateXr17032Stub (
 
     lnkreloc^.Type = XLO_RELOC_XR17032_ABSJ
 
+    lnkreloc^.OriginalValue = 0
+
     TlInsertAtTailList (
         &lnkextern^.Library^.FixupListHead, // head
         &lnkreloc^.Entry, // entry
@@ -981,6 +985,8 @@ FN (LnkCreateStubF) LnkCreateFox32Stub (
     lnkreloc^.Section = LnkJumpStubSection
 
     lnkreloc^.Type = XLO_RELOC_PTR
+
+    lnkreloc^.OriginalValue = 0
 
     TlInsertAtTailList (
         &lnkextern^.Library^.FixupListHead, // head
@@ -1056,6 +1062,7 @@ FN LnkResolveFixupTable ()
                         fixup^.SectionOffset, // ptr
                         lnksymbol^.SectionOffset, // value
                         LnkArchitectureInTokyo, // bits
+                        FALSE, // absolute
                     )
 
                     // Create new relocation.
@@ -1120,7 +1127,20 @@ FN LnkResolveFixupTable ()
                 IF lnkextern^.Library THEN
                     // Case 2: Resolved in dynamic library.
 
-                    IF LnkCreateJumpStub[fixup^.Type] AND LnkCreateStubs THEN
+                    // Fetch the current offset from the symbol encoded in the
+                    // section data.
+
+                    oldvalue := XloFetchRelocationTable[fixup^.Type] (
+                        lnksection^.Data +
+                        section^.VirtualAddress +
+                        fixup^.SectionOffset, // ptr
+                        LnkArchitectureInTokyo, // bits
+                    )
+
+                    IF LnkCreateJumpStub[fixup^.Type] AND
+                        LnkCreateStubs AND
+                        oldvalue == 0 THEN
+
                         // We need to use a jump stub.
 
                         IF NOT lnkextern^.HasJumpStub THEN
@@ -1152,6 +1172,7 @@ FN LnkResolveFixupTable ()
                             fixup^.SectionOffset, // ptr
                             lnkextern^.JumpStubOffset, // value
                             LnkArchitectureInTokyo, // bits
+                            FALSE, // absolute
                         )
 
                         // Create a relocation referencing the jump stub.
@@ -1189,6 +1210,7 @@ FN LnkResolveFixupTable ()
                             fixup^.SectionOffset, // ptr
                             lnkextern^.Address, // value
                             LnkArchitectureInTokyo, // bits
+                            FALSE, // absolute
                         )
 
                         // Create an import fixup.
@@ -1211,6 +1233,8 @@ FN LnkResolveFixupTable ()
                         lnkreloc^.Section = lnksection
 
                         lnkreloc^.Type = fixup^.Type
+
+                        lnkreloc^.OriginalValue = oldvalue
 
                         TlInsertAtTailList (
                             &lnkextern^.Library^.FixupListHead, // head
@@ -1564,6 +1588,7 @@ FN LnkIterateRelocationTables ()
                 lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
                 lnksection^.VirtualAddress, // value
                 LnkArchitectureInTokyo, // bits
+                FALSE, // absolute
             )
 
             relocentry = relocentry^.Next
@@ -1601,6 +1626,7 @@ FN LnkIterateRelocationTables ()
             lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
             value, // value
             LnkArchitectureInTokyo, // bits
+            FALSE, // absolute
         )
 
         listentry = listentry^.Next
@@ -2201,7 +2227,7 @@ FN LnkOutputXlo ()
 
             IF library^.FixupCount THEN
                 status = TlBumpAlloc (
-                    SIZEOF XloRelocEntry * library^.FixupCount, // bytes
+                    SIZEOF XloImportFixupEntry * library^.FixupCount, // bytes
                     OUT library^.FixupTable, // ptr
                 )
 
@@ -2213,7 +2239,7 @@ FN LnkOutputXlo ()
 
                 importtable[i].FixupTableOffset = offset
 
-                offset += SIZEOF XloRelocEntry * library^.FixupCount
+                offset += SIZEOF XloImportFixupEntry * library^.FixupCount
 
                 // Fill in the fixup table.
 
@@ -2235,6 +2261,9 @@ FN LnkOutputXlo ()
 
                     library^.FixupTable[j].SectionIndex =
                         lnkreloc^.Section^.Index
+
+                    library^.FixupTable[j].OriginalValue =
+                        lnkreloc^.OriginalValue
 
                     rlistentry = rlistentry^.Next
                     j += 1
@@ -2409,7 +2438,7 @@ FN LnkOutputXlo ()
             IF library^.FixupTable THEN
                 TlWriteFile (
                     handle, // handle
-                    SIZEOF XloRelocEntry * library^.FixupCount, // bytes
+                    SIZEOF XloImportFixupEntry * library^.FixupCount, // bytes
                     library^.FixupTable, // buffer
                 )
             END

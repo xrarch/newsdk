@@ -276,7 +276,7 @@ FN LnkDumpFixups (
         TlPrint ( "%s:\n", stringtab + import^.NameOffset )
 
         j := 0
-        fixup := CAST buf + import^.FixupTableOffset TO ^XloRelocEntry
+        fixup := CAST buf + import^.FixupTableOffset TO ^XloImportFixupEntry
 
         WHILE j < import^.FixupCount DO
             relocname := "UnknownType"
@@ -287,13 +287,14 @@ FN LnkDumpFixups (
                 relocname = XloRelocTypeNames[fixup^.Type]
             END
 
-            TlPrint ( "%8s @ %08X %s of '%s'\n",
+            TlPrint ( "%8s @ %08X %s of '%s' + 0x%x\n",
                 stringtab + sectiontab[fixup^.SectionIndex].NameOffset,
                 fixup^.SectionOffset,
                 relocname,
-                stringtab + externtab[fixup^.ExternIndex].NameOffset )
+                stringtab + externtab[fixup^.ExternIndex].NameOffset,
+                fixup^.OriginalValue )
 
-            fixup += SIZEOF XloRelocEntry
+            fixup += SIZEOF XloImportFixupEntry
             j += 1
         END
 
