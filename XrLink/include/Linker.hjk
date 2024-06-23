@@ -49,6 +49,7 @@ EXTERN LnkBaseAddress : UWORD
 EXTERN LnkMoveExpression : ^UBYTE
 EXTERN LnkMappedBase : UWORD
 EXTERN LnkCreateFxf : UWORD
+EXTERN LnkPageAligned : UWORD
 
 #DEFINE FXF_MAGIC_AND_VERSION 0x01465846
 

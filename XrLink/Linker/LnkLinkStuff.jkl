@@ -1485,6 +1485,11 @@ FN LnkAssignSectionBases (
     WHILE listentry != listhead DO
         lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
 
+        IF LnkPageAligned THEN
+            base += LnkArchitecturePageMask
+            base &= ~LnkArchitecturePageMask
+        END
+
         lnksection^.VirtualAddress = base
 
         base += (lnksection^.Size + lnksection^.DynamicData.Count)

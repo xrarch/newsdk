@@ -35,6 +35,7 @@ PUBLIC LnkBaseAddress := 0
 PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
 PUBLIC LnkMappedBase := FALSE
 PUBLIC LnkCreateFxf := FALSE
+PUBLIC LnkPageAligned := FALSE
 
 EXTERN FN LnkInitializeDatabase ()
 
@@ -123,6 +124,23 @@ FN LnkLinkStuff (
                 END
 
                 LnkMappedBase = TRUE
+                LnkPageAligned = FALSE
+
+            ELSEIF TlCompareStringWithMax ( argv[i], "-pabase:", 8 ) == 0 THEN
+                IF LnkMoveExpression OR LnkBaseAddress THEN
+                    LnkUsage ()
+                END
+
+                IF NOT TlStringToNumber (
+                    &argv[i][8], // src
+                    -1, // bufsize
+                    OUT LnkBaseAddress, // num
+                ) THEN
+                    LnkUsage ()
+                END
+
+                LnkMappedBase = TRUE
+                LnkPageAligned = TRUE
 
             ELSE
                 LnkUsage ()
