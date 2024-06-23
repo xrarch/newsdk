@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <time.h>
+#include <string.h>
 
 extern void TlInitialize (void *stuff);
 extern void TlMain (uint64_t argc, uint64_t argv);
@@ -61,10 +62,22 @@ uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t,
     struct dirent *dp;
     DIR *dfd;
 
+    int pathlen = strlen((char*)path);
+
+    if (pathlen == 0) {
+        return -1;
+    }
+
     dfd = opendir((char *)path);
 
     if (!dfd) {
         return -1;
+    }
+
+    int endsinslash = 0;
+
+    if (path[pathlen - 1] == '/') {
+        endsinslash = 1;
     }
 
     while (1) {
@@ -80,7 +93,11 @@ uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t,
 
         char fullpath[512];
 
-        sprintf (&fullpath[0], "%s/%s", path, dp->d_name);
+        if (endsinslash) {
+            sprintf (&fullpath[0], "%s%s", path, dp->d_name);
+        } else {
+            sprintf (&fullpath[0], "%s/%s", path, dp->d_name);
+        }
 
         callback((uint64_t)(&fullpath[0]), (uint64_t)(dp->d_name), context);
     }
