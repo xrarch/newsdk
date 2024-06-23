@@ -59,6 +59,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_OBJECTS,
     TOKEN_ACTION,
     TOKEN_IMAGEACTION,
+    TOKEN_ALWAYS,
 
     TOKEN_SUBTYPE_MAX, // MUST be at the end
 END
@@ -313,6 +314,7 @@ STRUCT BtTarget
     HasFileName : UBYTE,
     HasPrebuiltCopies : UBYTE,
     ImageAction : UBYTE,
+    Always : UBYTE,
 END
 
 ENUM BtDagNodeType : UBYTE

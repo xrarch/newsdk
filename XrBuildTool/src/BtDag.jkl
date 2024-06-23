@@ -760,6 +760,13 @@ FN BtBuildDagForTarget (
         )
     END
 
+    IF NOT dagnode AND target^.Always THEN
+        dagnode = BtCreateDagNode (
+            target, // target
+            DAG_NULL, // type
+        )
+    END
+
     // Now cache the DAG node and return.
 
     target^.DagNode = dagnode

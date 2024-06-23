@@ -260,12 +260,68 @@ FN LnkDumpFixups (
     IN filename : ^UBYTE,
 )
 
-    TlInternalError ( "TODO fixups dumping deferred until there are object files with fixups", 0, 0, 0 )
+    buf := LnkLoadXloFile ( filename )
+
+    header := CAST buf TO ^XloHeader
+
+    i := 0
+    importtab := CAST buf + header^.ImportTableOffset TO ^XloImportEntry
+    stringtab := buf + header^.StringTableOffset
+    sectiontab := CAST buf + header^.SectionTableOffset TO ^XloSectionHeader
+    externtab := CAST buf + header^.ExternTableOffset TO ^XloExternEntry
+
+    WHILE i < header^.ImportCount DO
+        import := &importtab[i]
+
+        TlPrint ( "%s:\n", stringtab + import^.NameOffset )
+
+        j := 0
+        fixup := CAST buf + import^.FixupTableOffset TO ^XloRelocEntry
+
+        WHILE j < import^.FixupCount DO
+            relocname := "UnknownType"
+
+            IF fixup^.Type < XLO_RELOC_MAX AND
+                XloRelocTypeNames[fixup^.Type] THEN
+
+                relocname = XloRelocTypeNames[fixup^.Type]
+            END
+
+            TlPrint ( "%8s @ %08X %s of '%s'\n",
+                stringtab + sectiontab[fixup^.SectionIndex].NameOffset,
+                fixup^.SectionOffset,
+                relocname,
+                stringtab + externtab[fixup^.ExternIndex].NameOffset )
+
+            fixup += SIZEOF XloRelocEntry
+            j += 1
+        END
+
+        TlPrint ( "\n" )
+
+        i += 1
+    END
 END
 
 FN LnkDumpImports (
     IN filename : ^UBYTE,
 )
 
-    TlInternalError ( "TODO imports dumping deferred until there are object files with imports", 0, 0, 0 )
+    buf := LnkLoadXloFile ( filename )
+
+    header := CAST buf TO ^XloHeader
+
+    i := 0
+    importtab := CAST buf + header^.ImportTableOffset TO ^XloImportEntry
+    stringtab := buf + header^.StringTableOffset
+
+    WHILE i < header^.ImportCount DO
+        import := &importtab[i]
+
+        TlPrint ( "%s:\n", stringtab + import^.NameOffset )
+        TlPrint ( "  Timestamp  %08x\n", import^.ExpectedTimestamp )
+        TlPrint ( "\n" )
+
+        i += 1
+    END
 END

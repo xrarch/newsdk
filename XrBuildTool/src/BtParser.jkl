@@ -735,6 +735,13 @@ FN (BtTargetInfoF) BtTargetInfoImageAction ()
     BtCurrentTarget^.ImageAction = TRUE
 END
 
+FN (BtTargetInfoF) BtTargetInfoAlways ()
+
+    // Parse an ALWAYS info specifier.
+
+    BtCurrentTarget^.Always = TRUE
+END
+
 BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_FILE] = &BtTargetInfoFile,
     [TOKEN_DEPEND] = &BtTargetInfoDepend,
@@ -749,6 +756,7 @@ BtTargetInfoSpecifiers : BtTargetInfoF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_OBJECTS] = &BtTargetInfoObjects,
     [TOKEN_ACTION] = &BtTargetInfoAction,
     [TOKEN_IMAGEACTION] = &BtTargetInfoImageAction,
+    [TOKEN_ALWAYS] = &BtTargetInfoAlways,
 }
 
 FN BtParseTarget () : UBYTE
