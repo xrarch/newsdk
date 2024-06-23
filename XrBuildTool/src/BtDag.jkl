@@ -1551,7 +1551,7 @@ FN (BtDagActionF) BtLinkExecutable (
         TlCopyIntoDynamicBuffer (
             &BtDiskToolUpdateBuffer, // array
             dagnode^.Target^.FileName.Buffer, // srcbuf
-            dagnode^.Target^.FileName.Count, // length
+            dagnode^.Target^.FileName.Count - 1, // length
         )
 
         TlInsertDynamicBuffer (
