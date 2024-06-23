@@ -59,6 +59,17 @@ FN (XloFetchF) XloFetchRelocPtr (
 ) : UWORD
 
     IF bits == 32 THEN
+        oldvalue := (CAST ptr TO ^ULONG)^
+
+#IF ( == BLD_BITS 64 )
+        IF oldvalue & 0x80000000 THEN
+            // The highest representable bit was set. Assume negative and sign
+            // extend.
+
+            oldvalue |= 0xFFFFFFFF00000000
+        END
+#END
+
         RETURN (CAST ptr TO ^ULONG)^
     END
 
@@ -118,8 +129,20 @@ FN (XloFetchF) XloFetchRelocXrAbsj (
     // Isolate the jump target.
 
     oldvalue := inst >> 3
+    oldvalue <<= 2
 
-    RETURN oldvalue << 2
+    IF oldvalue & 0x40000000 THEN
+        // The highest representable bit was set. Assume negative and sign
+        // extend.
+
+#IF ( == BLD_BITS 32 )
+        oldvalue |= 0x80000000
+#ELSE
+        oldvalue |= 0xFFFFFFFF80000000
+#END
+    END
+
+    RETURN oldvalue
 END
 
 FN (XloRelocF) XloPerformRelocXrLa (
@@ -177,7 +200,18 @@ FN (XloFetchF) XloFetchRelocXrLa (
 
     // Isolate the old value.
 
-    RETURN (insthi & 0xFFFF0000) | (instlo >> 16)
+    oldvalue := (insthi & 0xFFFF0000) | (instlo >> 16)
+
+#IF ( == BLD_BITS 64 )
+    IF oldvalue & 0x80000000 THEN
+        // The highest representable bit was set. Assume negative and sign
+        // extend.
+
+        oldvalue |= 0xFFFFFFFF00000000
+    END
+#END
+
+    RETURN oldvalue
 END
 
 FN (XloRelocF) XloPerformRelocXrFarInt (
@@ -235,7 +269,18 @@ FN (XloFetchF) XloFetchRelocXrFarInt (
 
     // Isolate the old value.
 
-    RETURN (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
+    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
+
+#IF ( == BLD_BITS 64 )
+    IF oldvalue & 0x80000000 THEN
+        // The highest representable bit was set. Assume negative and sign
+        // extend.
+
+        oldvalue |= 0xFFFFFFFF00000000
+    END
+#END
+
+    RETURN oldvalue
 END
 
 FN (XloRelocF) XloPerformRelocXrFarLong (
@@ -291,9 +336,18 @@ FN (XloFetchF) XloFetchRelocXrFarLong (
     insthi := instptr[0]
     instlo := instptr[1]
 
-    // Isolate the old value.
+    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
 
-    RETURN (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
+#IF ( == BLD_BITS 64 )
+    IF oldvalue & 0x80000000 THEN
+        // The highest representable bit was set. Assume negative and sign
+        // extend.
+
+        oldvalue |= 0xFFFFFFFF00000000
+    END
+#END
+
+    RETURN oldvalue
 END
 
 XloPerformRelocationTable : XloRelocF[] = {
