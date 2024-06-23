@@ -103,7 +103,7 @@ FN AsmEncodeFile ()
             // Fill in the parts of the section table entry that we can do now,
             // i.e., everything except for the file offset.
 
-#IF ( == BITS 64 )
+#IF ( == BLD_BITS 64 )
             sectiontable[i].VirtualAddress = 0
 #ELSE
             sectiontable[i].VirtualAddress = 0

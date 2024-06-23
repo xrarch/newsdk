@@ -4,7 +4,7 @@
 
 #INCLUDE "<inc>/Backend.hjk"
 
-#IF ( != BITS 64 )
+#IF ( != BLD_BITS 64 )
 
 #ERROR "[BLD] C Transpilation Target requires 64 bit build\n"
 

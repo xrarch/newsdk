@@ -958,7 +958,7 @@ FN LexNextToken (
         IF NOT keyword THEN
             IF tokenflag & TOKEN_FLAG_UPPER THEN
                 LexError ( token,
-                    "Bad use of uppercase alphabetic token (must be keyword)." )
+                "Bad use of uppercase alphabetic token (must be keyword).\n" )
             END
 
             LexError ( token, "Unknown keyword\n" )

@@ -139,7 +139,7 @@ FN (AsmDataEncodeF) AsmEncodeDq (
     IN dataptr : ^UBYTE,
 )
 
-#IF ( == BITS 64 )
+#IF ( == BLD_BITS 64 )
     val : UWORD
     refsymbol : ^LexSymbol
 

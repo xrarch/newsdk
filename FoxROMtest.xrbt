@@ -1,4 +1,4 @@
 // Fox32 ROM test platform
 
 #DEFINE ARCHITECTURE "fox32"
-#DEFINE BITS 32
+#DEFINE BLD_BITS 32

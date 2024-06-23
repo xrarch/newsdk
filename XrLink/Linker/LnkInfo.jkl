@@ -14,6 +14,7 @@ LnkArchitectureCodeToName : ^UBYTE[XLO_ARCHITECTURE_MAX] = {
 
 LnkFlagToName : ^UBYTE[32] = {
     [0] = "FRAGMENT",
+    [1] = "STRIPPED",
 }
 
 LnkSectionFlagToName : ^UBYTE[32] = {

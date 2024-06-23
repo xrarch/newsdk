@@ -95,7 +95,7 @@ FN LnkLoadXloFile (
                 filename, header^.TargetArchitecture )
         END
 
-#IF ( == BITS 32 )
+#IF ( == BLD_BITS 32 )
         IF LnkArchitectureInTokyo == 64 THEN
             TlError ( "%s: Can't link 64-bit files using 32-bit linker build\n",
                 filename )

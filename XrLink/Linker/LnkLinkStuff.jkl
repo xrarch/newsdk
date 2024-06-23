@@ -3,8 +3,9 @@
 //
 
 #INCLUDE "<inc>/Linker.hjk"
+#INCLUDE "../../Rtl/Xlo/XloRelocations.jkl"
 
-#IF ( == BITS 32 )
+#IF ( == BLD_BITS 32 )
 
 #MACRO LnkEncodeExternLink ( extern, ptr ) [
     extern^.Padding2 = CAST ptr TO UWORD
@@ -312,196 +313,6 @@ FN LnkAddDynamicObject (
     )
 END
 
-FNPTR LnkRelocF (
-    IN ptr : ^VOID,
-    IN value : UWORD,
-)
-
-FN (LnkRelocF) LnkPerformRelocPtr (
-    IN ptr : ^VOID,
-    IN value : UWORD,
-)
-
-    IF LnkArchitectureInTokyo == 32 THEN
-        // Update 32-bit pointer.
-
-        data := CAST ptr TO ^ULONG
-
-        data^ += value
-
-        LEAVE
-    END
-
-    // Must be 64.
-
-#IF ( == BITS 64 )
-    data := CAST ptr TO ^UQUAD
-
-    data^ += value
-
-#ELSE
-    // This should have been rejected earlier.
-
-    TlInternalError ( "64 bit relocation on 32 bit linker build", 0, 0, 0 )
-#END
-
-END
-
-FN (LnkRelocF) LnkPerformRelocXrAbsj (
-    IN ptr : ^VOID,
-    IN value : UWORD,
-)
-
-    // Relocate XR17032 absolute jump.
-    // The pointer is the base of the jump instruction.
-
-    IF value & 3 THEN
-        TlInternalError ( "Unaligned XR_ABSJ offset", value, 0, 0 )
-    END
-
-    IF ptr & 3 THEN
-        TlInternalError ( "Unaligned XR_ABSJ ptr", CAST ptr TO UWORD, 0, 0 )
-    END
-
-    instptr := CAST ptr TO ^ULONG
-    inst := instptr^
-
-    // Isolate the jump target.
-
-    oldvalue := inst >> 3
-
-    // Add the offset.
-
-    oldvalue += value >> 2
-
-    // Re-encode the instruction with the new jump target and the original
-    // jump opcode.
-
-    instptr^ = (oldvalue << 3) | (inst & 0x7)
-END
-
-FN (LnkRelocF) LnkPerformRelocXrLa (
-    IN ptr : ^VOID,
-    IN value : UWORD,
-)
-
-    // Relocate XR17032 LA pseudo-instruction.
-    // The pointer is the base of the instruction pair.
-    // The first instruction loads the upper 16 bits and the second instruction
-    // loads the lower 16 bits.
-
-    IF value & 3 THEN
-        TlInternalError ( "Unaligned XR_LA offset", value, 0, 0 )
-    END
-
-    IF ptr & 3 THEN
-        TlInternalError ( "Unaligned XR_LA ptr", CAST ptr TO UWORD, 0, 0 )
-    END
-
-    instptr := CAST ptr TO ^ULONG
-    
-    insthi := instptr[0]
-    instlo := instptr[1]
-
-    // Isolate the old value.
-
-    oldvalue := (insthi & 0xFFFF0000) | (instlo >> 16)
-
-    // Add the offset.
-
-    oldvalue += value
-
-    // Re-encode the instructions with the new value and the original opcodes.
-
-    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = ((oldvalue & 0xFFFF) << 16) | (instlo & 0xFFFF)
-END
-
-FN (LnkRelocF) LnkPerformRelocXrFarInt (
-    IN ptr : ^VOID,
-    IN value : UWORD,
-)
-
-    // Relocate XR17032 "far int" pseudo-instructions.
-    // The pointer is the base of the instruction pair.
-    // The first instruction loads the upper 16 bits and the second instruction
-    // loads the lower 16 bits, shifted right by 1.
-
-    IF value & 3 THEN
-        TlInternalError ( "Unaligned XR_FAR_INT offset", value, 0, 0 )
-    END
-
-    IF ptr & 3 THEN
-        TlInternalError ( "Unaligned XR_FAR_INT ptr", CAST ptr TO UWORD, 0, 0 )
-    END
-
-    instptr := CAST ptr TO ^ULONG
-    
-    insthi := instptr[0]
-    instlo := instptr[1]
-
-    // Isolate the old value.
-
-    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 1)
-
-    // Add the offset.
-
-    oldvalue += value
-
-    // Re-encode the instructions with the new value and the original opcodes.
-
-    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 1) | (instlo & 0xFFFF)
-END
-
-FN (LnkRelocF) LnkPerformRelocXrFarLong (
-    IN ptr : ^VOID,
-    IN value : UWORD,
-)
-
-    // Relocate XR17032 "far long" pseudo-instructions.
-    // The pointer is the base of the instruction pair.
-    // The first instruction loads the upper 16 bits and the second instruction
-    // loads the lower 16 bits, shifted right by 2.
-
-    IF value & 3 THEN
-        TlInternalError ( "Unaligned XR_FAR_LONG offset", value, 0, 0 )
-    END
-
-    IF ptr & 3 THEN
-        TlInternalError ( "Unaligned XR_FAR_LONG ptr", CAST ptr TO UWORD, 0, 0 )
-    END
-
-    instptr := CAST ptr TO ^ULONG
-    
-    insthi := instptr[0]
-    instlo := instptr[1]
-
-    // Isolate the old value.
-
-    oldvalue := (insthi & 0xFFFF0000) | ((instlo >> 16) << 2)
-
-    // Add the offset.
-
-    oldvalue += value
-
-    // Re-encode the instructions with the new value and the original opcodes.
-
-    instptr[0] = (oldvalue & 0xFFFF0000) | (insthi & 0xFFFF)
-    instptr[1] = (((oldvalue & 0xFFFF) << 16) >> 2) | (instlo & 0xFFFF)
-END
-
-LnkPerformRelocationTable : LnkRelocF[] = {
-    [XLO_RELOC_PTR] = &LnkPerformRelocPtr,
-
-    [XLO_RELOC_XR17032_ABSJ] = &LnkPerformRelocXrAbsj,
-    [XLO_RELOC_XR17032_LA] = &LnkPerformRelocXrLa,
-    [XLO_RELOC_XR17032_FAR_INT] = &LnkPerformRelocXrFarInt,
-    [XLO_RELOC_XR17032_FAR_LONG] = &LnkPerformRelocXrFarLong,
-
-    [XLO_RELOC_FOX32_CALL] = &LnkPerformRelocPtr,
-}
-
 LnkCreateJumpStub : UBYTE[XLO_RELOC_MAX] = {
     [XLO_RELOC_XR17032_ABSJ] = TRUE,
     [XLO_RELOC_FOX32_CALL] = TRUE,
@@ -522,9 +333,10 @@ FN LnkRelocateInternalSection (
     WHILE count DO
         targetsection := &sectiontable[reloc^.SectionIndex]
 
-        LnkPerformRelocationTable[reloc^.Type] (
+        XloPerformRelocationTable[reloc^.Type] (
             base + targetsection^.FileOffset + reloc^.SectionOffset, // ptr
             offset, // value
+            LnkArchitectureInTokyo, // bits
         )
 
         count -= 1
@@ -1238,11 +1050,12 @@ FN LnkResolveFixupTable ()
                 IF lnksymbol^.Type != XLO_SYMBOL_SPECIAL THEN
                     // Perform the fixup to bind the extern.
 
-                    LnkPerformRelocationTable[fixup^.Type] (
+                    XloPerformRelocationTable[fixup^.Type] (
                         lnksection^.Data +
                         section^.VirtualAddress +
                         fixup^.SectionOffset, // ptr
                         lnksymbol^.SectionOffset, // value
+                        LnkArchitectureInTokyo, // bits
                     )
 
                     // Create new relocation.
@@ -1333,11 +1146,12 @@ FN LnkResolveFixupTable ()
 
                         // Perform the fixup to redirect to the jump stub.
 
-                        LnkPerformRelocationTable[fixup^.Type] (
+                        XloPerformRelocationTable[fixup^.Type] (
                             lnksection^.Data +
                             section^.VirtualAddress +
                             fixup^.SectionOffset, // ptr
                             lnkextern^.JumpStubOffset, // value
+                            LnkArchitectureInTokyo, // bits
                         )
 
                         // Create a relocation referencing the jump stub.
@@ -1369,11 +1183,12 @@ FN LnkResolveFixupTable ()
                     ELSE
                         // Perform the fixup to bind the extern.
 
-                        LnkPerformRelocationTable[fixup^.Type] (
+                        XloPerformRelocationTable[fixup^.Type] (
                             lnksection^.Data +
                             section^.VirtualAddress +
                             fixup^.SectionOffset, // ptr
                             lnkextern^.Address, // value
+                            LnkArchitectureInTokyo, // bits
                         )
 
                         // Create an import fixup.
@@ -1745,9 +1560,10 @@ FN LnkIterateRelocationTables ()
         WHILE relocentry != relochead DO
             lnkreloc := CONTAINEROF relocentry TO LnkRelocation.Entry
 
-            LnkPerformRelocationTable[lnkreloc^.Type] (
+            XloPerformRelocationTable[lnkreloc^.Type] (
                 lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
                 lnksection^.VirtualAddress, // value
+                LnkArchitectureInTokyo, // bits
             )
 
             relocentry = relocentry^.Next
@@ -1781,9 +1597,10 @@ FN LnkIterateRelocationTables ()
                 symbol^.Section^.Size + symbol^.Section^.DynamicData.Count
         END
 
-        LnkPerformRelocationTable[lnkreloc^.Type] (
+        XloPerformRelocationTable[lnkreloc^.Type] (
             lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
             value, // value
+            LnkArchitectureInTokyo, // bits
         )
 
         listentry = listentry^.Next
@@ -2101,6 +1918,10 @@ FN LnkOutputXlo ()
         offset = SIZEOF XloHeader
     END
 
+    IF LnkStripRelocs THEN
+        header.Hdr.Flags |= XLO_FILE_STRIPPED
+    END
+
     // Create the section table.
 
     sectiontable : ^XloSectionHeader = NULLPTR
@@ -2134,7 +1955,7 @@ FN LnkOutputXlo ()
             // Fill in the parts of the section table entry that we can do now,
             // i.e., everything except for the file offset and virtual address.
 
-#IF ( == BITS 64 )
+#IF ( == BLD_BITS 64 )
             sectiontable[i].VirtualAddress = 0
 #ELSE
             sectiontable[i].VirtualAddress = 0
