@@ -579,14 +579,12 @@ FN (TlIterateDirectoryCallbackF) BtProcessDirectoryEntry (
             GOTO AddToDag
         END
 
-    ELSE
+    ELSEIF NOT pdc^.DagNode AND pdc^.HasFileName THEN
         // Stat the object file and check the modification times.
 
         objstat := BtStatFile ( objectpath^.Buffer )
 
-        IF objstat AND NOT pdc^.DagNode AND pdc^.HasFileName AND
-            objstat^.ModificationTime > pdc^.ModificationTime THEN
-
+        IF objstat AND objstat^.ModificationTime > pdc^.ModificationTime THEN
             // Object file modified later than executable file.
             // Cause re-link.
 
