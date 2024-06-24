@@ -2457,7 +2457,7 @@ FN XrGenerateAbiStuff (
 
         irvar := CAST symbol^.IrContext TO ^IrVariable
 
-        IF irvar THEN
+        IF irvar AND irvar^.Opt.Dve.References THEN
             irreg := LirGetRegister ( irvar )
 
             // Move it from the right place.
