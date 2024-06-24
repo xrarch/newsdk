@@ -48,6 +48,8 @@ LnkSectionTable : TlHashTable
 LnkSymbolTable : TlHashTable
 LnkExternTable : TlHashTable
 LnkJumpStubSection : ^LnkSection
+LnkAccumulateZeroSection : ^LnkSection
+LnkAccumulatePagedZeroSection : ^LnkSection
 
 LnkSectionCount := 0
 LnkSymbolCount := 0
@@ -92,10 +94,15 @@ STRUCT LnkSection
 
     RelocationTable : ^XloRelocEntry,
 
+    RolledInto : ^LnkSection,
+    RolledAt : UWORD,
+
     VirtualAddress : UWORD,
     Size : UWORD,
+    VirtualSize : UWORD,
     Flags : UWORD,
     Index : UWORD,
+    FinalIndex : UWORD,
     Pen : UWORD,
 
     Data : ^UBYTE,
@@ -168,14 +175,24 @@ FN LnkFindSection (
         END
 
         section^.Size = 0
+        section^.VirtualSize = 0
         section^.Flags = flags
         section^.Index = LnkSectionCount
+        section^.FinalIndex = 0
         section^.Pen = 0
         section^.Data = NULLPTR
         section^.VirtualAddress = 0
         section^.RelocationCount = 0
+        section^.RolledInto = NULLPTR
+        section^.RolledAt = 0
 
         TlInitializeList ( &section^.RelocationListHead )
+
+        // Note that the DynamicData mechanism for appending bytes to the end
+        // of a section !! ONLY !! works for code sections, since ZERO sections
+        // are destroyed and data sections end up having the ZERO sections
+        // tacked on the end, which is currently incompatible with this
+        // mechanism.
 
         TlInitializeDynamicBuffer ( &section^.DynamicData )
 
@@ -187,6 +204,22 @@ FN LnkFindSection (
             // The first code section found is used as the stub section.
 
             LnkJumpStubSection = section
+
+        ELSEIF NOT LnkAccumulateZeroSection AND
+            flags & (XLO_SECTION_CODE | XLO_SECTION_MAP |
+            XLO_SECTION_ZERO | XLO_SECTION_PAGED) == XLO_SECTION_MAP THEN
+
+            // The first data section found is the one we accumulate all of the
+            // zero sections onto in the final executable.
+
+            LnkAccumulateZeroSection = section
+
+        ELSEIF NOT LnkAccumulatePagedZeroSection AND
+            flags & (XLO_SECTION_CODE | XLO_SECTION_MAP |
+            XLO_SECTION_ZERO | XLO_SECTION_PAGED) ==
+            (XLO_SECTION_MAP | XLO_SECTION_PAGED) THEN
+
+            LnkAccumulatePagedZeroSection = section
         END
 
     ELSE
@@ -390,11 +423,12 @@ FN LnkAllocateStorage ()
             // Stash the offset of this section from the base of the matching
             // final section in the VirtualAddress field of its header.
 
-            section^.VirtualAddress = lnksection^.Size
+            section^.VirtualAddress = lnksection^.VirtualSize
 
             // Increment the size of the final section.
 
             lnksection^.Size += section^.DataLength
+            lnksection^.VirtualSize += section^.VirtualLength
 
             // Run down the relocation table to offset all references to
             // this section by the byte count we've determined.
@@ -526,6 +560,85 @@ FN LnkMergeSections ()
             END
 
             i += 1
+        END
+
+        listentry = listentry^.Next
+    END
+END
+
+FN LnkRemoveZeroSections ()
+
+    // Remove the ZERO sections (like bss) by stacking them onto a single data
+    // section.
+
+    listhead := &LnkSectionTable.OrderedListHead
+    listentry := listhead^.Next
+
+    WHILE listentry != listhead DO
+        lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+        zeropaged := lnksection^.Flags & (XLO_SECTION_ZERO | XLO_SECTION_PAGED)
+
+        rollsection : ^LnkSection = NULLPTR
+
+        IF zeropaged == XLO_SECTION_ZERO THEN
+            // Roll it into the nonpaged data section.
+
+            rollsection = LnkAccumulateZeroSection
+        
+        ELSEIF zeropaged == (XLO_SECTION_ZERO | XLO_SECTION_PAGED) THEN
+            // Roll it into the paged data section.
+
+            rollsection = LnkAccumulatePagedZeroSection
+        END
+
+        IF rollsection THEN
+            // Relocate the ZERO section by the current virtual size of the
+            // rollsection, and move each relocation into the list for the
+            // rollsection.
+
+            lnksection^.RolledInto = rollsection
+            lnksection^.RolledAt = rollsection^.VirtualSize
+
+            relochead := &lnksection^.RelocationListHead
+            relocentry := relochead^.Next
+
+            WHILE relocentry != relochead DO
+                lnkreloc := CONTAINEROF relocentry TO LnkRelocation.Entry
+
+                XloPerformRelocationTable[lnkreloc^.Type] (
+                    lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
+                    rollsection^.VirtualSize, // value
+                    LnkArchitectureInTokyo, // bits
+                    FALSE, // absolute
+                )
+
+                // Capture the next entry first since we're about to manipulate
+                // the list links.
+
+                relocentry = relocentry^.Next
+
+                // Move the relocation to the data section's list.
+
+                TlRemoveEntryList ( &lnkreloc^.Entry )
+
+                TlInsertAtTailList (
+                    &rollsection^.RelocationListHead, // head
+                    &lnkreloc^.Entry, // entry
+                )
+
+                lnksection^.RelocationCount -= 1
+                rollsection^.RelocationCount += 1
+            END
+
+            // Increment the virtual size of the rollsection.
+
+            rollsection^.VirtualSize += lnksection^.VirtualSize
+
+            // Remove this ZERO section from the list.
+
+            LnkSectionCount -= 1
+            TlRemoveHashTable ( &lnksection^.Entry )
         END
 
         listentry = listentry^.Next
@@ -728,14 +841,23 @@ FN LnkMergeSymbolTables ()
 
             lnksymbol^.SourceObject = object
             
-            lnksymbol^.Section = LnkIndexedSectionArray[section^.NameOffset]
+            lnksection := LnkIndexedSectionArray[section^.NameOffset]
+
+            rolledat := 0
+
+            IF lnksection^.RolledInto THEN
+                rolledat = lnksection^.RolledAt
+                lnksection = lnksection^.RolledInto
+            END
+
+            lnksymbol^.Section = lnksection
             
             // Make sure the symbol value is offset by the offset of the
             // original section, which has been stashed in the VirtualAddress
             // field of the original section header.
 
             lnksymbol^.SectionOffset =
-                symbol^.SectionOffset + section^.VirtualAddress
+                symbol^.SectionOffset + section^.VirtualAddress + rolledat
 
             lnksymbol^.Type = symbol^.Type
 
@@ -1331,7 +1453,7 @@ FN LnkAssignSectionBases (
 
         lnksection^.VirtualAddress = base
 
-        base += (lnksection^.Size + lnksection^.DynamicData.Count)
+        base += (lnksection^.VirtualSize + lnksection^.DynamicData.Count)
 
         listentry = listentry^.Next
     END
@@ -1374,7 +1496,7 @@ FN LnkAssignMappedBases (
 
         lnksection^.VirtualAddress = base
 
-        base += (lnksection^.Size + lnksection^.DynamicData.Count)
+        base += (lnksection^.VirtualSize + lnksection^.DynamicData.Count)
 
         IF base & LnkArchitecturePageMask THEN
             base += (LnkArchitecturePageMask + 1)
@@ -1449,7 +1571,7 @@ FN LnkEvaluateExpr ()
                 END
 
                 base += (refsection^.VirtualAddress +
-                    refsection^.Size + refsection^.DynamicData.Count)
+                    refsection^.VirtualSize + refsection^.DynamicData.Count)
 
             ELSEIF atomstr[0] == '#' THEN
                 // The size of a section.
@@ -1463,7 +1585,8 @@ FN LnkEvaluateExpr ()
                     TlError ( "-move: No such section '%s'\n", &atomstr[1] )
                 END
 
-                base += (refsection^.Size + refsection^.DynamicData.Count)
+                base += (refsection^.VirtualSize +
+                    refsection^.DynamicData.Count)
 
             ELSEIF atomstr[0] == '%' AND atomstr[1] == 0 THEN
                 // Alignment to page size.
@@ -1615,11 +1738,12 @@ FN LnkIterateRelocationTables ()
             value = symbol^.Section^.VirtualAddress
 
         ELSEIF symbol^.SectionOffset == LNK_SYMBOL_SIZE THEN
-            value = symbol^.Section^.Size + symbol^.Section^.DynamicData.Count
+            value = symbol^.Section^.VirtualSize +
+                symbol^.Section^.DynamicData.Count
 
         ELSEIF symbol^.SectionOffset == LNK_SYMBOL_END THEN
             value = symbol^.Section^.VirtualAddress +
-                symbol^.Section^.Size + symbol^.Section^.DynamicData.Count
+                symbol^.Section^.VirtualSize + symbol^.Section^.DynamicData.Count
         END
 
         XloPerformRelocationTable[lnkreloc^.Type] (
@@ -1680,18 +1804,19 @@ FN LnkOutputFxf ()
 
         IF lnksection^.Flags & XLO_SECTION_ZERO THEN
             sawbss = TRUE
-            bsssize += lnksection^.Size
+            bsssize += lnksection^.VirtualSize
 
         ELSEIF sawbss THEN
             TlError ( "-fxf: BSS sections must be final\n" )
 
         ELSE
-            codesize += (lnksection^.Size + lnksection^.DynamicData.Count)
+            codesize += (lnksection^.VirtualSize +
+                lnksection^.DynamicData.Count)
         END
 
         lnksection^.VirtualAddress = base
 
-        base += (lnksection^.Size + lnksection^.DynamicData.Count)
+        base += (lnksection^.VirtualSize + lnksection^.DynamicData.Count)
 
         reloccount += lnksection^.RelocationCount
 
@@ -1797,22 +1922,20 @@ FN LnkOutputFxf ()
     WHILE listentry != listhead DO
         lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
 
-        IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
-            IF lnksection^.Size THEN
-                TlWriteFile (
-                    handle, // handle
-                    lnksection^.Size, // bytes
-                    lnksection^.Data, // buffer
-                )
-            END
+        IF lnksection^.Size THEN
+            TlWriteFile (
+                handle, // handle
+                lnksection^.Size, // bytes
+                lnksection^.Data, // buffer
+            )
+        END
 
-            IF lnksection^.DynamicData.Count THEN
-                TlWriteFile (
-                    handle, // handle
-                    lnksection^.DynamicData.Count, // bytes
-                    lnksection^.DynamicData.Buffer, // buffer
-                )
-            END
+        IF lnksection^.DynamicData.Count THEN
+            TlWriteFile (
+                handle, // handle
+                lnksection^.DynamicData.Count, // bytes
+                lnksection^.DynamicData.Buffer, // buffer
+            )
         END
 
         listentry = listentry^.Next
@@ -1973,6 +2096,20 @@ FN LnkOutputXlo ()
         head = &LnkSectionTable.OrderedListHead
         listentry = head^.Next
 
+        // First assign indices.
+
+        WHILE listentry != head DO
+            lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
+
+            lnksection^.FinalIndex = i
+
+            i += 1
+            listentry = listentry^.Next
+        END
+
+        i = 0
+        listentry = head^.Next
+
         WHILE listentry != head DO
             lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
 
@@ -1991,6 +2128,9 @@ FN LnkOutputXlo ()
 
             sectiontable[i].DataLength =
                 lnksection^.Size + lnksection^.DynamicData.Count
+
+            sectiontable[i].VirtualLength =
+                lnksection^.VirtualSize + lnksection^.DynamicData.Count
 
             sectiontable[i].RelocTableOffset = 0xABABABAB
 
@@ -2036,7 +2176,7 @@ FN LnkOutputXlo ()
                     lnksection^.RelocationTable[j].Type = lnkreloc^.Type
 
                     lnksection^.RelocationTable[j].SectionIndex =
-                        lnkreloc^.Section^.Index
+                        lnkreloc^.Section^.FinalIndex
 
                     rlistentry = rlistentry^.Next
                     j += 1
@@ -2082,7 +2222,7 @@ FN LnkOutputXlo ()
                 (lnksymbol^.Type != XLO_SYMBOL_GLOBAL OR
                 LnkCreateFragment OR LnkKeepGlobals) THEN
 
-                symboltable[i].SectionIndex = lnksymbol^.Section^.Index
+                symboltable[i].SectionIndex = lnksymbol^.Section^.FinalIndex
                 symboltable[i].Type = lnksymbol^.Type
                 symboltable[i].Flags = 0
                 symboltable[i].Padding = 0
@@ -2177,7 +2317,7 @@ FN LnkOutputXlo ()
             externfixtable[i].SectionOffset = lnkreloc^.SectionOffset
             externfixtable[i].ExternIndex = lnkreloc^.Extern^.Index
             externfixtable[i].Type = lnkreloc^.Type
-            externfixtable[i].SectionIndex = lnkreloc^.Section^.Index
+            externfixtable[i].SectionIndex = lnkreloc^.Section^.FinalIndex
 
             listentry = listentry^.Next
             i += 1
@@ -2260,7 +2400,7 @@ FN LnkOutputXlo ()
                     library^.FixupTable[j].Type = lnkreloc^.Type
 
                     library^.FixupTable[j].SectionIndex =
-                        lnkreloc^.Section^.Index
+                        lnkreloc^.Section^.FinalIndex
 
                     library^.FixupTable[j].OriginalValue =
                         lnkreloc^.OriginalValue
@@ -2311,14 +2451,9 @@ FN LnkOutputXlo ()
 
             sectiontable[i].VirtualAddress = lnksection^.VirtualAddress
 
-            IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
-                sectiontable[i].FileOffset = offset
+            sectiontable[i].FileOffset = offset
 
-                offset += lnksection^.Size + lnksection^.DynamicData.Count
-            
-            ELSE
-                sectiontable[i].FileOffset = 0xABABABAB
-            END
+            offset += lnksection^.Size + lnksection^.DynamicData.Count
 
             listentry = listentry^.Next
             i += 1
@@ -2479,22 +2614,20 @@ FN LnkOutputXlo ()
         WHILE listentry != head DO
             lnksection = CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
 
-            IF NOT (lnksection^.Flags & XLO_SECTION_ZERO) THEN
-                IF lnksection^.Size THEN
-                    TlWriteFile (
-                        handle, // handle
-                        lnksection^.Size, // bytes
-                        lnksection^.Data, // buffer
-                    )
-                END
+            IF lnksection^.Size THEN
+                TlWriteFile (
+                    handle, // handle
+                    lnksection^.Size, // bytes
+                    lnksection^.Data, // buffer
+                )
+            END
 
-                IF lnksection^.DynamicData.Count THEN
-                    TlWriteFile (
-                        handle, // handle
-                        lnksection^.DynamicData.Count, // bytes
-                        lnksection^.DynamicData.Buffer, // buffer
-                    )
-                END
+            IF lnksection^.DynamicData.Count THEN
+                TlWriteFile (
+                    handle, // handle
+                    lnksection^.DynamicData.Count, // bytes
+                    lnksection^.DynamicData.Buffer, // buffer
+                )
             END
 
             listentry = listentry^.Next
@@ -2510,6 +2643,13 @@ FN LnkLinkObject ()
     LnkAllocateStorage ()
 
     LnkMergeSections ()
+
+    IF NOT LnkCreateFragment AND
+        NOT LnkCreateFxf AND
+        NOT LnkCreateBin THEN
+
+        LnkRemoveZeroSections ()
+    END
 
     LnkCreateSpecialSymbols ()
 

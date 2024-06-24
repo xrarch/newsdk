@@ -111,9 +111,14 @@ FN AsmEncodeFile ()
 #END
             sectiontable[i].NameOffset = AsmAddString ( section^.Name )
             sectiontable[i].DataLength = section^.FileOffset
+            sectiontable[i].VirtualLength = section^.FileOffset
             sectiontable[i].RelocTableOffset = 0
             sectiontable[i].RelocCount = section^.RelocationCount
             sectiontable[i].Flags = section^.SectionFlags
+
+            IF section^.SectionFlags & XLO_SECTION_ZERO THEN
+                sectiontable[i].DataLength = 0
+            END
 
             // Now create the relocation table.
 

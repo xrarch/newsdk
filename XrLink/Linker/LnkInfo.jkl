@@ -21,6 +21,7 @@ LnkSectionFlagToName : ^UBYTE[32] = {
     [0] = "ZERO",
     [1] = "CODE",
     [2] = "MAP",
+    [3] = "PAGED",
 }
 
 FN LnkDumpInfo (
@@ -77,6 +78,7 @@ FN LnkDumpInfo (
     WHILE i < header^.SectionCount DO
         TlPrint ( "%s:\n", &stringtab[section^.NameOffset] )
         TlPrint ( "  Size     %u bytes\n", section^.DataLength)
+        TlPrint ( "  Virtual  %u bytes\n", section^.VirtualLength )
         TlPrint ( "  Address  0x%P\n", section^.VirtualAddress )
         TlPrint ( "  Offset   0x%08X\n", section^.FileOffset )
         TlPrint ( "  Flags    " )
@@ -138,7 +140,7 @@ FN LnkDumpSymbols (
 
         section := &sectiontab[symbol^.SectionIndex]
 
-        TlPrint ( "%08X %8s %s\n",
+        TlPrint ( "%08X %10s %s\n",
             symbol^.SectionOffset,
             stringtab + section^.NameOffset,
             stringtab + symbol^.NameOffset )
