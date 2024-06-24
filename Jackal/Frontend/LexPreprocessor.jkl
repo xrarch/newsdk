@@ -820,6 +820,7 @@ FN LexExpandMacro (
         END
 
         arg := macro^.ArgListHead
+        foundclose := 0
 
         WHILE arg DO
             argmacro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
@@ -840,7 +841,7 @@ FN LexExpandMacro (
 
             TlInitializeDynamicBuffer ( &argmacro^.Contents )
 
-            foundclose : UBYTE = 0
+            foundclose = 0
 
             WHILE NOT (foundclose & ARG_NAME_NONZERO) DO
                 IF foundclose & ARG_NAME_DONE THEN
@@ -869,21 +870,20 @@ FN LexExpandMacro (
 
             arg = arg^.Next
 
-            IF foundclose & ARG_NAME_DONE THEN
-                IF arg THEN
-                    LexError ( &trashtoken,
-                        "Too few arguments to function macro\n" )
-                END
+            IF foundclose & ARG_NAME_DONE AND arg THEN
+                LexError ( &trashtoken,
+                    "Too few arguments to function macro\n" )
+            END
+        END
 
-            ELSEIF NOT arg THEN
-                // Blindly eat up until the next close parenthesis.
+        IF NOT (foundclose & ARG_NAME_DONE) THEN
+            // Blindly eat up until the next close parenthesis.
 
-                WHILE TRUE DO
-                    byte = LexNextNonWhitespaceCharacter ( &trashtoken )
+            WHILE TRUE DO
+                byte = LexNextNonWhitespaceCharacter ( &trashtoken )
 
-                    IF byte == ')' THEN
-                        BREAK
-                    END
+                IF byte == ')' THEN
+                    BREAK
                 END
             END
         END
@@ -1357,10 +1357,6 @@ FN (LexDirectiveParseF) LexParseMacro ()
         OUT macro^.ArgListHead, // arglisthead
         OUT length, // length
     )
-
-    IF length == 0 THEN
-        LexError ( &macro^.NameToken, "Must have at least 1 argument\n" )
-    END
 
     oldmacro := CAST TlLookupSymbolTable (
         LexCurrentMacroScope, // symboltable

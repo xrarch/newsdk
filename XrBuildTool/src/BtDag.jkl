@@ -1227,7 +1227,44 @@ FN (BtDagActionF) BtBuildS (
     TlCopyIntoDynamicBuffer (
         &cmdline, // array
         dagnode^.ObjectPath.Buffer, // srcbuf
-        dagnode^.ObjectPath.Count, // length
+        dagnode^.ObjectPath.Count - 1, // length
+    )
+
+    head := &dagnode^.Target^.ExposedMacroListHead
+    listentry := head^.Next
+
+    WHILE listentry != head DO
+        exprec := CONTAINEROF listentry TO BtExposedMacroRecord.Entry
+        macro := exprec^.Macro
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            ' ', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            &macro^.Name[0], // srcbuf
+            TlMeasureString ( &macro^.Name[0] ), // length
+        )
+
+        TlInsertDynamicBuffer (
+            &cmdline, // array
+            '=', // byte
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &cmdline, // array
+            macro^.Contents.Buffer, // srcbuf
+            macro^.Contents.Count - 1, // length
+        )
+
+        listentry = listentry^.Next
+    END
+
+    TlInsertDynamicBuffer (
+        &cmdline, // array
+        0, // byte
     )
 
     // Now do the command.
