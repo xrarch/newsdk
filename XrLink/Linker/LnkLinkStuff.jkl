@@ -855,6 +855,9 @@ FN LnkMergeSymbolTables ()
             // Make sure the symbol value is offset by the offset of the
             // original section, which has been stashed in the VirtualAddress
             // field of the original section header.
+            //
+            // If it pointed into a ZERO section which has been rolled into a
+            // data section, the offset of that must be added as well.
 
             lnksymbol^.SectionOffset =
                 symbol^.SectionOffset + section^.VirtualAddress + rolledat

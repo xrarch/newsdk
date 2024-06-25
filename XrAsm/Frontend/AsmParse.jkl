@@ -1042,6 +1042,24 @@ FN (AsmDirectiveF) AsmParseSection (
     AsmLastLabel = NULLPTR
 END
 
+#MACRO AsmCheckExprIfZero ( expr ) [
+    IF AsmCurrentSection^.SectionFlags & XLO_SECTION_ZERO THEN
+        val : UWORD
+        refsymbol : ^LexSymbol
+
+        AsmEvaluateNodeMustWork (
+            expr, // node
+            OUT val, // value
+            OUT refsymbol, // refsymbol
+        )
+
+        IF val != 0 THEN
+            LexError ( &expr^.Token,
+                "All bytes in ZERO sections must be zero\n" )
+        END
+    END
+]
+
 FN (AsmDirectiveF) AsmParseDb (
     IN errtoken : ^LexToken,
 )
@@ -1056,6 +1074,8 @@ FN (AsmDirectiveF) AsmParseDb (
     )
 
     elem^.Body.Data = expr
+
+    AsmCheckExprIfZero ( expr )
 END
 
 FN (AsmDirectiveF) AsmParseDi (
@@ -1072,6 +1092,8 @@ FN (AsmDirectiveF) AsmParseDi (
     )
 
     elem^.Body.Data = expr
+
+    AsmCheckExprIfZero ( expr )
 END
 
 FN (AsmDirectiveF) AsmParseDl (
@@ -1088,6 +1110,8 @@ FN (AsmDirectiveF) AsmParseDl (
     )
 
     elem^.Body.Data = expr
+
+    AsmCheckExprIfZero ( expr )
 END
 
 FN (AsmDirectiveF) AsmParseDq (
@@ -1104,6 +1128,8 @@ FN (AsmDirectiveF) AsmParseDq (
     )
 
     elem^.Body.Data = expr
+
+    AsmCheckExprIfZero ( expr )
 END
 
 FN (AsmDirectiveF) AsmParseDp (
@@ -1124,6 +1150,10 @@ FN (AsmDirectiveF) AsmParseDp (
     // Could cause a relocation, so note that.
 
     elem^.RelocationType = XLO_RELOC_PTR
+
+    IF AsmCurrentSection^.SectionFlags & XLO_SECTION_ZERO THEN
+        LexError ( errtoken, "Can't place a pointer in a ZERO section\n" )
+    END
 END
 
 FN (AsmDirectiveF) AsmParseDefine (
@@ -1301,6 +1331,10 @@ FN (AsmDirectiveF) AsmParseIncBin (
 
     elem^.Body.IncBin.Path = fullpath^.Buffer
     elem^.Body.IncBin.Size = stat.SizeInBytes
+
+    IF AsmCurrentSection^.SectionFlags & XLO_SECTION_ZERO THEN
+        LexError ( errtoken, "Can't include a binary in a ZERO section\n" )
+    END
 END
 
 FN (AsmDirectiveF) AsmParseBytes (
@@ -1343,6 +1377,12 @@ FN (AsmDirectiveF) AsmParseBytes (
 
     elem^.Body.BytesChunk.Count = howmany
     elem^.Body.BytesChunk.Byte = which
+
+    IF which != 0 AND
+        AsmCurrentSection^.SectionFlags & XLO_SECTION_ZERO THEN
+
+        LexError ( errtoken, "Can't include nonzero bytes in a ZERO section\n" )
+    END
 END
 
 FN (AsmDirectiveF) AsmParseGlobal (
@@ -1482,6 +1522,10 @@ FN (AsmDirectiveF) AsmParseDs (
     )
 
     elem^.Body.String = &string^.DynamicBuffer
+
+    IF AsmCurrentSection^.SectionFlags & XLO_SECTION_ZERO THEN
+        LexError ( errtoken, "Can't include a string in a ZERO section\n" )
+    END
 END
 
 FN (AsmDirectiveF) AsmParseAlign (
