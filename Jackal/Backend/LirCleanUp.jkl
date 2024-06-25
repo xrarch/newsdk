@@ -20,14 +20,14 @@ FN LirResolveLabel (
     LirResolveGenCount += 1
     curgen := LirResolveGenCount
 
+    label^.Body.Label.References -= 1
+
     WHILE TRUE DO
         // First slide to the next non-label instruction.
 
-        next := label
+        next := label^.Next
 
         WHILE TRUE DO
-            next = next^.Next
-
             IF NOT next OR next^.Type != LIR_LABEL THEN
                 BREAK
             END
@@ -36,10 +36,12 @@ FN LirResolveLabel (
             newlabel = next
 
             resolved = TRUE
+
+            next = next^.Next
         END
 
         IF NOT next THEN
-            RETURN resolved
+            BREAK
         END
 
         // If this instruction is an unconditional jump, follow it.
@@ -54,15 +56,19 @@ FN LirResolveLabel (
             IF label^.Body.Label.GenCount == curgen THEN
                 // We went in a cycle. Stop now.
 
-                RETURN resolved
+                BREAK
             END
 
             label^.Body.Label.GenCount = curgen
 
         ELSE
-            RETURN resolved
+            BREAK
         END
     END
+
+    newlabel^.Body.Label.References += 1
+
+    RETURN resolved
 END
 
 FN LirpPeepholeForFunction (
