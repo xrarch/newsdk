@@ -454,13 +454,18 @@ FN XrAsmEmit (
 
         sym := PrsCompoundTypeListHead
 
+        hashtable : ^TlHashTable
+
+        head : ^TlListEntry
+        entry : ^TlListEntry
+
         WHILE sym DO
             type := sym^.SemanticType
 
-            hashtable := &type^.Body.Compound.FieldScope^.HashTable
+            hashtable = &type^.Body.Compound.FieldScope^.HashTable
 
-            head := &hashtable^.OrderedListHead
-            entry := head^.Next
+            head = &hashtable^.OrderedListHead
+            entry = head^.Next
 
             WHILE head != entry DO
                 fieldsym := CONTAINEROF entry TO LexSymbol.Entry.OrderedEntry
@@ -483,6 +488,35 @@ FN XrAsmEmit (
             XrAsmInsertString ( "\n" )
 
             sym = sym^.Next
+        END
+
+        // And dump all of the numeric constants too.
+
+        hashtable = &LexRootMacroScope^.HashTable
+
+        head = &hashtable^.OrderedListHead
+        entry = head^.Next
+
+        WHILE head != entry DO
+            macro := CONTAINEROF entry TO LexMacro.Entry.OrderedEntry
+
+            IF NOT macro^.IsFunctionMacro THEN
+                val : UWORD
+
+                IF TlStringToNumber (
+                    macro^.Contents.Buffer, // src
+                    -1, // bufsize
+                    OUT val, // num
+                ) THEN
+                    XrAsmInsertString ( "#DEFINE " )
+                    XrAsmInsertString ( &macro^.Name[0] )
+                    XrAsmInsertString ( " " )
+                    XrAsmInsertNumber ( val )
+                    XrAsmInsertString ( "\n" )
+                END
+            END
+
+            entry = entry^.Next
         END
     END
 

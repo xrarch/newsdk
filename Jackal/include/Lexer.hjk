@@ -420,6 +420,7 @@ EXTERN LexCharTreatment : LexCharBehavior[256]
 EXTERN LexCurrentStream : ^LexStream
 EXTERN LexCurrentMacroScope : ^TlSymbolTable
 EXTERN LexRootScope : ^TlSymbolTable
+EXTERN LexRootMacroScope : ^TlSymbolTable
 EXTERN LexCurrentScope : ^TlSymbolTable
 EXTERN LexFalseCount : ULONG
 
