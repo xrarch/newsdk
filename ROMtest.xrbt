@@ -1,4 +1,4 @@
 // XR/station ROM test platform
 
 #DEFINE ARCHITECTURE "xr17032"
-#DEFINE BITS 32
+#DEFINE BLD_BITS 32

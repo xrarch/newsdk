@@ -277,26 +277,6 @@ FN LirSelect (
         inst, // inst
     )
 
-    IF reg AND reg^.Type == LIR_PREALLOCATED_REG THEN
-        // The selected instruction shovels its results into a fixed register.
-        // Create a move instruction whose destination is a virtual register,
-        // with a hint that regalloc should assign it to that machine register.
-        // If regalloc succeeds, the move instruction will be elided.
-
-        #IF 0
-            machreg := reg^.MachineRegister
-
-            reg = JklTargetInfo^.LirInfo^.MoveFunc (
-                reg, // oldregister
-            )
-
-            reg^.Hint = machreg
-
-        #ELSE
-            TlInternalError ( "Prealloc -> Virt TODO", 0, 0, 0 )
-        #END
-    END
-
     inst^.LirRegister = reg
 
     RETURN reg

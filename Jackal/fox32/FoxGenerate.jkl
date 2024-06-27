@@ -678,6 +678,12 @@ FN (LirSelectF) FoxSelectStackAddr (
         symbol, // symbol
     ) + inst^.Body.Addr.Offset + LirCurrentFunction^.ScratchAreaSize
 
+    IF off == 0 THEN
+        // Just return the SP register.
+
+        RETURN &FoxSp
+    END
+
     defreg := LirGetRegister ( inst^.Defines )
 
     movinst := LirCreateInstruction (

@@ -858,6 +858,12 @@ FN (LirSelectF) XrSelectStackAddr (
         symbol, // symbol
     ) + inst^.Body.Addr.Offset + LirCurrentFunction^.ScratchAreaSize
 
+    IF off == 0 THEN
+        // Oh, just use SP directly.
+
+        RETURN &XrSp
+    END
+
     defreg := LirGetRegister ( inst^.Defines )
 
     lirinst := XrCreateInstruction (
