@@ -32,6 +32,9 @@
    other conditionals is not guaranteed to be 1 in the true case, just
    non-zero. This means that equivalence with the constant TRUE should not be
    tested directly; idioms of the kind `x == TRUE` will often be broken.
+   The exception to this is <, >, <=, and >=, which are guaranteed to be 1 and 0
+   in the true and false case respectively, in order to implement fast carry bit
+   calculation.
 
 9. "In-flight" expressions are of UWORD or WORD type until the result is
    assigned to something; i.e., there is no intermediate wrapping.

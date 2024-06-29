@@ -28,6 +28,10 @@
 
 #DEFINE RTL_ARCH_STRING ( STRCAT ( STRCAT "\"" ARCHITECTURE ) "\"" )
 
+#MACRO RtlEmptyList ( head ) [
+    ((head)^.Next == (head))
+]
+
 #MACRO RtlInitializeList ( head ) [
     listhead := (head)
 
@@ -75,6 +79,123 @@ STRUCT RtlBitmapHeader
     Data : ^UBYTE,
     SizeInBits : UWORD,
 END
+
+#IF ( == BLD_BITS 64 )
+
+STRUCT RtlUquad
+    Quad : UQUAD,
+END
+
+#MACRO RtlAddUlongToUquad ( quad, val ) [
+    NOTHING (quad)^.Quad += (val)
+]
+
+#MACRO RtlUquadEqUquad ( quad1, quad2 ) [
+    ((quad1)^.Quad == (quad2)^.Quad)
+]
+
+#MACRO RtlUquadNeqUquad ( quad1, quad2 ) [
+    ((quad1)^.Quad != (quad2)^.Quad)
+]
+
+#MACRO RtlUquadLtUquad ( quad1, quad2 ) [
+    ((quad1)^.Quad < (quad2)^.Quad)
+]
+
+#MACRO RtlUquadGtUquad ( quad1, quad2 ) [
+    ((quad1)^.Quad > (quad2)^.Quad)
+]
+
+#MACRO RtlUquadLteqUquad ( quad1, quad2 ) [
+    ((quad1)^.Quad <= (quad2)^.Quad)
+]
+
+#MACRO RtlUquadGteqUquad ( quad1, quad2 ) [
+    ((quad1)^.Quad >= (quad2)^.Quad)
+]
+
+#MACRO RtlUlongEqUquad ( val, quad ) [
+    ((val) == (quad)^.Quad)
+]
+
+#MACRO RtlUlongLtUquad ( val, quad ) [
+    ((val) < (quad)^.Quad)
+]
+
+#MACRO RtlUlongGtUquad ( val, quad ) [
+    ((val) > (quad)^.Quad)
+]
+
+#MACRO RtlUlongLteqUquad ( val, quad ) [
+    ((val) <= (quad)^.Quad)
+]
+
+#MACRO RtlUlongGteqUquad ( val, quad ) [
+    ((val) >= (quad)^.Quad)
+]
+
+#ELSE
+
+STRUCT RtlUquad
+    Low : ULONG,
+    High : ULONG,
+END
+
+#MACRO RtlAddUlongToUquad ( quad, val ) [
+    low := (val) + (quad)^.Low
+    NOTHING (quad)^.Low = low
+    NOTHING (quad)^.High += low < (val)
+]
+
+#MACRO RtlUquadEqUquad ( quad1, quad2 ) [
+    (NOT (((quad1)^.Low ^ (quad2)^.Low) | ((quad1)^.High ^ (quad2)^.High)))
+]
+
+#MACRO RtlUquadNeqUquad ( quad1, quad2 ) [
+    (((quad1)^.Low ^ (quad2)^.Low) | ((quad1)^.High ^ (quad2)^.High))
+]
+
+#MACRO RtlUquadLtUquad ( quad1, quad2 ) [
+    ((quad1)^.High < (quad2)^.High OR
+    ((quad1)^.High == (quad2)^.High AND (quad1)^.Low < (quad2)^.Low))
+]
+
+#MACRO RtlUquadGtUquad ( quad1, quad2 ) [
+    ((quad1)^.High > (quad2)^.High OR
+    ((quad1)^.High == (quad2)^.High AND (quad1)^.Low > (quad2)^.Low))
+]
+
+#MACRO RtlUquadLteqUquad ( quad1, quad2 ) [
+    ((quad1)^.High < (quad2)^.High OR
+    ((quad1)^.High == (quad2)^.High AND (quad1)^.Low <= (quad2)^.Low))
+]
+
+#MACRO RtlUquadGteqUquad ( quad1, quad2 ) [
+    ((quad1)^.High > (quad2)^.High OR
+    ((quad1)^.High == (quad2)^.High AND (quad1)^.Low >= (quad2)^.Low))
+]
+
+#MACRO RtlUlongEqUquad ( val, quad ) [
+    ((quad)^.High == 0 AND (quad)^.Low == (val))
+]
+
+#MACRO RtlUlongLtUquad ( val, quad ) [
+    ((quad)^.High != 0 OR (val) < (quad)^.Low)
+]
+
+#MACRO RtlUlongGtUquad ( val, quad ) [
+    ((quad)^.High == 0 AND (val) > (quad)^.Low)
+]
+
+#MACRO RtlUlongLteqUquad ( val, quad ) [
+    ((quad)^.High != 0 OR (val) <= (quad)^.Low)
+]
+
+#MACRO RtlUlongGteqUquad ( val, quad ) [
+    ((quad)^.High == 0 AND (val) >= (quad)^.Low)
+]
+
+#END
 
 FNPTR RtlPrintCallbackF (
     IN byte : UBYTE,
