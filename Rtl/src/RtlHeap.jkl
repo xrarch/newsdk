@@ -1,0 +1,214 @@
+//
+// Implementation of an intrusively linked pairing heap (priority queue).
+//
+
+#INCLUDE "<inc>/Rtl.hjk"
+
+FN RtlpMeldHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN a : ^RtlHeapEntry,
+    IN b : ^RtlHeapEntry,
+) : ^RtlHeapEntry
+
+    child : ^RtlHeapEntry
+
+    IF comparisonfunc ( a, b ) THEN
+        // A < B
+
+        b^.Prev = a
+
+        bnext := b^.Next
+
+        IF bnext THEN
+            a^.Next = bnext
+            bnext^.Prev = a
+        END
+
+        child = a^.Child
+
+        IF child THEN
+            b^.Next = child
+            child^.Prev = b
+        END
+
+        a^.Child = b
+
+        RETURN a
+    END
+
+    // A >= B
+
+    b^.Prev = a^.Prev
+    a^.Prev = b
+
+    child = b^.Child
+
+    IF child THEN
+        a^.Next = child
+        child^.Prev = a
+    END
+
+    b^.Child = a
+
+    RETURN b
+END
+
+FN RtlpCombineSiblingsHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN left : ^RtlHeapEntry,
+) : ^RtlHeapEntry
+
+    left^.Prev = NULLPTR
+
+    root : ^RtlHeapEntry
+
+    // Merge pairs right.
+
+    WHILE TRUE DO
+        b := left^.Next
+
+        IF NOT b THEN
+            root = left
+
+            BREAK
+        END
+
+        left^.Next = NULLPTR
+
+        b = RtlpMeldHeap (
+            comparisonfunc, // comparisonfunc
+            left, // a
+            b, // b
+        )
+
+        left = b^.Next
+
+        IF NOT left THEN
+            root = b
+
+            BREAK
+        END
+    END
+
+    // Merge pairs left.
+
+    WHILE TRUE DO
+        b := root^.Prev
+
+        IF NOT b THEN
+            RETURN root
+        END
+
+        b^.Next = NULLPTR
+
+        root = RtlpMeldHeap (
+            comparisonfunc, // comparisonfunc,
+            b, // a
+            root, // b
+        )
+    END
+END
+
+EXPORT FN RtlInsertIntoHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN rootptr : ^^RtlHeapEntry,
+    IN entry : ^RtlHeapEntry,
+)
+
+    entry^.Next = NULLPTR
+    entry^.Prev = NULLPTR
+    entry^.Child = NULLPTR
+
+    IF NOT rootptr^ THEN
+        rootptr^ = entry
+
+        LEAVE
+    END
+
+    rootptr^ = RtlpMeldHeap (
+        comparisonfunc, // comparisonfunc
+        entry, // a
+        rootptr^, // b
+    )
+END
+
+EXPORT FN RtlExtractHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN rootptr : ^^RtlHeapEntry,
+) : ^RtlHeapEntry
+
+    root := rootptr^
+
+    IF NOT root THEN
+        RETURN NULLPTR
+    END
+
+    child := root^.Child
+
+    IF child THEN
+        rootptr^ = RtlpCombineSiblingsHeap (
+            comparisonfunc, // comparisonfunc
+            child, // left
+        )
+
+    ELSE
+        rootptr^ = NULLPTR
+    END
+
+    RETURN root
+END
+
+EXPORT FN RtlRemoveFromHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN rootptr : ^^RtlHeapEntry,
+    IN entry : ^RtlHeapEntry,
+)
+
+    prev := entry^.Prev
+
+    IF NOT prev THEN
+        // It's the root.
+
+        RtlExtractHeap (
+            comparisonfunc, // comparisonfunc
+            rootptr, // rootptr
+        )
+
+        LEAVE
+    END
+
+    next := entry^.Next
+
+    IF next THEN
+        next^.Prev = prev
+    END
+
+    IF prev^.Child == entry THEN
+        prev^.Child = entry^.Next
+    
+    ELSE
+        prev^.Next = entry^.Next
+    END
+
+    entry^.Prev = NULLPTR
+    entry^.Next = NULLPTR
+
+    child := entry^.Child
+
+    IF NOT child THEN
+        // Done.
+
+        LEAVE
+    END
+
+    x := RtlpCombineSiblingsHeap (
+        comparisonfunc, // comparisonfunc
+        child, // left
+    )
+
+    rootptr^ = RtlpMeldHeap (
+        comparisonfunc, // comparisonfunc
+        x, // a
+        rootptr^, // b
+    )
+END

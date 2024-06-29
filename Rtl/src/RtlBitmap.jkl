@@ -26,28 +26,6 @@ RtlpBitmapContiguousZeroes : UBYTE[256] = {
     4, 3, 2, 2, 2, 1, 1, 1, 3, 2, 1, 1, 2, 1, 1, 0,
 }
 
-// Table of contiguous low zero bits in a byte.
-
-#SECTION "text"
-RtlpBitmapLowZeroes : UBYTE[256] = {
-    8, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    7, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-}
-
 // Table of contiguous high zero bits in a byte.
 
 #SECTION "text"
@@ -70,35 +48,41 @@ RtlpBitmapHighZeroes : UBYTE[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-// Table of total number of clear bits in a byte.
+// Table of contiguous low zero bits in a byte.
 
 #SECTION "text"
-RtlpBitmapTotalZeroes : UBYTE[256] = {
-    8, 7, 7, 6, 7, 6, 6, 5, 7, 6, 6, 5, 6, 5, 5, 4,
-    7, 6, 6, 5, 6, 5, 5, 4, 6, 5, 5, 4, 5, 4, 4, 3,
-    7, 6, 6, 5, 6, 5, 5, 4, 6, 5, 5, 4, 5, 4, 4, 3,
-    6, 5, 5, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 3, 3, 2,
-    7, 6, 6, 5, 6, 5, 5, 4, 6, 5, 5, 4, 5, 4, 4, 3,
-    6, 5, 5, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 3, 3, 2,
-    6, 5, 5, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 3, 3, 2,
-    5, 4, 4, 3, 4, 3, 3, 2, 4, 3, 3, 2, 3, 2, 2, 1,
-    7, 6, 6, 5, 6, 5, 5, 4, 6, 5, 5, 4, 5, 4, 4, 3,
-    6, 5, 5, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 3, 3, 2,
-    6, 5, 5, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 3, 3, 2,
-    5, 4, 4, 3, 4, 3, 3, 2, 4, 3, 3, 2, 3, 2, 2, 1,
-    6, 5, 5, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 3, 3, 2,
-    5, 4, 4, 3, 4, 3, 3, 2, 4, 3, 3, 2, 3, 2, 2, 1,
-    5, 4, 4, 3, 4, 3, 3, 2, 4, 3, 3, 2, 3, 2, 2, 1,
-    4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0,
+RtlpBitmapLowZeroes : UBYTE[256] = {
+    8, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    7, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
+    4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
 }
 
+// Shifts of 0xFF into a 0x00 byte from the right.
+
 #SECTION "text"
-RtlpBitmapFillMasks : UBYTE[] = {
+RtlpBitmapOneBits : UBYTE[] = {
     0, 1, 3, 7, 15, 31, 63, 127, 255
 }
 
+// Shifts of 0x00 into a 0xFF byte from the right.
+// Could be calculated from bitwise NOT of the other but turns out to take up
+// more bytes of code and be slower, so.
+
 #SECTION "text"
-RtlpBitmapZeroMasks : UBYTE[] = {
+RtlpBitmapZeroBits : UBYTE[] = {
     255, 254, 252, 248, 240, 224, 192, 128, 0
 }
 
@@ -114,7 +98,7 @@ EXPORT FN RtlInitializeBitmap (
     sizeinbytes := (sizeinbits + 7) >> 3
 
     IF sizeinbits & 7 THEN
-        data[sizeinbytes - 1] = RtlpBitmapZeroMasks[sizeinbits & 7]
+        data[sizeinbytes - 1] = RtlpBitmapZeroBits[sizeinbits & 7]
     END
 END
 
@@ -156,7 +140,7 @@ EXPORT FN RtlClearBitmap (
     )
 
     IF sizeinbits & 7 THEN
-        data[sizeinbytes - 1] = RtlpBitmapZeroMasks[sizeinbits & 7]
+        data[sizeinbytes - 1] = RtlpBitmapZeroBits[sizeinbits & 7]
     END
 END
 
@@ -214,7 +198,7 @@ EXPORT FN RtlFindRunBitmap (
             IF contigzeroes[curbyte] >= runlength THEN
                 // We can satisfy this with this single byte.
 
-                bitmaskorstartindex = RtlpBitmapFillMasks[runlength]
+                bitmaskorstartindex = RtlpBitmapOneBits[runlength]
 
                 WHILE curbyte & bitmaskorstartindex DO
                     bitmaskorstartindex <<= 1
@@ -432,11 +416,11 @@ EXPORT FN RtlCheckClearBitsBitmap (
     currentposition := &header^.Data[startbyteoffset]
 
     IF startbyteoffset == endbyteoffset THEN
-        RETURN NOT (RtlpBitmapZeroMasks[startbitoffset] &
-                RtlpBitmapFillMasks[endbitoffset + 1] & currentposition^)
+        RETURN NOT (RtlpBitmapZeroBits[startbitoffset] &
+                RtlpBitmapOneBits[endbitoffset + 1] & currentposition^)
     END
 
-    IF RtlpBitmapZeroMasks[startbitoffset] & currentposition^ THEN
+    IF RtlpBitmapZeroBits[startbitoffset] & currentposition^ THEN
         RETURN FALSE
     END
 
@@ -452,5 +436,5 @@ EXPORT FN RtlCheckClearBitsBitmap (
         currentposition += 1
     END
 
-    RETURN NOT (RtlpBitmapFillMasks[endbitoffset + 1] & currentposition^)
+    RETURN NOT (RtlpBitmapOneBits[endbitoffset + 1] & currentposition^)
 END

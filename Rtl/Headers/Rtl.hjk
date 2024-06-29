@@ -75,11 +75,6 @@ STRUCT RtlListEntry
     Prev : ^RtlListEntry,
 END
 
-STRUCT RtlBitmapHeader
-    Data : ^UBYTE,
-    SizeInBits : UWORD,
-END
-
 #IF ( == BLD_BITS 64 )
 
 STRUCT RtlUquad
@@ -311,6 +306,11 @@ EXTERN FN (RtlPrintCallbackF) RtljPrintCallback (
 // Bitmap stuff
 
 
+STRUCT RtlBitmapHeader
+    Data : ^UBYTE,
+    SizeInBits : UWORD,
+END
+
 EXTERN FN RtlInitializeBitmap (
     IN header : ^RtlBitmapHeader,
     IN sizeinbits : UWORD,
@@ -365,3 +365,35 @@ EXTERN FN RtlGetPathExtension (
 EXTERN FN RtlGetFileName (
     IN path : ^UBYTE,
 ) : ^UBYTE
+
+
+// Heap stuff
+
+
+FNPTR RtlLessThanF (
+    IN a : ^VOID,
+    IN b : ^VOID,
+) : UWORD
+
+STRUCT RtlHeapEntry
+    Child : ^RtlHeapEntry,
+    Prev : ^RtlHeapEntry,
+    Next : ^RtlHeapEntry,
+END
+
+EXTERN FN RtlInsertIntoHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN rootptr : ^^RtlHeapEntry,
+    IN entry : ^RtlHeapEntry,
+)
+
+EXTERN FN RtlExtractHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN rootptr : ^^RtlHeapEntry,
+) : ^RtlHeapEntry
+
+EXTERN FN RtlRemoveFromHeap (
+    IN comparisonfunc : RtlLessThanF,
+    IN rootptr : ^^RtlHeapEntry,
+    IN entry : ^RtlHeapEntry,
+)
