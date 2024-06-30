@@ -18,16 +18,16 @@ FN RtlpMeldHeap (
         b^.Prev = a
 
         bnext := b^.Next
+        a^.Next = bnext
 
         IF bnext THEN
-            a^.Next = bnext
             bnext^.Prev = a
         END
 
         child = a^.Child
+        b^.Next = child
 
         IF child THEN
-            b^.Next = child
             child^.Prev = b
         END
 
@@ -42,9 +42,9 @@ FN RtlpMeldHeap (
     a^.Prev = b
 
     child = b^.Child
+    a^.Next = child
 
     IF child THEN
-        a^.Next = child
         child^.Prev = a
     END
 
