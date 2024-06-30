@@ -81,8 +81,16 @@ STRUCT RtlUquad
     Quad : UQUAD,
 END
 
+#MACRO RtlMoveUquad ( destquad, srcquad ) [
+    NOTHING (destquad)^.Quad = (srcquad)^.Quad
+]
+
 #MACRO RtlAddUlongToUquad ( quad, val ) [
     NOTHING (quad)^.Quad += (val)
+]
+
+#MACRO RtlAddUquadToUquad ( destquad, srcquad ) [
+    NOTHING (destquad)^.Quad += (srcquad)^.Quad
 ]
 
 #MACRO RtlUquadEqUquad ( quad1, quad2 ) [
@@ -136,10 +144,26 @@ STRUCT RtlUquad
     High : ULONG,
 END
 
+#MACRO RtlMoveUquad ( destquad, srcquad ) [
+    NOTHING (destquad)^.High = (srcquad)^.High
+    NOTHING (destquad)^.Low = (srcquad)^.Low
+]
+
 #MACRO RtlAddUlongToUquad ( quad, val ) [
     low := (val) + (quad)^.Low
     NOTHING (quad)^.Low = low
     NOTHING (quad)^.High += low < (val)
+]
+
+#MACRO RtlAddUquadToUquad ( destquad, srcquad ) [
+    // desthigh = t2
+    // destlow = t3
+    // srchigh = t4
+    // srclow = t5
+
+    low := (destquad)^.Low + (srcquad)^.Low
+    NOTHING (destquad)^.Low = low
+    NOTHING (destquad)^.High += (low < (srcquad)^.Low) + (srcquad)^.High
 ]
 
 #MACRO RtlUquadEqUquad ( quad1, quad2 ) [
@@ -371,8 +395,8 @@ EXTERN FN RtlGetFileName (
 
 
 FNPTR RtlLessThanF (
-    IN a : ^VOID,
-    IN b : ^VOID,
+    IN a : ^RtlHeapEntry,
+    IN b : ^RtlHeapEntry,
 ) : UWORD
 
 STRUCT RtlHeapEntry
