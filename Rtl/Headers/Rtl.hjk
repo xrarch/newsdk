@@ -121,6 +121,10 @@ END
     ((val) == (quad)^.Quad)
 ]
 
+#MACRO RtlUlongNeqUquad ( val, quad ) [
+    ((val) != (quad)^.Quad)
+]
+
 #MACRO RtlUlongLtUquad ( val, quad ) [
     ((val) < (quad)^.Quad)
 ]
@@ -156,22 +160,17 @@ END
 ]
 
 #MACRO RtlAddUquadToUquad ( destquad, srcquad ) [
-    // desthigh = t2
-    // destlow = t3
-    // srchigh = t4
-    // srclow = t5
-
     low := (destquad)^.Low + (srcquad)^.Low
     NOTHING (destquad)^.Low = low
     NOTHING (destquad)^.High += (low < (srcquad)^.Low) + (srcquad)^.High
 ]
 
 #MACRO RtlUquadEqUquad ( quad1, quad2 ) [
-    (NOT (((quad1)^.Low ^ (quad2)^.Low) | ((quad1)^.High ^ (quad2)^.High)))
+    (NOT (((quad1)^.Low $ (quad2)^.Low) | ((quad1)^.High $ (quad2)^.High)))
 ]
 
 #MACRO RtlUquadNeqUquad ( quad1, quad2 ) [
-    (((quad1)^.Low ^ (quad2)^.Low) | ((quad1)^.High ^ (quad2)^.High))
+    (((quad1)^.Low $ (quad2)^.Low) | ((quad1)^.High $ (quad2)^.High))
 ]
 
 #MACRO RtlUquadLtUquad ( quad1, quad2 ) [
@@ -196,6 +195,10 @@ END
 
 #MACRO RtlUlongEqUquad ( val, quad ) [
     ((quad)^.High == 0 AND (quad)^.Low == (val))
+]
+
+#MACRO RtlUlongNeqUquad ( val, quad ) [
+    ((quad)^.High != 0 OR (quad)^.Low != (val))
 ]
 
 #MACRO RtlUlongLtUquad ( val, quad ) [
