@@ -81,6 +81,10 @@ STRUCT RtlUquad
     Quad : UQUAD,
 END
 
+#MACRO RtlSetUquadToUlong ( destquad, ulong ) [
+    NOTHING (destquad)^.Quad = ulong
+]
+
 #MACRO RtlMoveUquad ( destquad, srcquad ) [
     NOTHING (destquad)^.Quad = (srcquad)^.Quad
 ]
@@ -147,6 +151,11 @@ STRUCT RtlUquad
     Low : ULONG,
     High : ULONG,
 END
+
+#MACRO RtlSetUquadToUlong ( destquad, ulong ) [
+    NOTHING (destquad)^.High = 0
+    NOTHING (destquad)^.Low = ulong
+]
 
 #MACRO RtlMoveUquad ( destquad, srcquad ) [
     NOTHING (destquad)^.High = (srcquad)^.High
