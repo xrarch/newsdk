@@ -66,9 +66,6 @@ END
 
 LexKeywordHashTable : TlHashTable
 
-LexKeywordBumpArray : LexKeyword[256]
-LexKeywordBumpIndex := 0
-
 LexLastSawWhitespace := TRUE
 
 FN LexError (
@@ -122,8 +119,16 @@ FN LexInsertKeyword (
     // allocation, nor does it do any string copies (though it does iterate the
     // string to calculate the hash), so this should all be quite speedy.
 
-    keyword := &LexKeywordBumpArray[LexKeywordBumpIndex]
-    LexKeywordBumpIndex += 1
+    keyword : ^LexKeyword
+
+    status := TlBumpAlloc (
+        SIZEOF LexKeyword, // bytes
+        OUT keyword, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to initialize keywords", 0, 0, 0 )
+    END
 
     keyword^.Type = type
     keyword^.Subtype = subtype

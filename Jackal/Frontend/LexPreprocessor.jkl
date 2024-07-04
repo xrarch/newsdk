@@ -40,9 +40,6 @@ STRUCT LexOperator
     ParseRoutine : LexOperatorParseF,
 END
 
-LexDirectiveBumpArray : LexDirective[16]
-LexDirectiveBumpIndex := 0
-
 FN LexInsertDirective (
     IN name : ^UBYTE,
     IN parsefunc : LexDirectiveParseF,
@@ -56,8 +53,16 @@ FN LexInsertDirective (
     // iterate the string to calculate the hash), so this should all be quite
     // speedy.
 
-    directive := &LexDirectiveBumpArray[LexDirectiveBumpIndex]
-    LexDirectiveBumpIndex += 1
+    directive : ^LexDirective
+
+    status := TlBumpAlloc (
+        SIZEOF LexDirective, // bytes
+        OUT directive, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to initialize directives", 0, 0, 0 )
+    END
 
     directive^.ParseRoutine = parsefunc
 
@@ -68,16 +73,21 @@ FN LexInsertDirective (
     )
 END
 
-LexOperatorBumpArray : LexOperator[32]
-LexOperatorBumpIndex := 0
-
 FN LexInsertOperator (
     IN name : ^UBYTE,
     IN parsefunc : LexOperatorParseF,
 )
 
-    operator := &LexOperatorBumpArray[LexOperatorBumpIndex]
-    LexOperatorBumpIndex += 1
+    operator : ^LexOperator
+
+    status := TlBumpAlloc (
+        SIZEOF LexOperator, // bytes
+        OUT operator, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to initialize operators", 0, 0, 0 )
+    END
 
     operator^.ParseRoutine = parsefunc
 

@@ -579,7 +579,7 @@ TlBumpBytesLeft : UWORD = 0
 TlBumpBytesUsed : UWORD = 0
 TlBumpHits : UWORD = 0
 
-#DEFINE TL_BUMP_EXTEND 65536
+#DEFINE TL_BUMP_EXTEND 16384
 
 FN TlBumpAlloc (
     IN bytes : UWORD,
