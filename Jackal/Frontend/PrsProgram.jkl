@@ -4307,10 +4307,12 @@ FN PrsParseCompoundType (
         END
     END
 
-    // Make sure the size is aligned to the minimum alignment of the type.
+    IF NOT ispacked THEN
+        // Make sure the size is aligned to the minimum alignment of the type.
 
-    offset += minalignment - 1
-    offset &= ~(minalignment - 1)
+        offset += minalignment - 1
+        offset &= ~(minalignment - 1)
+    END
 
     type^.MinimumAlignment = minalignment
     type^.Size = offset

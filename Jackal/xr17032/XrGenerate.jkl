@@ -410,6 +410,7 @@ XrPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
 XrTmps : LirRegister[3]
 XrSp : LirRegister
 XrLr : LirRegister
+XrZero : LirRegister
 XrCalleeSaved : LirRegister[XR_S17 - XR_S0 + 1]
 XrArg : LirRegister[XR_A3 - XR_A0 + 1]
 
@@ -802,6 +803,13 @@ FN (LirSelectF) XrSelectAddr (
 ) : ^LirRegister
 
     // Generate an imm-to-reg MOV instruction.
+
+    IF inst^.Defines^.DefinedBy AND
+        inst^.Type == IR_CONSTANT AND
+        inst^.Body.Constant.Constant == 0 THEN
+
+        RETURN &XrZero
+    END
 
     defreg := LirGetRegister ( inst^.Defines )
 
@@ -3168,6 +3176,9 @@ FN (JklTargetF) XrCompile ()
 
     XrLr.Type = LIR_PREALLOCATED_REG
     XrLr.MachineRegister = XR_LR
+
+    XrZero.Type = LIR_PREALLOCATED_REG
+    XrZero.MachineRegister = XR_ZERO
 
     i := 0
 
