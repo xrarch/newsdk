@@ -1278,12 +1278,6 @@ FN PrsType (
     elementalign := skippedtype^.MinimumAlignment
     size := skippedtype^.Size
 
-    // Make sure the size of the array elements is aligned to the minimum
-    // alignment of the element type.
-
-    size += elementalign - 1
-    size &= ~(elementalign - 1)
-
     arraytype := type
     arraytype^.Size = TYPE_SIZE_UNINIT
 
@@ -4312,6 +4306,11 @@ FN PrsParseCompoundType (
                 "Expected a comma or END\n" )
         END
     END
+
+    // Make sure the size is aligned to the minimum alignment of the type.
+
+    offset += minalignment - 1
+    offset &= ~(minalignment - 1)
 
     type^.MinimumAlignment = minalignment
     type^.Size = offset
