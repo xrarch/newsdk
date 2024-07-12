@@ -1276,6 +1276,10 @@ FN LexCollectMacroArgumentList (
                 LEX_DIRECTIVE_MAX, // bufsize
             )
 
+            // Set the key pointer.
+
+            arg^.Entry.Key = &arg^.Name[0]
+
             // Increment the length of the argument list by one.
 
             length += 1
