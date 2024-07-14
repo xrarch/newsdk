@@ -601,7 +601,9 @@ FN LexCollectValue (
         0, // byte
     )
 
-    IF simpletokbuf.Buffer[0] >= '0' AND simpletokbuf.Buffer[0] <= '9' THEN
+    c := simpletokbuf.Buffer[0]
+
+    IF c == '-' OR (c >= '0' AND c <= '9') THEN
         // This is a number. Blast it directly into the caller's buffer and
         // return.
 
