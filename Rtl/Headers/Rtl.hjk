@@ -101,6 +101,10 @@ END
     NOTHING (destquad)^.Quad -= (srcquad)^.Quad
 ]
 
+#MACRO RtlSubUlongFromUquad ( destquad, ulong ) [
+    NOTHING (destquad)^.Quad -= (ulong)
+]
+
 #MACRO RtlUquadEqUquad ( quad1, quad2 ) [
     ((quad1)^.Quad == (quad2)^.Quad)
 ]
@@ -183,6 +187,13 @@ END
     NOTHING (destquad)^.Low = low
     NOTHING (destquad)^.High += (low < (~(srcquad)^.Low)) + (~(srcquad)^.High)
     RtlAddUlongToUquad ( destquad, 1 )
+]
+
+#MACRO RtlSubUlongFromUquad ( quad, ulong ) [
+    low := (quad)^.Low + ~(ulong)
+    NOTHING (quad)^.Low = low
+    NOTHING (quad)^.High += (low < ~(ulong)) - 1
+    RtlAddUlongToUquad ( quad, 1 )
 ]
 
 #MACRO RtlUquadEqUquad ( quad1, quad2 ) [
