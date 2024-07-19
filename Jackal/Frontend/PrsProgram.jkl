@@ -3725,6 +3725,7 @@ FN PrsParseFnSignature (
     type^.Body.Function.IsFnPtr = fnptr
     type^.Body.Function.VarArgCount = NULLPTR
     type^.Body.Function.VarArgTable = NULLPTR
+    type^.Body.Function.VarTable = NULLPTR
     type^.Body.Function.BodyBlock = NULLPTR
 
     argtail : ^LexFunctionArgument = NULLPTR

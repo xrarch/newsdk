@@ -747,6 +747,8 @@ FN LexGetTokenContents (
             &LexInternedStringZone, // zone
         ) TO ^LexInternedString
 
+        internedstring^.CodeGenContext = 0
+
         IF LexCurrentSection == &LexDefaultSection THEN
             internedstring^.Section = &LexTextSection
         
