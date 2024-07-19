@@ -1,3 +1,5 @@
+#!/bin/sh
+
 ./bin/xrbt.exe ./build.xrbt JOBS=$1 all
 
 cp build/CHost/jkl.exe bin/jkl.exe
