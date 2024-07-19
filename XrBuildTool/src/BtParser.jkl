@@ -825,6 +825,7 @@ FN BtParseTarget () : UBYTE
     target^.HasFileName = FALSE
     target^.HasPrebuiltCopies = FALSE
     target^.ImageAction = FALSE
+    target^.Always = FALSE
 
     TlInitializeList ( &target^.DependsOnListHead )
     TlInitializeList ( &target^.SourcesListHead )
