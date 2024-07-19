@@ -1008,6 +1008,7 @@ FN FoxRelativeReductionForSection (
                     END
 
                     elem^.Body.Fox.Bits = FOX_BITS_8
+                    elem^.Body.Fox.Op1.Size = 1
 
                     reduced = TRUE
 
@@ -1021,6 +1022,7 @@ FN FoxRelativeReductionForSection (
                     // Reduce to 16.
 
                     elem^.Body.Fox.Bits = FOX_BITS_16
+                    elem^.Body.Fox.Op1.Size = 2
 
                     squishbytes += 2
 

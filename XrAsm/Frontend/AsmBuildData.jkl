@@ -280,7 +280,9 @@ FN AsmBuildDataForSection (
 
     // Check if this is a bss section.
 
-    IF section^.SectionFlags & XLO_SECTION_ZERO THEN
+    IF section^.SectionFlags & XLO_SECTION_ZERO OR
+        section^.FileOffset == 0 THEN
+
         // Don't bother, there are no contents.
 
         LEAVE
