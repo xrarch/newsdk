@@ -131,6 +131,7 @@ FN LexNextNonWhitespaceCharacter (
 
     IF stream THEN
         token^.FileBlock = stream^.FileBlock
+        token^.Macro = stream^.Macro
         token^.LineNumber = stream^.LineNumber
         token^.LinePosition = stream^.LinePosition
     END
@@ -146,6 +147,7 @@ FN LexNextNonWhitespaceCharacter (
 
         IF stream THEN
             token^.FileBlock = stream^.FileBlock
+            token^.Macro = stream^.Macro
             token^.LineNumber = stream^.LineNumber
             token^.LinePosition = stream^.LinePosition
         END
@@ -758,6 +760,7 @@ FN LexDefineMacroFromArgumentString (
 
     macro^.IsFunctionMacro = FALSE
     macro^.IsArgumentMacro = FALSE
+    macro^.FileBlock = NULLPTR
 
     // Insert the macro into the macro scope.
 
@@ -811,10 +814,8 @@ FN LexExpandMacro (
         macro, // macro
     )
 
-    // TODO better error messages within macros
-
     stream^.FileBlock = LexCurrentStream^.FileBlock
-    stream^.LineNumber = 1000000
+    stream^.LineNumber = 1
     stream^.Buffer = macro^.Contents.Buffer
     stream^.ValidLength = macro^.Contents.Count - 1
     stream^.LastScope = oldscope
@@ -840,6 +841,7 @@ FN LexExpandMacro (
 
             argmacro^.ResumeScope = oldscope
             argmacro^.ResumeMacroScope = oldmacroscope
+            argmacro^.FileBlock = NULLPTR
 
             TlCopyString (
                 &argmacro^.Name[0], // dest
@@ -1102,6 +1104,8 @@ FN (LexDirectiveParseF) LexParseDefine ()
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
 
+    macro^.FileBlock = LexCurrentStream^.FileBlock
+
     TlInitializeDynamicBuffer ( &macro^.Contents )
 
     LexCollectDirectiveToken (
@@ -1325,6 +1329,8 @@ FN (LexDirectiveParseF) LexParseMacro ()
     length : ULONG
 
     macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+    macro^.FileBlock = LexCurrentStream^.FileBlock
 
     TlInitializeDynamicBuffer ( &macro^.Contents )
 

@@ -109,18 +109,33 @@ FN LexError (
     ... argv argc
 )
 
+    stream := LexCurrentStream
+
+    dotrace := stream^.Previous != 0
+
     IF token THEN
-        TlPrintByHandle (
-            TlStdErr, // handle
-            "%s:%d:%d: ", // fmt
-            &token^.FileBlock^.IncludeName[0],
-            token^.LineNumber,
-            token^.LinePosition,
-        )
+        IF token^.Macro THEN
+            TlPrintByHandle (
+                TlStdErr, // handle
+                "%s:%d:%d: ", // fmt
+                &token^.Macro^.Name[0],
+                token^.LineNumber,
+                token^.LinePosition,
+            )
+
+            dotrace = TRUE
+
+        ELSE
+            TlPrintByHandle (
+                TlStdErr, // handle
+                "%s:%d:%d: ", // fmt
+                &token^.FileBlock^.IncludeName[0],
+                token^.LineNumber,
+                token^.LinePosition,
+            )
+        END
 
     ELSE
-        stream := LexCurrentStream
-
         TlPrintByHandle (
             TlStdErr, // handle
             "%s:%d:%d: ", // fmt
@@ -136,6 +151,52 @@ FN LexError (
         argv, // argv
         argc, // argc
     )
+
+    IF dotrace THEN
+        // Perform a "backtrace" of the streams to indicate how we got here.
+
+        WHILE stream DO
+            IF stream^.Macro THEN
+                TlPrintByHandle (
+                    TlStdErr, // handle
+                    "    %s (macro) near line %d", // fmt
+                    &stream^.Macro^.Name[0],
+                    stream^.LineNumber,
+                    &stream^.Macro^.FileBlock
+                )
+
+                IF stream^.Macro^.FileBlock THEN
+                    TlPrintByHandle (
+                        TlStdErr, // handle
+                        " (defined in %s)", // fmt
+                        &stream^.Macro^.FileBlock^.IncludeName[0],
+                    )
+
+                ELSEIF stream^.Macro^.IsArgumentMacro THEN
+                    TlPrintByHandle (
+                        TlStdErr, // handle
+                        " (argument to macro %s)", // fmt
+                        &stream^.Previous^.Macro^.Name[0],
+                    )
+                END
+
+                TlPrintByHandle (
+                    TlStdErr, // handle
+                    ".\n", // fmt
+                )
+
+            ELSE
+                TlPrintByHandle (
+                    TlStdErr, // handle
+                    "    %s near line %d.\n", // fmt
+                    &stream^.FileBlock^.IncludeName[0],
+                    stream^.LineNumber,
+                )
+            END
+
+            stream = stream^.Previous
+        END
+    END
 
     TlErrorExit ()
 END
@@ -556,6 +617,7 @@ FN LexGetTokenContents (
 
     IF stream THEN
         token^.FileBlock = stream^.FileBlock
+        token^.Macro = stream^.Macro
         token^.LineNumber = stream^.LineNumber
         token^.LinePosition = stream^.LinePosition
     END
@@ -570,6 +632,7 @@ FN LexGetTokenContents (
 
         IF stream THEN
             token^.FileBlock = stream^.FileBlock
+            token^.Macro = stream^.Macro
             token^.LineNumber = stream^.LineNumber
             token^.LinePosition = stream^.LinePosition
         END
@@ -844,6 +907,7 @@ FN LexCopyToken (
     dest^.Type = src^.Type
     dest^.Subtype = src^.Subtype
     dest^.TypeContext = src^.TypeContext
+    dest^.Macro = src^.Macro
 END
 
 FN LexGetToken (

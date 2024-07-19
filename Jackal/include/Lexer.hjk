@@ -169,6 +169,7 @@ STRUCT LexToken
 
     Payload : ^VOID,
     FileBlock : ^FeFileBlock,
+    Macro : ^LexMacro,
 
     LineNumber : ULONG,
     LinePosition : ULONG,
@@ -353,6 +354,7 @@ STRUCT LexMacro
     Contents : TlDynamicBuffer,
     Name : UBYTE[LEX_DIRECTIVE_MAX],
 
+    FileBlock : ^FeFileBlock,
     ResumeScope : ^TlSymbolTable,
     ResumeMacroScope : ^TlSymbolTable,
 
