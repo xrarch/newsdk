@@ -171,29 +171,41 @@ END
 ]
 
 #MACRO RtlAddUlongToUquad ( quad, val ) [
+    value := (val)
     low := (val) + (quad)^.Low
     NOTHING (quad)^.Low = low
-    NOTHING (quad)^.High += low < (val)
+    NOTHING (quad)^.High += low < value
 ]
 
 #MACRO RtlAddUquadToUquad ( destquad, srcquad ) [
-    low := (destquad)^.Low + (srcquad)^.Low
+    srclow := (srcquad)^.Low
+    low := (destquad)^.Low + srclow
     NOTHING (destquad)^.Low = low
-    NOTHING (destquad)^.High += (low < (srcquad)^.Low) + (srcquad)^.High
+    NOTHING (destquad)^.High += (low < srclow) + (srcquad)^.High
 ]
 
 #MACRO RtlSubUquadFromUquad ( destquad, srcquad ) [
-    low := (destquad)^.Low + (~(srcquad)^.Low)
+    srclow := ~(srcquad)^.Low
+    low := (destquad)^.Low + srclow
+    high := (destquad)^.High + (low < srclow) + (~(srcquad)^.High)
+
+    // Inlined RtlAddUlongToUquad ( destquad, 1 )
+
+    low += 1
     NOTHING (destquad)^.Low = low
-    NOTHING (destquad)^.High += (low < (~(srcquad)^.Low)) + (~(srcquad)^.High)
-    RtlAddUlongToUquad ( destquad, 1 )
+    NOTHING (destquad)^.High = high + (low < 1)
 ]
 
 #MACRO RtlSubUlongFromUquad ( quad, ulong ) [
-    low := (quad)^.Low + ~(ulong)
+    value := ~(ulong)
+    low := (quad)^.Low + value
+    high := (quad)^.High + (low < value) - 1
+
+    // Inlined RtlAddUlongToUquad ( destquad, 1 )
+
+    low += 1
     NOTHING (quad)^.Low = low
-    NOTHING (quad)^.High += (low < ~(ulong)) - 1
-    RtlAddUlongToUquad ( quad, 1 )
+    NOTHING (quad)^.High = high + (low < 1)
 ]
 
 #MACRO RtlUquadEqUquad ( quad1, quad2 ) [
