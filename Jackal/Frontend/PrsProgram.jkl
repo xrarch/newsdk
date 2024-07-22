@@ -3596,6 +3596,7 @@ FN PrsParseFnSignature (
     IN flags : ULONG,
     IN fnptr : UBYTE,
     OUT outsymbol : ^LexSymbol,
+    OUT oldscope : ^TlSymbolTable,
 ) : ^LexSemanticType
 
     // Parse a function signature and return a type structure for it.
@@ -3712,7 +3713,7 @@ FN PrsParseFnSignature (
     // We have to create a scope atop the global scope to contain the function
     // arguments. This scope will also be used as the function scope.
 
-    oldscope := LexEnterScope (
+    oldscope = LexEnterScope (
         NULLPTR, // scope
     )
 
@@ -3949,9 +3950,15 @@ FN PrsParseFnSignature (
         // mistakenly pull a symbol into our scope. This is kind of hacky.
 
         LexResetScope ( oldscope )
-    END
 
-    LexEnterMacroFreeZone ()
+    ELSE
+        // The body has started so push the indicator byte to the block stack.
+
+        TlInsertDynamicBuffer (
+            &PrsBlockStack, // array
+            BLOCK_PLAIN_BODY, // byte
+        )
+    END
 
     IF LexMatchToken (
         NULLPTR, // token
@@ -3967,8 +3974,6 @@ FN PrsParseFnSignature (
             0, // depth
         )
 
-        LexLeaveMacroFreeZone ()
-
         IF NOT PrsTypeIsValue (
             &nametoken, // errtoken
             returntype, // type
@@ -3978,18 +3983,20 @@ FN PrsParseFnSignature (
         END
 
         type^.Body.Function.ReturnType = returntype
-
-    ELSE
-        LexLeaveMacroFreeZone ()
     END
 
+#IF 0
     IF NOT fnptr AND (flags & VAR_FLAG_EXTERN == 0) THEN
         // There's a body, so only reset the scope now. We waited until after we
-        // looked for the colon because otherwise lookahead might cause strange
-        // symbol scoping. This is kind of hacky.
+        // looked for the colon because otherwise lookahead might pull a symbol
+        // from the function body into the global scope.
+
+        // XXX Nevermind - we stay in the function's scope while the body is
+        //     parsed. This IF statement is commented out.
 
         LexResetScope ( oldscope )
     END
+#END
 
     IF fnptrtype THEN
         PrsCheckType (
@@ -4028,11 +4035,13 @@ FN PrsParseFnDeclaration (
     // body.
 
     symbol : ^LexSymbol
+    oldscope : ^TlSymbolTable
 
     type := PrsParseFnSignature (
         flags, // flags
         FALSE, // fnptr
         OUT symbol, // symbol
+        OUT oldscope, // oldscope
     )
 
     IF flags & VAR_FLAG_EXTERN THEN
@@ -4047,16 +4056,16 @@ FN PrsParseFnDeclaration (
 
     // Collect the body of the function.
 
+#IF 0
     // First resume the argument scope.
+
+    // XXX Nevermind - we're still inside it by the action of
+    //     PrsParseFnSignature.
 
     oldscope := LexEnterScope (
         type^.Body.Function.FuncScope, // scope
     )
-
-    TlInsertDynamicBuffer (
-        &PrsBlockStack, // array
-        BLOCK_PLAIN_BODY, // byte
-    )
+#END
 
     PrsCurrentFunction = type
 
@@ -4100,11 +4109,13 @@ FN (PrsDeclaratorF) PrsParseFnPtr () : ^LexSymbol
     // Parse a function pointer named type declaration.
 
     symbol : ^LexSymbol
+    oldscope : ^TlSymbolTable
 
     type := PrsParseFnSignature (
         0, // flags
         TRUE, // fnptr
         OUT symbol, // symbol
+        OUT oldscope, // oldscope
     )
 
     // Wrap a pointer type around the given type.

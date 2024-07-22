@@ -503,10 +503,6 @@ EXTERN FN LexEnterOverlayScope (
 
 EXTERN FN LexExitOverlayScope ()
 
-EXTERN FN LexEnterMacroFreeZone ()
-
-EXTERN FN LexLeaveMacroFreeZone ()
-
 EXTERN FN LexCopyToken (
     IN dest : ^LexToken,
     IN src : ^LexToken,
