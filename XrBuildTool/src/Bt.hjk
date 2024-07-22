@@ -139,9 +139,9 @@ STRUCT LexMacro
     ResumeMacroScope : ^TlSymbolTable,
 
     ArgListHead : ^LexMacroArgument,
+    ArgumentOf : ^LexMacro,
 
     IsFunctionMacro : UBYTE,
-    IsArgumentMacro : UBYTE,
     IsExposed : UBYTE,
     CanBeExposed : UBYTE,
 END

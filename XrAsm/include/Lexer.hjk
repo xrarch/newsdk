@@ -198,8 +198,8 @@ STRUCT LexMacro
     ResumeMacroScope : ^TlSymbolTable,
 
     ArgListHead : ^LexMacroArgument,
+    ArgumentOf : ^LexMacro,
     IsFunctionMacro : UBYTE,
-    IsArgumentMacro : UBYTE,
 END
 
 STRUCT LexMacroArgument

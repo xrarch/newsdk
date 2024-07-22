@@ -138,11 +138,11 @@ FN LexError (
                         &stream^.Macro^.FileBlock^.IncludeName[0],
                     )
 
-                ELSEIF stream^.Macro^.IsArgumentMacro THEN
+                ELSEIF stream^.Macro^.ArgumentOf THEN
                     TlPrintByHandle (
                         TlStdErr, // handle
                         " (argument to macro %s)", // fmt
-                        &stream^.Previous^.Macro^.Name[0],
+                        &stream^.Macro^.ArgumentOf^.Name[0],
                     )
                 END
 

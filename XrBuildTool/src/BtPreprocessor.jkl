@@ -766,7 +766,7 @@ FN LexDefineMacroFromArgumentString (
     )
 
     macro^.IsFunctionMacro = FALSE
-    macro^.IsArgumentMacro = FALSE
+    macro^.ArgumentOf = NULLPTR
     macro^.FileBlock = NULLPTR
 
     // Insert the macro into the macro scope.
@@ -793,7 +793,7 @@ FN LexExpandMacro (
 
     oldmacroscope := LexCurrentMacroScope
 
-    IF macro^.IsArgumentMacro THEN
+    IF macro^.ArgumentOf THEN
         // The macro resumes the scope of the "caller".
 
         LexCurrentMacroScope = macro^.ResumeMacroScope
@@ -852,7 +852,7 @@ FN LexExpandMacro (
             )
 
             argmacro^.IsFunctionMacro = FALSE
-            argmacro^.IsArgumentMacro = TRUE
+            argmacro^.ArgumentOf = macro
 
             // Collect the macro contents from the argument list.
 
@@ -1121,7 +1121,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
     END
 
     macro^.IsFunctionMacro = FALSE
-    macro^.IsArgumentMacro = FALSE
+    macro^.ArgumentOf = NULLPTR
 
     LexCollectValue (
         &macro^.NameToken, // token
@@ -1385,7 +1385,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
     END
 
     macro^.IsFunctionMacro = TRUE
-    macro^.IsArgumentMacro = FALSE
+    macro^.ArgumentOf = NULLPTR
 
     LexCollectValue (
         &macro^.NameToken, // token

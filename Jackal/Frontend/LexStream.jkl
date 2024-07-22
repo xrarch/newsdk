@@ -213,7 +213,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
             macro := stream^.Macro
 
-            IF NOT macro^.IsArgumentMacro THEN
+            IF NOT macro^.ArgumentOf THEN
                 // If the macro was invoked in the global scope, then it's still
                 // there, so don't delete its scope.
 

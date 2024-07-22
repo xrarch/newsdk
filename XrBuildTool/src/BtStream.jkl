@@ -212,7 +212,7 @@ FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
 
             macro := stream^.Macro
 
-            IF NOT macro^.IsArgumentMacro THEN
+            IF NOT macro^.ArgumentOf THEN
                 // Delete the macro scope.
 
                 TlDeleteSymbolTable ( LexCurrentMacroScope )
