@@ -136,7 +136,11 @@ FN LexError (
 
     stream := LexCurrentStream
 
-    dotrace := stream^.Previous != 0
+    dotrace := FALSE
+
+    IF stream THEN
+        dotrace = stream^.Previous != 0
+    END
 
     IF token THEN
         IF token^.Macro THEN
