@@ -9,6 +9,7 @@ EXTERN BtSdkBase : UBYTE[FE_PATH_BUFFER_SIZE]
 EXTERN BtCHost : UWORD
 EXTERN BtArchHasSuffix : UWORD
 EXTERN BtCleanUp : UWORD
+EXTERN BtKeepTmp : UWORD
 
 EXTERN BtArchNameSuffix : UBYTE[FE_PATH_BUFFER_SIZE]
 
@@ -274,7 +275,13 @@ FN BtRunCommand (
         TlPrint ( "%s\n", str )
     END
 
-    RETURN TlSystem ( str )
+    status := TlSystem ( str )
+
+    IF status THEN
+        TlPrint ( "%s: %u\n", str, status )
+    END
+
+    RETURN status
 END
 
 FN BtCleanUpFile (
@@ -1086,6 +1093,12 @@ FN (BtDagActionF) BtBuildJkl (
 
     IF BtRunCommand ( cmdline.Buffer ) THEN
         BtTerminateWorkers = TRUE
+    END
+
+    IF NOT BtKeepTmp THEN
+        // Delete the tmp file.
+
+        BtCleanUpFile ( dagnode^.TmpPath.Buffer )
     END
 
     TlUninitializeDynamicBuffer ( &cmdline )

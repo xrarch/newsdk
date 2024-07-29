@@ -13,6 +13,7 @@ PUBLIC BtArchHasSuffix := FALSE
 PUBLIC BtCleanUp := FALSE
 PUBLIC BtVerbose := FALSE
 PUBLIC BtUseDiskTool := FALSE
+PUBLIC BtKeepTmp := FALSE
 PUBLIC BtDiskImageName : ^UBYTE
 PUBLIC BtDiskImageCreationOptions : ^UBYTE
 PUBLIC BtDiskImageUpdatePartition : ^UBYTE
@@ -1099,5 +1100,20 @@ FN BtLookupConfigMacros ()
         END
 
         BtDiskImageUpdatePartition = macro^.Contents.Buffer
+    END
+
+    // Now KEEP_TMP.
+
+    macro = CAST TlLookupSymbolTable (
+        LexCurrentMacroScope, // symboltable
+        "KEEP_TMP", // name
+    ) TO ^LexMacro
+
+    IF macro THEN
+        IF macro^.IsFunctionMacro THEN
+            TlError ( "KEEP_TMP is a function macro for some reason\n" )
+        END
+
+        BtKeepTmp = TRUE
     END
 END
