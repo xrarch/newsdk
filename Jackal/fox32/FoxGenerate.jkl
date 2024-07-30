@@ -1554,9 +1554,16 @@ FN FoxGenerateArithmeticMove (
     src := inst^.Source1
     defineinst := src^.DefinedBy
 
-    IF defineinst AND src^.Opt.Dve.References == 1 THEN
+    IF defineinst AND
+        src^.Opt.Dve.References == 1 AND
+        defineinst^.Type != IR_STACK_ADDR THEN
+
         // Only we use this temporary, so twiddle it to define our defreg and
         // select it.
+
+        // We don't do this if it's IR_STACK_ADDR because that performs an
+        // optimization where it returns SP directly if the object offset is 0,
+        // which could result in our caller modifying SP... which is bad.
 
         defineinst^.Defines = inst^.Defines
 
