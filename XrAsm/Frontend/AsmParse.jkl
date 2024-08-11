@@ -902,14 +902,13 @@ FN AsmFillSectionFlags (
 
     len := TlMeasureString ( section^.Name )
 
-    // Check if the name starts with P, A, G, E, $.
+    // Check if the name starts with P, A, G, E.
 
-    IF len >= 5 THEN
+    IF len >= 4 THEN
         IF section^.Name[0] == 'P' AND
             section^.Name[1] == 'A' AND
             section^.Name[2] == 'G' AND
-            section^.Name[3] == 'E' AND
-            section^.Name[4] == '$' THEN
+            section^.Name[3] == 'E' THEN
 
             // Cool. Indicate this.
 
