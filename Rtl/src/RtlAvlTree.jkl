@@ -1,5 +1,7 @@
 //
 // Generic AVL tree routines.
+// Makes no assumptions about the keys for the nodes. As a result, traversal and
+// so on must be implemented by the consumers.
 //
 
 #INCLUDE "<inc>/Rtl.hjk"
@@ -360,4 +362,85 @@ EXPORT FN RtlRemoveAvl (
             child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | subnode
         END
     END
+END
+
+EXPORT FN RtlNextAvl (
+    IN node : ^RtlAvlNode,
+) : ^RtlAvlNode
+
+    // Return the logically next node within the AVL tree, or NULLPTR if no such
+    // node exists.
+
+    nextnode := node^.Right
+
+    IF nextnode THEN
+        WHILE nextnode^.Left DO
+            nextnode = nextnode^.Left
+        END
+
+        RETURN nextnode
+    END
+
+    nextnode = node
+
+    WHILE (nextnode^.Parent & RTL_AVL_PARENT_MASK)^.Right == nextnode DO
+        nextnode = nextnode^.Parent & RTL_AVL_PARENT_MASK
+    END
+
+    IF (nextnode^.Parent & RTL_AVL_PARENT_MASK)^.Left == nextnode THEN
+        RETURN nextnode^.Parent & RTL_AVL_PARENT_MASK
+    END
+
+    RETURN NULLPTR
+END
+
+EXPORT FN RtlPreviousAvl (
+    IN node : ^RtlAvlNode,
+) : ^RtlAvlNode
+
+    // Return the logically last node within the AVL tree, or NULLPTR if no such
+    // node exists.
+
+    nextnode := node^.Left
+
+    IF nextnode THEN
+        WHILE nextnode^.Right DO
+            nextnode = nextnode^.Right
+        END
+
+        RETURN nextnode
+    END
+
+    nextnode = node
+
+    WHILE (nextnode^.Parent & RTL_AVL_PARENT_MASK)^.Left == nextnode DO
+        nextnode = nextnode^.Parent & RTL_AVL_PARENT_MASK
+    END
+
+    parent := nextnode^.Parent & RTL_AVL_PARENT_MASK
+
+    IF parent^.Right == nextnode AND
+        parent != parent^.Parent & RTL_AVL_PARENT_MASK THEN
+
+        RETURN parent
+    END
+
+    RETURN NULLPTR
+END
+
+EXPORT FN RtlFirstAvl (
+    IN root : ^RtlAvlNode,
+) : ^RtlAvlNode
+
+    first := root^.Right
+
+    IF NOT first THEN
+        RETURN NULLPTR
+    END
+
+    WHILE first^.Left DO
+        first = first^.Left
+    END
+
+    RETURN first
 END

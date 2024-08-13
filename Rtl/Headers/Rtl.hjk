@@ -500,3 +500,15 @@ EXTERN FN RtlRemoveAvl (
     IN root : ^RtlAvlNode,
     IN node : ^RtlAvlNode,
 )
+
+EXTERN FN RtlNextAvl (
+    IN node : ^RtlAvlNode,
+) : ^RtlAvlNode
+
+EXTERN FN RtlPreviousAvl (
+    IN node : ^RtlAvlNode,
+) : ^RtlAvlNode
+
+EXTERN FN RtlFirstAvl (
+    IN root : ^RtlAvlNode,
+) : ^RtlAvlNode
