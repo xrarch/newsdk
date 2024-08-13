@@ -1,0 +1,363 @@
+//
+// Generic AVL tree routines.
+//
+
+#INCLUDE "<inc>/Rtl.hjk"
+
+#DEFINE RTL_MINUS_ONE 3
+
+#SECTION "text"
+RtlpNegateBalance : UBYTE[4] = {
+    0, 3, 2, 1,
+}
+
+EXPORT FN RtlInitializeAvl (
+    IN root : ^RtlAvlNode,
+)
+
+    // Initialize the root of an AVL tree.
+
+    root^.Parent = root
+    root^.Left = NULLPTR
+    root^.Right = NULLPTR
+END
+
+FN RtlpPromoteAvl (
+    IN node : ^RtlAvlNode
+)
+
+    child : ^RtlAvlNode
+
+    parent := node^.Parent & RTL_AVL_PARENT_MASK
+    grandparent := parent^.Parent & RTL_AVL_PARENT_MASK
+
+    IF parent^.Left == node THEN
+        child = node^.Right
+
+        parent^.Left = child
+
+        IF child THEN
+            child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | parent
+        END
+
+        node^.Right = parent
+
+    ELSE
+        child = node^.Left
+
+        parent^.Right = child
+
+        IF child THEN
+            child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | parent
+        END
+
+        node^.Left = parent
+    END
+
+    parent^.Parent = (parent^.Parent & RTL_AVL_BALANCE_MASK) | node
+
+    IF grandparent^.Left == parent THEN
+        grandparent^.Left = node
+
+    ELSE
+        grandparent^.Right = node
+    END
+
+    node^.Parent = (node^.Parent & RTL_AVL_BALANCE_MASK) | grandparent
+END
+
+FN RtlpRebalanceAvl (
+    IN node : ^RtlAvlNode,
+) : UWORD
+
+    balance := CAST node^.Parent & RTL_AVL_BALANCE_MASK TO UWORD
+
+    unbalanced : ^RtlAvlNode
+
+    IF balance == 1 THEN
+        unbalanced = node^.Right
+
+    ELSE
+        unbalanced = node^.Left
+    END
+
+    childbalance := CAST unbalanced^.Parent & RTL_AVL_BALANCE_MASK TO UWORD
+
+    IF childbalance == balance THEN
+        RtlpPromoteAvl ( unbalanced )
+
+        // Set balance to zero
+
+        node^.Parent &= RTL_AVL_PARENT_MASK
+        unbalanced^.Parent &= RTL_AVL_PARENT_MASK
+
+        RETURN FALSE
+    END
+
+    IF childbalance == RtlpNegateBalance[balance] THEN
+        child : ^RtlAvlNode
+
+        IF balance == 1 THEN
+            child = unbalanced^.Left
+
+        ELSE
+            child = unbalanced^.Right
+        END
+
+        RtlpPromoteAvl ( child )
+        RtlpPromoteAvl ( child )
+
+        childbalance = child^.Parent & RTL_AVL_BALANCE_MASK
+
+        child^.Parent &= RTL_AVL_PARENT_MASK
+
+        IF childbalance == balance THEN
+            // Set node's balance to the inverse. Set unbalanced's balance to
+            // zero.
+
+            node^.Parent = (node^.Parent & RTL_AVL_PARENT_MASK) |
+                RtlpNegateBalance[balance]
+
+            unbalanced^.Parent &= RTL_AVL_PARENT_MASK
+
+        ELSEIF childbalance == RtlpNegateBalance[balance] THEN
+            // Set unbalanced's balance to the balance. Set node's balance to
+            // zero.
+
+            unbalanced^.Parent = (unbalanced^.Parent & RTL_AVL_PARENT_MASK) |
+                balance
+
+            node^.Parent &= RTL_AVL_PARENT_MASK
+
+        ELSE
+            // Zero out both balances.
+
+            node^.Parent &= RTL_AVL_PARENT_MASK
+            unbalanced^.Parent &= RTL_AVL_PARENT_MASK
+        END
+
+        RETURN FALSE
+    END
+
+    RtlpPromoteAvl ( unbalanced )
+
+    unbalanced^.Parent = (unbalanced^.Parent & RTL_AVL_PARENT_MASK) |
+        RtlpNegateBalance[balance]
+
+    RETURN TRUE
+END
+
+EXPORT FN RtlInsertAvl (
+    IN root : ^RtlAvlNode,
+    IN node : ^RtlAvlNode,
+    IN comparisonfunc : RtlAvlLessThanF,
+)
+
+    // Insert the node into the AVL tree.
+
+    node^.Left = NULLPTR
+    node^.Right = NULLPTR
+
+    findnode := root^.Right
+
+    IF NOT findnode THEN
+        // The tree is empty. Insert the node directly.
+
+        root^.Right = node
+        node^.Parent = root
+
+        LEAVE
+    END
+
+    // parentbalance is initially used to track whether we need to insert under
+    // the left or the right child.
+
+    parentbalance : UWORD
+    parent : ^RtlAvlNode
+
+    WHILE findnode DO
+        parent = findnode
+
+        IF comparisonfunc ( node, findnode ) THEN
+            parentbalance = 1
+            findnode = findnode^.Left
+
+        ELSE
+            parentbalance = 0
+            findnode = findnode^.Right
+        END
+    END
+
+    IF parentbalance THEN
+        parent^.Left = node
+
+    ELSE
+        parent^.Right = node
+    END
+
+    node^.Parent = parent
+
+    // Set the root's balance to -1.
+
+    root^.Parent = (root^.Parent & RTL_AVL_PARENT_MASK) | RTL_MINUS_ONE
+
+    // Loop until we've balanced stuff.
+
+    WHILE TRUE DO
+        balance := 1
+
+        IF (node^.Parent & RTL_AVL_PARENT_MASK)^.Left == node THEN
+            balance = RTL_MINUS_ONE
+        END
+
+        parentbalance = parent^.Parent & RTL_AVL_BALANCE_MASK
+
+        IF NOT parentbalance THEN
+            parent^.Parent = (parent^.Parent & RTL_AVL_PARENT_MASK) | balance
+
+            node = parent
+            parent = parent^.Parent & RTL_AVL_PARENT_MASK
+
+        ELSEIF parentbalance != balance THEN
+            parent^.Parent &= RTL_AVL_PARENT_MASK
+
+            BREAK
+
+        ELSE
+            RtlpRebalanceAvl ( parent )
+
+            BREAK
+        END
+    END
+END
+
+EXPORT FN RtlRemoveAvl (
+    IN root : ^RtlAvlNode,
+    IN node : ^RtlAvlNode,
+)
+
+    subnode : ^RtlAvlNode
+    child : ^RtlAvlNode
+
+    IF NOT node^.Left THEN
+        subnode = node
+
+    ELSEIF NOT node^.Right THEN
+        subnode = node
+
+    ELSEIF node^.Parent & RTL_AVL_BALANCE_MASK == RTL_MINUS_ONE THEN
+        subnode = node^.Left
+
+        WHILE subnode^.Right DO
+            subnode = subnode^.Right
+        END
+
+    ELSE
+        subnode = node^.Right
+
+        WHILE subnode^.Left DO
+            subnode = subnode^.Left
+        END
+    END
+
+    balance := RTL_MINUS_ONE
+
+    parent := subnode^.Parent & RTL_AVL_PARENT_MASK
+
+    IF NOT subnode^.Left THEN
+        child = subnode^.Right
+
+        IF parent^.Left == subnode THEN
+            parent^.Left = child
+
+        ELSE
+            balance = 1
+
+            parent^.Right = child
+        END
+
+        IF child THEN
+            child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | parent
+        END
+
+    ELSE
+        child = subnode^.Left
+
+        IF parent^.Left == subnode THEN
+            parent^.Left = child
+
+        ELSE
+            balance = 1
+
+            parent^.Right = child
+        END
+
+        child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | parent
+    END
+
+    // Set the root's balance to zero by resetting its parent link to point to
+    // itself again.
+
+    root^.Parent = root
+
+    // Balance the tree.
+
+    WHILE TRUE DO
+        parentbalance := CAST parent^.Parent & RTL_AVL_BALANCE_MASK TO UWORD
+
+        IF parentbalance == balance THEN
+            // Zero out the parent's balance.
+
+            parent^.Parent &= RTL_AVL_PARENT_MASK
+
+        ELSEIF NOT parentbalance THEN
+            // Set the parent's balance to the negated balance.
+
+            parent^.Parent = (parent^.Parent & RTL_AVL_PARENT_MASK) |
+                RtlpNegateBalance[balance]
+
+            BREAK
+
+        ELSEIF RtlpRebalanceAvl ( parent ) THEN
+            BREAK
+
+        ELSE
+            parent = parent^.Parent & RTL_AVL_PARENT_MASK
+        END
+
+        balance = RTL_MINUS_ONE
+
+        IF (parent^.Parent & RTL_AVL_PARENT_MASK)^.Right == parent THEN
+            balance = 1
+        END
+
+        parent = parent^.Parent & RTL_AVL_PARENT_MASK
+    END
+
+    IF node != subnode THEN
+        subnode^.Parent = node^.Parent
+        subnode^.Left = node^.Left
+        subnode^.Right = node^.Right
+
+        parent = subnode^.Parent & RTL_AVL_PARENT_MASK
+
+        IF (node^.Parent & RTL_AVL_PARENT_MASK)^.Left == node THEN
+            parent^.Left = subnode
+
+        ELSE
+            parent^.Right = subnode
+        END
+
+        child = subnode^.Left
+
+        IF child THEN
+            child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | subnode
+        END
+
+        child = subnode^.Right
+
+        IF child THEN
+            child^.Parent = (child^.Parent & RTL_AVL_BALANCE_MASK) | subnode
+        END
+    END
+END

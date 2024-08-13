@@ -467,3 +467,36 @@ EXTERN FN RtlRemoveFromHeap (
     IN rootptr : ^^RtlHeapEntry,
     IN entry : ^RtlHeapEntry,
 )
+
+
+// AVL stuff
+
+
+#DEFINE RTL_AVL_PARENT_MASK [(~3)]
+#DEFINE RTL_AVL_BALANCE_MASK 3
+
+FNPTR RtlAvlLessThanF (
+    IN a : ^RtlAvlNode,
+    IN b : ^RtlAvlNode,
+) : UWORD
+
+STRUCT RtlAvlNode
+    Parent : ^RtlAvlNode,
+    Left : ^RtlAvlNode,
+    Right : ^RtlAvlNode,
+END
+
+EXTERN FN RtlInitializeAvl (
+    IN root : ^RtlAvlNode,
+)
+
+EXTERN FN RtlInsertAvl (
+    IN root : ^RtlAvlNode,
+    IN node : ^RtlAvlNode,
+    IN comparisonfunc : RtlAvlLessThanF,
+)
+
+EXTERN FN RtlRemoveAvl (
+    IN root : ^RtlAvlNode,
+    IN node : ^RtlAvlNode,
+)
