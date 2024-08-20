@@ -877,7 +877,7 @@ FN (LirSelectF) XrSelectStackAddr (
         symbol, // symbol
     ) + inst^.Body.Addr.Offset + LirCurrentFunction^.ScratchAreaSize
 
-    IF off == 0 THEN
+    IF off == 0 AND inst^.Defines^.DefinedBy THEN
         // Oh, just use SP directly.
 
         RETURN &XrSp
