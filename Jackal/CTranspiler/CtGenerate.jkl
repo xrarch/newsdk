@@ -189,7 +189,7 @@ CtTypeNames : ^UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_ULONG] = "uint32_t",
     [PRIM_TYPE_UQUAD] = "uint64_t",
 
-    [PRIM_TYPE_POINTER] = "uint64_t",
+    [PRIM_TYPE_POINTER] = "uintptr_t",
 }
 
 CtIrVariableNumber := 1
@@ -231,7 +231,7 @@ FN CtOutputSymbolName (
             TlInternalError ( "Didn't expect this type here", type^.Subtype, 0, 0 )
         END
 
-        CtInsertString ( "    uint64_t _mng_" )
+        CtInsertString ( "    uintptr_t _mng_" )
         CtInsertString ( sym^.Name )
         CtInsertNumber ( CAST sym^.TrgContext TO UWORD )
 
@@ -273,7 +273,7 @@ FN CtOutputVariableName (
 
     // Generate a declaration for the variable.
 
-    CtInsertString ( "    uint64_t __twr_v" )
+    CtInsertString ( "    uintptr_t __twr_v" )
     CtInsertNumber ( var^.Number )
     CtInsertString ( ";\n" )
 
@@ -406,7 +406,7 @@ FN (CtGenerateF) CtGenerateAddr (
 
     CtInsertStringFunc ( "    " )
     CtOutputVariableName ( inst^.Defines )
-    CtInsertStringFunc ( " = (uint64_t)(&" )
+    CtInsertStringFunc ( " = (uintptr_t)(&" )
     CtInsertStringFunc ( inst^.Body.Addr.Symbol^.Name )
     CtInsertStringFunc ( ");\n" )
 END
@@ -417,7 +417,7 @@ FN (CtGenerateF) CtGenerateStackAddr (
 
     CtInsertStringFunc ( "    " )
     CtOutputVariableName ( inst^.Defines )
-    CtInsertStringFunc ( " = (uint64_t)(&" )
+    CtInsertStringFunc ( " = (uintptr_t)(&" )
     CtOutputSymbolName ( inst^.Body.Addr.Symbol )
     CtInsertStringFunc ( ");\n" )
 END
@@ -428,7 +428,7 @@ FN (CtGenerateF) CtGenerateStringAddr (
 
     CtInsertStringFunc ( "    " )
     CtOutputVariableName ( inst^.Defines )
-    CtInsertStringFunc ( " = (uint64_t)(&" )
+    CtInsertStringFunc ( " = (uintptr_t)(&" )
     CtGenerateString ( TRUE, inst^.Body.String.String )
     CtInsertStringFunc ( ");\n" )
 END
@@ -966,7 +966,7 @@ FN (CtGenerateF) CtGenerateCall (
     // Generate a function call.
 
     // This is mostly straightforward except for one little thing which is
-    // varargs. We implement them simply by creating an array of uint64_t to
+    // varargs. We implement them simply by creating an array of uintptr_t to
     // contain the variadic part, and passing a pointer to that, along with a
     // count, as the last two arguments of the function call.
 
@@ -993,7 +993,7 @@ FN (CtGenerateF) CtGenerateCall (
     CtInsertStringFunc ( "((" )
 
     IF type^.Body.Function.ReturnType THEN
-        CtInsertStringFunc ( "uint64_t " )
+        CtInsertStringFunc ( "uintptr_t " )
     ELSE
         CtInsertStringFunc ( "void " )
     END
@@ -1001,7 +1001,7 @@ FN (CtGenerateF) CtGenerateCall (
     CtInsertStringFunc ( "(*)(" )
 
     WHILE cargcount DO
-        CtInsertStringFunc ( "uint64_t" )
+        CtInsertStringFunc ( "uintptr_t" )
 
         cargcount -= 1
 
@@ -1030,7 +1030,7 @@ FN (CtGenerateF) CtGenerateCall (
     END
 
     WHILE outarg DO
-        CtInsertStringFunc ( "(uint64_t)(&" )
+        CtInsertStringFunc ( "(uintptr_t)(&" )
         CtOutputVariableName ( outarg^.Variable )
         CtInsertStringFunc ( ")" )
 
@@ -1162,14 +1162,14 @@ FN CtGenerateArgList (
     WHILE arg DO
         IF arg^.InOut == inout THEN
             IF inout == ARG_OUT THEN
-                CtInsertString ( "uint64_t _mng_o_" )
+                CtInsertString ( "uintptr_t _mng_o_" )
                 CtInsertString ( arg^.Symbol^.Name )
             
             ELSE
                 arg^.Symbol^.TrgContext = CAST CtIrVariableNumber TO ^VOID
                 CtIrVariableNumber += 1
 
-                CtInsertString ( "uint64_t _mng_" )
+                CtInsertString ( "uintptr_t _mng_" )
                 CtInsertString ( arg^.Symbol^.Name )
                 CtInsertNumber ( CAST arg^.Symbol^.TrgContext TO UWORD )
             END
@@ -1201,7 +1201,7 @@ FN CtGenerateFunction (
     returntype := type^.Body.Function.ReturnType
 
     IF returntype THEN
-        CtInsertString ( "uint64_t " )
+        CtInsertString ( "uintptr_t " )
 
     ELSE
         CtInsertString ( "void " )
@@ -1239,11 +1239,11 @@ FN CtGenerateFunction (
         vcsym^.TrgContext = CAST CtIrVariableNumber TO ^VOID
         CtIrVariableNumber += 1
 
-        CtInsertString ( "uint64_t _mng_" )
+        CtInsertString ( "uintptr_t _mng_" )
         CtInsertString ( vtsym^.Name )
         CtInsertNumber ( CAST vtsym^.TrgContext TO UWORD )
 
-        CtInsertString ( ", uint64_t _mng_" )
+        CtInsertString ( ", uintptr_t _mng_" )
         CtInsertString ( vcsym^.Name )
         CtInsertNumber ( CAST vcsym^.TrgContext TO UWORD )
 
@@ -1271,7 +1271,7 @@ FN CtGenerateFunction (
     CtInsertString ( " {\n" )
 
     IF type^.Body.Function.ReturnType THEN
-        CtInsertString ( "    uint64_t _jkl_retv;\n" )
+        CtInsertString ( "    uintptr_t _jkl_retv;\n" )
     END
 
     CtGenerateFromIr (
@@ -1288,7 +1288,7 @@ FN CtGenerateFunction (
 
             // Generate a store of this argument back to the caller.
 
-            CtInsertString ( "    *(uint64_t*)(_mng_o_" )
+            CtInsertString ( "    *(uintptr_t*)(_mng_o_" )
             CtInsertString ( arg^.Symbol^.Name )
             CtInsertString ( ") = " )
             CtInsertString ( "_mng_" )
