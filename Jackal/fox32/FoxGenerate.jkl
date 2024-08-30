@@ -390,7 +390,7 @@ FN FoxFillOperandForAccess (
     ELSEIF inst2^.Type == IR_ADDR THEN
         // Gotta be a named imm.
 
-        IF src2^.Opt.Dve.References == 1 THEN
+        IF src2^.Opt.Dve.References <= 4 THEN
             operand^.AccessType = FOX_ACCESS_IMM_PTR_NAME
             operand^.Constant = CAST inst2^.Body.Addr.Symbol TO UWORD
 
@@ -469,13 +469,10 @@ FN FoxFillOperand (
     IF inst^.Type == IR_LOAD THEN
         // It's one of the load ones.
 
-        // TODO If it's used more than once, share instead of selecting over it,
-        //      or we will generate lots of extra loads.
-
         // We can only select over this if the load width matches, and if the
         // access is either unsigned or 32 bits.
 
-        IF var^.Opt.Dve.References == 1 THEN
+        IF var^.Opt.Dve.References <= 4 THEN
             IF (bitsize == FOX_BITS_UNKNOWN OR
                 bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type]) AND
                 ((inst^.Body.LoadStore.Type > PRIM_TYPE_UNSIGNED AND
@@ -495,7 +492,7 @@ FN FoxFillOperand (
         // This will get resolved to a label pointing to a string during
         // code emission.
 
-        IF allowimm AND var^.Opt.Dve.References == 1 THEN
+        IF allowimm AND var^.Opt.Dve.References <= 4 THEN
             operand^.AccessType = FOX_ACCESS_IMM_STRING
             operand^.Constant = CAST inst^.Body.String.String TO UWORD
 
@@ -505,7 +502,7 @@ FN FoxFillOperand (
     ELSEIF inst^.Type == IR_ADDR THEN
         // Gotta be a named imm.
 
-        IF allowimm AND var^.Opt.Dve.References == 1 THEN
+        IF allowimm AND var^.Opt.Dve.References <= 4 THEN
             operand^.AccessType = FOX_ACCESS_IMM_NAME
             operand^.Constant = CAST inst^.Body.Addr.Symbol TO UWORD
 

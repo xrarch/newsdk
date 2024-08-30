@@ -507,11 +507,11 @@ FN XrFillAccess (
     ELSEIF srcinst^.Type == IR_ADDR THEN
         // Gotta be a named imm.
         // If the refcount on the variable is low, we can inline this by a
-        // pseudo-instruction. Above two uses of it, it's more worthwhile to
+        // pseudo-instruction. Above four uses of it, it's more worthwhile to
         // allow XrSelectAddr to calculate the address into a reusable temporary
         // register.
 
-        IF srcvar^.Opt.Dve.References < 3 THEN
+        IF srcvar^.Opt.Dve.References <= 4 THEN
             lirinst^.Body.Machine.Xr.Op2.Constant =
                 CAST srcinst^.Body.Addr.Symbol TO UWORD
 
