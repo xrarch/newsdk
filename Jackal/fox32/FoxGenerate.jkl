@@ -477,7 +477,7 @@ FN FoxFillOperand (
         // We can only select over this if the load width matches, and if the
         // access is either unsigned or 32 bits.
 
-        IF var^.Opt.Dve.References <= 4 THEN
+        IF var^.Opt.Dve.References == 1 THEN
             IF (bitsize == FOX_BITS_UNKNOWN OR
                 bitsize == FoxPrimTypeToBits[inst^.Body.LoadStore.Type]) AND
                 ((inst^.Body.LoadStore.Type > PRIM_TYPE_UNSIGNED AND
@@ -1549,16 +1549,20 @@ END
 
 FN FoxGenerateArithmeticMove (
     IN inst : ^IrInstruction,
+    OUT newtemp : UWORD,
 ) : ^LirRegister
 
     // Generate a move into the temporary if required.
+
+    newtemp = FALSE
 
     src := inst^.Source1
     defineinst := src^.DefinedBy
 
     IF defineinst AND
         src^.Opt.Dve.References == 1 AND
-        defineinst^.Type != IR_STACK_ADDR THEN
+        defineinst^.Type != IR_STACK_ADDR AND
+        inst^.Defines != inst^.Source2 THEN
 
         // Only we use this temporary, so twiddle it to define our defreg and
         // select it.
@@ -1572,36 +1576,47 @@ FN FoxGenerateArithmeticMove (
         RETURN LirSelect ( defineinst )
     END
 
-    defreg := LirGetRegister ( inst^.Defines )
+    defreg : ^LirRegister
+
+    IF inst^.Defines == inst^.Source2 THEN
+        defreg = LirCreateRegister ()
+        newtemp = TRUE
+
+    ELSE
+        defreg = LirGetRegister ( inst^.Defines )
+    END
+
     srcreg := LirGetRegister ( inst^.Source1 )
 
-    IF defreg != srcreg THEN
-        movinst := LirCreateInstruction (
-            LIR_MACH_INST, // type
-            FOX_MOV, // machtype
-        )
-
-        movinst^.Defines = defreg
-
-        srcreg = FoxFillOperand (
-            movinst, // lirinst
-            &movinst^.Body.Machine.Fox.Op2, // operand
-            inst^.Source1, // var
-            TRUE, // allowimm
-        )
-
-        movinst^.Source2 = srcreg
-
-        movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
-        movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
-        movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
-
-        IF srcreg THEN
-            LirMoveHint ( defreg, srcreg )
-        END
-
-        LirInsertInstructionTail ( movinst )
+    IF defreg == srcreg THEN
+        RETURN defreg
     END
+
+    movinst := LirCreateInstruction (
+        LIR_MACH_INST, // type
+        FOX_MOV, // machtype
+    )
+
+    movinst^.Defines = defreg
+
+    srcreg = FoxFillOperand (
+        movinst, // lirinst
+        &movinst^.Body.Machine.Fox.Op2, // operand
+        inst^.Source1, // var
+        TRUE, // allowimm
+    )
+
+    movinst^.Source2 = srcreg
+
+    movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+    movinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+    movinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    IF srcreg THEN
+        LirMoveHint ( defreg, srcreg )
+    END
+
+    LirInsertInstructionTail ( movinst )
 
     RETURN defreg
 END
@@ -1615,7 +1630,12 @@ FN (LirSelectF) FoxSelectBitNot (
     //  MOV DEF, A
     //  NOT DEF
 
-    defreg := FoxGenerateArithmeticMove ( inst )
+    newtemp : UWORD
+
+    defreg := FoxGenerateArithmeticMove (
+        inst, // inst
+        OUT newtemp, // newtemp
+    )
 
     lirinst := LirCreateInstruction (
         LIR_MACH_INST, // type
@@ -1644,7 +1664,23 @@ FN (LirSelectF) FoxSelectArithmetic (
     //  MOV DEF, A
     //  ARITH DEF, B
 
-    defreg := FoxGenerateArithmeticMove ( inst )
+    IF inst^.Defines == inst^.Source2 AND
+        IrCommutativity[inst^.Type] THEN
+
+        // Try to avoid the creation of a temporary by swapping Source1 and
+        // Source2 so that Source2 no longer matches Defines.
+
+        tmp := inst^.Source1
+        inst^.Source1 = inst^.Source2
+        inst^.Source2 = tmp
+    END
+
+    newtemp : UWORD
+
+    defreg := FoxGenerateArithmeticMove (
+        inst, // inst
+        OUT newtemp, // newtemp
+    )
 
     machtype := FoxIrInstToFoxOp[inst^.Type]
 
@@ -1694,6 +1730,25 @@ FN (LirSelectF) FoxSelectArithmetic (
     END
 
     LirInsertInstructionTail ( lirinst )
+
+    IF newtemp THEN
+        // Move result into real register.
+
+        lirinst = LirCreateInstruction (
+            LIR_MACH_INST, // type
+            FOX_MOV, // machtype
+        )
+
+        lirinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
+        lirinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
+        lirinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
+        lirinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+        lirinst^.Defines = LirGetRegister ( inst^.Defines )
+        lirinst^.Source2 = defreg
+
+        LirInsertInstructionTail ( lirinst )
+    END
 
     RETURN defreg
 END

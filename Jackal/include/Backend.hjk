@@ -258,6 +258,8 @@ EXTERN FN IrGetStackOffset (
     IN symbol : ^LexSymbol,
 ) : UWORD
 
+EXTERN IrCommutativity : UBYTE[IR_MAX]
+
 #MACRO IrIsUselessBranch ( inst ) [
     (((inst)^.Body.Branch.TrueLabel == (inst)^.Next) AND
     ((inst)^.Body.Branch.FalseLabel == (inst)^.Next^.Next)) OR

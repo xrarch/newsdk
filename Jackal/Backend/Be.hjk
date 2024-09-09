@@ -39,8 +39,6 @@ EXTERN FN IrGiveOpaqueValueVariable (
 
 EXTERN FN IrInitializeValueNumber ()
 
-EXTERN IrCommutativity : UBYTE[IR_MAX]
-
 EXTERN FN IrCreateConstantBefore (
     IN beforeinst : ^IrInstruction,
     IN value : UWORD,
