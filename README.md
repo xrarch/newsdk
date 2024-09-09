@@ -36,3 +36,4 @@ XrDiskUpdateTool - The disk tool.
 - [x] Disk image creation and partitioning tool. Also with support for formatting, reading, and writing AisixFS.
 - [x] `xrbt` support for automatically creating and updating rebuilt files in disk images if configured to do so.
 - [ ] Complete rewrite of the MINTIA OS in Jackal.
+- [ ] New middle-end and backends for the Jackal compiler, since those turned out suboptimal (it was my first time!).

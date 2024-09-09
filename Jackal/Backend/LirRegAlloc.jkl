@@ -621,7 +621,7 @@ FN LirLinearScan ()
 
         ELSE
             TlInternalError ( "LirLinearScan: Incorrect reg type",
-                reg^.Type, 1, 0 )
+                reg^.Type, reg^.MachineRegister, 0 )
         END
 
         entry = entry^.Next
