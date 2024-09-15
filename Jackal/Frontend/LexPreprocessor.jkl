@@ -1966,9 +1966,11 @@ FN (LexOperatorParseF) LexOperatorAdd (
 
     LexConsumeCloseParenthesis ()
 
+    res := (num1 + num2) & JklTargetInfo^.ConstantMask
+
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        num1 + num2, // number
+        res, // number
         10, // base
     )
 
@@ -1999,9 +2001,11 @@ FN (LexOperatorParseF) LexOperatorSub (
 
     LexConsumeCloseParenthesis ()
 
+    res := (num1 - num2) & JklTargetInfo^.ConstantMask
+
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        num1 - num2, // number
+        res, // number
         10, // base
     )
 
@@ -2032,9 +2036,11 @@ FN (LexOperatorParseF) LexOperatorMul (
 
     LexConsumeCloseParenthesis ()
 
+    res := (num1 * num2) & JklTargetInfo^.ConstantMask
+
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        num1 * num2, // number
+        res, // number
         10, // base
     )
 
@@ -2065,9 +2071,11 @@ FN (LexOperatorParseF) LexOperatorDiv (
 
     LexConsumeCloseParenthesis ()
 
+    res := (num1 / num2) & JklTargetInfo^.ConstantMask
+
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        num1 / num2, // number
+        res, // number
         10, // base
     )
 
@@ -2098,9 +2106,11 @@ FN (LexOperatorParseF) LexOperatorLsh (
 
     LexConsumeCloseParenthesis ()
 
+    res := (num1 << num2) & JklTargetInfo^.ConstantMask
+
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        num1 << num2, // number
+        res, // number
         10, // base
     )
 
@@ -2368,7 +2378,7 @@ FN (LexOperatorParseF) LexOperatorBitNot (
 
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        ~num1, // number
+        (~num1) & JklTargetInfo^.ConstantMask, // number
         10, // base
     )
 
