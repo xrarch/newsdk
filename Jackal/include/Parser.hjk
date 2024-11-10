@@ -40,13 +40,11 @@ STRUCT PrsBlock
     StatementListTail : ^PrsAstNode,
     StatementCount : ULONG,
     LabelCount : ULONG,
-    Probe : UBYTE,
 END
 
 STRUCT PrsAstAssign
     Left : ^PrsAstNode,
     Right : ^PrsAstNode,
-    Probe : UBYTE,
 END
 
 STRUCT PrsAstOperator

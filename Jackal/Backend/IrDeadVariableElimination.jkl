@@ -139,25 +139,17 @@ FN IrEliminateForFunction (
             IF NOT def^.ConsideredForDve THEN
                 def^.ConsideredForDve = TRUE
 
-                IF NOT def^.Probe THEN
-                    // Optimistically place it on the dead variable list.
+                // Optimistically place it on the dead variable list.
 
-                    TlInsertAtTailList (
-                        &IrDeadVariableListHead, // head
-                        &def^.Opt.Dve.DeadListEntry, // entry
-                    )
+                TlInsertAtTailList (
+                    &IrDeadVariableListHead, // head
+                    &def^.Opt.Dve.DeadListEntry, // entry
+                )
 
-                    def^.Opt.Dve.References = 0
+                def^.Opt.Dve.References = 0
 
-                    IF def^.Symbol THEN
-                        def^.Opt.Dve.DefinedByListHead = NULLPTR
-                    END
-
-                ELSE
-                    // This variable was marked PROBE meaning we never optimize
-                    // it out.
-
-                    def^.Opt.Dve.References = 1
+                IF def^.Symbol THEN
+                    def^.Opt.Dve.DefinedByListHead = NULLPTR
                 END
             END
 

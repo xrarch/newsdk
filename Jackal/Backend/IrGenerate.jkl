@@ -177,7 +177,6 @@ FN IrCreateVariable (
     var^.KnownConstant = FALSE
     var^.Known = FALSE
     var^.ConsideredForDve = FALSE
-    var^.Probe = FALSE
 
     RETURN var
 END
@@ -1878,10 +1877,6 @@ FN IrGenerateAssignment (
     ELSEIF destvar^.Annotation == IR_VAR_LOCAL THEN
         // Generate a move.
         // XXX Remember that code generation should notice a cast here.
-
-        IF node^.Body.Assign.Probe THEN
-            destvar^.Probe = TRUE
-        END
 
         IrGenerateMove (
             destvar, // destvar
