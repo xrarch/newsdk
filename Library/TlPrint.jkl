@@ -227,7 +227,7 @@ FN (TlpFormatF) TlpFormatP (
     TlpFormatInteger (
         callback, // callback
         context, // context
-        TL_PRINT_ARG_ZERO | TL_PRINT_ARG, // flag
+        flag | TL_PRINT_ARG_ZERO | TL_PRINT_ARG, // flag
         arg, // arg
         CAST value TO UWORD, // number
         FALSE, // signed

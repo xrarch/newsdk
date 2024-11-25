@@ -224,7 +224,7 @@ FN (RtlpFormatF) RtlpFormatP (
     RtlpFormatInteger (
         callback, // callback
         context, // context
-        RTL_PRINT_ARG_ZERO | RTL_PRINT_ARG, // flag
+        flag | RTL_PRINT_ARG_ZERO | RTL_PRINT_ARG, // flag
         arg, // arg
         CAST value TO UWORD, // number
         FALSE, // signed
