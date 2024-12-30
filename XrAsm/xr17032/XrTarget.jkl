@@ -76,6 +76,8 @@ ENUM XrInstructionSubtype : LexTokenSubtype
     XR_LL,
     XR_SC,
 
+    XR_PAUSE,
+
     XR_MB,
     XR_WMB,
     XR_BRK,
@@ -172,6 +174,8 @@ FN (AsmTargetKeywordsF) XrRegisterKeywords ()
 
     LexInsertKeyword ( "ll", TOKEN_INSTRUCTION, XR_LL, 0 )
     LexInsertKeyword ( "sc", TOKEN_INSTRUCTION, XR_SC, 0 )
+
+    LexInsertKeyword ( "pause", TOKEN_INSTRUCTION, XR_PAUSE, 0 )
 
     LexInsertKeyword ( "mb", TOKEN_INSTRUCTION, XR_MB, 0 )
     LexInsertKeyword ( "wmb", TOKEN_INSTRUCTION, XR_WMB, 0 )
@@ -355,6 +359,8 @@ XrSubtypeToOpcode : UBYTE[XR_INSTRUCTION_MAX] = {
     [XR_MOD] = 0x31,
 
     [XR_SC] = 0x31,
+
+    [XR_PAUSE] = 0x31,
     
     [XR_MB] = 0x31,
     [XR_WMB] = 0x31,
@@ -388,6 +394,8 @@ XrSubtypeToFunctionCode : UBYTE[XR_INSTRUCTION_MAX] = {
 
     [XR_SC] = 0x8,
     
+    [XR_PAUSE] = 0x6,
+
     [XR_MB] = 0x3,
     [XR_WMB] = 0x2,
     [XR_BRK] = 0x1,
@@ -1834,6 +1842,8 @@ XrInstructionMnemonics : XrInstructionMnemonicF[XR_INSTRUCTION_MAX] = {
 
     [XR_LL] = &XrParseLoadLocked,
     [XR_SC] = &XrParseRegFormat,
+
+    [XR_PAUSE] = &XrParseRegNone,
 
     [XR_MB] = &XrParseRegNone,
     [XR_WMB] = &XrParseRegNone,
