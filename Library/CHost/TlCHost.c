@@ -136,7 +136,11 @@ uint64_t TlStatFile (uint8_t *path, uint64_t statrecord) {
 }
 
 uint64_t TlCreateDirectory (uint8_t *path) {
+#ifdef __MINGW32__
+    if (mkdir((char *)path)) {
+#else
     if (mkdir((char *)path, 0777)) {
+#endif
         return -1;
     }
 
@@ -152,7 +156,11 @@ uint64_t TlSwitchDirectory (uint8_t *path) {
 }
 
 void TlSetTerminationHandler (uint64_t handler) {
+#ifdef __MINGW32__
+    signal(SIGINT, (__p_sig_fn_t)(handler));
+#else
     signal(SIGINT, (sig_t)(handler));
+#endif
 }
 
 uint64_t TlSystem (uint8_t *cmdline) {
