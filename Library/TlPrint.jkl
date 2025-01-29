@@ -73,7 +73,7 @@ FN TlpFormatInteger (
     IN base : UBYTE,
 )
 
-    log10 := 0
+    log10 := 1
     divisor := 1
     signedbias := 0
 
@@ -96,18 +96,11 @@ FN TlpFormatInteger (
         signedbias = 1
     END
 
-    IF number == 0 THEN
-        log10 = 1
+    n := number
 
-    ELSE
-        n := number
-
-        WHILE n >= base DO
-            divisor *= base
-            n /= base
-            log10 += 1
-        END
-
+    WHILE n >= base DO
+        divisor *= base
+        n /= base
         log10 += 1
     END
 

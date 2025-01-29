@@ -30,6 +30,16 @@
 
 #DEFINE RTL_ARCH_STRING ( STRCAT ( STRCAT "\"" ARCHITECTURE ) "\"" )
 
+STRUCT RtlString
+    Data : ^UBYTE,
+    Length : UWORD,
+END
+
+#MACRO RtlInitializeString ( stringstruct, data ) [
+    NOTHING (stringstruct)^.Data = (data)
+    NOTHING (stringstruct)^.Length = RtlMeasureString ( data )
+]
+
 #MACRO RtlEmptyList ( head ) [
     ((head)^.Next == (head))
 ]
