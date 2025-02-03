@@ -4,6 +4,32 @@
 
 #INCLUDE "<inc>/Rtl.hjk"
 
+EXPORT FN RtlCompareRtlString (
+    IN str1 : ^RtlString,
+    IN str2 : ^RtlString,
+) : UWORD
+
+    len := str1^.Length
+
+    IF len != str2^.Length THEN
+        RETURN len - str2^.Length
+    END
+
+    i := 0
+    data1 := str1^.Data
+    data2 := str2^.Data
+
+    WHILE i < len DO
+        IF data1[i] != data2[i] THEN
+            RETURN data1[i] - data2[i]
+        END
+
+        i += 1
+    END
+
+    RETURN 0
+END
+
 EXPORT FN RtlCompareString (
     IN str1 : ^UBYTE,
     IN str2 : ^UBYTE,

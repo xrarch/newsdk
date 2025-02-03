@@ -362,6 +362,11 @@ EXTERN FN RtlCompareStringWithMax (
     IN count : UWORD,
 ) : UWORD
 
+EXTERN FN RtlCompareRtlString (
+    IN str1 : ^RtlString,
+    IN str2 : ^RtlString,
+) : UWORD
+
 EXTERN FN RtlMeasureString (
     IN str : ^UBYTE,
 ) : UWORD
