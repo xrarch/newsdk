@@ -508,6 +508,8 @@ FN XrAsmEmit (
                     -1, // bufsize
                     OUT val, // num
                 ) THEN
+                    val &= JklTargetInfo^.ConstantMask
+
                     XrAsmInsertString ( "#DEFINE " )
                     XrAsmInsertString ( &macro^.Name[0] )
                     XrAsmInsertString ( " " )

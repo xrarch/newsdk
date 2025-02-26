@@ -367,7 +367,6 @@ END
 #DEFINE TOKEN_FLAG_STRING   4
 #DEFINE TOKEN_FLAG_CHARLIT  8
 #DEFINE TOKEN_FLAG_UPPER    16
-#DEFINE TOKEN_FLAG_FOGETTABOUTIT 32
 
 FN LexGetStringTokenInternal (
     IN token : ^LexToken,
@@ -862,14 +861,6 @@ FN LexNextToken (
 
         token^.Type = TOKEN_STRING
         token^.Payload = internedstring
-
-        LEAVE
-    END
-
-    IF tokenflag & TOKEN_FLAG_FOGETTABOUTIT THEN
-        // This is an ignored macro.
-
-        token^.Type = TOKEN_EOF
 
         LEAVE
     END
