@@ -500,7 +500,9 @@ FN XrAsmEmit (
         WHILE head != entry DO
             macro := CONTAINEROF entry TO LexMacro.Entry.OrderedEntry
 
-            IF NOT macro^.IsFunctionMacro THEN
+            IF NOT macro^.IsFunctionMacro AND
+                NOT macro^.IsSpecialMacro THEN
+
                 val : UWORD
 
                 IF TlStringToNumber (

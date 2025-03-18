@@ -346,6 +346,9 @@ STRUCT LexSemanticType
     CachedIsValue : UBYTE,
 END
 
+#DEFINE LEX_JKL_FILE_NAME 1
+#DEFINE LEX_JKL_LINE_NUMBER 2
+
 STRUCT LexMacro
     Entry : TlHashTableEntry, // MUST be at the beginning
 
@@ -360,6 +363,7 @@ STRUCT LexMacro
     ArgListHead : ^LexMacroArgument,
     ArgumentOf : ^LexMacro,
     IsFunctionMacro : UBYTE,
+    IsSpecialMacro : UBYTE,
 END
 
 STRUCT LexMacroArgument

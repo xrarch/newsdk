@@ -19,6 +19,8 @@ LexMacroZone : TlZone
 
 LexDirectiveToken : LexToken
 
+LexLastExpansionStream : ^LexStream
+
 // More than this deep in macros and we assume you messed up.
 
 #DEFINE LEX_MACRO_DEPTH_MAX 64
@@ -654,6 +656,42 @@ FN LexCollectValue (
         LexError ( token, "Function macros not permitted here\n" )
     END
 
+    IF macro^.IsSpecialMacro THEN
+        // It's a special macro, so it has special context-dependent contents.
+
+        IF LexMacroDepth == 0 THEN
+            LexError ( token, "Special macros only legal inside macros\n" )
+        END
+
+        IF macro^.IsSpecialMacro == LEX_JKL_FILE_NAME THEN
+            // File name of the outermost expansion.
+
+            TlCopyIntoDynamicBuffer (
+                buffer, // array
+                &LexLastExpansionStream^.FileBlock^.IncludeName[0], // srcbuf
+                TlMeasureString (
+                    &LexLastExpansionStream^.FileBlock^.IncludeName[0],
+                ), // length
+            )
+        
+        ELSEIF macro^.IsSpecialMacro == LEX_JKL_LINE_NUMBER THEN
+            // Line number of the outermost expansion.
+
+            TlInsertNumberDynamicBuffer (
+                buffer, // array
+                LexLastExpansionStream^.LineNumber, // number
+                10, // base
+            )
+        END
+
+        TlInsertDynamicBuffer (
+            buffer, // array
+            0, // byte
+        )
+
+        LEAVE
+    END
+
     // Directly copy the contents of the macro into the caller's buffer.
 
     TlCopyIntoDynamicBuffer (
@@ -757,6 +795,38 @@ FN LexDefineMacroFromArgumentString (
     macro^.IsFunctionMacro = FALSE
     macro^.ArgumentOf = NULLPTR
     macro^.FileBlock = NULLPTR
+    macro^.IsSpecialMacro = FALSE
+
+    // Insert the macro into the macro scope.
+
+    TlInsertSymbolTable (
+        LexRootMacroScope, // symboltable
+        &macro^.Entry, // entry
+        &macro^.Name[0], // name
+    )
+END
+
+FN LexDefineSpecialMacro (
+    IN name : ^UBYTE,
+    IN code : UWORD,
+)
+
+    // Allocate a macro structure.
+
+    macro := CAST TlAllocateFromZone ( &LexMacroZone ) TO ^LexMacro
+
+    TlCopyString (
+        &macro^.Name[0], // dest
+        name, // src
+        -1, // bufsize
+    )
+
+    // Initialize as a special macro.
+
+    macro^.IsFunctionMacro = FALSE
+    macro^.ArgumentOf = NULLPTR
+    macro^.FileBlock = NULLPTR
+    macro^.IsSpecialMacro = code
 
     // Insert the macro into the macro scope.
 
@@ -774,10 +844,21 @@ FN LexExpandMacro (
     IN token : ^LexToken,
 )
 
+    IF macro^.IsSpecialMacro THEN
+        LexError ( token, "Illegal usage of special macro\n" )
+    END
+
     LexMacroDepth += 1
 
     IF LexMacroDepth >= LEX_MACRO_DEPTH_MAX THEN
         LexError ( token, "Too many macros deep!\n" )
+    END
+
+    IF LexMacroDepth == 1 THEN
+        // This is the outermost macro expansion, so record the file and line
+        // number.
+
+        LexLastExpansionStream = LexCurrentStream
     END
 
     // Create new scopes.
@@ -850,6 +931,7 @@ FN LexExpandMacro (
 
             argmacro^.IsFunctionMacro = FALSE
             argmacro^.ArgumentOf = macro
+            argmacro^.IsSpecialMacro = FALSE
 
             // Collect the macro contents from the argument list.
 
@@ -1134,6 +1216,7 @@ FN (LexDirectiveParseF) LexParseDefine ()
 
     macro^.IsFunctionMacro = FALSE
     macro^.ArgumentOf = NULLPTR
+    macro^.IsSpecialMacro = FALSE
 
     LexCollectValue (
         &macro^.NameToken, // token
@@ -2536,6 +2619,9 @@ FN LexInitializePreprocessor ()
     )
 
     // Insert the directives and operators into their hash tables.
+
+    LexDefineSpecialMacro ( "JKL_FILE_NAME", LEX_JKL_FILE_NAME )
+    LexDefineSpecialMacro ( "JKL_LINE_NUMBER", LEX_JKL_LINE_NUMBER )
 
     LexInsertDirective ( "INCLUDE", &LexParseInclude )
     LexInsertDirective ( "DEFINE", &LexParseDefine )
