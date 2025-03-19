@@ -306,6 +306,8 @@ EXPORT FN RtlPrintByCallbackByVarTable (
 
     // This is the one that actually does stuff!
 
+    lockcontext := RtljLockStream ( context )
+
     i := 0
 
     WHILE fmt^ DO
@@ -322,7 +324,7 @@ EXPORT FN RtlPrintByCallbackByVarTable (
             IF NOT byte THEN
                 callback ( '?', context )
 
-                LEAVE
+                BREAK
             END
 
             IF byte == '%' THEN
@@ -381,6 +383,11 @@ EXPORT FN RtlPrintByCallbackByVarTable (
 
         fmt += 1
     END
+
+    RtljUnlockStream (
+        context, // handle
+        lockcontext, // lockcontext
+    )
 END
 
 EXPORT FN RtlPrintByCallback (

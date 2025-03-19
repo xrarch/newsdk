@@ -389,6 +389,15 @@ EXTERN FN (RtlPrintCallbackF) RtljPrintCallback (
     IN context : ^VOID,
 )
 
+EXTERN FN RtljLockStream (
+    IN handle : ^VOID,
+) : UWORD
+
+EXTERN FN RtljUnlockStream (
+    IN handle : ^VOID,
+    IN lockcontext : UWORD,
+)
+
 
 // Bitmap stuff
 
