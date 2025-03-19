@@ -19,7 +19,10 @@ LexMacroZone : TlZone
 
 LexDirectiveToken : LexToken
 
+PUBLIC LexCurrentFunctionSymbol : ^LexSymbol
+
 LexLastExpansionStream : ^LexStream
+LexLastExpansionFunction : ^LexSymbol
 
 // More than this deep in macros and we assume you messed up.
 
@@ -682,6 +685,21 @@ FN LexCollectValue (
                 LexLastExpansionStream^.LineNumber, // number
                 10, // base
             )
+
+        ELSEIF macro^.IsSpecialMacro == LEX_JKL_FUNC_NAME THEN
+            // Function name of the outermost expansion.
+
+            IF NOT LexLastExpansionFunction THEN
+                LexError ( token, "Outermost expansion not in function\n" )
+            END
+
+            TlCopyIntoDynamicBuffer (
+                buffer, // array
+                LexLastExpansionFunction^.Name, // srcbuf
+                TlMeasureString (
+                    LexLastExpansionFunction^.Name,
+                ), // length
+            )
         END
 
         TlInsertDynamicBuffer (
@@ -859,6 +877,7 @@ FN LexExpandMacro (
         // number.
 
         LexLastExpansionStream = LexCurrentStream
+        LexLastExpansionFunction = LexCurrentFunctionSymbol
     END
 
     // Create new scopes.
@@ -2622,6 +2641,7 @@ FN LexInitializePreprocessor ()
 
     LexDefineSpecialMacro ( "JKL_FILE_NAME", LEX_JKL_FILE_NAME )
     LexDefineSpecialMacro ( "JKL_LINE_NUMBER", LEX_JKL_LINE_NUMBER )
+    LexDefineSpecialMacro ( "JKL_FUNC_NAME", LEX_JKL_FUNC_NAME )
 
     LexInsertDirective ( "INCLUDE", &LexParseInclude )
     LexInsertDirective ( "DEFINE", &LexParseDefine )

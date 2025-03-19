@@ -348,6 +348,7 @@ END
 
 #DEFINE LEX_JKL_FILE_NAME 1
 #DEFINE LEX_JKL_LINE_NUMBER 2
+#DEFINE LEX_JKL_FUNC_NAME 3
 
 STRUCT LexMacro
     Entry : TlHashTableEntry, // MUST be at the beginning
@@ -428,6 +429,8 @@ EXTERN LexRootScope : ^TlSymbolTable
 EXTERN LexRootMacroScope : ^TlSymbolTable
 EXTERN LexCurrentScope : ^TlSymbolTable
 EXTERN LexFalseCount : ULONG
+
+EXTERN LexCurrentFunctionSymbol : ^LexSymbol
 
 EXTERN LexMacroDepth : ULONG
 

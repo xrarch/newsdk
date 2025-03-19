@@ -3945,6 +3945,8 @@ FN PrsParseFnSignature (
             &PrsBlockStack, // array
             BLOCK_PLAIN_BODY, // byte
         )
+
+        LexCurrentFunctionSymbol = symbol
     END
 
     IF LexMatchToken (
@@ -4062,6 +4064,7 @@ FN PrsParseFnDeclaration (
         OUT terminator, // terminator
     )
 
+    LexCurrentFunctionSymbol = NULLPTR
     PrsCurrentFunction = NULLPTR
 
     TlPopDynamicBuffer ( &PrsBlockStack )
