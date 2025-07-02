@@ -45,6 +45,7 @@ ENUM LirInstructionType : UBYTE
     LIR_MACH_INST,
     LIR_RETURN,
     LIR_BRANCH,
+    LIR_INSERTASM,
     LIR_JUNK,
 
     LIR_MAX, // MUST be at the end
@@ -88,9 +89,14 @@ STRUCT LirLabelBody
     GenCount : ULONG,
 END
 
+STRUCT LirInsertAsmBody
+    String : ^LexInternedString,
+END
+
 UNION LirInstructionBody
     Machine : LirMachineSpecific,
     Label : LirLabelBody,
+    InsertAsm : LirInsertAsmBody,
 END
 
 STRUCT LirArgument

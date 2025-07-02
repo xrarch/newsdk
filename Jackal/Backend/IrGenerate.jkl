@@ -2202,6 +2202,21 @@ FN (IrStatementGenerationF) IrGenerateBarrier (
     IrInsertInstructionTail ( inst )
 END
 
+FN (IrStatementGenerationF) IrGenerateInsertAsm (
+    IN node : ^PrsAstNode,
+)
+
+    // Generate IR for an INSERTASM statement.
+
+    inst := IrCreateInstruction (
+        IR_INSERTASM, // type
+    )
+
+    inst^.Body.String.String = node^.Body.Statement.StatementSpecific
+
+    IrInsertInstructionTail ( inst )
+END
+
 FN (IrStatementGenerationF) IrGenerateReturn (
     IN node : ^PrsAstNode,
 )
@@ -2443,6 +2458,7 @@ IrStatementGenerationTable : IrStatementGenerationF[AST_MAX] = {
     [AST_CONTINUE] = &IrGenerateContinue,
     [AST_IF] = &IrGenerateIf,
     [AST_BARRIER] = &IrGenerateBarrier,
+    [AST_INSERTASM] = &IrGenerateInsertAsm,
 }
 
 FN IrGenerateBlock (

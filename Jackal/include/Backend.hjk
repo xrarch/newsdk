@@ -9,6 +9,7 @@ ENUM IrInstructionType : UBYTE
     IR_STRING_ADDR,
     IR_CONSTANT,
     IR_MOVE,
+    IR_INSERTASM,
 
     IR_BRANCH_LOW_NUMBER,
 

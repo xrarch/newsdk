@@ -31,6 +31,7 @@ ENUM PrsAstType : UBYTE
     AST_CONTINUE,
     AST_IF,
     AST_BARRIER,
+    AST_INSERTASM,
 
     AST_MAX, // MUST be at the end
 END

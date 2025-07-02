@@ -3066,6 +3066,14 @@ FN XrEmitInstruction (
         XrAsmInsertNumber ( num )
         XrAsmInsertString ( ":\n" )
 
+    ELSEIF lirinst^.Type == LIR_INSERTASM THEN
+        XrAsmInsertString ( "    " )
+
+        XrAsmInsertString (
+            lirinst^.Body.InsertAsm.String^.DynamicBuffer.Buffer )
+        
+        XrAsmInsertString ( "\n" )
+
     ELSEIF lirinst^.Type == LIR_JUNK THEN
         // Do nothing
 

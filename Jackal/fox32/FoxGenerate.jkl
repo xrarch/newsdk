@@ -2849,6 +2849,14 @@ FN FoxEmitInstruction (
         XrAsmInsertNumber ( num )
         XrAsmInsertString ( ":\n" )
 
+    ELSEIF lirinst^.Type == LIR_INSERTASM THEN
+        XrAsmInsertString ( "    " )
+
+        XrAsmInsertString (
+            lirinst^.Body.InsertAsm.String^.DynamicBuffer.Buffer )
+        
+        XrAsmInsertString ( "\n" )
+
     ELSE
         TlInternalError ( "Fox: Weird LIR type", lirinst^.Type, 0, 0 )
     END

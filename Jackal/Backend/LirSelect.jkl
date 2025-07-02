@@ -340,6 +340,16 @@ FN LirSelectForFunction (
 
             LirInsertInstructionTail ( lirinst )
 
+        ELSEIF inst^.Type == IR_INSERTASM THEN
+            lirinst := LirCreateInstruction (
+                LIR_INSERTASM, // type
+                0, // machtype
+            )
+
+            lirinst^.Body.InsertAsm.String = inst^.Body.String.String
+
+            LirInsertInstructionTail ( lirinst )
+
         ELSEIF inst^.Type == IR_CALL OR
             inst^.Type == IR_STORE OR
             (inst^.Type == IR_MOVE AND inst^.Defines^.Symbol) OR

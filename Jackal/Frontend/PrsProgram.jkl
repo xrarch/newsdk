@@ -4965,6 +4965,39 @@ FN (PrsStatementF) PrsParseBarrier (
     )
 END
 
+FN (PrsStatementF) PrsParseInsertAsm (
+    IN token : ^LexToken,
+)
+
+    // Parse an INSERTASM statement.
+
+    asmtoken : LexToken
+
+    IF NOT LexMatchToken (
+        &asmtoken, // token
+        TOKEN_STRING, // type
+        0, // subtype
+    ) THEN
+        LexError ( &asmtoken, "Expected string\n" )
+    END
+
+    // Just create an AST node for it and add it to the current block.
+
+    node := PrsCreateAstNode (
+        AST_INSERTASM, // type
+        token, // token
+    )
+
+    node^.Body.Statement.StatementSpecific = asmtoken.Payload
+
+    // The token subtype is used to identify the type of the statement.
+
+    PrsInsertNodeIntoBlock (
+        PrsCurrentBlock, // block
+        node, // node
+    )
+END
+
 FN (PrsStatementF) PrsParseNothing (
     IN token : ^LexToken,
 )
@@ -5377,6 +5410,7 @@ PrsStatements : PrsStatementF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_RETURN] = &PrsParseReturn,
     [TOKEN_WHILE] = &PrsParseWhile,
     [TOKEN_BARRIER] = &PrsParseBarrier,
+    [TOKEN_INSERTASM] = &PrsParseInsertAsm,
     [TOKEN_NOTHING] = &PrsParseNothing,
     [TOKEN_LABEL] = &PrsParseLabel,
 }

@@ -1025,8 +1025,8 @@ FN (BtDagActionF) BtBuildJkl (
     IF BtCHost THEN
         TlCopyIntoDynamicBuffer (
             &cmdline, // array
-            "cc -Ofast -x c -c ", // srcbuf
-            18, // length
+            "cc -O3 -x c -c ", // srcbuf
+            15, // length
         )
 
         TlCopyIntoDynamicBuffer (
@@ -1122,8 +1122,8 @@ FN (BtDagActionF) BtBuildC (
 
     TlCopyIntoDynamicBuffer (
         &cmdline, // array
-        "cc -Ofast -c ", // srcbuf
-        13, // length
+        "cc -O3 -c ", // srcbuf
+        10, // length
     )
 
     TlCopyIntoDynamicBuffer (
@@ -1434,8 +1434,8 @@ FN (BtDagActionF) BtLinkExecutable (
 
         TlCopyIntoDynamicBuffer (
             &cmdline, // array
-            "cc -Ofast -o ", // srcbuf
-            13, // length
+            "cc -O3 -o ", // srcbuf
+            10, // length
         )
 
         TlCopyIntoDynamicBuffer (
