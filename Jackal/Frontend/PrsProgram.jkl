@@ -843,6 +843,14 @@ FN PrsExpression (
 
     // Parse a expression. Pays attention to precedence.
 
+    WHILE LexMatchToken (
+        NULLPTR, // token
+        TOKEN_STATEMENT, // type
+        TOKEN_NOTHING, // subtype
+    ) DO
+        // Peel away the NOTHINGs.
+    END
+
     atomnode := PrsAtom ()
 
     optoken : LexToken

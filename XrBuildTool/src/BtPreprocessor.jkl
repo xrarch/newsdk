@@ -1954,9 +1954,19 @@ FN (LexOperatorParseF) LexOperatorDiv (
 
     LexConsumeCloseParenthesis ()
 
+    res := 0
+
+    IF NOT ignore THEN
+        IF num2 == 0 THEN
+            LexError ( &token, "Division by zero\n" )
+        END
+
+        res = num1 / num2
+    END
+
     TlInsertNumberDynamicBuffer (
         buffer, // array
-        num1 / num2, // number
+        res, // number
         10, // base
     )
 

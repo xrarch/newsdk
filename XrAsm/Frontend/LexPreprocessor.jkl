@@ -1921,7 +1921,15 @@ FN (LexOperatorParseF) LexOperatorDiv (
 
     LexConsumeCloseParenthesis ()
 
-    res := (num1 / num2) & AsmTargetInfo^.ConstantMask
+    res := 0
+
+    IF NOT ignore THEN
+        IF num2 == 0 THEN
+            LexError ( &token, "Division by zero\n" )
+        END
+
+        res = (num1 / num2) & AsmTargetInfo^.ConstantMask
+    END
 
     TlInsertNumberDynamicBuffer (
         buffer, // array
