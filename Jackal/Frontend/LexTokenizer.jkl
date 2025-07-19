@@ -331,6 +331,7 @@ FN LexInitialize ()
     LexInsertKeyword ( "PRIVATE", TOKEN_DECL, TOKEN_PRIVATE, 0 )
     LexInsertKeyword ( "UQUAD", TOKEN_PTYPE, TOKEN_UQUAD, PRIM_TYPE_UQUAD )
     LexInsertKeyword ( "QUAD", TOKEN_PTYPE, TOKEN_QUAD, PRIM_TYPE_QUAD )
+    LexInsertKeyword ( "ROR", TOKEN_OPER, TOKEN_ROR, 0 )
 
     LexInsertKeyword ( "UWORD", TOKEN_PTYPE, TOKEN_UWORD,
         JklTargetInfo^.LargestPrimitive )

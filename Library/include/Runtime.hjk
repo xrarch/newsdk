@@ -468,6 +468,12 @@ EXTERN FN TlPunchValue (
     IN bytes : UWORD,
 )
 
+EXTERN FN TlRotateRight (
+    IN value : UWORD,
+    IN rotation : UWORD,
+    IN bitwidth : UWORD,
+) : UWORD
+
 
 // string stuff
 

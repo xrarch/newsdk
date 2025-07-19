@@ -2005,6 +2005,96 @@ FN (IrSimplifyF) IrSimplifyRightShift (
     RETURN FALSE
 END
 
+FN (IrSimplifyF) IrSimplifyRotateRight (
+    IN inst : ^IrInstruction,
+) : UBYTE
+
+    src1 := inst^.Source1
+    src2 := inst^.Source2
+
+    IF IrVariableIsConstant ( src1 ) AND
+        IrVariableIsConstant ( src2 ) THEN
+
+        res := TlRotateRight (
+            IrVariableConstantValue ( src1 ), // value
+            IrVariableConstantValue ( src2 ), // rotation
+            JklTargetInfo^.Bits, // bitwidth
+        )
+
+        // Transform this instruction into a CONSTANT instruction.
+
+        IrSimplifyToConstant (
+            inst, // inst
+            res, // constant
+        )
+
+        // When we create a new CONSTANT instruction, we have to repeat the
+        // analysis, so return TRUE.
+
+        RETURN TRUE
+    END
+
+    // It's not the case that both are constants, but one might be.
+
+    IF IrVariableIsConstant ( src2 ) THEN
+        src2value := IrVariableConstantValue ( src2 )
+
+        IF src2value == 0 THEN
+            // Transform this into a MOVE.
+
+            IrSimplifyToMove (
+                inst, // inst
+                src1, // src
+            )
+
+            // When we create a new MOVE instruction, we have to repeat the
+            // analysis, so return TRUE.
+
+            RETURN TRUE
+        END
+
+        inst1 := src1^.DefinedBy
+
+        IF NOT inst1 THEN
+            RETURN FALSE
+        END
+
+        IF inst1^.Type == IR_ROTATE_RIGHT THEN
+            // Possible re-association opportunity if it turns out we have
+            // something of the form:
+
+            // ROR a, b, constantA
+            // ROR c, a, constantB
+
+            // We can turn it into:
+
+            // ROR c, b, (constantA + constantB)
+
+            inst1src2 := inst1^.Source2
+
+            IF IrVariableIsConstant ( inst1src2 ) THEN
+                // Woo-hoo!
+
+                inst1src1val := IrVariableConstantValue ( inst1src2 )
+                inst1src1val += src2value
+
+                constvar := IrConstantTableGet (
+                    inst, // beforeinst
+                    inst1src1val, // constant
+                )
+
+                inst^.Type = IR_ROTATE_RIGHT
+                inst^.Source1 = inst1^.Source1
+                inst^.Source2 = constvar
+
+                RETURN FALSE
+            END
+        END
+    END
+
+    RETURN FALSE
+END
+
 FN (IrSimplifyF) IrSimplifyRightShiftSigned (
     IN inst : ^IrInstruction,
 ) : UBYTE
@@ -2281,6 +2371,7 @@ IrSimplificationFunctions : IrSimplifyF[IR_MAX] = {
     [IR_BIT_XOR] = &IrSimplifyXor,
     [IR_LEFT_SHIFT] = &IrSimplifyLeftShift,
     [IR_RIGHT_SHIFT] = &IrSimplifyRightShift,
+    [IR_ROTATE_RIGHT] = &IrSimplifyRotateRight,
     [IR_RIGHT_SHIFT_SIGNED] = &IrSimplifyRightShiftSigned,
     [IR_BIT_NOT] = &IrSimplifyBitNot,
     [IR_MULTIPLY] = &IrSimplifyMultiply,

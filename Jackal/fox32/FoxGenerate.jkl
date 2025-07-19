@@ -42,6 +42,7 @@ PUBLIC FoxTargetInfo : JklTargetInfoRecord = {
     [CodeAlignment] = 1,
     [LargestPrimitive] = PRIM_TYPE_ULONG,
     [LargestSignedPrimitive] = PRIM_TYPE_LONG,
+    [Bits] = 32,
     [SupportedTypes] = {
         [PRIM_TYPE_VOID] = TRUE,
         [PRIM_TYPE_UBYTE] = TRUE,
@@ -330,6 +331,7 @@ FoxIrInstToFoxOp : FoxInstructionTypes[IR_MAX] = {
     [IR_LEFT_SHIFT] = FOX_SLA,
     [IR_RIGHT_SHIFT] = FOX_SRL,
     [IR_RIGHT_SHIFT_SIGNED] = FOX_SRA,
+    [IR_ROTATE_RIGHT] = FOX_ROR,
     [IR_DIVIDE_SIGNED] = FOX_IDIV,
 }
 
@@ -2679,6 +2681,7 @@ FoxLirInfo : LirTargetInfoRecord = {
         [IR_LEFT_SHIFT] = &FoxSelectArithmetic,
         [IR_RIGHT_SHIFT] = &FoxSelectArithmetic,
         [IR_RIGHT_SHIFT_SIGNED] = &FoxSelectArithmetic,
+        [IR_ROTATE_RIGHT] = &FoxSelectArithmetic,
         [IR_MULTIPLY] = &FoxSelectArithmetic,
 
         [IR_BIT_NOT] = &FoxSelectBitNot,

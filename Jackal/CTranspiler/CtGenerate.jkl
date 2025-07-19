@@ -31,6 +31,7 @@ CtTargetInfo : JklTargetInfoRecord = {
     [CodeAlignment] = 1,
     [LargestPrimitive] = PRIM_TYPE_UQUAD,
     [LargestSignedPrimitive] = PRIM_TYPE_QUAD,
+    [Bits] = 64,
     [SupportedTypes] = {
         [PRIM_TYPE_VOID] = TRUE,
         [PRIM_TYPE_UBYTE] = TRUE,

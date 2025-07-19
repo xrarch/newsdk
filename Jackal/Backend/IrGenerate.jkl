@@ -1282,6 +1282,7 @@ IrGenerateBinOp ( IrGenerateMinus, IR_SUBTRACT )
 IrGenerateBinOp ( IrGenerateModulo, IR_MODULO )
 IrGenerateBinOp ( IrGenerateBitXor, IR_BIT_XOR )
 IrGenerateBinOp ( IrGenerateLeftShift, IR_LEFT_SHIFT )
+IrGenerateBinOp ( IrGenerateRor, IR_ROTATE_RIGHT )
 IrGenerateBinOp ( IrGenerateMul, IR_MULTIPLY )
 
 FN (IrExpressionGenerationF) IrGenerateRightShift (
@@ -2001,6 +2002,7 @@ IrOperatorGenerationTable : IrExpressionGenerationF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_BITXOR] = &IrGenerateBitXor,
     [TOKEN_LEFTSHIFT] = &IrGenerateLeftShift,
     [TOKEN_RIGHTSHIFT] = &IrGenerateRightShift,
+    [TOKEN_ROR] = &IrGenerateRor,
     [TOKEN_BITNOT] = &IrGenerateBitNot,
     [TOKEN_MUL] = &IrGenerateMul,
     [TOKEN_LBRACKET] = &IrGenerateArrayIndex,

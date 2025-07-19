@@ -36,6 +36,7 @@ PUBLIC XrTargetInfo : JklTargetInfoRecord = {
     [CodeAlignment] = 4,
     [LargestPrimitive] = PRIM_TYPE_ULONG,
     [LargestSignedPrimitive] = PRIM_TYPE_LONG,
+    [Bits] = 32,
     [SupportedTypes] = {
         [PRIM_TYPE_VOID] = TRUE,
         [PRIM_TYPE_UBYTE] = TRUE,
@@ -159,6 +160,7 @@ ENUM XrInstructionTypes : UBYTE
     XR_LSHI,
     XR_RSHI,
     XR_ASHI,
+    XR_RORI,
     XR_JAL,
     XR_J,
     XR_BEQ,
@@ -192,6 +194,7 @@ ENUM XrInstructionTypes : UBYTE
     XR_LSH,
     XR_RSH,
     XR_ASH,
+    XR_ROR,
     XR_MUL,
     XR_DIV,
     XR_DIV_SIGNED,
@@ -211,6 +214,7 @@ XrInstructionNames : ^UBYTE[XR_INST_MAX] = {
     [XR_LSHI] = "lshi",
     [XR_RSHI] = "rshi",
     [XR_ASHI] = "ashi",
+    [XR_RORI] = "rori",
     [XR_JAL] = "jal",
     [XR_J] = "j",
     [XR_BEQ] = "beq",
@@ -243,6 +247,7 @@ XrInstructionNames : ^UBYTE[XR_INST_MAX] = {
     [XR_LSH] = "lsh",
     [XR_RSH] = "rsh",
     [XR_ASH] = "ash",
+    [XR_ROR] = "ror",
     [XR_MUL] = "mul",
     [XR_DIV] = "div",
     [XR_DIV_SIGNED] = "div signed",
@@ -302,6 +307,7 @@ ENUM XrShiftTypes : UBYTE
     XR_SHIFT_LSH,
     XR_SHIFT_RSH,
     XR_SHIFT_ASH,
+    XR_SHIFT_ROR,
 
     XR_SHIFT_MAX,
 END
@@ -310,12 +316,14 @@ XrShiftTypeNames : ^UBYTE[XR_SHIFT_MAX] = {
     [XR_SHIFT_LSH] = "LSH",
     [XR_SHIFT_RSH] = "RSH",
     [XR_SHIFT_ASH] = "ASH",
+    [XR_SHIFT_ROR] = "ROR",
 }
 
 XrInstToShiftType : XrShiftTypes[IR_MAX] = {
     [IR_LEFT_SHIFT] = XR_SHIFT_LSH,
     [IR_RIGHT_SHIFT] = XR_SHIFT_RSH,
     [IR_RIGHT_SHIFT_SIGNED] = XR_SHIFT_ASH,
+    [IR_ROTATE_RIGHT] = XR_SHIFT_ROR,
 }
 
 XrIrToImmOp : UBYTE[IR_MAX] = {
@@ -330,6 +338,7 @@ XrIrToImmOp : UBYTE[IR_MAX] = {
     [IR_LEFT_SHIFT] = XR_LSHI,
     [IR_RIGHT_SHIFT] = XR_RSHI,
     [IR_RIGHT_SHIFT_SIGNED] = XR_ASHI,
+    [IR_ROTATE_RIGHT] = XR_RORI,
     [IR_MULTIPLY] = XR_INST_NULL,
 
     [IR_BRANCH_EQUALS] = XR_SUBI,
@@ -367,6 +376,7 @@ XrIrToRegOp : UBYTE[IR_MAX] = {
     [IR_LEFT_SHIFT] = XR_LSH,
     [IR_RIGHT_SHIFT] = XR_RSH,
     [IR_RIGHT_SHIFT_SIGNED] = XR_ASH,
+    [IR_ROTATE_RIGHT] = XR_ROR,
     [IR_MULTIPLY] = XR_MUL,
 
     [IR_BRANCH_EQUALS] = XR_SUB,
@@ -569,7 +579,8 @@ FN XrFillAccess (
 
             ELSEIF inst2^.Type == IR_LEFT_SHIFT OR
                 inst2^.Type == IR_RIGHT_SHIFT OR
-                inst2^.Type == IR_RIGHT_SHIFT_SIGNED THEN
+                inst2^.Type == IR_RIGHT_SHIFT_SIGNED OR
+                inst2^.Type == IR_ROTATE_RIGHT THEN
 
                 // If the right side of the shift is a constant less than 32,
                 // we can perform it directly in the instruction.
@@ -1137,7 +1148,8 @@ FN XrGenerateArithmetic (
     ELSEIF defby AND
         (defby^.Type == IR_LEFT_SHIFT OR
         defby^.Type == IR_RIGHT_SHIFT OR
-        defby^.Type == IR_RIGHT_SHIFT_SIGNED) AND
+        defby^.Type == IR_RIGHT_SHIFT_SIGNED OR
+        defby^.Type == IR_ROTATE_RIGHT) AND
         defby^.Source2^.DefinedBy AND
         defby^.Source2^.DefinedBy^.Type == IR_CONSTANT AND
         defby^.Source2^.DefinedBy^.Body.Constant.Constant < 32 THEN
@@ -1703,6 +1715,7 @@ XrLirInfo : LirTargetInfoRecord = {
         [IR_LEFT_SHIFT] = &XrSelectArithmetic,
         [IR_RIGHT_SHIFT] = &XrSelectArithmetic,
         [IR_RIGHT_SHIFT_SIGNED] = &XrSelectArithmetic,
+        [IR_ROTATE_RIGHT] = &XrSelectArithmetic,
         [IR_MULTIPLY] = &XrSelectArithmetic,
 
         [IR_NOT] = &XrSelectNot,

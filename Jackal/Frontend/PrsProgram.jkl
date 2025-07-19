@@ -2848,6 +2848,42 @@ FN (PrsOperatorF) PrsParseRightShift (
     END
 END
 
+FN (PrsOperatorF) PrsParseRor (
+    IN operator : ^VOID,
+    IN node : ^PrsAstNode,
+)
+
+    left := node^.Body.Operator.Left
+    right := node^.Body.Operator.Right
+
+    PrsCheckNodeIsValue ( left )
+    PrsCheckNodeIsValue ( right )
+
+    IF left^.Type == AST_CONSTANT AND right^.Type == AST_CONSTANT THEN
+        // We can roll this into a constant.
+
+        node^.Type = AST_CONSTANT
+
+        node^.Body.Constant.Value = TlRotateRight (
+            left^.Body.Constant.Value, // value
+            right^.Body.Constant.Value, // rotation
+            JklTargetInfo^.Bits, // bitwidth
+        )
+
+        LEAVE
+    END
+
+    IF right^.Type == AST_CONSTANT AND right^.Body.Constant.Value == 0 THEN
+        // No effect. Copy the left node over us.
+
+        TlCopyMemory (
+            node, // dest
+            left, // src
+            SIZEOF PrsAstNode
+        )
+    END
+END
+
 FN (PrsOperatorF) PrsParseBitAnd (
     IN operator : ^VOID,
     IN node : ^PrsAstNode,
@@ -5286,6 +5322,11 @@ PrsOperators : PrsOperatorRecord[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_RIGHTSHIFT] = {
         [Precedence] = 18,
         [ParseFunc] = &PrsParseRightShift,
+        [EvalFunc] = &PrsEvalArithmetic,
+    },
+    [TOKEN_ROR] = {
+        [Precedence] = 18,
+        [ParseFunc] = &PrsParseRor,
         [EvalFunc] = &PrsEvalArithmetic,
     },
     [TOKEN_BITAND] = {

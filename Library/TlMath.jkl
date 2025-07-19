@@ -49,3 +49,16 @@ FN TlPunchValue (
         bytes -= 1
     END
 END
+
+FN TlRotateRight (
+    IN value : UWORD,
+    IN rotation : UWORD,
+    IN bitwidth : UWORD,
+) : UWORD
+
+    // Rotate value right.
+
+    rotation &= bitwidth - 1
+
+    RETURN (value >> rotation) | (value << (bitwidth - rotation))
+END
