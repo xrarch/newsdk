@@ -402,6 +402,24 @@ XrIrToRegOp : UBYTE[IR_MAX] = {
     [IR_COMPARE_GTEQ_SIGNED] = XR_SLT_SIGNED,
 }
 
+XrNopIfRightSideZero : UBYTE[XR_INST_MAX] = {
+    [XR_LSHI] = TRUE,
+    [XR_RSHI] = TRUE,
+    [XR_ASHI] = TRUE,
+    [XR_RORI] = TRUE,
+
+    [XR_ADDI] = TRUE,
+    [XR_SUBI] = TRUE,
+    [XR_ORI] = TRUE,
+    [XR_ADD] = TRUE,
+    [XR_SUB] = TRUE,
+    [XR_OR] = TRUE,
+    [XR_LSH] = TRUE,
+    [XR_RSH] = TRUE,
+    [XR_ASH] = TRUE,
+    [XR_ROR] = TRUE,
+}
+
 #DEFINE XR_BRANCH_FLIP 1
 #DEFINE XR_BRANCH_NEG 2
 
@@ -1115,7 +1133,7 @@ FN XrGenerateArithmetic (
     IN src2 : ^IrVariable,
     IN immop : XrInstructionTypes,
     IN regop : XrInstructionTypes,
-)
+) : ^LirRegister
 
     // Creates a LIR instruction that performs the given arithmetic operation.
     // Tries to fit a right-side constant in, if immop is non-null.
@@ -1128,15 +1146,23 @@ FN XrGenerateArithmetic (
     lirinst^.Defines = defreg
     lirinst^.Body.Machine.Xr.Op1.AccessType = XR_ACCESS_REGISTER
 
-    lirinst^.Source2 = LirSelectOrGetRegister ( src1 )
-    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
-
     defby := src2^.DefinedBy
 
     IF immop AND
         defby AND
         defby^.Type == IR_CONSTANT AND
         defby^.Body.Constant.Constant < 65536 THEN
+
+        IF XrNopIfRightSideZero[immop] AND
+            defby^.Body.Constant.Constant == 0 AND
+            src1^.DefinedBy AND
+            src1^.Opt.Dve.References == 1 THEN
+
+            // This is a no-op that will effectively just be a move, from a
+            // temporary that this is the only reference to. Just hijack it.
+
+            RETURN LirSelect ( src1^.DefinedBy )
+        END
 
         lirinst^.MachineInstruction = immop
 
@@ -1175,24 +1201,25 @@ FN XrGenerateArithmetic (
         lirinst^.Body.Machine.Xr.Op3.AccessType = XR_ACCESS_REGISTER
     END
 
+    lirinst^.Source2 = LirSelectOrGetRegister ( src1 )
+    lirinst^.Body.Machine.Xr.Op2.AccessType = XR_ACCESS_REGISTER
+
     LirInsertInstructionTail ( lirinst )
+
+    RETURN defreg
 END
 
 FN (LirSelectF) XrSelectArithmetic (
     IN inst : ^IrInstruction,
 ) : ^LirRegister
 
-    defreg := LirGetRegister ( inst^.Defines )
-
-    XrGenerateArithmetic (
-        defreg, // defreg
+    RETURN XrGenerateArithmetic (
+        LirGetRegister ( inst^.Defines ), // defreg
         inst^.Source1, // src1
         inst^.Source2, // src2
         XrIrToImmOp[inst^.Type], // immop
         XrIrToRegOp[inst^.Type], // regop
     )
-
-    RETURN defreg
 END
 
 FN (LirSelectF) XrSelectNot (
@@ -1275,7 +1302,7 @@ FN (LirSelectF) XrSelectBranch (
         src2 = tmpsrc
     END
 
-    XrGenerateArithmetic (
+    tmp = XrGenerateArithmetic (
         tmp, // defreg
         src1, // src1
         src2, // src2
@@ -1327,7 +1354,7 @@ FN (LirSelectF) XrSelectCompare (
         src2 = tmpsrc
     END
 
-    XrGenerateArithmetic (
+    defreg = XrGenerateArithmetic (
         defreg, // defreg
         src1, // src1
         src2, // src2
