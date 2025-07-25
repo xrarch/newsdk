@@ -1493,6 +1493,7 @@ FN (LexDirectiveParseF) LexParseMacro ()
 
     macro^.IsFunctionMacro = TRUE
     macro^.ArgumentOf = NULLPTR
+    macro^.IsSpecialMacro = FALSE
 
     LexCollectValue (
         &macro^.NameToken, // token
