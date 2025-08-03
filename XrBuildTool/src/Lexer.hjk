@@ -1,0 +1,36 @@
+ENUM LexTokenType : UBYTE
+    TOKEN_ANY,
+
+    TOKEN_TARGET,
+    TOKEN_TARGET_INFO,
+    TOKEN_END,
+
+    TOKEN_STRING, // payload is a pointer to a LexStringContents structure
+    TOKEN_NUMBER, // payload is the number value
+
+    TOKEN_EOF,
+    TOKEN_TYPE_MAX, // MUST be at the end
+END
+
+ENUM LexTokenSubtype : UBYTE
+    TOKEN_FILE,
+    TOKEN_DEPEND,
+    TOKEN_SOURCES,
+    TOKEN_JKLINCLUDE,
+    TOKEN_LIBDIR,
+    TOKEN_LINKOPT,
+    TOKEN_JKLOPT,
+    TOKEN_LINK,
+    TOKEN_DYLINK,
+    TOKEN_PREBUILT,
+    TOKEN_OBJECTS,
+    TOKEN_ACTION,
+    TOKEN_IMAGEACTION,
+    TOKEN_ALWAYS,
+
+    TOKEN_SUBTYPE_MAX, // MUST be at the end
+END
+
+#INCLUDE "../../Cf/CfLexer.hjk"
+
+EXTERN LexExposedMacroListHead : TlListEntry

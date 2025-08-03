@@ -4,6 +4,19 @@ Self-hosting toolchain for the XR/station and Fox32 platforms.
 
 Features a self-hosting compiler for the Jackal language, an assembler, a linker, and a multi-threaded build tool; all written in Jackal. These tools can run on any little-endian platform that has a C compiler, and also on the XR/17032 and Fox32 architectures.
 
+## Structure
+
+```
+Cf/               - Common Frontend code shared between the tools.
+Library/          - Common library code shared between the tools.
+Rtl/              - Common native runtime code.
+XrAsm/            - Assembler.
+Jackal/           - Jackal compiler.
+XrLink/           - Linker.
+XrBuildTool/      - Build system.
+XrDiskUpdateTool/ - Disk image management tool.
+```
+
 ## Usage
 
 To initially build the Jackal compiler, type `./bootstrap.sh` to cause the "precompiled" C files to be built into the initial compiler at `./bin/jkl.exe`. The custom build system will also be built at `./bin/xrbt.exe`.

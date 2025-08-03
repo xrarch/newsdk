@@ -1,5 +1,7 @@
 #INCLUDE "<inc>/Runtime.hjk"
 
+#DEFINE TOOL_JKL 1
+
 #DEFINE FE_PATH_BUFFER_SIZE 256
 
 FNPTR JklTargetF ()

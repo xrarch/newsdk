@@ -1,9 +1,5 @@
 #INCLUDE "<inc>/Frontend.hjk"
 
-#DEFINE LEX_PUTBACK_STACK_DEPTH 32
-#DEFINE LEX_BUFFER_SIZE 8192
-#DEFINE LEX_DIRECTIVE_MAX 64
-
 ENUM LexTokenType : UBYTE
     TOKEN_ANY,
 
@@ -136,76 +132,6 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_SUBTYPE_MAX, // MUST be at the end of the token subtypes
 END
 
-ENUM LexCharBehavior : UBYTE
-    CHAR_NORMAL, // guaranteed to be zero
-    CHAR_SPLIT,
-    CHAR_COALESCE,
-    CHAR_WHITESPACE,
-    CHAR_EOF,
-END
-
-FNPTR LexGetCharacterF () : UBYTE
-
-STRUCT LexInternedString
-    Entry : TlHashTableEntry, // MUST be at the beginning
-    DynamicBuffer : TlDynamicBuffer,
-    Section : ^LexSection,
-
-    // Include a context word for the code generator.
-    // The code generator will probably fill this in with a label name, for its
-    // own convenience in reusing the string.
-
-    CodeGenContext : ^VOID,
-END
-
-STRUCT LexToken
-    // NOTE: There's an assumption that a pointer for the host architecture of
-    // the compiler is large enough to contain the biggest integer that is
-    // directly representable by the set of target architectures. I.e., a 32-bit
-    // host will be able to build for any of the 32-bit architectures, and its
-    // 32-bit Payload pointer will be large enough to store 32-bit integers. A
-    // 64-bit host will be able to build for any of the 32-bit architectures,
-    // plus the 64-bit architectures, and its pointer will be large enough to
-    // store 64-bit integers here.
-
-    Payload : ^VOID,
-    FileBlock : ^FeFileBlock,
-    Macro : ^LexMacro,
-
-    LineNumber : ULONG,
-    LinePosition : ULONG,
-
-    Type : LexTokenType,
-    Subtype : LexTokenSubtype,
-    TypeContext : UBYTE,
-END
-
-STRUCT LexStream
-    Previous : ^LexStream,
-    FileBlock : ^FeFileBlock,
-    FileHandle : ^VOID,
-
-    Buffer : ^UBYTE,
-    BufferSize : ULONG,
-    ValidLength : ULONG,
-    BufferPosition : ULONG,
-
-    LineNumber : ULONG,
-    LinePosition : ULONG,
-
-    Macro : ^LexMacro,
-    LastWasNewline : UBYTE,
-
-    LastScope : ^TlSymbolTable,
-    LastMacroScope : ^TlSymbolTable,
-
-    Backslash : UBYTE,
-    InString : UBYTE,
-    InLiteral : UBYTE,
-    Putback : UBYTE,
-    CoalescePutback : UBYTE,
-END
-
 ENUM LexSymbolType : UBYTE
     SYM_UNINITIALIZED,
     SYM_VAR,
@@ -222,9 +148,12 @@ ENUM LexSymbolType : UBYTE
     SYM_FORWARD_TYPE,
 END
 
+#INCLUDE "../../Cf/CfLexer.hjk"
+
 STRUCT LexSymbol
     Entry : TlHashTableEntry, // MUST be at the beginning
     Name : ^UBYTE,
+
     Section : ^LexSection,
 
     // Parser private stuff in a symbol.
@@ -348,34 +277,6 @@ STRUCT LexSemanticType
     CachedIsValue : UBYTE,
 END
 
-#DEFINE LEX_JKL_FILE_NAME 1
-#DEFINE LEX_JKL_LINE_NUMBER 2
-#DEFINE LEX_JKL_FUNC_NAME 3
-
-STRUCT LexMacro
-    Entry : TlHashTableEntry, // MUST be at the beginning
-
-    NameToken : LexToken, // for error reporting
-    Contents : TlDynamicBuffer,
-    Name : UBYTE[LEX_DIRECTIVE_MAX],
-
-    FileBlock : ^FeFileBlock,
-    ResumeScope : ^TlSymbolTable,
-    ResumeMacroScope : ^TlSymbolTable,
-
-    ArgListHead : ^LexMacroArgument,
-    ArgumentOf : ^LexMacro,
-    IsFunctionMacro : UBYTE,
-    IsSpecialMacro : UBYTE,
-END
-
-STRUCT LexMacroArgument
-    Entry : TlHashTableEntry, // MUST be at the beginning
-    Next : ^LexMacroArgument,
-
-    Name : UBYTE[LEX_DIRECTIVE_MAX],
-END
-
 STRUCT LexAsmBlock
     Next : ^LexAsmBlock,
     Section : ^LexSection,
@@ -423,120 +324,7 @@ EXTERN LexTextSection : LexSection
 EXTERN LexDataSection : LexSection
 EXTERN LexBssSection : LexSection
 
-EXTERN LexCharTreatment : LexCharBehavior[256]
-
-EXTERN LexCurrentStream : ^LexStream
-EXTERN LexCurrentMacroScope : ^TlSymbolTable
-EXTERN LexRootScope : ^TlSymbolTable
-EXTERN LexRootMacroScope : ^TlSymbolTable
-EXTERN LexCurrentScope : ^TlSymbolTable
-EXTERN LexFalseCount : ULONG
-
 EXTERN LexCurrentFunctionSymbol : ^LexSymbol
-
-EXTERN LexMacroDepth : ULONG
-
 EXTERN LexAsmBlockListHead : ^LexAsmBlock
 
-EXTERN FN LexInitialize ()
-
-EXTERN FN LexCreateSymbolTable (
-    IN outerscope : ^TlSymbolTable,
-) : ^TlSymbolTable
-
 EXTERN FN LexInitializeSectionStuff ()
-
-EXTERN FN LexInitializePreprocessor ()
-
-EXTERN FN LexDefineMacroFromArgumentString (
-    IN arg : ^UBYTE,
-)
-
-EXTERN FN LexExpandMacro (
-    IN macro : ^LexMacro,
-    IN token : ^LexToken,
-)
-
-EXTERN FN LexInitializeStreamZone ()
-
-EXTERN FN LexInitializeStream (
-    IN stream : ^LexStream,
-    IN macro : ^LexMacro,
-)
-
-EXTERN FN LexUninitializeStream (
-    IN stream : ^LexStream,
-)
-
-EXTERN FN LexAllocateStream () : ^LexStream
-
-EXTERN FN LexFreeStream (
-    IN stream : ^LexStream,
-)
-
-EXTERN FN LexPushStream (
-    IN stream : ^LexStream,
-)
-
-EXTERN FN LexPopStream () : ^LexStream
-
-EXTERN FN LexInitializeFileStream (
-    IN stream : ^LexStream,
-    IN fileblock : ^FeFileBlock,
-    IN handle : ^VOID,
-)
-
-EXTERN FN LexCreateFileStream (
-    IN fileblock : ^FeFileBlock,
-    IN handle : ^VOID,
-) : ^LexStream
-
-EXTERN FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
-
-EXTERN FN LexParseDirective ()
-
-EXTERN FN LexEnterScope (
-    IN scope : ^TlSymbolTable,
-) : ^TlSymbolTable
-
-EXTERN FN LexResetScope (
-    IN scope : ^TlSymbolTable,
-) : ^TlSymbolTable
-
-EXTERN FN LexLeaveScope ()
-
-EXTERN FN LexEnterOverlayScope (
-    IN scope : ^TlSymbolTable,
-)
-
-EXTERN FN LexExitOverlayScope ()
-
-EXTERN FN LexCopyToken (
-    IN dest : ^LexToken,
-    IN src : ^LexToken,
-)
-
-EXTERN FN LexGetToken (
-    IN token : ^LexToken,
-)
-
-EXTERN FN LexPutbackToken (
-    IN token : ^LexToken,
-)
-
-EXTERN FN LexMatchToken (
-    IN token : ^LexToken,
-    IN type : LexTokenType,
-    IN subtype : LexTokenSubtype,
-) : UBYTE
-
-EXTERN FN LexError (
-    IN token : ^LexToken,
-    IN fmt : ^UBYTE,
-    ... argv argc
-)
-
-EXTERN FN LexCrunchNumber (
-    IN token : ^LexToken,
-    IN buffer : ^UBYTE,
-) : UWORD

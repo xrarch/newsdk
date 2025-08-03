@@ -666,7 +666,7 @@ FN LexCollectValue (
             LexError ( token, "Special macros only legal inside macros\n" )
         END
 
-        IF macro^.IsSpecialMacro == LEX_JKL_FILE_NAME THEN
+        IF macro^.IsSpecialMacro == LEX_FILE_NAME THEN
             // File name of the outermost expansion.
 
             TlCopyIntoDynamicBuffer (
@@ -677,7 +677,7 @@ FN LexCollectValue (
                 ), // length
             )
         
-        ELSEIF macro^.IsSpecialMacro == LEX_JKL_LINE_NUMBER THEN
+        ELSEIF macro^.IsSpecialMacro == LEX_LINE_NUMBER THEN
             // Line number of the outermost expansion.
 
             TlInsertNumberDynamicBuffer (
@@ -686,7 +686,7 @@ FN LexCollectValue (
                 10, // base
             )
 
-        ELSEIF macro^.IsSpecialMacro == LEX_JKL_FUNC_NAME THEN
+        ELSEIF macro^.IsSpecialMacro == LEX_FUNC_NAME THEN
             // Function name of the outermost expansion.
 
             IF NOT LexLastExpansionFunction THEN
@@ -2648,9 +2648,9 @@ FN LexInitializePreprocessor ()
 
     // Insert the directives and operators into their hash tables.
 
-    LexDefineSpecialMacro ( "JKL_FILE_NAME", LEX_JKL_FILE_NAME )
-    LexDefineSpecialMacro ( "JKL_LINE_NUMBER", LEX_JKL_LINE_NUMBER )
-    LexDefineSpecialMacro ( "JKL_FUNC_NAME", LEX_JKL_FUNC_NAME )
+    LexDefineSpecialMacro ( "JKL_FILE_NAME", LEX_FILE_NAME )
+    LexDefineSpecialMacro ( "JKL_LINE_NUMBER", LEX_LINE_NUMBER )
+    LexDefineSpecialMacro ( "JKL_FUNC_NAME", LEX_FUNC_NAME )
 
     LexInsertDirective ( "INCLUDE", &LexParseInclude )
     LexInsertDirective ( "DEFINE", &LexParseDefine )
