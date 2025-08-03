@@ -1,0 +1,337 @@
+//
+// Implements stream objects for the lexer. Operates by stacking and unstacking
+// stream objects from the stream stack. Characters are consumed from the stream
+// atop the stream stack. This lends itself to easy implementation of include
+// directives, macro expansion, etc.
+//
+
+LexStreamZone : TlZone
+
+FN LexInitializeStreamZone ()
+
+    // Initialize the stream zone.
+
+    TlInitializeZone (
+        &LexStreamZone, // zone
+        SIZEOF LexStream, // blocksize
+    )
+END
+
+FN LexAllocateStream () : ^LexStream
+
+    // Allocate a stream object from the stream zone.
+
+    RETURN CAST TlAllocateFromZone ( &LexStreamZone ) TO ^LexStream
+END
+
+FN LexInitializeStream (
+    IN stream : ^LexStream,
+    IN macro : ^LexMacro,
+)
+
+    // Initialize a stream structure.
+
+    stream^.Previous = NULLPTR
+    stream^.FileBlock = NULLPTR
+    stream^.FileHandle = NULLPTR
+
+    stream^.Buffer = NULLPTR
+    stream^.BufferSize = 0
+    stream^.ValidLength = 0
+    stream^.LineNumber = 1
+    stream^.LinePosition = 1
+    stream^.BufferPosition = 0
+    stream^.Macro = macro
+    stream^.LastWasNewline = FALSE
+    stream^.LastScope = NULLPTR
+    stream^.LastMacroScope = NULLPTR
+
+    stream^.Backslash = FALSE
+    stream^.InString = FALSE
+    stream^.InLiteral = FALSE
+    stream^.Putback = 0
+    stream^.CoalescePutback = 0
+END
+
+FN LexUninitializeStream (
+    IN stream : ^LexStream,
+)
+
+    // Generic uninitialization for any stream type.
+
+    IF NOT stream^.Macro THEN
+        // This is a file stream, free the buffer.
+        // We don't delete the file block since it's still referenced by
+        // tokens and in a hash table and whatnot.
+
+        TlClose ( stream^.FileHandle )
+        TlFree ( stream^.Buffer )
+    END
+END
+
+FN LexFreeStream (
+    IN stream : ^LexStream,
+)
+
+    LexUninitializeStream ( stream )
+
+    TlFreeToZone (
+        &LexStreamZone, // zone
+        stream, // block
+    )
+END
+
+FN LexPushStream (
+    IN stream : ^LexStream,
+)
+
+    stream^.Previous = LexCurrentStream
+    LexCurrentStream = stream
+END
+
+FN LexPopStream () : ^LexStream
+
+    oldstream := LexCurrentStream
+    LexCurrentStream = oldstream^.Previous
+
+    RETURN oldstream
+END
+
+FN LexInitializeFileStream (
+    IN stream : ^LexStream,
+    IN fileblock : ^FeFileBlock,
+    IN handle : ^VOID,
+)
+
+    // Initialize a file stream.
+
+    LexInitializeStream (
+        stream, // stream
+        NULLPTR, // macro
+    )
+
+    // Allocate the lex buffer.
+
+    buffer : ^UBYTE
+
+    status := TlAlloc (
+        LEX_BUFFER_SIZE, // bytes
+        OUT buffer, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate lex buffer", 0, 0, 0 )
+    END
+
+    stream^.FileBlock = fileblock
+    stream^.FileHandle = handle
+
+    // Set up the lex buffer.
+
+    stream^.BufferSize = LEX_BUFFER_SIZE
+    stream^.Buffer = buffer
+END
+
+FN LexCreateFileStream (
+    IN fileblock : ^FeFileBlock,
+    IN handle : ^VOID,
+) : ^LexStream
+
+    stream := LexAllocateStream ()
+
+    LexInitializeFileStream (
+        stream, // stream
+        fileblock, // fileblock
+        handle, // handle
+    )
+
+    RETURN stream
+END
+
+#IF ( DEFINED TOOL_JKL )
+
+EXTERN FN PrsLeaveMacro () : UBYTE
+
+#END
+
+FN (LexGetCharacterF) LexStreamNextCharacter () : UBYTE
+
+    // Return the next byte from the stream on top of the stream stack. If the
+    // stream has been emptied, it is popped from the stack and deleted, and
+    // the byte from the next stream is returned instead. If it was the last
+    // stream on the stack, then EOF has been reached and a null byte is
+    // returned. If a file actually contains a null byte, this function will
+    // print a diagnostic and the compiler will terminate. This will also be
+    // done for a 0x0D byte, which usually appears in DOS line endings. We
+    // explicitly do not support DOS line endings, because the MINTIA OS does
+    // not use them.
+    //
+    // For macro streams, there is a buffer that we will return the character
+    // directly from. For file streams, there is a buffer that contains some
+    // file data. When this buffer runs dry, we have to read more data in.
+    // When there is no more data in the file, the stream is considered empty.
+    //
+    // In any case, we have to maintain the LineNumber field of the stream, by
+    // incrementing it each time we encounter a newline character.
+
+    WHILE LexCurrentStream DO
+        stream := LexCurrentStream
+
+        byte : UBYTE
+
+        IF stream^.CoalescePutback THEN
+            byte = LexCurrentStream^.CoalescePutback
+            LexCurrentStream^.CoalescePutback = 0
+
+            RETURN byte
+
+        ELSEIF stream^.Putback THEN
+            byte = LexCurrentStream^.Putback
+            LexCurrentStream^.Putback = 0
+
+            RETURN byte
+
+        ELSEIF stream^.BufferPosition < stream^.ValidLength THEN
+            // There is at least one character in the buffer, so return it.
+
+            byte = stream^.Buffer[stream^.BufferPosition]
+
+            stream^.BufferPosition += 1
+
+        ELSEIF stream^.Macro THEN
+            IF NOT stream^.LastWasNewline THEN
+                // Make sure that the macro terminates with whitespace so that
+                // it doesn't bleed into the next token.
+
+                stream^.LastWasNewline = TRUE
+
+                RETURN ' '
+            END
+
+            // The macro stream has emptied.
+            // Decrement the macro depth and pop it from the stream stack.
+
+            LexMacroDepth -= 1
+
+            macro := stream^.Macro
+
+            IF NOT macro^.ArgumentOf THEN
+#IF ( NOT ( DEFINED TOOL_XRBT ) )
+                // If the macro was invoked in the global scope, then it's still
+                // there, so don't delete its scope.
+
+                IF stream^.LastScope != LexRootScope THEN
+                    IF LexCurrentScope^.PrevScope^.PrevScope THEN
+                        // We weren't in the uppermost macro scope! This is a
+                        // no-no. Checking the previous scope of the previous
+                        // scope is fine because there's no way to get within a
+                        // level of the root scope from inside a macro, since
+                        // they have a root scope whose parent is the global
+                        // scope.
+
+                        LexError ( NULLPTR,
+                            "Macro terminated during nested scope\n" )
+                    END
+
+                    // Delete the symbol scope.
+
+                    TlDeleteSymbolTable ( LexCurrentScope )
+
+                ELSEIF LexCurrentScope != LexRootScope THEN
+                    // This macro was invoked in the global scope, but the
+                    // current scope is no longer the global scope, so it must
+                    // have terminated inappropriately.
+
+                    LexError ( NULLPTR,
+                        "Macro terminated during nested scope\n" )
+                END
+#END
+
+                // Delete the macro scope.
+
+                TlDeleteSymbolTable ( LexCurrentMacroScope )
+            END
+
+#IF ( DEFINED TOOL_JKL )
+            IF NOT PrsLeaveMacro () THEN
+                LexError ( NULLPTR,
+                    "Macro terminated during nested block\n" )
+            END
+#END
+
+            // Macros are hygienic, meaning they have their own scopes.
+            // We have to reset the scope after we've consumed the entire macro.
+
+#IF ( NOT ( DEFINED TOOL_XRBT ) )
+            LexCurrentScope = stream^.LastScope
+#END
+            LexCurrentMacroScope = stream^.LastMacroScope
+
+            LexFreeStream ( LexPopStream () )
+
+            CONTINUE
+
+        ELSE
+            // The remaining code deals with the file stream buffer refill case.
+
+            stream^.ValidLength = TlReadFile (
+                stream^.FileHandle, // handle
+                stream^.BufferSize, // bytes
+                stream^.Buffer, // buffer
+            )
+
+            IF NOT stream^.ValidLength THEN
+                // The end of the file has been reached. If the final
+                // character wasn't a newline, then present a fake final
+                // newline to the upper layers of the lexer. This avoids some
+                // nasty edge cases, and guarantees a token will always be
+                // terminated by whitespace (never by EOF).
+
+                IF NOT stream^.LastWasNewline THEN
+                    stream^.LastWasNewline = TRUE
+
+                    RETURN ' '
+                END
+
+#IF ( DEFINED TOOL_XRBT )
+                IF stream^.LastMacroScope THEN
+                    TlDeleteSymbolTable ( LexCurrentMacroScope )
+
+                    LexCurrentMacroScope = stream^.LastMacroScope
+                END
+#END
+
+                LexFreeStream ( LexPopStream () )
+
+                CONTINUE
+            END
+
+            stream^.BufferPosition = 1
+
+            byte = stream^.Buffer[0]
+        END
+
+        IF byte == 0x00 THEN
+            LexError ( NULLPTR,
+                "An invalid byte %d was found in the source file.",
+                byte )
+
+        ELSEIF byte == '\r' THEN
+            LexError ( NULLPTR,
+                "DOS line endings were detected in the source file." )
+
+        ELSEIF byte == '\n' THEN
+            stream^.LineNumber += 1
+            stream^.LinePosition = 1
+            stream^.LastWasNewline = TRUE
+
+        ELSE
+            stream^.LinePosition += 1
+            stream^.LastWasNewline = FALSE
+        END
+
+        RETURN byte
+    END
+
+    RETURN 0
+END
