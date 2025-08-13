@@ -91,6 +91,7 @@ STRUCT PACKED XloSectionHeader
     RelocTableOffset : ULONG,
     RelocCount : ULONG,
     Flags : ULONG,
+    Reserved2 : ULONG,
 END
 
 STRUCT PACKED XloSymbolEntry
