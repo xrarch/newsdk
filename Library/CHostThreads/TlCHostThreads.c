@@ -10,17 +10,24 @@
 #include <time.h>
 
 #include <pthread.h>
-#include <semaphore.h>
 
-uint64_t TlCreateThread (uint64_t startroutine, uint64_t arg, uint64_t *thread) {
+#include <errno.h>
+
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#else
+#include <semaphore.h>
+#endif
+
+uintptr_t TlCreateThread (uintptr_t startroutine, uintptr_t arg, uintptr_t *thread) {
     return pthread_create((pthread_t *)thread, 0, (void *(*)(void*))(startroutine), (void*)arg);
 }
 
-uint64_t TlJoinThread (uint64_t thread) {
+uintptr_t TlJoinThread (uintptr_t thread) {
     return pthread_join((pthread_t)thread, 0);
 }
 
-uint64_t TlCreateMutex () {
+uintptr_t TlCreateMutex () {
     pthread_mutex_t *mutex = malloc(sizeof(pthread_mutex_t));
 
     if (!mutex) {
@@ -29,33 +36,65 @@ uint64_t TlCreateMutex () {
 
     pthread_mutex_init(mutex, 0);
 
-    return (uint64_t)mutex;
+    return (uintptr_t)mutex;
 }
 
-void TlAcquireMutex (uint64_t mutex) {
+void TlAcquireMutex (uintptr_t mutex) {
     pthread_mutex_lock((pthread_mutex_t *)mutex);
 }
 
-void TlReleaseMutex (uint64_t mutex) {
+void TlReleaseMutex (uintptr_t mutex) {
     pthread_mutex_unlock((pthread_mutex_t *)mutex);
 }
 
-uint64_t TlCreateSemaphore (uint64_t initialvalue) {
-    sem_t *sem = malloc(sizeof(sem_t));
+#ifndef __APPLE__
 
-    if (!sem) {
+typedef struct _TlSemaphore {
+    sem_t Semaphore;
+} TlSemaphore;
+
+#endif
+
+uintptr_t TlCreateSemaphore(uintptr_t initialvalue)
+{
+#ifdef __APPLE__
+    return (uintptr_t)dispatch_semaphore_create(initialvalue);
+#else
+    TlSemaphore *s = malloc(sizeof(TlSemaphore));
+
+    if (!s) {
         abort();
     }
 
-    sem_init(sem, 0, initialvalue);
+    sem_init(&s->Semaphore, 0, initialvalue);
 
-    return (uint64_t)sem;
+    return (uintptr_t)s;
+#endif
 }
 
-void TlAcquireSemaphore (uint64_t semaphore) {
-    sem_wait((sem_t *)semaphore);
+void TlAcquireSemaphore(uintptr_t _s)
+{
+#ifdef __APPLE__
+    dispatch_semaphore_wait((dispatch_semaphore_t)(_s), DISPATCH_TIME_FOREVER);
+#else
+    TlSemaphore *s = (TlSemaphore *)(_s);
+
+    int r;
+
+    do {
+            r = sem_wait(&s->Semaphore);
+    } while (r == -1 && errno == EINTR);
+#endif
 }
 
-void TlReleaseSemaphore (uint64_t semaphore) {
-    sem_post((sem_t *)semaphore);
+void TlReleaseSemaphore(uintptr_t _s)
+{
+
+#ifdef __APPLE__
+    dispatch_semaphore_signal((dispatch_semaphore_t)(_s));
+#else
+    TlSemaphore *s = (TlSemaphore *)(_s);
+
+    sem_post(&s->Semaphore);
+#endif
 }

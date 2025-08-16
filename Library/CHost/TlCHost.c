@@ -11,7 +11,7 @@
 #include <string.h>
 
 extern void TlInitialize (void *stuff);
-extern void TlMain (uint64_t argc, uint64_t argv);
+extern void TlMain (uintptr_t argc, uintptr_t argv);
 extern void *TlStdErr;
 
 int main (int argc, char *argv[]) {
@@ -23,7 +23,7 @@ int main (int argc, char *argv[]) {
 
     // Run the tool.
 
-    TlMain ( (uint64_t)(argc), (uint64_t)(argv) );
+    TlMain ( (uintptr_t)(argc), (uintptr_t)(argv) );
 
     // Return success.
 
@@ -38,7 +38,7 @@ void TlpPrintCallback (uint8_t byte, void *context) {
     putc(byte, context);
 }
 
-uint64_t TlIsPathDirectory (uint8_t *path) {
+uintptr_t TlIsPathDirectory (uint8_t *path) {
     struct stat sb;
 
     if (stat((char *)path, &sb) != 0) {
@@ -48,7 +48,7 @@ uint64_t TlIsPathDirectory (uint8_t *path) {
     return S_ISDIR(sb.st_mode);
 }
 
-uint64_t TlPathExists (uint8_t *path) {
+uintptr_t TlPathExists (uint8_t *path) {
     struct stat sb;
 
     if (stat((char *)path, &sb) != 0) {
@@ -58,7 +58,7 @@ uint64_t TlPathExists (uint8_t *path) {
     return 1;
 }
 
-uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t, uint64_t), uint64_t context) {
+uintptr_t TlIterateDirectory (uint8_t *path, void (*callback)(uintptr_t, uintptr_t, uintptr_t), uintptr_t context) {
     struct dirent *dp;
     DIR *dfd;
 
@@ -99,7 +99,7 @@ uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t,
             sprintf (&fullpath[0], "%s/%s", path, dp->d_name);
         }
 
-        callback((uint64_t)(&fullpath[0]), (uint64_t)(dp->d_name), context);
+        callback((uintptr_t)(&fullpath[0]), (uintptr_t)(dp->d_name), context);
     }
 
     closedir(dfd);
@@ -107,7 +107,7 @@ uint64_t TlIterateDirectory (uint8_t *path, void (*callback)(uint64_t, uint64_t,
     return 0;
 }
 
-void TlpStatFileHelper (uint64_t statrecord, uint64_t isdir, uint64_t mtime, uint64_t sizebytes);
+void TlpStatFileHelper (uintptr_t statrecord, uintptr_t isdir, uintptr_t mtime, uintptr_t sizebytes);
 
 #ifdef __APPLE__
 #ifndef st_mtime
@@ -116,7 +116,7 @@ void TlpStatFileHelper (uint64_t statrecord, uint64_t isdir, uint64_t mtime, uin
 #endif
 
 
-uint64_t TlStatFile (uint8_t *path, uint64_t statrecord) {
+uintptr_t TlStatFile (uint8_t *path, uintptr_t statrecord) {
     struct stat sb;
 
     if (stat((char *)path, &sb) != 0) {
@@ -127,15 +127,15 @@ uint64_t TlStatFile (uint8_t *path, uint64_t statrecord) {
 
     TlpStatFileHelper (
         statrecord, // statrecord
-        (uint64_t)(S_ISDIR(sb.st_mode)), // isdir
-        (uint64_t)(sb.st_mtime), // mtime
-        (uint64_t)(sb.st_size) // sizebytes
+        (uintptr_t)(S_ISDIR(sb.st_mode)), // isdir
+        (uintptr_t)(sb.st_mtime), // mtime
+        (uintptr_t)(sb.st_size) // sizebytes
     );
 
     return 0;
 }
 
-uint64_t TlCreateDirectory (uint8_t *path) {
+uintptr_t TlCreateDirectory (uint8_t *path) {
     if (mkdir((char *)path, 0777)) {
         return -1;
     }
@@ -143,7 +143,7 @@ uint64_t TlCreateDirectory (uint8_t *path) {
     return 0;
 }
 
-uint64_t TlSwitchDirectory (uint8_t *path) {
+uintptr_t TlSwitchDirectory (uint8_t *path) {
     if (chdir((char *)path)) {
         return 0;
     }
@@ -151,11 +151,11 @@ uint64_t TlSwitchDirectory (uint8_t *path) {
     return 1;
 }
 
-void TlSetTerminationHandler (uint64_t handler) {
+void TlSetTerminationHandler (uintptr_t handler) {
     signal(SIGINT, (sig_t)(handler));
 }
 
-uint64_t TlSystem (uint8_t *cmdline) {
+uintptr_t TlSystem (uint8_t *cmdline) {
     // Use popen() instead of system() because system takes a big lock in most
     // libc implementations which KILLS our build tool's concurrency
 
@@ -168,6 +168,6 @@ uint64_t TlSystem (uint8_t *cmdline) {
     return pclose(file);
 }
 
-uint64_t TlCurrentEpochTime () {
-    return (uint64_t)time(0);
+uintptr_t TlCurrentEpochTime () {
+    return (uintptr_t)time(0);
 }
