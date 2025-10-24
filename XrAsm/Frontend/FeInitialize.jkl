@@ -194,9 +194,13 @@ END
 EXTERN FoxTargetInfo : AsmTargetInfoRecord
 EXTERN XrTargetInfo : AsmTargetInfoRecord
 
-TrgInfoRecords : ^AsmTargetInfoRecord[8] = {
+TrgInfoRecords : ^AsmTargetInfoRecord[] = {
+#IF TRG_FOX32
     &FoxTargetInfo,
+#END
+#IF TRG_XR17032
     &XrTargetInfo,
+#END
 
     NULLPTR, // MUST be here, as a sentinel
 }

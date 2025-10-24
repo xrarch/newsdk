@@ -229,7 +229,7 @@ EXTERN CtTargetInfo : JklTargetInfoRecord
 EXTERN FoxTargetInfo : JklTargetInfoRecord
 EXTERN XrTargetInfo : JklTargetInfoRecord
 
-TrgInfoRecords : ^JklTargetInfoRecord[8] = {
+TrgInfoRecords : ^JklTargetInfoRecord[] = {
 #IF TRG_CT
     &CtTargetInfo,
 #END

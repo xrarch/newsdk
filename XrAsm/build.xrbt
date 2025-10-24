@@ -10,6 +10,12 @@ TARGET "XrAsm"
 	INCDIR "./include"
 
 	SOURCES "./Frontend"
-	SOURCES "./xr17032"
-	SOURCES "./fox32"
+
+	#IF TRG_FOX32
+		SOURCES "./fox32"
+	#END
+
+	#IF TRG_XR17032
+		SOURCES "./xr17032"
+	#END
 END
