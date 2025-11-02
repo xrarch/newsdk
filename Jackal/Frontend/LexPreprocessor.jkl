@@ -159,6 +159,10 @@ FN (LexDirectiveParseF) LexParseLeaveSection ()
 
     // Parse the leave section directive. Pops the section stack.
 
+    IF LexFalseCount THEN
+        LEAVE
+    END
+
     popped := LexPopSection ()
 
     IF NOT popped THEN
