@@ -615,6 +615,19 @@ FN AsmEvaluateNodeMustWork (
     END
 END
 
+FN AsmConsumeNewlines ()
+
+    // Consume any newlines.
+
+    token : LexToken
+
+    WHILE LexMatchToken (
+        &token, // token
+        TOKEN_NEWLINE, // type
+        0, // subtype
+    ) DO END
+END
+
 // FORWARD
 EXTERN FN AsmParseExpression (
     IN minprecedence : UWORD,
@@ -626,6 +639,8 @@ FN AsmParseAtom () : ^AsmExpressionNode
     // single constant number or identifier.
 
     atomnode : ^AsmExpressionNode
+
+    AsmConsumeNewlines ()
 
     token : LexToken
 
@@ -836,6 +851,8 @@ FN AsmParseExpression (
 
     atomnode := AsmParseAtom ()
 
+    AsmConsumeNewlines ()
+
     optoken : LexToken
 
     WHILE LexMatchToken (
@@ -883,6 +900,8 @@ FN AsmParseExpression (
         END
 
         atomnode = node
+
+        AsmConsumeNewlines ()
     END
 
     RETURN atomnode
