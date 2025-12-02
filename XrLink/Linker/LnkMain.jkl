@@ -18,7 +18,8 @@ Commands:
   imports <imagename>: Dump the import table.
   link <outputname> [objects ...] [-d <shared libs ...>]
    [-move:section1=expr,section2=expr,...] XOR [-base:addr] XOR [-mapbase:addr]
-   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin] [-fxf] [-xlo]\n", // fmt
+   [-keepglobals] [-striprelocs] [-nostubs] [-fragment] [-bin] [-fxf] [-xlo]
+   [-exportall]\n", // fmt
         TlProgramName,
     )
 
@@ -36,6 +37,7 @@ PUBLIC LnkMoveExpression : ^UBYTE = NULLPTR
 PUBLIC LnkMappedBase := FALSE
 PUBLIC LnkCreateFxf := FALSE
 PUBLIC LnkPageAligned := FALSE
+PUBLIC LnkExportAll := FALSE
 
 EXTERN FN LnkInitializeDatabase ()
 
@@ -141,6 +143,9 @@ FN LnkLinkStuff (
                 END
 
                 LnkMappedBase = TRUE
+
+            ELSEIF TlCompareString ( argv[i], "-exportall" ) == 0 THEN
+                LnkExportAll = TRUE
 
             ELSE
                 LnkUsage ()

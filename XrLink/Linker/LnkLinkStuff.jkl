@@ -864,7 +864,11 @@ FN LnkMergeSymbolTables ()
 
             lnksymbol^.Type = symbol^.Type
 
-            IF symbol^.Type == XLO_SYMBOL_EXPORT OR
+            IF LnkExportAll AND lnksymbol^.Type == XLO_SYMBOL_GLOBAL THEN
+                lnksymbol^.Type = XLO_SYMBOL_EXPORT
+            END
+
+            IF lnksymbol^.Type == XLO_SYMBOL_EXPORT OR
                 LnkKeepGlobals OR LnkCreateFragment THEN
 
                 LnkSymbolCount += 1
