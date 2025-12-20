@@ -1059,6 +1059,85 @@ FN (AsmDirectiveF) AsmParseSection (
     AsmCurrentSection = section
     AsmLastLabel = NULLPTR
 END
+FN (AsmDirectiveF) AsmParseSectionFlag (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the sectionflag directive, which sets (or unsets) a section flag.
+
+    IF AsmCurrentSection == NULLPTR THEN
+        LexError ( errtoken, "'sectionflag' may not be used outside of a section\n" )
+    END
+
+    // Grammar:
+    //  sectionflag = "sectionflag" { ["~"]flag "," } [ ["~"]flag ];
+    //  flag = "zero" | "code" | "paged" | "map";
+
+    // Example:
+    //  .sectionflag code, ~paged
+
+    token : LexToken
+
+    LexGetToken ( &token )
+
+    WHILE TRUE DO
+        IF token.Type == TOKEN_NEWLINE THEN
+            BREAK
+        END
+
+        // Check if we're unsetting a flag, indicated with ~.
+
+        unset := FALSE
+
+        IF token.Type == TOKEN_OPER AND
+            token.Subtype == TOKEN_BITNOT THEN
+
+            unset = TRUE
+
+            LexGetToken ( &token )
+        END
+
+        IF token.Type != TOKEN_IDENTIFIER THEN
+            LexError ( &token, "Expected identifier\n" )
+        END
+
+        symbol := CAST token.Payload TO ^LexSymbol
+
+        name := symbol^.Name
+
+        flag : UWORD
+
+        IF TlCompareStringWithMax ( name, "zero", 4 ) == 0 THEN
+            flag = XLO_SECTION_ZERO
+
+        ELSEIF TlCompareStringWithMax ( name, "code", 4 ) == 0 THEN
+            flag = XLO_SECTION_CODE
+
+        ELSEIF TlCompareStringWithMax ( name, "paged", 5 ) == 0 THEN
+            flag = XLO_SECTION_PAGED
+
+        ELSEIF TlCompareStringWithMax ( name, "map", 3 ) == 0 THEN
+            flag = XLO_SECTION_MAP
+
+        ELSE
+            LexError ( &token, "Expected 'zero', 'code', 'paged', or 'map'\n" )
+        END
+
+        IF unset THEN
+            AsmCurrentSection^.SectionFlags &= ~flag
+        ELSE
+            AsmCurrentSection^.SectionFlags |= flag
+        END
+
+        LexGetToken ( &token )
+
+        IF token.Type != TOKEN_COMMA THEN
+            BREAK
+        END
+
+        LexGetToken ( &token )
+    END
+END
 
 #MACRO AsmCheckExprIfZero ( expr ) [
     IF AsmCurrentSection^.SectionFlags & XLO_SECTION_ZERO THEN
@@ -1596,6 +1675,7 @@ FN (AsmDirectiveF) AsmParseAlign (
 END
 
 AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
+    [TOKEN_SECTIONFLAG] = &AsmParseSectionFlag,
     [TOKEN_SECTION] = &AsmParseSection,
     [TOKEN_DB] = &AsmParseDb,
     [TOKEN_DI] = &AsmParseDi,

@@ -38,6 +38,7 @@ END
 ENUM LexTokenSubtype : UBYTE
     TOKEN_SUBTYPE_ANY,
 
+    TOKEN_SECTIONFLAG, // directive
     TOKEN_SECTION,     // directive
     TOKEN_DB,          // directive
     TOKEN_DI,          // directive

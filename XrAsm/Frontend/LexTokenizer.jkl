@@ -65,6 +65,7 @@ FN LexInitializeConsumer ()
     LexInsertKeyword ( "\n", TOKEN_NEWLINE, 0, 0 )
     LexInsertKeyword ( "=", TOKEN_EQUALS, 0, 0 )
 
+    LexInsertKeyword ( "sectionflag", TOKEN_DIRECTIVE, TOKEN_SECTIONFLAG, 0 )
     LexInsertKeyword ( "section", TOKEN_DIRECTIVE, TOKEN_SECTION, 0 )
     LexInsertKeyword ( "db", TOKEN_DIRECTIVE, TOKEN_DB, 0 )
     LexInsertKeyword ( "di", TOKEN_DIRECTIVE, TOKEN_DI, 0 )
