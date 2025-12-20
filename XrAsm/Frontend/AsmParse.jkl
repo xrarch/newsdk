@@ -1071,7 +1071,7 @@ FN (AsmDirectiveF) AsmParseSectionFlag (
 
     // Grammar:
     //  sectionflag = "sectionflag" { ["~"]flag "," } [ ["~"]flag ];
-    //  flag = "zero" | "code" | "paged" | "map";
+    //  flag = "zeroed" | "code" | "paged" | "map";
 
     // Example:
     //  .sectionflag code, ~paged
@@ -1107,16 +1107,16 @@ FN (AsmDirectiveF) AsmParseSectionFlag (
 
         flag : UWORD
 
-        IF TlCompareStringWithMax ( name, "zero", 4 ) == 0 THEN
+        IF TlCompareString ( name, "zeroed" ) == 0 THEN
             flag = XLO_SECTION_ZERO
 
-        ELSEIF TlCompareStringWithMax ( name, "code", 4 ) == 0 THEN
+        ELSEIF TlCompareString ( name, "code" ) == 0 THEN
             flag = XLO_SECTION_CODE
 
-        ELSEIF TlCompareStringWithMax ( name, "paged", 5 ) == 0 THEN
+        ELSEIF TlCompareString ( name, "paged" ) == 0 THEN
             flag = XLO_SECTION_PAGED
 
-        ELSEIF TlCompareStringWithMax ( name, "map", 3 ) == 0 THEN
+        ELSEIF TlCompareString ( name, "map" ) == 0 THEN
             flag = XLO_SECTION_MAP
 
         ELSE
