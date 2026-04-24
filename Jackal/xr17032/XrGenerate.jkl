@@ -1176,6 +1176,10 @@ FN XrGenerateArithmetic (
         defby^.Type == IR_RIGHT_SHIFT OR
         defby^.Type == IR_RIGHT_SHIFT_SIGNED OR
         defby^.Type == IR_ROTATE_RIGHT) AND
+        (regop != XR_LSH AND
+        regop != XR_RSH AND
+        regop != XR_ASH AND
+        regop != XR_ROR) AND
         defby^.Source2^.DefinedBy AND
         defby^.Source2^.DefinedBy^.Type == IR_CONSTANT AND
         defby^.Source2^.DefinedBy^.Body.Constant.Constant < 32 THEN
