@@ -3314,19 +3314,6 @@ FN (PrsOperatorF) PrsParseNot (
 
     PrsCheckNodeIsValue ( left )
 
-    IF left^.Type == AST_OPERATOR AND left^.Token.Subtype == TOKEN_NOT THEN
-        // Get rid of the redundant NOTs by copying the left side of our left
-        // side over the top of us.
-
-        TlCopyMemory (
-            node, // dest
-            left^.Body.Operator.Left, // src
-            SIZEOF PrsAstNode, // sz
-        )
-
-        LEAVE
-    END
-
     IF left^.Type == AST_CONSTANT THEN
         // We can roll this into a constant.
 
