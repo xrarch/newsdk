@@ -1134,6 +1134,24 @@ FN (LirSelectF) FoxSelectBranch (
     cmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     cmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
+    defineinst1 := inst^.Source1^.DefinedBy
+    defineinst2 := inst^.Source2^.DefinedBy
+
+    IF cmptype == FOX_CMP AND
+        defineinst1 AND
+        defineinst2 AND
+        defineinst1^.Type == IR_LOAD AND
+        ((defineinst2^.Type == IR_LOAD AND
+        FoxPrimTypeToBits[defineinst1^.Body.LoadStore.Type] ==
+        FoxPrimTypeToBits[defineinst2^.Body.LoadStore.Type]) OR
+        (defineinst2^.Type == IR_CONSTANT AND
+        defineinst2^.Body.Constant.Constant <=
+        JklPrimitiveTypeMasks[defineinst1^.Body.LoadStore.Type])) THEN
+
+        cmpinst^.Body.Machine.Fox.BitSize =
+            FoxPrimTypeToBits[defineinst1^.Body.LoadStore.Type]
+    END
+
     cmpinst^.Source1 = FoxFillOperand (
         cmpinst, // lirinst
         &cmpinst^.Body.Machine.Fox.Op1, // operand
@@ -1147,6 +1165,8 @@ FN (LirSelectF) FoxSelectBranch (
         inst^.Source2, // var
         TRUE, // allowimm
     )
+
+    FoxSetIfUnknown ( cmpinst )
 
     LirInsertInstructionTail ( cmpinst )
 
@@ -1450,6 +1470,24 @@ FN (LirSelectF) FoxSelectCompare (
 
     cmpinst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
     cmpinst^.Body.Machine.Fox.BitSize = FOX_BITS_32
+
+    defineinst1 := inst^.Source1^.DefinedBy
+    defineinst2 := inst^.Source2^.DefinedBy
+
+    IF cmptype == FOX_CMP AND
+        defineinst1 AND
+        defineinst2 AND
+        defineinst1^.Type == IR_LOAD AND
+        ((defineinst2^.Type == IR_LOAD AND
+        FoxPrimTypeToBits[defineinst1^.Body.LoadStore.Type] ==
+        FoxPrimTypeToBits[defineinst2^.Body.LoadStore.Type]) OR
+        (defineinst2^.Type == IR_CONSTANT AND
+        defineinst2^.Body.Constant.Constant <=
+        JklPrimitiveTypeMasks[defineinst1^.Body.LoadStore.Type])) THEN
+
+        cmpinst^.Body.Machine.Fox.BitSize =
+            FoxPrimTypeToBits[defineinst1^.Body.LoadStore.Type]
+    END
 
     cmpinst^.Source1 = FoxFillOperand (
         cmpinst, // lirinst
