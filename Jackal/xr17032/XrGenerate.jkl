@@ -2158,46 +2158,6 @@ FN XrModifyTmp (
     XrTmpsModifiedCount = 1
 END
 
-STRUCT XrAliasEntry
-    Register : XrRegisters,
-    AliasedAgainst : UBYTE,
-END
-
-#MACRO XrResetAliasTable ( i, regalias ) [
-    i = 1
-    WHILE i < XR_REG_MAX DO
-        regalias[i].Register = i
-        regalias[i].AliasedAgainst = FALSE
-        i += 1
-    END
-]
-
-FN XrInvalidateAliasEntry (
-    IN regalias : ^XrAliasEntry,
-    IN reg : XrRegisters,
-)
-
-    i := 0
-    regalias[reg].AliasedAgainst = FALSE
-
-    WHILE i < XR_REG_MAX DO
-        IF i != reg AND
-            regalias[i].Register == reg THEN
-
-            regalias[i].Register = i
-
-            IF regalias[i].AliasedAgainst THEN
-                XrInvalidateAliasEntry (
-                    regalias, // regalias
-                    i, // reg
-                )
-            END
-        END
-
-        i += 1
-    END
-END
-
 FN XrGenerateSpills (
     IN irfunc : ^IrFunction,
 )
@@ -2229,11 +2189,6 @@ FN XrGenerateSpills (
         i += 1
     END
 
-    regalias : XrAliasEntry[XR_REG_MAX]
-    aliased := FALSE
-
-    XrResetAliasTable ( i, regalias )
-
     XrTmpsModifiedCount = 0
 
     WHILE inst DO
@@ -2244,6 +2199,9 @@ FN XrGenerateSpills (
 
         type := inst^.Type
         machinst := inst^.MachineInstruction
+        access1 := inst^.Body.Machine.Xr.Op1.AccessType
+        access2 := inst^.Body.Machine.Xr.Op2.AccessType
+        access3 := inst^.Body.Machine.Xr.Op3.AccessType
 
         IF type == LIR_JUNK THEN
             LirRemoveInstruction ( inst )
@@ -2269,44 +2227,21 @@ FN XrGenerateSpills (
         // after we generated lots of MOVs into function argument registers and
         // so on.
 
-        IF type == LIR_MACH_INST THEN
-            IF machinst == XR_MOV_REG AND
-                ((def^.Type == LIR_PREALLOCATED_REG OR
+        IF type == LIR_MACH_INST AND machinst == XR_MOV_REG THEN
+            IF def == src2 OR
+                (def^.Type == LIR_PREALLOCATED_REG OR
                 def^.Type == LIR_MACHINE_REG) AND
                 (src2^.Type == LIR_PREALLOCATED_REG OR
-                src2^.Type == LIR_MACHINE_REG)) THEN
+                src2^.Type == LIR_MACHINE_REG) AND
+                (def^.MachineRegister == src2^.MachineRegister) THEN
 
-                IF regalias[def^.MachineRegister].Register ==
-                    regalias[src2^.MachineRegister].Register THEN
+                // Elide this useless move.
 
-                    // Elide this useless move.
+                LirRemoveInstruction ( inst )
 
-                    LirRemoveInstruction ( inst )
+                inst = inst^.Next
 
-                    inst = inst^.Next
-
-                    CONTINUE
-                END
-
-                regalias[def^.MachineRegister].Register =
-                    regalias[src2^.MachineRegister].Register
-
-                regalias[src2^.MachineRegister].AliasedAgainst = TRUE
-
-                aliased = TRUE
-
-            ELSEIF def AND
-                (def^.Type == LIR_PREALLOCATED_REG OR
-                def^.Type == LIR_MACHINE_REG) THEN
-
-                regalias[def^.MachineRegister].Register = def^.MachineRegister
-
-                IF regalias[def^.MachineRegister].AliasedAgainst THEN
-                    XrInvalidateAliasEntry (
-                        &regalias[0], // regalias
-                        def^.MachineRegister, // reg
-                    )
-                END
+                CONTINUE
             END
         END
 
@@ -2371,11 +2306,6 @@ FN XrGenerateSpills (
         IF type == LIR_BRANCH OR
             type == LIR_CALL OR
             type == LIR_LABEL THEN
-
-            IF aliased THEN
-                aliased = FALSE
-                XrResetAliasTable ( i, regalias )
-            END
 
             i = 0
 
