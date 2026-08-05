@@ -340,12 +340,7 @@ FoxPrimTypeToSignShift : UBYTE[PRIM_TYPE_MAX] = {
     [PRIM_TYPE_BYTE] = 24,
 }
 
-FoxTmps : LirRegister[2]
-FoxTmpAt : LirRegister
-FoxSp : LirRegister
-FoxFp : LirRegister
-FoxCalleeSaved : LirRegister[FOX_S17 - FOX_S0 + 1]
-FoxArg : LirRegister[FOX_A3 - FOX_A0 + 1]
+FoxPreallocatedRegisters : LirRegister[FOX_REG_MAX]
 
 FN FoxFillOperandForAccess (
     IN lirinst : ^LirInstruction,
@@ -389,7 +384,7 @@ FN FoxFillOperandForAccess (
             operand^.AccessType = FOX_ACCESS_REG_PTR
             operand^.Constant = off
 
-            spreg := &FoxSp
+            spreg := &FoxPreallocatedRegisters[FOX_SP]
 
             RETURN spreg
         END
@@ -685,7 +680,7 @@ FN (LirSelectF) FoxSelectStackAddr (
     IF off == 0 AND inst^.Defines^.DefinedBy THEN
         // Just return the SP register.
 
-        RETURN &FoxSp
+        RETURN &FoxPreallocatedRegisters[FOX_SP]
     END
 
     defreg := LirGetRegister ( inst^.Defines )
@@ -696,7 +691,7 @@ FN (LirSelectF) FoxSelectStackAddr (
     )
 
     movinst^.Defines = defreg
-    movinst^.Source2 = &FoxSp
+    movinst^.Source2 = &FoxPreallocatedRegisters[FOX_SP]
 
     movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -857,7 +852,7 @@ FN FoxGenerateStackAddress (
 
         movinst^.Defines = destreg
 
-        movinst^.Source2 = &FoxSp
+        movinst^.Source2 = &FoxPreallocatedRegisters[FOX_SP]
 
         movinst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
         movinst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -915,7 +910,7 @@ FN FoxGenerateStackAddress (
         RETURN destreg
 
     ELSE
-        RETURN &FoxSp
+        RETURN &FoxPreallocatedRegisters[FOX_SP]
     END
 END
 
@@ -1003,7 +998,7 @@ FN (LirSelectF) FoxSelectReturn (
 
         retval = FoxGeneratePreallocatedMov (
             srcreg, // srcreg
-            &FoxArg[FOX_A3 - FOX_A0], // machreg
+            &FoxPreallocatedRegisters[FOX_A3], // machreg
             FALSE, // from
         )
     END
@@ -1166,8 +1161,6 @@ FN (LirSelectF) FoxSelectBranch (
         TRUE, // allowimm
     )
 
-    FoxSetIfUnknown ( cmpinst )
-
     LirInsertInstructionTail ( cmpinst )
 
     jmpinst := LirCreateInstruction (
@@ -1309,7 +1302,7 @@ FN (LirSelectF) FoxSelectCall (
 
         FoxGeneratePreallocatedMov (
             lirarg^.Register, // reg
-            &FoxArg[count], // machreg
+            &FoxPreallocatedRegisters[count + FOX_A0], // machreg
             FALSE, // from
         )
 
@@ -1326,7 +1319,7 @@ FN (LirSelectF) FoxSelectCall (
     IF defreg THEN
         FoxGeneratePreallocatedMov (
             defreg, // reg
-            &FoxArg[FOX_A3 - FOX_A0], // machreg
+            &FoxPreallocatedRegisters[FOX_A3], // machreg
             TRUE, // from
         )
     END
@@ -1361,7 +1354,7 @@ FN (LirSelectF) FoxSelectCall (
 
                 FoxGeneratePreallocatedMov (
                     lirarg^.Register, // reg
-                    &FoxArg[2 - count], // machreg
+                    &FoxPreallocatedRegisters[2 - count + FOX_A0], // machreg
                     TRUE, // from
                 )
             
@@ -1830,7 +1823,7 @@ FN FoxHintFunction (
 
                 junkinst^.Defines = irreg
 
-                junkinst^.Source1 = &FoxArg[incount]
+                junkinst^.Source1 = &FoxPreallocatedRegisters[incount + FOX_A0]
 
                 LirInsertInstructionBefore (
                     head, // beforeinst
@@ -1848,7 +1841,8 @@ FN FoxHintFunction (
                     0, // machtype
                 )
 
-                junkinst^.Defines = &FoxArg[2 - outcount]
+                junkinst^.Defines =
+                    &FoxPreallocatedRegisters[2 - outcount + FOX_A0]
 
                 junkinst^.Source1 = irreg
 
@@ -1898,7 +1892,7 @@ FN FoxHintFunction (
 
                 junkinst^.Defines = irreg
 
-                junkinst^.Source1 = &FoxArg[incount]
+                junkinst^.Source1 = &FoxPreallocatedRegisters[incount + FOX_A0]
 
                 LirInsertInstructionBefore (
                     head, // beforeinst
@@ -1921,7 +1915,7 @@ FN FoxGenerateSpillForOperand (
 ) : ^LirRegister
 
     spreg : ^LirRegister
-    tmpreg := &FoxTmps[tmp]
+    tmpreg := &FoxPreallocatedRegisters[tmp + FOX_T5]
 
     spilloff := LirGetSpillOffset (
         inst^.Block, // irfunc
@@ -1993,11 +1987,11 @@ FN FoxGenerateSpillForOperand (
 
             othertmp := tmpreg
 
-            IF othertmp == &FoxTmps[0] THEN
-                othertmp = &FoxTmps[1]
+            IF othertmp == &FoxPreallocatedRegisters[FOX_T5] THEN
+                othertmp = &FoxPreallocatedRegisters[FOX_T6]
 
             ELSE
-                othertmp = &FoxTmps[0]
+                othertmp = &FoxPreallocatedRegisters[FOX_T5]
             END
 
             spreg = FoxGenerateStackAddress (
@@ -2053,7 +2047,7 @@ FN FoxGenerateSpillForOperand (
     // temporary into the instruction.
 
     spreg = FoxGenerateStackAddress (
-        &FoxTmpAt, // tmp
+        &FoxPreallocatedRegisters[FOX_AT], // tmp
         inst, // beforeinst
         NULLPTR, // afterinst
         spilloff, // off
@@ -2081,6 +2075,46 @@ FN FoxGenerateSpillForOperand (
     )
 
     RETURN tmpreg
+END
+
+STRUCT FoxAliasEntry
+    Register : FoxRegisters,
+    AliasedAgainst : UBYTE,
+END
+
+#MACRO FoxResetAliasTable ( i, regalias ) [
+    i = 1
+    WHILE i < FOX_REG_MAX DO
+        regalias[i].Register = i
+        regalias[i].AliasedAgainst = FALSE
+        i += 1
+    END
+]
+
+FN FoxInvalidateAliasEntry (
+    IN regalias : ^FoxAliasEntry,
+    IN reg : FoxRegisters,
+)
+
+    i := 0
+    regalias[reg].AliasedAgainst = FALSE
+
+    WHILE i < FOX_REG_MAX DO
+        IF i != reg AND
+            regalias[i].Register == reg THEN
+
+            regalias[i].Register = i
+
+            IF regalias[i].AliasedAgainst THEN
+                FoxInvalidateAliasEntry (
+                    regalias, // regalias
+                    i, // reg
+                )
+            END
+        END
+
+        i += 1
+    END
 END
 
 FN FoxGenerateSpills (
@@ -2124,6 +2158,12 @@ FN FoxGenerateSpills (
 
     inst := irfunc^.LirHead
 
+    regalias : FoxAliasEntry[FOX_REG_MAX]
+    i : UWORD
+    aliased := FALSE
+
+    FoxResetAliasTable ( i, regalias )
+
     WHILE inst DO
         def := inst^.Defines
         src1 := inst^.Source1
@@ -2148,27 +2188,59 @@ FN FoxGenerateSpills (
         // after we generated lots of MOVs into function argument registers and
         // so on.
 
-        IF type == LIR_MACH_INST AND
-            (machinst == FOX_MOV OR machinst == FOX_MOVZ) AND
-            inst^.Body.Machine.Fox.BitSize == FOX_BITS_32 AND
-            access1 == FOX_ACCESS_REGISTER AND
-            access2 == FOX_ACCESS_REGISTER THEN
-
-            IF def == src2 OR
+        IF type == LIR_MACH_INST THEN
+            IF (machinst == FOX_MOV OR machinst == FOX_MOVZ) AND
+                inst^.Body.Machine.Fox.BitSize == FOX_BITS_32 AND
+                access1 == FOX_ACCESS_REGISTER AND
+                access2 == FOX_ACCESS_REGISTER AND
+                (def == src2 OR
                 (def^.Type == LIR_PREALLOCATED_REG OR
                 def^.Type == LIR_MACHINE_REG) AND
                 (src2^.Type == LIR_PREALLOCATED_REG OR
-                src2^.Type == LIR_MACHINE_REG) AND
-                (def^.MachineRegister == src2^.MachineRegister) THEN
+                src2^.Type == LIR_MACHINE_REG)) THEN
 
-                // Elide this useless move.
+                IF regalias[def^.MachineRegister].Register ==
+                    regalias[src2^.MachineRegister].Register THEN
 
-                LirRemoveInstruction ( inst )
+                    // Elide this useless move.
 
-                inst = inst^.Next
+                    LirRemoveInstruction ( inst )
 
-                CONTINUE
+                    inst = inst^.Next
+
+                    CONTINUE
+                END
+
+                regalias[def^.MachineRegister].Register =
+                    regalias[src2^.MachineRegister].Register
+
+                regalias[src2^.MachineRegister].AliasedAgainst = TRUE
+
+                aliased = TRUE
+
+            ELSEIF def AND
+                (def^.Type == LIR_PREALLOCATED_REG OR
+                def^.Type == LIR_MACHINE_REG) THEN
+
+                regalias[def^.MachineRegister].Register = def^.MachineRegister
+
+                IF regalias[def^.MachineRegister].AliasedAgainst THEN
+                    FoxInvalidateAliasEntry (
+                        &regalias[0], // regalias
+                        def^.MachineRegister, // reg
+                    )
+                END
             END
+
+        ELSEIF aliased AND
+            (type == LIR_BRANCH OR
+            type == LIR_CALL OR
+            type == LIR_RETURN OR
+            type == LIR_LABEL) THEN
+
+            aliased = FALSE
+
+            FoxResetAliasTable ( i, regalias )
         END
 
         tmp := 0
@@ -2241,7 +2313,7 @@ FN FoxGenerateAbiStuff (
         FOX_PUSH, // machtype
     )
 
-    inst^.Source1 = &FoxFp
+    inst^.Source1 = &FoxPreallocatedRegisters[FOX_FP]
     inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
     inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
@@ -2259,8 +2331,8 @@ FN FoxGenerateAbiStuff (
         FOX_MOV, // machtype
     )
 
-    inst^.Defines = &FoxFp
-    inst^.Source2 = &FoxSp
+    inst^.Defines = &FoxPreallocatedRegisters[FOX_FP]
+    inst^.Source2 = &FoxPreallocatedRegisters[FOX_SP]
 
     inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_REGISTER
@@ -2287,7 +2359,7 @@ FN FoxGenerateAbiStuff (
                 FOX_PUSH, // machtype
             )
 
-            inst^.Source1 = &FoxCalleeSaved[i - FOX_S0]
+            inst^.Source1 = &FoxPreallocatedRegisters[i]
 
             inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
             inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
@@ -2320,8 +2392,8 @@ FN FoxGenerateAbiStuff (
         inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
         inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
-        inst^.Defines = &FoxSp
-        inst^.Source1 = &FoxSp
+        inst^.Defines = &FoxPreallocatedRegisters[FOX_SP]
+        inst^.Source1 = &FoxPreallocatedRegisters[FOX_SP]
 
         inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
 
@@ -2403,7 +2475,7 @@ FN FoxGenerateAbiStuff (
                     off := irreg^.SpilledOffset
 
                     spreg := FoxGenerateStackAddress (
-                        &FoxTmps[0], // tmp
+                        &FoxPreallocatedRegisters[FOX_T5], // tmp
                         head, // beforeinst
                         NULLPTR, // afterinst
                         off, // off
@@ -2421,7 +2493,7 @@ FN FoxGenerateAbiStuff (
                 IF count < 4 THEN
                     // From arg reg.
 
-                    inst^.Source2 = &FoxArg[count]
+                    inst^.Source2 = &FoxPreallocatedRegisters[count + FOX_A0]
 
                     inst^.Body.Machine.Fox.Op2.AccessType =
                         FOX_ACCESS_REGISTER
@@ -2432,7 +2504,7 @@ FN FoxGenerateAbiStuff (
                     off := scratchoff
 
                     spreg := FoxGenerateStackAddress (
-                        &FoxTmps[1], // tmp
+                        &FoxPreallocatedRegisters[FOX_T6], // tmp
                         head, // beforeinst
                         NULLPTR, // afterinst
                         off, // off
@@ -2523,7 +2595,7 @@ FN FoxGenerateAbiStuff (
                     off := irreg^.SpilledOffset
 
                     spreg := FoxGenerateStackAddress (
-                        &FoxTmps[0], // tmp
+                        &FoxPreallocatedRegisters[FOX_T5], // tmp
                         NULLPTR, // beforeinst
                         irfunc^.LirTail, // afterinst
                         off, // off
@@ -2541,7 +2613,8 @@ FN FoxGenerateAbiStuff (
                 IF count < 3 THEN
                     // To arg reg.
 
-                    inst^.Defines = &FoxArg[2 - count]
+                    inst^.Defines =
+                        &FoxPreallocatedRegisters[2 - count + FOX_A0]
 
                     inst^.Body.Machine.Fox.Op1.AccessType =
                         FOX_ACCESS_REGISTER
@@ -2552,7 +2625,7 @@ FN FoxGenerateAbiStuff (
                     off := scratchoff
 
                     spreg := FoxGenerateStackAddress (
-                        &FoxTmps[1], // tmp
+                        &FoxPreallocatedRegisters[FOX_T6], // tmp
                         NULLPTR, // beforeinst
                         irfunc^.LirTail, // afterinst
                         off, // off
@@ -2594,8 +2667,8 @@ FN FoxGenerateAbiStuff (
         inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
         inst^.Body.Machine.Fox.BitSize = FOX_BITS_32
 
-        inst^.Defines = &FoxSp
-        inst^.Source1 = &FoxSp
+        inst^.Defines = &FoxPreallocatedRegisters[FOX_SP]
+        inst^.Source1 = &FoxPreallocatedRegisters[FOX_SP]
 
         inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
 
@@ -2616,7 +2689,7 @@ FN FoxGenerateAbiStuff (
                 FOX_POP, // machtype
             )
 
-            inst^.Defines = &FoxCalleeSaved[i - FOX_S0]
+            inst^.Defines = &FoxPreallocatedRegisters[i]
 
             inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
             inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
@@ -2637,7 +2710,7 @@ FN FoxGenerateAbiStuff (
         FOX_POP, // machtype
     )
 
-    inst^.Defines = &FoxFp
+    inst^.Defines = &FoxPreallocatedRegisters[FOX_FP]
     inst^.Body.Machine.Fox.Op1.AccessType = FOX_ACCESS_REGISTER
     inst^.Body.Machine.Fox.Op2.AccessType = FOX_ACCESS_NONE
     inst^.Body.Machine.Fox.Condition = FOX_COND_ALWAYS
@@ -3007,35 +3080,11 @@ FN (JklTargetF) FoxCompile ()
     
     // Compile the program for the fox32 architecture.
 
-    FoxTmps[0].Type = LIR_PREALLOCATED_REG
-    FoxTmps[0].MachineRegister = FOX_T5
-
-    FoxTmps[1].Type = LIR_PREALLOCATED_REG
-    FoxTmps[1].MachineRegister = FOX_T6
-
-    FoxTmpAt.Type = LIR_PREALLOCATED_REG
-    FoxTmpAt.MachineRegister = FOX_AT
-
-    FoxSp.Type = LIR_PREALLOCATED_REG
-    FoxSp.MachineRegister = FOX_SP
-
-    FoxFp.Type = LIR_PREALLOCATED_REG
-    FoxFp.MachineRegister = FOX_FP
-
     i := 0
 
-    WHILE i < (FOX_S17 - FOX_S0 + 1) DO
-        FoxCalleeSaved[i].Type = LIR_PREALLOCATED_REG
-        FoxCalleeSaved[i].MachineRegister = FOX_S0 + i
-
-        i += 1
-    END
-
-    i = 0
-
-    WHILE i < (FOX_A3 - FOX_A0 + 1) DO
-        FoxArg[i].Type = LIR_PREALLOCATED_REG
-        FoxArg[i].MachineRegister = FOX_A0 + i
+    WHILE i < FOX_REG_MAX DO
+        FoxPreallocatedRegisters[i].Type = LIR_PREALLOCATED_REG
+        FoxPreallocatedRegisters[i].MachineRegister = i
 
         i += 1
     END
