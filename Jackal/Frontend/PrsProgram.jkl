@@ -97,6 +97,7 @@ FN PrsCreateType () : ^LexSemanticType
     type^.CachedIsValue = FALSE
     type^.Size = TYPE_SIZE_UNINIT
     type^.MinimumAlignment = 1
+    type^.AlignmentOverride = 0
 
     RETURN type
 END
@@ -1151,9 +1152,55 @@ FN PrsType (
 
     // Parse the type into the provided type structure.
 
+    alignoverride := 0
+
     typetoken : LexToken
 
+@Retry
+
     LexGetToken ( &typetoken )
+
+    IF typetoken.Type == TOKEN_TYPEMODIFIER THEN
+        // Ideally we would dispatch on a table of type modifiers, but right
+        // now we only have ALIGN so just expect that.
+
+        IF typetoken.Subtype != TOKEN_ALIGN THEN
+            LexError ( &typetoken, "Incompletely implemented type modifier\n" )
+        END
+
+        IF NOT LexMatchToken (
+            &typetoken, // token
+            TOKEN_OPER, // type
+            TOKEN_LPAREN, // subtype
+        ) THEN
+            LexError ( &typetoken, "Expected left parenthesis %d\n", typetoken.Type )
+        END
+
+        alignnode := PrsExpression ( 0 )
+
+        IF alignnode^.Type != AST_CONSTANT THEN
+            LexError ( &typetoken, "Expected a constant alignment value\n" )
+        END
+
+        IF TlIsPowerOfTwo ( alignnode^.Body.Constant.Value ) == -1 THEN
+            LexError ( &typetoken, "Expected a power of two alignment value\n" )
+        END
+
+        IF NOT LexMatchToken (
+            &typetoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexError ( &typetoken, "Expected right parenthesis\n" )
+        END
+
+        alignoverride = alignnode^.Body.Constant.Value
+
+        // Get the actual first token of the type, which may be another type
+        // modifier.
+
+        GOTO Retry
+    END
 
     IF typetoken.Type == TOKEN_PTYPE THEN
         // It's a primitive type, that was easy!
@@ -1222,6 +1269,8 @@ FN PrsType (
             "Type must be primitive, pointer, or named.\n" )
     END
 
+    type^.AlignmentOverride = alignoverride
+
     IF depth THEN
         // We don't collect the array components if the type is nested at all.
 
@@ -1283,7 +1332,12 @@ FN PrsType (
             "This type is not suitable as a base for an array\n" )
     END
 
-    elementalign := skippedtype^.MinimumAlignment
+    elementalign := skippedtype^.AlignmentOverride
+
+    IF NOT elementalign THEN
+        elementalign = skippedtype^.MinimumAlignment
+    END
+
     size := skippedtype^.Size
 
     arraytype := type
@@ -1563,6 +1617,7 @@ FN PrsVariableDeclaration (
     // is inferred. Otherwise, we have to put the token back and parse the type.
 
     type : ^LexSemanticType = NULLPTR
+    align := 0
 
     hasinitializer := TRUE
 
@@ -4262,6 +4317,8 @@ FN PrsParseCompoundType (
             0, // depth
         )
 
+        fieldalign := fieldtype^.AlignmentOverride
+
         // Skip names.
 
         WHILE fieldtype^.Subtype == TYPE_NAMED DO
@@ -4272,7 +4329,15 @@ FN PrsParseCompoundType (
                     "Illegal use of undeclared type\n" )
             END
 
+            IF NOT fieldalign THEN
+                fieldalign = fieldtype^.AlignmentOverride
+            END
+
             fieldtype = fieldtype^.Body.Named.Symbol^.SemanticType
+        END
+
+        IF NOT fieldalign THEN
+            fieldalign = fieldtype^.MinimumAlignment
         END
 
         IF NOT PrsTypeIsDeclarable (
@@ -4288,16 +4353,16 @@ FN PrsParseCompoundType (
                 "This type is not suitable as a field in a compound type\n" )
         END
 
-        IF fieldtype^.MinimumAlignment > minalignment THEN
-            minalignment = fieldtype^.MinimumAlignment
+        IF fieldalign > minalignment THEN
+            minalignment = fieldalign
         END
 
         IF subtype == TOKEN_STRUCT THEN
             IF NOT ispacked THEN
                 // Align the offset.
 
-                offset += fieldtype^.MinimumAlignment - 1
-                offset &= ~(fieldtype^.MinimumAlignment - 1)
+                offset += fieldalign - 1
+                offset &= ~(fieldalign - 1)
             END
 
             // Save the offset.

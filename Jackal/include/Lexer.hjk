@@ -26,6 +26,8 @@ ENUM LexTokenType : UBYTE
     TOKEN_STRING, // payload is a pointer to a LexStringContents structure
     TOKEN_NUMBER, // payload is the number value
 
+    TOKEN_TYPEMODIFIER,
+
     TOKEN_VIRTUAL,
 
     TOKEN_EOF,
@@ -123,6 +125,8 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_XOREQUALS,   // assign
     TOKEN_LSHEQUALS,   // assign
     TOKEN_RSHEQUALS,   // assign
+
+    TOKEN_ALIGN,       // type modifier
 
     TOKEN_ADDROF, // virtual (to distinguish from bitwise AND)
 
@@ -272,7 +276,8 @@ STRUCT LexSemanticType
     Body : LexSemanticTypeBody,
     Size : UWORD,
     Subtype : LexSemanticSubtype,
-    MinimumAlignment : UBYTE,
+    MinimumAlignment : ULONG,
+    AlignmentOverride : ULONG,
     CachedIsDeclarable : UBYTE,
     CachedIsValue : UBYTE,
 END

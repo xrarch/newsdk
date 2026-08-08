@@ -117,6 +117,8 @@ FN LexInitializeConsumer ()
     LexInsertKeyword ( "WORD", TOKEN_PTYPE, TOKEN_WORD,
         JklTargetInfo^.LargestSignedPrimitive )
 
+    LexInsertKeyword ( "ALIGN", TOKEN_TYPEMODIFIER, TOKEN_ALIGN, 0 )
+
     LexInsertKeyword ( ")", TOKEN_RPAREN, 0, 0 )
     LexInsertKeyword ( "]", TOKEN_RBRACKET, 0, 0 )
     LexInsertKeyword ( ":", TOKEN_COLON, 0, 0 )

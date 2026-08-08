@@ -358,15 +358,25 @@ FN XrAsmEmitGlobal (
 
     type := sym^.SemanticType
 
+    align := type^.AlignmentOverride
+
     // Skip names.
 
     WHILE type^.Subtype == TYPE_NAMED DO
+        IF NOT align THEN
+            align = type^.AlignmentOverride
+        END
+
         type = type^.Body.Named.Symbol^.SemanticType
     END
 
-    IF type^.MinimumAlignment != 1 THEN
+    IF NOT align THEN
+        align = type^.MinimumAlignment
+    END
+
+    IF align != 1 THEN
         XrAsmInsertString ( ".align " )
-        XrAsmInsertNumber ( type^.MinimumAlignment )
+        XrAsmInsertNumber ( align )
         XrAsmInsertString ( "\n" )
     END
 
