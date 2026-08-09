@@ -80,6 +80,7 @@ FN LexInitializeConsumer ()
     LexInsertKeyword ( "extern", TOKEN_DIRECTIVE, TOKEN_EXTERN, 0 )
     LexInsertKeyword ( "ds", TOKEN_DIRECTIVE, TOKEN_DS, 0 )
     LexInsertKeyword ( "align", TOKEN_DIRECTIVE, TOKEN_ALIGN, 0 )
+    LexInsertKeyword ( "sectalign", TOKEN_DIRECTIVE, TOKEN_SECTALIGN, 0 )
 
     LexInsertKeyword ( "&", TOKEN_OPER, TOKEN_BITAND, 0 )
     LexInsertKeyword ( "|", TOKEN_OPER, TOKEN_BITOR, 0 )

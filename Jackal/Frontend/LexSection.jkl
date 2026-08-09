@@ -63,6 +63,8 @@ FN LexInitializeSection (
 
         LexSectionListTail = section
     END
+
+    section^.MinimumAlignment = 1
 END
 
 FN LexInitializeSectionStuff ()

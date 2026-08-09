@@ -147,7 +147,7 @@ FN IrEvaluateTypeForAccess (
         node = node^.Body.Operator.Left
     END
 
-    RETURN PrsEvaluateType ( node )
+    RETURN PrsEvaluateTypeUnwrap ( node )
 END
 
 FN IrCreateVariable (
@@ -1025,7 +1025,7 @@ FN IrIsSignedType (
 
     // Helper routine.
 
-    type := PrsEvaluateType ( node )
+    type := PrsEvaluateTypeUnwrap ( node )
 
     IF type^.Subtype != TYPE_PRIMITIVE THEN
         RETURN FALSE
@@ -1432,7 +1432,7 @@ FN (IrExpressionGenerationF) IrGenerateArrayIndex (
 
     // Generate IR for indexing an array.
 
-    type := PrsEvaluateType ( node^.Body.Operator.Left )
+    type := PrsEvaluateTypeUnwrap ( node^.Body.Operator.Left )
 
     var : ^IrVariable
     stride : UWORD
@@ -1573,7 +1573,7 @@ FN (IrExpressionGenerationF) IrGenerateFunctionCall (
     // of each argument. We don't care if they're varargs or not, sorting that
     // out is the province of the code generator.
 
-    type := PrsEvaluateType ( node^.Body.Operator.Left )
+    type := PrsEvaluateTypeUnwrap ( node^.Body.Operator.Left )
 
     inst := IrCreateInstruction (
         IR_CALL, // type

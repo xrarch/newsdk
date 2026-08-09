@@ -81,6 +81,7 @@ FN LnkDumpInfo (
         TlPrint ( "  Virtual  %u bytes\n", section^.VirtualLength )
         TlPrint ( "  Address  0x%P\n", section^.VirtualAddress )
         TlPrint ( "  Offset   0x%08X\n", section^.FileOffset )
+        TlPrint ( "  Align    %u bytes\n", 1 << section^.Alignment )
         TlPrint ( "  Flags    " )
 
         j := 0

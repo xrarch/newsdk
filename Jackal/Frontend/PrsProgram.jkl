@@ -1049,6 +1049,21 @@ FN PrsEvaluateType (
     RETURN type
 END
 
+FN PrsEvaluateTypeUnwrap (
+    IN node : ^PrsAstNode,
+) : ^LexSemanticType
+
+    type := PrsEvaluateType ( node )
+
+    type = PrsUnwrapType (
+        type, // type
+        &node^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
+    RETURN type
+END
+
 FN PrsTypeIsDeclarable (
     IN errtoken : ^LexToken,
     IN type : ^LexSemanticType,
@@ -1829,6 +1844,21 @@ FN PrsVariableDeclaration (
                 symbol^.Section = &LexBssSection
             END
         END
+
+        minalignment : UWORD
+        size : UWORD
+
+        PrsGetTypeSize (
+            type, // type
+            token, // errtoken
+            "Shouldn't happen", // errstring
+            OUT minalignment, // minalignment
+            OUT size, // size
+        )
+
+        IF symbol^.Section^.MinimumAlignment < minalignment THEN
+            symbol^.Section^.MinimumAlignment = minalignment
+        END
     END
 
     RETURN symbol
@@ -2172,13 +2202,7 @@ FN (PrsOperatorF) PrsParseArrayIndex (
 
     left := node^.Body.Operator.Left
 
-    lefttype := PrsEvaluateType ( left )
-
-    lefttype = PrsUnwrapType (
-        lefttype, // type
-        &left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    lefttype := PrsEvaluateTypeUnwrap ( left )
 
     IF lefttype^.Subtype != TYPE_ARRAY AND
         lefttype^.Subtype != TYPE_POINTER THEN
@@ -2227,13 +2251,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
     left := node^.Body.Operator.Left
 
-    lefttype := PrsEvaluateType ( left )
-
-    lefttype = PrsUnwrapType (
-        lefttype, // type
-        &left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    lefttype := PrsEvaluateTypeUnwrap ( left )
 
     IF lefttype^.Subtype != TYPE_FUNCTION AND
         lefttype^.Subtype != TYPE_POINTER THEN
@@ -2310,13 +2328,7 @@ FN (PrsOperatorF) PrsParseFunctionCall (
 
         argnode := PrsExpression ( 0 )
 
-        argtype := PrsEvaluateType ( argnode )
-
-        argtype = PrsUnwrapType (
-            argtype, // type
-            &argnode^.Token, // errtoken
-            "Illegal use of undeclared type\n", // errstring
-        )
+        argtype := PrsEvaluateTypeUnwrap ( argnode )
 
         IF NOT PrsTypeIsValue (
             &argnode^.Token, // errtoken
@@ -2466,13 +2478,7 @@ FN (PrsOperatorF) PrsParsePtrDereference (
 
     // Check that the left side is a pointer type.
 
-    lefttype := PrsEvaluateType ( left )
-
-    lefttype = PrsUnwrapType (
-        lefttype, // type
-        &left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    lefttype := PrsEvaluateTypeUnwrap ( left )
 
     IF lefttype^.Subtype != TYPE_POINTER THEN
         LexError ( &node^.Token, "Expected a pointer type\n" )
@@ -3369,13 +3375,7 @@ FN (PrsOperatorF) PrsParseAddrOf (
         IF symbol^.Entry.HashTable != &LexRootScope^.HashTable THEN
             // We can only take the address of compound locals.
 
-            type := PrsEvaluateType ( left )
-
-            type = PrsUnwrapType (
-                type, // type
-                &left^.Token, // errtoken
-                "Illegal use of undeclared type\n", // errstring
-            )
+            type := PrsEvaluateTypeUnwrap ( left )
 
             IF type^.Subtype != TYPE_COMPOUND THEN
                 LexError ( &left^.Token,
@@ -4193,6 +4193,10 @@ FN PrsParseFnDeclaration (
     END
 
     type^.MinimumAlignment = JklTargetInfo^.CodeAlignment
+
+    IF symbol^.Section^.MinimumAlignment < type^.MinimumAlignment THEN
+        symbol^.Section^.MinimumAlignment = type^.MinimumAlignment
+    END
 
     // Collect the body of the function.
 
@@ -5012,13 +5016,7 @@ FN (PrsStatementF) PrsParseReturn (
 
     retexpr := PrsExpression ( 0 )
 
-    retexprtype := PrsEvaluateType ( retexpr )
-
-    retexprtype = PrsUnwrapType (
-        retexprtype, // type
-        &retexpr^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    retexprtype := PrsEvaluateTypeUnwrap ( retexpr )
 
     IF NOT PrsTypeIsValue (
         &retexpr^.Token, // errtoken
@@ -5255,13 +5253,7 @@ FN (PrsOperatorEvalF) PrsEvalArrayIndex (
     // parser would have complained to the user earlier). Then return the base
     // of that.
 
-    type := PrsEvaluateType ( node^.Body.Operator.Left )
-
-    type = PrsUnwrapType (
-        type, // type
-        &node^.Body.Operator.Left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    type := PrsEvaluateTypeUnwrap ( node^.Body.Operator.Left )
 
     IF type^.Subtype == TYPE_ARRAY THEN
         RETURN type^.Body.Array.Base
@@ -5280,13 +5272,7 @@ FN (PrsOperatorEvalF) PrsEvalFunctionCall (
     // the parser would have complained to the user earlier). Then return the
     // return value of that.
 
-    type := PrsEvaluateType ( node^.Body.Operator.Left )
-
-    type = PrsUnwrapType (
-        type, // type
-        &node^.Body.Operator.Left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    type := PrsEvaluateTypeUnwrap ( node^.Body.Operator.Left )
 
     IF NOT type^.Body.Function.ReturnType THEN
         LexError ( &node^.Token,
@@ -5303,13 +5289,7 @@ FN (PrsOperatorEvalF) PrsEvalPtrDereference (
     // Get the type of the left hand side, which must be a pointer type, else
     // the parser would have complained earlier.
 
-    type := PrsEvaluateType ( node^.Body.Operator.Left )
-
-    type = PrsUnwrapType (
-        type, // type
-        &node^.Body.Operator.Left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    type := PrsEvaluateTypeUnwrap ( node^.Body.Operator.Left )
 
     RETURN type^.Body.Pointer.Base
 END
@@ -5323,25 +5303,13 @@ FN (PrsOperatorEvalF) PrsEvalArithmetic (
     left := node^.Body.Operator.Left
     right := node^.Body.Operator.Right
 
-    lefttype := PrsEvaluateType ( left )
-
-    lefttype = PrsUnwrapType (
-        lefttype, // type
-        &left^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    lefttype := PrsEvaluateTypeUnwrap ( left )
 
     IF lefttype^.Subtype == TYPE_POINTER THEN
         RETURN lefttype
     END
 
-    righttype := PrsEvaluateType ( right )
-
-    righttype = PrsUnwrapType (
-        righttype, // type
-        &right^.Token, // errtoken
-        "Illegal use of undeclared type\n", // errstring
-    )
+    righttype := PrsEvaluateTypeUnwrap ( right )
 
     IF righttype^.Subtype == TYPE_POINTER THEN
         RETURN righttype

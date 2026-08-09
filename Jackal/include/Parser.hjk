@@ -115,6 +115,6 @@ STRUCT PrsAstNode
     CachedSemanticType : ^LexSemanticType,
 END
 
-EXTERN FN PrsEvaluateType (
+EXTERN FN PrsEvaluateTypeUnwrap (
     IN node : ^PrsAstNode,
 ) : ^LexSemanticType

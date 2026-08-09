@@ -972,7 +972,7 @@ FN (CtGenerateF) CtGenerateCall (
     // count, as the last two arguments of the function call.
 
     callnode := inst^.Body.Call.CallNode
-    type := PrsEvaluateType ( callnode^.Body.Operator.Left )
+    type := PrsEvaluateTypeUnwrap ( callnode^.Body.Operator.Left )
 
     cargcount := type^.Body.Function.ArgCount
     varargcount := callnode^.Body.Operator.VarArgCount

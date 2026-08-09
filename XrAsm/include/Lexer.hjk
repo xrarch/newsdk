@@ -53,6 +53,7 @@ ENUM LexTokenSubtype : UBYTE
     TOKEN_EXTERN,      // directive
     TOKEN_DS,          // directive
     TOKEN_ALIGN,       // directive
+    TOKEN_SECTALIGN,   // directive
 
     TOKEN_BITAND,      // operator
     TOKEN_BITOR,       // operator

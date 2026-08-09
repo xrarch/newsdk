@@ -308,6 +308,8 @@ STRUCT LexSection
     DynamicBuffer : TlDynamicBuffer,
 
     CodeGenContext : ^VOID,
+
+    MinimumAlignment : UWORD,
 END
 
 EXTERN FN LexLookupSection (

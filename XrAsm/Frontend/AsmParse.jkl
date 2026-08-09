@@ -1035,6 +1035,8 @@ FN (AsmDirectiveF) AsmParseSection (
         section^.FileOffset = 0
         section^.MemoryOffset = 0
 
+        section^.Alignment = 1
+
         section^.DataBuffer = NULLPTR
 
         IF AsmSectionCount == 256 THEN
@@ -1674,6 +1676,37 @@ FN (AsmDirectiveF) AsmParseAlign (
     AsmCurrentSection^.FileOffset += diff
 END
 
+FN (AsmDirectiveF) AsmParseSectAlign (
+    IN errtoken : ^LexToken,
+)
+
+    // Parse the SECTALIGN directive, which sets the alignment of the section.
+
+    howmanynode := AsmParseAtom ()
+
+    howmany : UWORD
+
+    dumpster : ^VOID
+
+    IF NOT AsmEvaluateNode (
+        howmanynode, // node
+        OUT howmany, // value
+        OUT dumpster, // refsymbol
+    ) THEN
+        LexError ( &howmanynode^.Token, "Incalculable expression\n" )
+    END
+
+    po2 := TlIsPowerOfTwo ( howmany )
+
+    IF po2 == -1 THEN
+        LexError ( &howmanynode^.Token, "Alignment must be a power of two\n" )
+    END
+
+    AsmEnsureSection ( errtoken )
+
+    AsmCurrentSection^.Alignment = po2
+END
+
 AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_SECTIONFLAG] = &AsmParseSectionFlag,
     [TOKEN_SECTION] = &AsmParseSection,
@@ -1690,6 +1723,7 @@ AsmDirectivesTable : AsmDirectiveF[TOKEN_SUBTYPE_MAX] = {
     [TOKEN_EXTERN] = &AsmParseExtern,
     [TOKEN_DS] = &AsmParseDs,
     [TOKEN_ALIGN] = &AsmParseAlign,
+    [TOKEN_SECTALIGN] = &AsmParseSectAlign,
 }
 
 FN AsmParseElement () : UWORD

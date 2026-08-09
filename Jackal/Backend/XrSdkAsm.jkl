@@ -448,6 +448,9 @@ FN XrAsmEmit (
 
         XrAsmInsertStringForward ( ".section " )
         XrAsmInsertStringForward ( &section^.Name[0] )
+        XrAsmInsertStringForward ( "\n" )
+        XrAsmInsertStringForward ( ".sectalign " )
+        XrAsmInsertNumberForward ( section^.MinimumAlignment )
         XrAsmInsertStringForward ( "\n\n" )
 
         section = section^.Next

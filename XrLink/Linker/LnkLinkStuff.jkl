@@ -107,6 +107,8 @@ STRUCT LnkSection
 
     Data : ^UBYTE,
     DynamicData : TlDynamicBuffer,
+
+    Alignment : UWORD,
 END
 
 STRUCT LnkRelocation
@@ -185,6 +187,7 @@ FN LnkFindSection (
         section^.RelocationCount = 0
         section^.RolledInto = NULLPTR
         section^.RolledAt = 0
+        section^.Alignment = 1
 
         TlInitializeList ( &section^.RelocationListHead )
 
@@ -408,6 +411,10 @@ FN LnkAllocateStorage ()
                     object^.Path, sectionname )
             END
 
+            // Calculate alignment.
+
+            alignment := 1 << section^.Alignment
+
             // Find the final section.
 
             lnksection := LnkFindSection (
@@ -423,12 +430,19 @@ FN LnkAllocateStorage ()
             // Stash the offset of this section from the base of the matching
             // final section in the VirtualAddress field of its header.
 
-            section^.VirtualAddress = lnksection^.VirtualSize
+            section^.VirtualAddress =
+                (lnksection^.VirtualSize + alignment - 1) & ~(alignment - 1)
 
             // Increment the size of the final section.
 
-            lnksection^.Size += section^.DataLength
-            lnksection^.VirtualSize += section^.VirtualLength
+            diff := section^.VirtualAddress - lnksection^.VirtualSize
+
+            lnksection^.Size += section^.DataLength + diff
+            lnksection^.VirtualSize += section^.VirtualLength + diff
+
+            IF lnksection^.Alignment < alignment THEN
+                lnksection^.Alignment = alignment
+            END
 
             // Run down the relocation table to offset all references to
             // this section by the byte count we've determined.
@@ -472,6 +486,8 @@ FN LnkMergeSections ()
         WHILE i < header^.SectionCount DO
             section := &sectiontable[i]
 
+            alignment := 1 << section^.Alignment
+
             // Find the final section using the cached index.
 
             lnksection := LnkIndexedSectionArray[section^.NameOffset]
@@ -493,6 +509,9 @@ FN LnkMergeSections ()
 
                 IF section^.DataLength THEN
                     // Copy our data into the final section.
+
+                    lnksection^.Pen =
+                        (lnksection^.Pen + alignment - 1) & ~(alignment - 1)
 
                     TlCopyMemory (
                         lnksection^.Data + lnksection^.Pen, // dest
@@ -577,6 +596,8 @@ FN LnkRemoveZeroSections ()
     WHILE listentry != listhead DO
         lnksection := CONTAINEROF listentry TO LnkSection.Entry.OrderedEntry
 
+        alignment := lnksection^.Alignment
+
         zeropaged := lnksection^.Flags & (XLO_SECTION_ZERO | XLO_SECTION_PAGED)
 
         rollsection : ^LnkSection = NULLPTR
@@ -598,7 +619,10 @@ FN LnkRemoveZeroSections ()
             // rollsection.
 
             lnksection^.RolledInto = rollsection
-            lnksection^.RolledAt = rollsection^.VirtualSize
+            lnksection^.RolledAt =
+                (rollsection^.VirtualSize + alignment - 1) & ~(alignment - 1)
+
+            diff := lnksection^.RolledAt - rollsection^.VirtualSize
 
             relochead := &lnksection^.RelocationListHead
             relocentry := relochead^.Next
@@ -608,7 +632,7 @@ FN LnkRemoveZeroSections ()
 
                 XloPerformRelocationTable[lnkreloc^.Type] (
                     lnkreloc^.Section^.Data + lnkreloc^.SectionOffset, // ptr
-                    rollsection^.VirtualSize, // value
+                    lnksection^.RolledAt, // value
                     LnkArchitectureInTokyo, // bits
                     FALSE, // absolute
                 )
@@ -633,7 +657,13 @@ FN LnkRemoveZeroSections ()
 
             // Increment the virtual size of the rollsection.
 
-            rollsection^.VirtualSize += lnksection^.VirtualSize
+            rollsection^.VirtualSize += lnksection^.VirtualSize + diff
+
+            // Increase alignment if needed.
+
+            IF lnksection^.Alignment > rollsection^.Alignment THEN
+                rollsection^.Alignment = lnksection^.Alignment
+            END
 
             // Remove this ZERO section from the list.
 
@@ -1458,9 +1488,12 @@ FN LnkAssignSectionBases (
             base &= ~LnkArchitecturePageMask
         END
 
+        base += lnksection^.Alignment - 1
+        base &= ~(lnksection^.Alignment - 1)
+
         lnksection^.VirtualAddress = base
 
-        base += (lnksection^.VirtualSize + lnksection^.DynamicData.Count)
+        base += lnksection^.VirtualSize + lnksection^.DynamicData.Count
 
         listentry = listentry^.Next
     END
@@ -1503,10 +1536,10 @@ FN LnkAssignMappedBases (
 
         lnksection^.VirtualAddress = base
 
-        base += (lnksection^.VirtualSize + lnksection^.DynamicData.Count)
+        base += lnksection^.VirtualSize + lnksection^.DynamicData.Count
 
         IF base & LnkArchitecturePageMask THEN
-            base += (LnkArchitecturePageMask + 1)
+            base += LnkArchitecturePageMask + 1
         END
 
         listentry = listentry^.Next
@@ -1529,6 +1562,7 @@ FN LnkEvaluateExpr ()
     // @[section name]: The end of a section.
     // #[section name]: The size of a section.
     // %: Alignment to a page size.
+    // x: Force unalignment.
 
     lnksection := CAST TlLookupHashTable (
         &LnkSectionTable, // hashtable
@@ -1543,6 +1577,7 @@ FN LnkEvaluateExpr ()
     pen := 0
     base := 0
     atomstr := &LnkAtomStr[0]
+    forceunalign := FALSE
 
     WHILE TRUE DO
         IF expr^ == '+' OR expr^ == 0 THEN
@@ -1564,6 +1599,11 @@ FN LnkEvaluateExpr ()
                 END
 
                 base += val
+
+            ELSEIF atomstr[0] == 'x' THEN
+                // Don't apply alignment to the section base.
+
+                forceunalign = TRUE
 
             ELSEIF atomstr[0] == '@' THEN
                 // The end of a section.
@@ -1635,7 +1675,13 @@ FN LnkEvaluateExpr ()
         expr += 1
     END
 
-    lnksection^.VirtualAddress = base
+    IF forceunalign THEN
+        lnksection^.VirtualAddress = base
+
+    ELSE
+        lnksection^.VirtualAddress =
+            (base + lnksection^.Alignment - 1) & ~(lnksection^.Alignment - 1)
+    END
 END
 
 FN LnkEvaluateMoveExpression (
@@ -1972,6 +2018,8 @@ FN LnkOutputBinary ()
         TlError ( "%s: Failed to open\n", LnkOutputName )
     END
 
+    pen := 0
+
     listhead := &LnkSectionTable.OrderedListHead
     listentry := listhead^.Next
 
@@ -2144,6 +2192,8 @@ FN LnkOutputXlo ()
             sectiontable[i].RelocCount = 0
 
             sectiontable[i].Flags = lnksection^.Flags
+
+            sectiontable[i].Alignment = TlIsPowerOfTwo ( lnksection^.Alignment )
 
             // Now create the relocation table.
 
