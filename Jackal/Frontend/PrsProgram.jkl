@@ -1241,11 +1241,7 @@ FN PrsType (
 
     // Parse the type into the provided type structure.
 
-    alignoverride := 0
-
     typetoken : LexToken
-
-@Retry
 
     LexGetToken ( &typetoken )
 
@@ -1257,15 +1253,35 @@ FN PrsType (
             LexError ( &typetoken, "Incompletely implemented type modifier\n" )
         END
 
-        alignoverride = PrsParseAlign ()
+        alignoverride := PrsParseAlign ()
 
-        // Get the actual first token of the type, which may be another type
-        // modifier.
+        PrsType (
+            type, // type
+            depth, // depth
+        )
 
-        GOTO Retry
+        type^.AlignmentOverride = alignoverride
+
+        LEAVE
     END
 
-    IF typetoken.Type == TOKEN_PTYPE THEN
+    IF typetoken.Type == TOKEN_OPER AND
+        typetoken.Subtype == TOKEN_LPAREN THEN
+
+        PrsType (
+            type, // type
+            0, // depth
+        )
+
+        IF NOT LexMatchToken (
+            &typetoken, // token
+            TOKEN_RPAREN, // type
+            0, // subtype
+        ) THEN
+            LexError ( &typetoken, "Expected right parenthesis\n" )
+        END
+
+    ELSEIF typetoken.Type == TOKEN_PTYPE THEN
         // It's a primitive type, that was easy!
 
         IF NOT JklTargetInfo^.SupportedTypes[typetoken.TypeContext] THEN
@@ -1331,8 +1347,6 @@ FN PrsType (
         LexError ( &typetoken,
             "Type must be primitive, pointer, or named.\n" )
     END
-
-    type^.AlignmentOverride = alignoverride
 
     IF depth THEN
         // We don't collect the array components if the type is nested at all.

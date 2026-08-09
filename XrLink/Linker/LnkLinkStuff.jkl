@@ -1613,7 +1613,7 @@ FN LnkEvaluateExpr ()
 
                 base += val
 
-            ELSEIF atomstr[0] == 'x' THEN
+            ELSEIF atomstr[0] == 'x' AND atomstr[1] == 0 THEN
                 // Don't apply alignment to the section base.
 
                 forceunalign = TRUE
