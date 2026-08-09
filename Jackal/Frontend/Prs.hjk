@@ -24,3 +24,17 @@ EXTERN FN PrsCreateAstNode (
     IN type : PrsAstType,
     IN token : ^LexToken,
 ) : ^PrsAstNode
+
+EXTERN FN PrsUnwrapType (
+    IN type : ^LexSemanticType,
+    IN errtoken : ^LexToken,
+    IN errstring : ^UBYTE,
+) : ^LexSemanticType
+
+EXTERN FN PrsGetTypeSize (
+    IN type : ^LexSemanticType,
+    IN errtoken : ^LexToken,
+    IN errstring : ^UBYTE,
+    OUT minalignment : UWORD,
+    OUT size : UWORD,
+) : ^LexSemanticType

@@ -248,6 +248,70 @@ FN PrsIsCompileTime (
     RETURN FALSE
 END
 
+FN PrsUnwrapType (
+    IN type : ^LexSemanticType,
+    IN errtoken : ^LexToken,
+    IN errstring : ^UBYTE,
+) : ^LexSemanticType
+
+    // Unwrap a type by removing all of its names.
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexError ( errtoken, errstring )
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    RETURN type
+END
+
+FN PrsGetTypeSize (
+    IN type : ^LexSemanticType,
+    IN errtoken : ^LexToken,
+    IN errstring : ^UBYTE,
+    OUT minalignment : UWORD,
+    OUT size : UWORD,
+) : ^LexSemanticType
+
+    // Unwrap a type by removing all of its names.
+
+    minalignment = type^.AlignmentOverride
+
+    WHILE type^.Subtype == TYPE_NAMED DO
+        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
+            // Forward declared type that we don't know anything about yet.
+
+            LexError ( errtoken, errstring )
+        END
+
+        IF NOT minalignment THEN
+            minalignment = type^.AlignmentOverride
+        END
+
+        type = type^.Body.Named.Symbol^.SemanticType
+    END
+
+    size = type^.Size
+
+    IF size == TYPE_SIZE_UNINIT THEN
+        LexError ( errtoken, errstring )
+    END
+
+    IF NOT minalignment THEN
+        minalignment = type^.MinimumAlignment
+    END
+
+    IF size < minalignment THEN
+        size = minalignment
+    END
+
+    RETURN type
+END
+
 FN PrsFieldSequence (
     OUT offset : UWORD,
 ) : ^LexSemanticType
@@ -289,16 +353,11 @@ FN PrsFieldSequence (
     finaloffset : UWORD = 0
 
     WHILE TRUE DO
-        WHILE type^.Subtype == TYPE_NAMED DO
-            IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-                // Forward declared type that we don't know anything about yet.
-
-                LexError ( &idtoken,
-                    "Illegal use of undeclared destination type\n" )
-            END
-
-            type = type^.Body.Named.Symbol^.SemanticType
-        END
+        type = PrsUnwrapType (
+            type, // type
+            &idtoken, // errtoken
+            "Illegal use of undeclared destination type\n", // errstring
+        )
 
         IF type^.Subtype != TYPE_COMPOUND THEN
             LexError ( &idtoken, "Expected a struct name\n" )
@@ -791,28 +850,23 @@ FN PrsAtom () : ^PrsAstNode
 
         // Skip the names.
 
-        WHILE type^.Subtype == TYPE_NAMED DO
-            IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-                // Forward declared type that we don't know anything about yet.
+        minalignment : UWORD
+        size : UWORD
 
-                LexError ( &token,
-                    "Illegal use of undeclared type\n" )
-            END
-
-            type = type^.Body.Named.Symbol^.SemanticType
-        END
-
-        IF type^.Size == TYPE_SIZE_UNINIT THEN
-            LexError ( &token,
-                "Can't take the size of this type\n" )
-        END
+        PrsGetTypeSize (
+            type, // type
+            &token, // errtoken
+            "Illegal use of undeclared type\n", // errstring
+            OUT minalignment, // minalignment
+            OUT size, // size
+        )
 
         atomnode = PrsCreateAstNode (
             AST_CONSTANT,
             &token, // token
         )
 
-        atomnode^.Body.Constant.Value = type^.Size
+        atomnode^.Body.Constant.Value = size
 
     ELSEIF token.Type == TOKEN_OFFSETOF THEN
         // We have to create a constant containing the offset of the field in
@@ -990,19 +1044,6 @@ FN PrsEvaluateType (
             "PrsEvaluateType Inappropriate AST type", node^.Type, 0, 0 )
     END
 
-    // Skip any names.
-
-    WHILE type^.Subtype == TYPE_NAMED DO
-        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-            // Forward declared type that we don't know anything about yet.
-
-            LexError ( &node^.Token,
-                "Illegal use of undeclared type\n" )
-        END
-
-        type = type^.Body.Named.Symbol^.SemanticType
-    END
-
     node^.CachedSemanticType = type
 
     RETURN type
@@ -1023,16 +1064,11 @@ FN PrsTypeIsDeclarable (
 
     // Skip past all the names first.
 
-    WHILE type^.Subtype == TYPE_NAMED DO
-        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-            // Forward declared type that we don't know anything about yet.
-
-            LexError ( errtoken,
-                "Illegal use of undeclared type\n" )
-        END
-
-        type = type^.Body.Named.Symbol^.SemanticType
-    END
+    type = PrsUnwrapType (
+        type, // type
+        errtoken, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     IF type^.Subtype == TYPE_FUNCTION THEN
         // Functions are not directly declarable.
@@ -1068,16 +1104,11 @@ FN PrsTypeIsValue (
 
     // Skip past all the names first.
 
-    WHILE type^.Subtype == TYPE_NAMED DO
-        IF type^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-            // Forward declared type that we don't know anything about yet.
-
-            LexError ( errtoken,
-                "Illegal use of undeclared type\n" )
-        END
-
-        type = type^.Body.Named.Symbol^.SemanticType
-    END
+    type = PrsUnwrapType (
+        type, // type
+        errtoken, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     IF type^.Subtype == TYPE_FUNCTION THEN
         // Functions are not directly usable as values.
@@ -1118,6 +1149,14 @@ FN PrsCheckNodeIsValue (
 
     type := PrsEvaluateType ( node )
 
+    // Skip any names.
+
+    type = PrsUnwrapType (
+        type, // type
+        &node^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     IF NOT PrsTypeIsValue (
         &node^.Token, // errtoken
         type, // type
@@ -1145,6 +1184,41 @@ FN PrsHasSideEffect (
     RETURN FALSE
 END
 
+FN PrsParseAlign () : UWORD
+
+    // Parse an ALIGN rule.
+
+    token : LexToken
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_OPER, // type
+        TOKEN_LPAREN, // subtype
+    ) THEN
+        LexError ( &token, "Expected left parenthesis\n" )
+    END
+
+    alignnode := PrsExpression ( 0 )
+
+    IF alignnode^.Type != AST_CONSTANT THEN
+        LexError ( &token, "Expected a constant alignment value\n" )
+    END
+
+    IF TlIsPowerOfTwo ( alignnode^.Body.Constant.Value ) == -1 THEN
+        LexError ( &token, "Expected a power of two alignment value\n" )
+    END
+
+    IF NOT LexMatchToken (
+        &token, // token
+        TOKEN_RPAREN, // type
+        0, // subtype
+    ) THEN
+        LexError ( &token, "Expected right parenthesis\n" )
+    END
+
+    RETURN alignnode^.Body.Constant.Value
+END
+
 FN PrsType (
     IN type : ^LexSemanticType,
     IN depth : UWORD,
@@ -1168,33 +1242,7 @@ FN PrsType (
             LexError ( &typetoken, "Incompletely implemented type modifier\n" )
         END
 
-        IF NOT LexMatchToken (
-            &typetoken, // token
-            TOKEN_OPER, // type
-            TOKEN_LPAREN, // subtype
-        ) THEN
-            LexError ( &typetoken, "Expected left parenthesis %d\n", typetoken.Type )
-        END
-
-        alignnode := PrsExpression ( 0 )
-
-        IF alignnode^.Type != AST_CONSTANT THEN
-            LexError ( &typetoken, "Expected a constant alignment value\n" )
-        END
-
-        IF TlIsPowerOfTwo ( alignnode^.Body.Constant.Value ) == -1 THEN
-            LexError ( &typetoken, "Expected a power of two alignment value\n" )
-        END
-
-        IF NOT LexMatchToken (
-            &typetoken, // token
-            TOKEN_RPAREN, // type
-            0, // subtype
-        ) THEN
-            LexError ( &typetoken, "Expected right parenthesis\n" )
-        END
-
-        alignoverride = alignnode^.Body.Constant.Value
+        alignoverride = PrsParseAlign ()
 
         // Get the actual first token of the type, which may be another type
         // modifier.
@@ -1306,18 +1354,16 @@ FN PrsType (
         SIZEOF LexSemanticType, // sz
     )
 
-    skippedtype := basetype
+    elementalign : UWORD
+    size : UWORD
 
-    WHILE skippedtype^.Subtype == TYPE_NAMED DO
-        IF skippedtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-            // Forward declared type that we don't know anything about yet.
-
-            LexError ( &typetoken,
-                "Illegal use of undeclared type\n" )
-        END
-
-        skippedtype = skippedtype^.Body.Named.Symbol^.SemanticType
-    END
+    skippedtype := PrsGetTypeSize (
+        basetype, // type
+        &typetoken, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+        OUT elementalign, // minalignment
+        OUT size, // size
+    )
 
     IF NOT PrsTypeIsDeclarable (
         &typetoken, // errtoken
@@ -1327,21 +1373,8 @@ FN PrsType (
             "This type is not directly declarable\n" )
     END
 
-    IF skippedtype^.Size == TYPE_SIZE_UNINIT THEN
-        LexError ( &typetoken,
-            "This type is not suitable as a base for an array\n" )
-    END
-
-    elementalign := skippedtype^.AlignmentOverride
-
-    IF NOT elementalign THEN
-        elementalign = skippedtype^.MinimumAlignment
-    END
-
-    size := skippedtype^.Size
-
     arraytype := type
-    arraytype^.Size = TYPE_SIZE_UNINIT
+    arraytype^.Size = 0
 
     arraytail : ^LexSemanticType = NULLPTR
 
@@ -1682,25 +1715,9 @@ FN PrsVariableDeclaration (
             END
             
         ELSE
-            striptype := type
-
-            // First strip away any type names.
-
-            WHILE striptype^.Subtype == TYPE_NAMED DO
-                IF striptype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-                    // Forward declared type that we don't know anything about
-                    // yet.
-
-                    LexError ( &initialnode^.Token,
-                        "Illegal use of undeclared type\n" )
-                END
-
-                striptype = striptype^.Body.Named.Symbol^.SemanticType
-            END
-
             initialnode = PrsParseInitializer (
                 token, // errtoken
-                striptype, // type
+                type, // type
                 NULLPTR, // contentsarray
                 NULLPTR, // backpatcharray
                 0, // contentsoffset
@@ -1724,8 +1741,14 @@ FN PrsVariableDeclaration (
         END
     END
 
-    IF type^.Subtype == TYPE_ARRAY AND
-        NOT type^.Body.Array.HasBound AND
+    striptype := PrsUnwrapType (
+        type, // type
+        token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
+    IF striptype^.Subtype == TYPE_ARRAY AND
+        NOT striptype^.Body.Array.HasBound AND
         NOT (flags & VAR_FLAG_EXTERN) THEN
 
         LexError ( token,
@@ -2104,6 +2127,12 @@ FN (PrsOperatorF) PrsParseCompoundTypeIndex (
 
     type := PrsEvaluateType ( left )
 
+    type = PrsUnwrapType (
+        type, // type
+        &left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     IF type^.Subtype != TYPE_COMPOUND THEN
         LexError ( &node^.Token, "Not a compound type\n" )
     END
@@ -2144,6 +2173,12 @@ FN (PrsOperatorF) PrsParseArrayIndex (
     left := node^.Body.Operator.Left
 
     lefttype := PrsEvaluateType ( left )
+
+    lefttype = PrsUnwrapType (
+        lefttype, // type
+        &left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     IF lefttype^.Subtype != TYPE_ARRAY AND
         lefttype^.Subtype != TYPE_POINTER THEN
@@ -2193,6 +2228,12 @@ FN (PrsOperatorF) PrsParseFunctionCall (
     left := node^.Body.Operator.Left
 
     lefttype := PrsEvaluateType ( left )
+
+    lefttype = PrsUnwrapType (
+        lefttype, // type
+        &left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     IF lefttype^.Subtype != TYPE_FUNCTION AND
         lefttype^.Subtype != TYPE_POINTER THEN
@@ -2270,6 +2311,12 @@ FN (PrsOperatorF) PrsParseFunctionCall (
         argnode := PrsExpression ( 0 )
 
         argtype := PrsEvaluateType ( argnode )
+
+        argtype = PrsUnwrapType (
+            argtype, // type
+            &argnode^.Token, // errtoken
+            "Illegal use of undeclared type\n", // errstring
+        )
 
         IF NOT PrsTypeIsValue (
             &argnode^.Token, // errtoken
@@ -2420,6 +2467,12 @@ FN (PrsOperatorF) PrsParsePtrDereference (
     // Check that the left side is a pointer type.
 
     lefttype := PrsEvaluateType ( left )
+
+    lefttype = PrsUnwrapType (
+        lefttype, // type
+        &left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     IF lefttype^.Subtype != TYPE_POINTER THEN
         LexError ( &node^.Token, "Expected a pointer type\n" )
@@ -3318,6 +3371,12 @@ FN (PrsOperatorF) PrsParseAddrOf (
 
             type := PrsEvaluateType ( left )
 
+            type = PrsUnwrapType (
+                type, // type
+                &left^.Token, // errtoken
+                "Illegal use of undeclared type\n", // errstring
+            )
+
             IF type^.Subtype != TYPE_COMPOUND THEN
                 LexError ( &left^.Token,
                     "Can't take address of a non-compound local\n" )
@@ -3513,13 +3572,19 @@ FN (PrsOperatorF) PrsParseSizeOfValue (
 
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
-    IF type^.Size == TYPE_SIZE_UNINIT THEN
-        LexError ( &node^.Token,
-            "Can't take the size of this type\n" )
-    END
+    minalignment : UWORD
+    size : UWORD
+
+    type = PrsGetTypeSize (
+        type, // type
+        &node^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+        OUT minalignment, // minalignment
+        OUT size, // size
+    )
 
     node^.Type = AST_CONSTANT
-    node^.Body.Constant.Value = type^.Size
+    node^.Body.Constant.Value = size
 END
 
 // Declarator parse routines.
@@ -4280,6 +4345,28 @@ FN PrsParseCompoundType (
             BREAK
         END
 
+        fieldalign : UWORD
+
+        IF subtype == TOKEN_STRUCT THEN
+            IF LexMatchToken (
+                NULLPTR, // token
+                TOKEN_TYPEMODIFIER, // type
+                TOKEN_ALIGN, // subtype
+            ) THEN
+
+                fieldalign = PrsParseAlign ()
+
+                IF fieldalign > minalignment THEN
+                    minalignment = fieldalign
+                END
+
+                offset += fieldalign - 1
+                offset &= ~(fieldalign - 1)
+
+                GOTO Next
+            END
+        END
+
         fieldtoken : LexToken
 
         IF NOT LexMatchToken (
@@ -4317,28 +4404,17 @@ FN PrsParseCompoundType (
             0, // depth
         )
 
-        fieldalign := fieldtype^.AlignmentOverride
+        fieldsize : UWORD
 
         // Skip names.
 
-        WHILE fieldtype^.Subtype == TYPE_NAMED DO
-            IF fieldtype^.Body.Named.Symbol^.Type == SYM_FORWARD_TYPE THEN
-                // Forward declared type that we don't know anything about yet.
-
-                LexError ( &fieldtoken,
-                    "Illegal use of undeclared type\n" )
-            END
-
-            IF NOT fieldalign THEN
-                fieldalign = fieldtype^.AlignmentOverride
-            END
-
-            fieldtype = fieldtype^.Body.Named.Symbol^.SemanticType
-        END
-
-        IF NOT fieldalign THEN
-            fieldalign = fieldtype^.MinimumAlignment
-        END
+        fieldtype = PrsGetTypeSize (
+            fieldtype, // type
+            &fieldtoken, // errtoken
+            "Illegal use of undeclared type\n", // errstring
+            OUT fieldalign, // minalignment
+            OUT fieldsize, // size
+        )
 
         IF NOT PrsTypeIsDeclarable (
             &fieldtoken, // errtoken
@@ -4346,11 +4422,6 @@ FN PrsParseCompoundType (
         ) THEN
             LexError ( &fieldtoken,
                 "This type is not directly declarable\n" )
-        END
-
-        IF fieldtype^.Size == TYPE_SIZE_UNINIT THEN
-            LexError ( &fieldtoken,
-                "This type is not suitable as a field in a compound type\n" )
         END
 
         IF fieldalign > minalignment THEN
@@ -4371,17 +4442,19 @@ FN PrsParseCompoundType (
 
             // Increment the offset by the size of this field.
 
-            offset += fieldtype^.Size
+            offset += fieldsize
 
         ELSE
             // This is a union, the offset of all fields is zero.
 
             fieldsymbol^.Value = 0
 
-            IF fieldtype^.Size > offset THEN
-                offset = fieldtype^.Size
+            IF fieldsize > offset THEN
+                offset = fieldsize
             END
         END
+
+@Next
 
         IF LexMatchToken (
             &colontoken, // token
@@ -4941,6 +5014,12 @@ FN (PrsStatementF) PrsParseReturn (
 
     retexprtype := PrsEvaluateType ( retexpr )
 
+    retexprtype = PrsUnwrapType (
+        retexprtype, // type
+        &retexpr^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     IF NOT PrsTypeIsValue (
         &retexpr^.Token, // errtoken
         retexprtype, // type
@@ -5178,6 +5257,12 @@ FN (PrsOperatorEvalF) PrsEvalArrayIndex (
 
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
+    type = PrsUnwrapType (
+        type, // type
+        &node^.Body.Operator.Left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     IF type^.Subtype == TYPE_ARRAY THEN
         RETURN type^.Body.Array.Base
     END
@@ -5197,6 +5282,12 @@ FN (PrsOperatorEvalF) PrsEvalFunctionCall (
 
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
+    type = PrsUnwrapType (
+        type, // type
+        &node^.Body.Operator.Left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     IF NOT type^.Body.Function.ReturnType THEN
         LexError ( &node^.Token,
             "Attempt to take return type of return-less function\n" )
@@ -5214,6 +5305,12 @@ FN (PrsOperatorEvalF) PrsEvalPtrDereference (
 
     type := PrsEvaluateType ( node^.Body.Operator.Left )
 
+    type = PrsUnwrapType (
+        type, // type
+        &node^.Body.Operator.Left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     RETURN type^.Body.Pointer.Base
 END
 
@@ -5228,11 +5325,23 @@ FN (PrsOperatorEvalF) PrsEvalArithmetic (
 
     lefttype := PrsEvaluateType ( left )
 
+    lefttype = PrsUnwrapType (
+        lefttype, // type
+        &left^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
+
     IF lefttype^.Subtype == TYPE_POINTER THEN
         RETURN lefttype
     END
 
     righttype := PrsEvaluateType ( right )
+
+    righttype = PrsUnwrapType (
+        righttype, // type
+        &right^.Token, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     IF righttype^.Subtype == TYPE_POINTER THEN
         RETURN righttype

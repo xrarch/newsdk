@@ -42,6 +42,11 @@ FN PrsIndexGrowableArray (
 
     IF array^.MaxLength AND lengthunits > array^.MaxLength THEN
         lengthunits = array^.MaxLength
+
+        IF index + length > lengthunits THEN
+            TlInternalError ( "Index beyond max length",
+                index, length, lengthunits )
+        END
     END
 
     lengthunits += 7
@@ -179,8 +184,8 @@ FN PrsParseArrayInitializer (
             contentsoffset + offset, // contentsoffset
         )
 
-        IF offset + basetype^.Size > type^.Size THEN
-            type^.Size = offset + basetype^.Size
+        IF offset + elementsize > type^.Size THEN
+            type^.Size = offset + elementsize
         END
 
         index += 1
@@ -275,13 +280,16 @@ FN PrsParseStructInitializer (
 
         offset := fieldsymbol^.Value
 
-        striptype := fieldsymbol^.SemanticType
+        fieldalign : UWORD
+        fieldsize : UWORD
 
-        // First strip away any type names.
-
-        WHILE striptype^.Subtype == TYPE_NAMED DO
-            striptype = striptype^.Body.Named.Symbol^.SemanticType
-        END
+        striptype := PrsGetTypeSize (
+            fieldsymbol^.SemanticType, // type
+            &token, // errtoken
+            "Shouldn't happen", // errstring
+            OUT fieldalign, // minalignment
+            OUT fieldsize, // size
+        )
 
         PrsParseInitializer (
             &token, // errtoken
@@ -291,8 +299,8 @@ FN PrsParseStructInitializer (
             contentsoffset + offset, // contentsoffset
         )
 
-        IF offset + striptype^.Size > type^.Size THEN
-            type^.Size = offset + striptype^.Size
+        IF offset + fieldsize > type^.Size THEN
+            type^.Size = offset + fieldsize
         END
 
         IF LexMatchToken (
@@ -323,6 +331,12 @@ FN PrsParseInitializer (
 
     // Parse an initializer. This is either of the form { ... } or it's an
     // expression, depending on the type of value we're initializing.
+
+    type = PrsUnwrapType (
+        type, // type
+        errtoken, // errtoken
+        "Illegal use of undeclared type\n", // errstring
+    )
 
     bracetoken : LexToken
 
