@@ -1542,6 +1542,19 @@ FN LnkAssignMappedBases (
             base += LnkArchitecturePageMask + 1
         END
 
+        IF base & (lnksection^.Alignment - 1) THEN
+            // TODO handle this properly
+
+            TlPrintByHandle (
+                TlStdErr, // handle
+                "%s: warning: section '%s' is at 0x%X (not aligned to 0x%X)\n", // fmt
+                LnkOutputName,
+                lnksection^.Entry.Key,
+                base,
+                lnksection^.Alignment,
+            )
+        END
+
         listentry = listentry^.Next
     END
 END
@@ -2527,7 +2540,7 @@ FN LnkOutputXlo ()
     )
 
     IF status THEN
-        TlPrint ( "%s: Failed to open\n", LnkOutputName )
+        TlPrintByHandle ( TlStdErr, "%s: Failed to open\n", LnkOutputName )
     END
 
     // Output the header.
