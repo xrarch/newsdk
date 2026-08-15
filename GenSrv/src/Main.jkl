@@ -132,18 +132,21 @@ STRUCT TargetRecord
     StartServices : StartServicesF,
     EmitServiceCall : EmitServiceCallF,
     MaxRegisterArguments : UBYTE,
+    RegistersPerArg64 : UBYTE,
 END
 
 TargetList : TargetRecord[] = {
     {
         [Name] = "fox32",
         [MaxRegisterArguments] = 4,
+        [RegistersPerArg64] = 2,
         [StartServices] = &StartXrAsmServices,
         [EmitServiceCall] = &EmitFoxService,
     },
     {
         [Name] = "xr17032",
         [MaxRegisterArguments] = 4,
+        [RegistersPerArg64] = 2,
         [StartServices] = &StartXrAsmServices,
         [EmitServiceCall] = &EmitXrService,
     },
@@ -161,6 +164,7 @@ STRUCT Service
     Entry : TlListEntry,
     Name : UBYTE[64],
     ArgumentCount : UWORD,
+    Arg64Count : UWORD,
     Flags : UWORD,
 END
 
@@ -268,6 +272,8 @@ FN ParseService (
 
     buf : UBYTE[64]
 
+    // Yoink the opening brace.
+
     IF NOT ConsumeToken (
         parse, // parse
         &buf[0], // buffer
@@ -281,6 +287,8 @@ FN ParseService (
             ServiceListName, parse^.LineNumber )
     END
 
+    // Read the service name column.
+
     IF NOT ConsumeToken (
         parse, // parse
         &buf[0], // buffer
@@ -289,6 +297,8 @@ FN ParseService (
         TlError ( "%s:%d: expected service name\n",
             ServiceListName, parse^.LineNumber )
     END
+
+    // ALlocate and initialize a service record.
 
     service : ^Service
 
@@ -306,6 +316,8 @@ FN ParseService (
         &buf[0], // src
         64, // bufsize
     )
+
+    // Read the argument count column.
 
     IF NOT ConsumeToken (
         parse, // parse
@@ -327,9 +339,59 @@ FN ParseService (
             ServiceListName, parse^.LineNumber )
     END
 
+    // Read the arg64 count column.
+
+    IF NOT ConsumeToken (
+        parse, // parse
+        &buf[0], // buffer
+        64, // bufsize
+    ) THEN
+        TlError ( "%s:%d: expected arg64 count\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    status = TlStringToNumber (
+        &buf[0], // src
+        64, // bufsize
+        OUT service^.Arg64Count, // num
+    )
+
+    IF NOT status THEN
+        TlError ( "%s:%d: bad arg64 count\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    // Read the flags column.
+
     service^.Flags = 0
 
-    WHILE TRUE DO
+    IF NOT ConsumeToken (
+        parse, // parse
+        &buf[0], // buffer
+        64, // bufsize
+    ) THEN
+        TlError ( "%s:%d: unexpected EOF\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    IF buf[0] != '}' OR buf[1] != 0 THEN
+        // This is a flag token.
+
+        i := 0
+
+        WHILE buf[i] != 0 DO
+            IF buf[i] == 'C' THEN
+                service^.Flags |= FLAG_HAS_CONTINUATIONS
+            ELSE
+                TlError ( "%s:%d: bad flags\n",
+                    ServiceListName, parse^.LineNumber )
+            END
+
+            i += 1
+        END
+
+        // Read the close brace.
+
         IF NOT ConsumeToken (
             parse, // parse
             &buf[0], // buffer
@@ -339,20 +401,10 @@ FN ParseService (
                 ServiceListName, parse^.LineNumber )
         END
 
-        IF buf[1] != 0 THEN
-            TlError ( "%s:%d: bad service flag\n",
+        IF buf[0] != '}' OR buf[1] != 0 THEN
+            TlError ( "%s:%d: expected close brace\n",
                 ServiceListName, parse^.LineNumber )
         END
-
-        IF buf[0] == '}' THEN
-            BREAK
-        END
-
-        IF buf[0] == 'C' THEN
-            service^.Flags |= FLAG_HAS_CONTINUATIONS
-        END
-
-        // add more flags...
     END
 
     TlInsertAtTailList (
@@ -563,7 +615,10 @@ FN TlMain (
             2, // bufsize
         )
 
-        IF srv^.ArgumentCount > Target^.MaxRegisterArguments THEN
+        IF srv^.ArgumentCount +
+            srv^.Arg64Count * Target^.RegistersPerArg64 >
+            Target^.MaxRegisterArguments THEN
+
             TlCopyIntoDynamicBuffer (
                 &sysbuffer, // buffer
                 "        [HasStackArguments] = TRUE,\n", // srcbuf
