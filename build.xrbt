@@ -47,6 +47,7 @@
 #DEPEND "./XrAsm/build.xrbt"
 #DEPEND "./XrLink/build.xrbt"
 #DEPEND "./XrDiskUpdateTool/build.xrbt"
+#DEPEND "./GenSrv/build.xrbt"
 
 TARGET "all"
 	DEPEND "Jackal"
@@ -54,4 +55,5 @@ TARGET "all"
 	DEPEND "XrAsm"
 	DEPEND "XrLink"
 	DEPEND "XrDiskUpdateTool"
+	DEPEND "GenSrv"
 END

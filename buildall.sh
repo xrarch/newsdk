@@ -7,3 +7,4 @@ cp build/CHost/xrbt.exe bin/xrbt.exe
 cp build/CHost/xrasm.exe bin/xrasm.exe
 cp build/CHost/xrlink.exe bin/xrlink.exe
 cp build/CHost/xrdut.exe bin/xrdut.exe
+cp build/CHost/gensrv.exe bin/gensrv.exe

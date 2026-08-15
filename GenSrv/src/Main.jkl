@@ -1,0 +1,616 @@
+//
+// System service generation tool for MINTIA2.
+//
+
+#INCLUDE "GenSrv.hjk"
+
+FNPTR StartServicesF (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+FN (StartServicesF) StartXrAsmServices (
+    IN buffer : ^TlDynamicBuffer,
+)
+
+    // Start the userspace services stub file for XrAsm.
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        "// AUTOMATICALLY GENERATED -- DO NOT EDIT\n\n", // srcbuf
+        43, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        ".section text\n\n", // srcbuf
+        15, // bufsize
+    )
+END
+
+FNPTR EmitServiceCallF (
+    IN buffer : ^TlDynamicBuffer,
+    IN name : ^UBYTE,
+    IN number : UWORD,
+)
+
+FN (EmitServiceCallF) EmitFoxService (
+    IN buffer : ^TlDynamicBuffer,
+    IN name : ^UBYTE,
+    IN number : UWORD,
+)
+
+    // Emit a fox32 system service.
+
+    len := TlMeasureString ( name )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        name, // srcbuf
+        len, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        ":\n.export ", // srcbuf
+        10, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        name, // srcbuf
+        len, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        "\n    push fp\n    mov  fp, sp\n\n    mov  t0, ", // srcbuf
+        43, // bufsize
+    )
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // buffer
+        number, // number
+        10, // base
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        "\n    int  0x30\n\n    pop  fp\n    ret\n\n", // srcbuf
+        37, // bufsize
+    )
+END
+
+FN (EmitServiceCallF) EmitXrService (
+    IN buffer : ^TlDynamicBuffer,
+    IN name : ^UBYTE,
+    IN number : UWORD,
+)
+
+    // Emit an xr17032 system service.
+
+    len := TlMeasureString ( name )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        name, // srcbuf
+        len, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        ":\n.export ", // srcbuf
+        10, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        name, // srcbuf
+        len, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        "\n    li   t0, ", // srcbuf
+        14, // bufsize
+    )
+
+    TlInsertNumberDynamicBuffer (
+        buffer, // buffer
+        number, // number
+        10, // base
+    )
+
+    TlCopyIntoDynamicBuffer (
+        buffer, // buffer
+        "\n    sys\n\n    ret\n\n", // srcbuf
+        19, // bufsize
+    )
+END
+
+STRUCT TargetRecord
+    Name : ^UBYTE,
+    StartServices : StartServicesF,
+    EmitServiceCall : EmitServiceCallF,
+    MaxRegisterArguments : UBYTE,
+END
+
+TargetList : TargetRecord[] = {
+    {
+        [Name] = "fox32",
+        [MaxRegisterArguments] = 4,
+        [StartServices] = &StartXrAsmServices,
+        [EmitServiceCall] = &EmitFoxService,
+    },
+    {
+        [Name] = "xr17032",
+        [MaxRegisterArguments] = 4,
+        [StartServices] = &StartXrAsmServices,
+        [EmitServiceCall] = &EmitXrService,
+    },
+    {}, // sentinel
+}
+
+Target : ^TargetRecord
+ServiceListName : ^UBYTE
+ServiceListHead : TlListEntry
+ServiceCount := 0
+
+#DEFINE FLAG_HAS_CONTINUATIONS 1
+
+STRUCT Service
+    Entry : TlListEntry,
+    Name : UBYTE[64],
+    ArgumentCount : UWORD,
+    Flags : UWORD,
+END
+
+FN Usage ()
+    TlPrintByHandle (
+        TlStdErr, // handle
+        "Usage: %s <target> <service list> <kernel output> <user output>\n",
+        TlProgramName,
+    )
+
+    TlErrorExit ()
+END
+
+STRUCT ParseContext
+    Text : ^UBYTE,
+    Size : UWORD,
+    Index : UWORD,
+    LineNumber : UWORD,
+END
+
+#MACRO IsWhitespace ( c ) [ ((c) == ' ' OR (c) == '\t' OR (c) == '\n') ]
+
+FN ConsumeWhitespace (
+    IN parse : ^ParseContext,
+) : UWORD
+
+    // Consume whitespace until the next non-whitespace character is
+    // encountered. Returns TRUE if EOF was encountered. Also elides
+    // line comments.
+
+    comment := FALSE
+
+    WHILE parse^.Index < parse^.Size DO
+        c := parse^.Text[parse^.Index]
+
+        IF c == '\n' THEN
+            parse^.LineNumber += 1
+        END
+
+        IF comment THEN
+            IF c == '\n' THEN
+                // Comments continue until the end of the line.
+
+                comment = FALSE
+            END
+
+        ELSEIF c == '#' THEN
+            comment = TRUE
+
+        ELSEIF NOT IsWhitespace ( c ) THEN
+            RETURN TRUE
+        END
+
+        parse^.Index += 1
+    END
+
+    RETURN FALSE
+END
+
+FN ConsumeToken (
+    IN parse : ^ParseContext,
+    IN buffer : ^UBYTE,
+    IN bufsize : UWORD,
+) : UWORD
+
+    // Consume a token into the buffer. Returns FALSE if EOF was encountered.
+
+    IF NOT ConsumeWhitespace ( parse ) THEN
+        RETURN FALSE
+    END
+
+    i := 0
+
+    // Make sure there's enough room for the null terminator.
+
+    bufsize -= 1
+
+    WHILE parse^.Index < parse^.Size DO
+        c := parse^.Text[parse^.Index]
+
+        IF IsWhitespace ( c ) THEN
+            BREAK
+        END
+
+        IF i >= bufsize THEN
+            RETURN FALSE
+        END
+        
+        buffer[i] = c
+        i += 1
+
+        parse^.Index += 1
+    END
+
+    buffer[i] = 0
+
+    RETURN TRUE
+END
+
+FN ParseService (
+    IN parse : ^ParseContext,
+) : UWORD
+
+    // Parse a system service record. Returns FALSE on EOF.
+
+    buf : UBYTE[64]
+
+    IF NOT ConsumeToken (
+        parse, // parse
+        &buf[0], // buffer
+        64, // bufsize
+    ) THEN
+        RETURN FALSE
+    END
+
+    IF buf[0] != '{' OR buf[1] != 0 THEN
+        TlError ( "%s:%d: expected service record\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    IF NOT ConsumeToken (
+        parse, // parse
+        &buf[0], // buffer
+        64, // bufsize
+    ) THEN
+        TlError ( "%s:%d: expected service name\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    service : ^Service
+
+    status := TlBumpAlloc (
+        SIZEOF Service, // bytes
+        OUT service, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "Failed to allocate service record\n", 0, 0, 0 )
+    END
+
+    TlCopyString (
+        &service^.Name[0], // dest
+        &buf[0], // src
+        64, // bufsize
+    )
+
+    IF NOT ConsumeToken (
+        parse, // parse
+        &buf[0], // buffer
+        64, // bufsize
+    ) THEN
+        TlError ( "%s:%d: expected argument count\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    status = TlStringToNumber (
+        &buf[0], // src
+        64, // bufsize
+        OUT service^.ArgumentCount, // num
+    )
+
+    IF NOT status THEN
+        TlError ( "%s:%d: bad argument count\n",
+            ServiceListName, parse^.LineNumber )
+    END
+
+    service^.Flags = 0
+
+    WHILE TRUE DO
+        IF NOT ConsumeToken (
+            parse, // parse
+            &buf[0], // buffer
+            64, // bufsize
+        ) THEN
+            TlError ( "%s:%d: unexpected EOF\n",
+                ServiceListName, parse^.LineNumber )
+        END
+
+        IF buf[1] != 0 THEN
+            TlError ( "%s:%d: bad service flag\n",
+                ServiceListName, parse^.LineNumber )
+        END
+
+        IF buf[0] == '}' THEN
+            BREAK
+        END
+
+        IF buf[0] == 'C' THEN
+            service^.Flags |= FLAG_HAS_CONTINUATIONS
+        END
+
+        // add more flags...
+    END
+
+    TlInsertAtTailList (
+        &ServiceListHead, // listhead
+        &service^.Entry, // entry
+    )
+
+    ServiceCount += 1
+
+    RETURN TRUE
+END
+
+FN SetTarget (
+    IN targetname : ^UBYTE,
+)
+
+    // Set the target or return an error if not found.
+
+    target := &TargetList[0]
+
+    WHILE target^.Name DO
+        IF TlCompareString ( target^.Name, targetname ) == 0 THEN
+            Target = target
+
+            LEAVE
+        END
+
+        target += SIZEOF TargetRecord
+    END
+
+    TlError ( "Unknown target '%s'\n", targetname )
+END
+
+FN TlMain (
+    IN argc : ULONG,
+    IN argv : ^^UBYTE,
+)
+
+    // Dispatch to the correct command.
+
+    IF argc < 5 THEN
+        Usage ()
+    END
+
+    target := argv[1]
+    csvname := argv[2]
+    sysname := argv[3]
+    usrname := argv[4]
+
+    SetTarget ( target )
+
+    csvhandle : ^VOID
+
+    status := TlOpenSource (
+        csvname, // filename
+        OUT csvhandle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: failed to open\n", csvname )
+    END
+
+    stat : TlStatRecord
+
+    status = TlStatFile (
+        csvname, // path
+        &stat, // statrecord
+    )
+
+    IF status THEN
+        TlError ( "%s: failed to stat\n", csvname )
+    END
+
+    ServiceListName = csvname
+
+    parse : ParseContext
+    parse.Size = stat.SizeInBytes
+    parse.Index = 0
+    parse.LineNumber = 1
+
+    status = TlAlloc (
+        stat.SizeInBytes, // bytes
+        OUT parse.Text, // ptr
+    )
+
+    IF status THEN
+        TlInternalError ( "failed to allocate buffer\n", 0, 0, 0 )
+    END
+
+    TlReadFile (
+        csvhandle, // handle
+        stat.SizeInBytes, // bytes
+        parse.Text, // buffer
+    )
+
+    TlInitializeList ( &ServiceListHead )
+
+    WHILE ParseService ( &parse ) DO
+        // Continue ...
+    END
+
+    syshandle : ^VOID
+    usrhandle : ^VOID
+
+    status = TlOpenDestination (
+        sysname, // filename
+        OUT syshandle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: failed to open for write\n", sysname )
+    END
+
+    status = TlOpenDestination (
+        usrname, // filename
+        OUT usrhandle, // handle
+    )
+
+    IF status THEN
+        TlError ( "%s: failed to open for write\n", usrname )
+    END
+
+    sysbuffer : TlDynamicBuffer
+    usrbuffer : TlDynamicBuffer
+
+    TlInitializeDynamicBuffer ( &sysbuffer )
+    TlInitializeDynamicBuffer ( &usrbuffer )
+
+    // Initialize the kernel file.
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "// AUTOMATICALLY GENERATED - DO NOT EDIT\n", // srcbuf
+        41, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "#INCLUDE \"<ll>/System/OsCalls.hjk\"\n", // srcbuf
+        35, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "#INCLUDE \"../Kep.hjk\"\n\n", // srcbuf
+        23, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "PUBLIC KepSystemServiceCount := ", // srcbuf
+        32, // bufsize
+    )
+
+    TlInsertNumberDynamicBuffer (
+        &sysbuffer, // buffer
+        ServiceCount, // number
+        10, // base
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "\n\n", // srcbuf
+        2, // bufsize
+    )    
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "PUBLIC KepSystemServiceTable : KepSystemService[] = {\n", // srcbuf
+        54, // bufsize
+    )
+
+    // Initialize the user file.
+
+    Target^.StartServices ( &usrbuffer )
+
+    listhead := &ServiceListHead
+    listentry := listhead^.Next
+
+    number := 0
+
+    WHILE listentry != listhead DO
+        srv := CONTAINEROF listentry TO Service.Entry
+
+        // Add the entry to the system service table.
+
+        TlCopyIntoDynamicBuffer (
+            &sysbuffer, // buffer
+            "    {\n", // srcbuf
+            6, // bufsize
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &sysbuffer, // buffer
+            "        [Routine] = &", // srcbuf
+            21, // bufsize
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &sysbuffer, // buffer
+            &srv^.Name[0], // srcbuf
+            TlMeasureString ( &srv^.Name[0] ), // bufsize
+        )
+
+        TlCopyIntoDynamicBuffer (
+            &sysbuffer, // buffer
+            ",\n", // srcbuf
+            2, // bufsize
+        )
+
+        IF srv^.ArgumentCount > Target^.MaxRegisterArguments THEN
+            TlCopyIntoDynamicBuffer (
+                &sysbuffer, // buffer
+                "        [HasStackArguments] = TRUE,\n", // srcbuf
+                36, // bufsize
+            )
+        END
+
+        IF srv^.Flags & FLAG_HAS_CONTINUATIONS THEN
+            TlCopyIntoDynamicBuffer (
+                &sysbuffer, // buffer
+                "        [HasContinuation] = TRUE,\n", // srcbuf
+                34, // bufsize
+            )
+        END
+
+        TlCopyIntoDynamicBuffer (
+            &sysbuffer, // buffer
+            "    },\n", // srcbuf
+            7, // bufsize
+        )
+
+        Target^.EmitServiceCall (
+            &usrbuffer, // buffer
+            &srv^.Name[0], // name
+            number, // number
+        )
+
+        number += 1
+
+        listentry = listentry^.Next
+    END
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "}\n", // srcbuf
+        2, // bufsize
+    )
+
+    TlWriteFile (
+        syshandle, // handle
+        sysbuffer.Count, // bytes
+        sysbuffer.Buffer, // buffer
+    )
+
+    TlWriteFile (
+        usrhandle, // handle
+        usrbuffer.Count, // bytes
+        usrbuffer.Buffer, // buffer
+    )
+END

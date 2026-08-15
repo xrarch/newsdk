@@ -1,0 +1,13 @@
+TARGET "GenSrv"
+	#IF ( STRCMP PLATFORM "fox32os" )
+		FILE "<bld>/gensrv.fxf"
+	#ELSE
+		FILE "<bld>/gensrv.exe"
+	#END
+	
+	DEPEND_LIBRARY ( 0 )
+
+	INCDIR "./include"
+
+	SOURCES "./src"
+END
