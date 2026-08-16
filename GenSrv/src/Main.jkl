@@ -640,6 +640,12 @@ FN TlMain (
 
     TlCopyIntoDynamicBuffer (
         &sysbuffer, // buffer
+        "#SECTION \"text\"\n", // srcbuf
+        16, // bufsize
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
         "PUBLIC KepSystemServiceCount := ", // srcbuf
         32, // bufsize
     )
@@ -654,7 +660,13 @@ FN TlMain (
         &sysbuffer, // buffer
         "\n\n", // srcbuf
         2, // bufsize
-    )    
+    )
+
+    TlCopyIntoDynamicBuffer (
+        &sysbuffer, // buffer
+        "#SECTION \"text\"\n", // srcbuf
+        16, // bufsize
+    )
 
     TlCopyIntoDynamicBuffer (
         &sysbuffer, // buffer
