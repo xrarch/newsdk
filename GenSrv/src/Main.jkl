@@ -4,6 +4,18 @@
 
 #INCLUDE "GenSrv.hjk"
 
+#DEFINE MAX_OUT_ARGS 3
+#DEFINE MAX_IN_ARGS 12
+
+STRUCT Service
+    Entry : TlListEntry,
+    Name : UBYTE[64],
+    ArgumentCount : UWORD,
+    OutCount : UWORD,
+    Id : UWORD,
+    Flags : UWORD,
+END
+
 FNPTR StartServicesF (
     IN buffer : ^TlDynamicBuffer,
 )
@@ -29,23 +41,21 @@ END
 
 FNPTR EmitServiceCallF (
     IN buffer : ^TlDynamicBuffer,
-    IN name : ^UBYTE,
-    IN number : UWORD,
+    IN srv : ^Service,
 )
 
 FN (EmitServiceCallF) EmitFoxService (
     IN buffer : ^TlDynamicBuffer,
-    IN name : ^UBYTE,
-    IN number : UWORD,
+    IN srv : ^Service,
 )
 
     // Emit a fox32 system service.
 
-    len := TlMeasureString ( name )
+    len := TlMeasureString ( &srv^.Name[0] )
 
     TlCopyIntoDynamicBuffer (
         buffer, // buffer
-        name, // srcbuf
+        &srv^.Name[0], // srcbuf
         len, // bufsize
     )
 
@@ -57,7 +67,7 @@ FN (EmitServiceCallF) EmitFoxService (
 
     TlCopyIntoDynamicBuffer (
         buffer, // buffer
-        name, // srcbuf
+        &srv^.Name[0], // srcbuf
         len, // bufsize
     )
 
@@ -69,7 +79,7 @@ FN (EmitServiceCallF) EmitFoxService (
 
     TlInsertNumberDynamicBuffer (
         buffer, // buffer
-        number, // number
+        srv^.Id, // number
         10, // base
     )
 
@@ -82,17 +92,16 @@ END
 
 FN (EmitServiceCallF) EmitXrService (
     IN buffer : ^TlDynamicBuffer,
-    IN name : ^UBYTE,
-    IN number : UWORD,
+    IN srv : ^Service,
 )
 
     // Emit an xr17032 system service.
 
-    len := TlMeasureString ( name )
+    len := TlMeasureString ( &srv^.Name[0] )
 
     TlCopyIntoDynamicBuffer (
         buffer, // buffer
-        name, // srcbuf
+        &srv^.Name[0], // srcbuf
         len, // bufsize
     )
 
@@ -104,7 +113,7 @@ FN (EmitServiceCallF) EmitXrService (
 
     TlCopyIntoDynamicBuffer (
         buffer, // buffer
-        name, // srcbuf
+        &srv^.Name[0], // srcbuf
         len, // bufsize
     )
 
@@ -116,7 +125,7 @@ FN (EmitServiceCallF) EmitXrService (
 
     TlInsertNumberDynamicBuffer (
         buffer, // buffer
-        number, // number
+        srv^.Id, // number
         10, // base
     )
 
@@ -133,6 +142,7 @@ STRUCT TargetRecord
     EmitServiceCall : EmitServiceCallF,
     MaxRegisterArguments : UBYTE,
     RegistersPerArg64 : UBYTE,
+    RegistersPerOut64 : UBYTE,
 END
 
 TargetList : TargetRecord[] = {
@@ -140,6 +150,7 @@ TargetList : TargetRecord[] = {
         [Name] = "fox32",
         [MaxRegisterArguments] = 4,
         [RegistersPerArg64] = 2,
+        [RegistersPerOut64] = 2,
         [StartServices] = &StartXrAsmServices,
         [EmitServiceCall] = &EmitFoxService,
     },
@@ -147,6 +158,7 @@ TargetList : TargetRecord[] = {
         [Name] = "xr17032",
         [MaxRegisterArguments] = 4,
         [RegistersPerArg64] = 2,
+        [RegistersPerOut64] = 2,
         [StartServices] = &StartXrAsmServices,
         [EmitServiceCall] = &EmitXrService,
     },
@@ -160,18 +172,10 @@ ServiceCount := 0
 
 #DEFINE FLAG_HAS_CONTINUATIONS 1
 
-STRUCT Service
-    Entry : TlListEntry,
-    Name : UBYTE[64],
-    ArgumentCount : UWORD,
-    Arg64Count : UWORD,
-    Flags : UWORD,
-END
-
 FN Usage ()
     TlPrintByHandle (
         TlStdErr, // handle
-        "Usage: %s <target> <service list> <kernel output> <user output>\n",
+        "Usage: %s <target> <service header> <kernel output> <user output>\n",
         TlProgramName,
     )
 
@@ -183,9 +187,15 @@ STRUCT ParseContext
     Size : UWORD,
     Index : UWORD,
     LineNumber : UWORD,
+    Flag : UWORD,
 END
 
-#MACRO IsWhitespace ( c ) [ ((c) == ' ' OR (c) == '\t' OR (c) == '\n') ]
+#MACRO IsWhitespace ( c ) [
+    ((c) == ' ' OR
+    (c) == '\t' OR
+    (c) == '\n' OR
+    (c) == ',')
+]
 
 FN ConsumeWhitespace (
     IN parse : ^ParseContext,
@@ -214,6 +224,35 @@ FN ConsumeWhitespace (
         ELSEIF c == '#' THEN
             comment = TRUE
 
+        ELSEIF c == '/' AND
+            parse^.Text[parse^.Index + 1] == '/' THEN
+
+            comment = TRUE
+            parse^.Index += 2
+
+            IF parse^.Text[parse^.Index] == '@' THEN
+                // Service annotation
+
+                parse^.Index += 1
+
+                WHILE parse^.Index < parse^.Size AND
+                    NOT IsWhitespace ( parse^.Text[parse^.Index] ) DO
+
+                    c = parse^.Text[parse^.Index]
+
+                    IF c == 'C' THEN
+                        parse^.Flag |= FLAG_HAS_CONTINUATIONS
+                    ELSE
+                        TlError ( "%s:%d: bad flags\n",
+                            ServiceListName, parse^.LineNumber )
+                    END
+
+                    parse^.Index += 1
+                END
+            END
+
+            CONTINUE
+
         ELSEIF NOT IsWhitespace ( c ) THEN
             RETURN TRUE
         END
@@ -222,6 +261,19 @@ FN ConsumeWhitespace (
     END
 
     RETURN FALSE
+END
+
+FN SkipToNewLine (
+    IN parse : ^ParseContext,
+)
+
+    // Skip to the next newline.
+
+    WHILE parse^.Index < parse^.Size AND
+        parse^.Text[parse^.Index] != '\n' DO
+
+        parse^.Index += 1
+    END
 END
 
 FN ConsumeToken (
@@ -264,6 +316,36 @@ FN ConsumeToken (
     RETURN TRUE
 END
 
+FN ExpectSpecificJunk (
+    IN parse : ^ParseContext,
+    IN junk : ^UBYTE,
+    IN die : UWORD,
+) : UWORD
+
+    buf : UBYTE[64]
+
+    IF NOT ConsumeToken (
+        parse, // parse
+        &buf[0], // buffer
+        64, // bufsize
+    ) THEN
+
+        IF die THEN
+            TlError ( "%s:%d: unexpected EOF\n",
+                ServiceListName, parse^.LineNumber )
+        END
+
+        RETURN FALSE
+    END
+
+    IF TlCompareString ( &buf[0], junk ) != 0 THEN
+        TlError ( "%s:%d: expected %s\n",
+            ServiceListName, parse^.LineNumber, junk )
+    END
+
+    RETURN TRUE
+END
+
 FN ParseService (
     IN parse : ^ParseContext,
 ) : UWORD
@@ -272,29 +354,20 @@ FN ParseService (
 
     buf : UBYTE[64]
 
-    // Yoink the opening brace.
-
-    IF NOT ConsumeToken (
-        parse, // parse
-        &buf[0], // buffer
-        64, // bufsize
-    ) THEN
+    IF NOT ExpectSpecificJunk ( parse, "EXTERN", FALSE ) THEN
         RETURN FALSE
     END
 
-    IF buf[0] != '{' OR buf[1] != 0 THEN
-        TlError ( "%s:%d: expected service record\n",
-            ServiceListName, parse^.LineNumber )
-    END
+    ExpectSpecificJunk ( parse, "FN", TRUE )
 
-    // Read the service name column.
+    // Collect the name.
 
     IF NOT ConsumeToken (
         parse, // parse
         &buf[0], // buffer
         64, // bufsize
     ) THEN
-        TlError ( "%s:%d: expected service name\n",
+        TlError ( "%s:%d: unexpected EOF\n",
             ServiceListName, parse^.LineNumber )
     END
 
@@ -317,80 +390,41 @@ FN ParseService (
         64, // bufsize
     )
 
-    // Read the argument count column.
+    ExpectSpecificJunk ( parse, "(", TRUE )
 
-    IF NOT ConsumeToken (
-        parse, // parse
-        &buf[0], // buffer
-        64, // bufsize
-    ) THEN
-        TlError ( "%s:%d: expected argument count\n",
-            ServiceListName, parse^.LineNumber )
-    END
+    // Collect the argument list.
 
-    status = TlStringToNumber (
-        &buf[0], // src
-        64, // bufsize
-        OUT service^.ArgumentCount, // num
-    )
+    inargs := 0
+    outargs := 0
 
-    IF NOT status THEN
-        TlError ( "%s:%d: bad argument count\n",
-            ServiceListName, parse^.LineNumber )
-    END
-
-    // Read the arg64 count column.
-
-    IF NOT ConsumeToken (
-        parse, // parse
-        &buf[0], // buffer
-        64, // bufsize
-    ) THEN
-        TlError ( "%s:%d: expected arg64 count\n",
-            ServiceListName, parse^.LineNumber )
-    END
-
-    status = TlStringToNumber (
-        &buf[0], // src
-        64, // bufsize
-        OUT service^.Arg64Count, // num
-    )
-
-    IF NOT status THEN
-        TlError ( "%s:%d: bad arg64 count\n",
-            ServiceListName, parse^.LineNumber )
-    END
-
-    // Read the flags column.
-
-    service^.Flags = 0
-
-    IF NOT ConsumeToken (
-        parse, // parse
-        &buf[0], // buffer
-        64, // bufsize
-    ) THEN
-        TlError ( "%s:%d: unexpected EOF\n",
-            ServiceListName, parse^.LineNumber )
-    END
-
-    IF buf[0] != '}' OR buf[1] != 0 THEN
-        // This is a flag token.
-
-        i := 0
-
-        WHILE buf[i] != 0 DO
-            IF buf[i] == 'C' THEN
-                service^.Flags |= FLAG_HAS_CONTINUATIONS
-            ELSE
-                TlError ( "%s:%d: bad flags\n",
-                    ServiceListName, parse^.LineNumber )
-            END
-
-            i += 1
+    WHILE TRUE DO
+        IF NOT ConsumeToken (
+            parse, // parse
+            &buf[0], // buffer
+            64, // bufsize
+        ) THEN
+            TlError ( "%s:%d: unexpected EOF\n",
+                ServiceListName, parse^.LineNumber )
         END
 
-        // Read the close brace.
+        IF TlCompareString ( &buf[0], ")" ) == 0 THEN
+            BREAK
+        END
+
+        inarg : UWORD
+
+        IF TlCompareString ( &buf[0], "IN" ) == 0 THEN
+            inarg = TRUE
+
+        ELSEIF TlCompareString ( &buf[0], "OUT" ) == 0 THEN
+            inarg = FALSE
+
+        ELSE
+            TlError ( "%s:%d: unexpected '%s'\n",
+                ServiceListName, parse^.LineNumber, &buf[0] )
+        END
+
+        // Consume and throw away argument name.
 
         IF NOT ConsumeToken (
             parse, // parse
@@ -401,11 +435,59 @@ FN ParseService (
                 ServiceListName, parse^.LineNumber )
         END
 
-        IF buf[0] != '}' OR buf[1] != 0 THEN
-            TlError ( "%s:%d: expected close brace\n",
+        ExpectSpecificJunk ( parse, ":", TRUE )
+
+        // Consume type name.
+
+        IF NOT ConsumeToken (
+            parse, // parse
+            &buf[0], // buffer
+            64, // bufsize
+        ) THEN
+            TlError ( "%s:%d: unexpected EOF\n",
                 ServiceListName, parse^.LineNumber )
         END
+
+        arg64 := FALSE
+
+        IF TlCompareString ( &buf[0], "QUAD" ) == 0 OR
+            TlCompareString ( &buf[0], "UQUAD" ) == 0 THEN
+
+            arg64 = TRUE
+        END
+
+        IF inarg THEN
+            IF arg64 THEN
+                inargs += Target^.RegistersPerArg64
+            ELSE
+                inargs += 1
+            END
+
+            IF inargs > MAX_IN_ARGS THEN
+                TlError ( "%s:%d: more than %d IN arguments not allowed\n",
+                    ServiceListName, parse^.LineNumber, MAX_IN_ARGS )
+            END
+
+        ELSE
+            IF arg64 THEN
+                outargs += Target^.RegistersPerOut64
+            ELSE
+                outargs += 1
+            END
+
+            IF outargs > MAX_OUT_ARGS THEN
+                TlError ( "%s:%d: more than %d OUT arguments not allowed\n",
+                    ServiceListName, parse^.LineNumber, MAX_OUT_ARGS )
+            END
+        END
     END
+
+    SkipToNewLine ( parse )
+
+    service^.ArgumentCount = inargs
+    service^.OutCount = outargs
+    service^.Id = ServiceCount
+    service^.Flags = parse^.Flag
 
     TlInsertAtTailList (
         &ServiceListHead, // listhead
@@ -413,6 +495,8 @@ FN ParseService (
     )
 
     ServiceCount += 1
+
+    parse^.Flag = 0
 
     RETURN TRUE
 END
@@ -484,6 +568,7 @@ FN TlMain (
     parse.Size = stat.SizeInBytes
     parse.Index = 0
     parse.LineNumber = 1
+    parse.Flag = 0
 
     status = TlAlloc (
         stat.SizeInBytes, // bytes
@@ -584,8 +669,6 @@ FN TlMain (
     listhead := &ServiceListHead
     listentry := listhead^.Next
 
-    number := 0
-
     WHILE listentry != listhead DO
         srv := CONTAINEROF listentry TO Service.Entry
 
@@ -615,10 +698,7 @@ FN TlMain (
             2, // bufsize
         )
 
-        IF srv^.ArgumentCount +
-            srv^.Arg64Count * Target^.RegistersPerArg64 >
-            Target^.MaxRegisterArguments THEN
-
+        IF srv^.ArgumentCount > Target^.MaxRegisterArguments THEN
             TlCopyIntoDynamicBuffer (
                 &sysbuffer, // buffer
                 "        [HasStackArguments] = TRUE,\n", // srcbuf
@@ -642,11 +722,8 @@ FN TlMain (
 
         Target^.EmitServiceCall (
             &usrbuffer, // buffer
-            &srv^.Name[0], // name
-            number, // number
+            srv, // srv
         )
-
-        number += 1
 
         listentry = listentry^.Next
     END
