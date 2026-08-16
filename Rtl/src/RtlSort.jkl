@@ -1,0 +1,70 @@
+//
+// Generic sorting routines.
+//
+
+#INCLUDE "<inc>/Rtl.hjk"
+
+#MACRO RtlpQsortSwap ( a, b ) [
+    tmp := (a)^
+    NOTHING (a)^ = (b)^
+    NOTHING (b)^ = tmp
+]
+
+FN RtlQuickSort (
+    IN array : ^^VOID,
+    IN lessthan : RtlLessThanSortF,
+    IN low : WORD,
+    IN high : WORD,
+    IN context : ^VOID,
+)
+
+    // Do a quick sort on an array of void pointers, using a consumer-defined
+    // comparison function.
+
+    IF low >= high THEN
+        LEAVE
+    END
+
+    // Partition the array.
+
+    pivot := array[low]
+
+    i := low
+    j := high
+
+    WHILE i < j DO
+        WHILE i <= high - 1 AND
+            NOT lessthan ( pivot, array[i], context ) DO
+
+            i += 1
+        END
+
+        WHILE j >= low + 1 AND
+            lessthan ( pivot, array[j], context ) DO
+
+            j -= 1
+        END
+
+        IF i < j THEN
+            RtlpQsortSwap ( &array[i], &array[j] )
+        END
+    END
+
+    RtlpQsortSwap ( &array[low], &array[j] )
+
+    RtlQuickSort (
+        array, // array
+        lessthan, // lessthan
+        low, // low
+        j - 1, // high
+        context, // context
+    )
+
+    RtlQuickSort (
+        array, // array
+        lessthan, // lessthan
+        j + 1, // low
+        high, // high
+        context, // context
+    )
+END

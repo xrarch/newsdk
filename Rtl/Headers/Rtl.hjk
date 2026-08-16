@@ -554,3 +554,21 @@ EXTERN FN RtlPreviousAvl (
 EXTERN FN RtlFirstAvl (
     IN root : ^RtlAvlNode,
 ) : ^RtlAvlNode
+
+
+// Sorting stuff
+
+
+FNPTR RtlLessThanSortF (
+    IN a : ^VOID,
+    IN b : ^VOID,
+    IN context : ^VOID,
+) : UWORD
+
+EXTERN FN RtlQuickSort (
+    IN array : ^^VOID,
+    IN lessthan : RtlLessThanSortF,
+    IN low : WORD,
+    IN high : WORD,
+    IN context : ^VOID,
+)
