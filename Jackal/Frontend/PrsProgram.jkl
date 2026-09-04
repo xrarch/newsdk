@@ -925,14 +925,11 @@ FN PrsExpression (
     ) DO
         operator := &PrsOperators[optoken.Subtype]
 
-        IF NOT operator^.Precedence THEN
-            // This must have been a left operator, which we didn't expect.
+        IF operator^.Precedence < minprecedence OR
+            NOT operator^.Precedence THEN
 
-            LexError ( &optoken, "Unexpected left operator\n" )
-        END
-
-        IF operator^.Precedence < minprecedence THEN
-            // Put the operator token back.
+            // Precedence too low or this is a left-operator.
+            // Put the operator token back and terminate expression parsing.
 
             LexPutbackToken ( &optoken )
 
