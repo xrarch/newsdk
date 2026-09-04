@@ -791,6 +791,14 @@ FN PrsAtom () : ^PrsAstNode
         // This must be a left-operator. Look it up in the table.
         // The operator type stays as the subtype of the token.
 
+        // Ignoring VOLATILE! This will be implemented correctly 
+        // in Coyote (I promise).
+
+        IF token.Subtype == TOKEN_VOLATILE THEN
+            // try parsing again.
+            RETURN PrsAtom ()
+        END
+
         operator := &PrsLeftOperators[token.Subtype]
 
         IF NOT operator^.Precedence THEN
