@@ -876,6 +876,36 @@ FN PrsAtom () : ^PrsAstNode
 
         atomnode^.Body.Constant.Value = size
 
+    ELSEIF token.Type == TOKEN_ALIGNOF THEN
+        // We have to create a constant containing the alignment of the type.
+
+        type := PrsCreateType ()
+
+        PrsType (
+            type, // type
+            0, // depth
+        )
+
+        // Skip the names.
+
+        minalignment : UWORD
+        size : UWORD
+
+        PrsGetTypeSize (
+            type, // type
+            &token, // errtoken
+            "Illegal use of undeclared type\n", // errstring
+            OUT minalignment, // minalignment
+            OUT size, // size
+        )
+
+        atomnode = PrsCreateAstNode (
+            AST_CONSTANT,
+            &token, // token
+        )
+
+        atomnode^.Body.Constant.Value = minalignment
+
     ELSEIF token.Type == TOKEN_OFFSETOF THEN
         // We have to create a constant containing the offset of the field in
         // the given struct. Syntax is OFFSETOF StructName.FieldName.
