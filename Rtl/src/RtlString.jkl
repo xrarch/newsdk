@@ -15,6 +15,10 @@ EXPORT FN RtlCompareRtlString (
         RETURN len - str2^.Length
     END
 
+    IF str1 == str2 THEN
+        RETURN 0
+    END
+
     i := 0
     data1 := str1^.Data
     data2 := str2^.Data
