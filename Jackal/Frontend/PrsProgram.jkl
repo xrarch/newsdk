@@ -2373,6 +2373,82 @@ FN (PrsOperatorF) PrsParseFunctionCall (
                 LexError ( &token,
                     "Expected OUT specifier on OUT argument\n" )
             END
+
+            outvartype : ^LexSemanticType = NULLPTR
+
+            // Check for cases of variable declaration since this is an OUT
+            // parameter.
+
+            IF LexMatchToken (
+                NULLPTR, // token
+                TOKEN_COLON, // type
+                0, // subtype
+            ) THEN
+
+                // We're defining a variable with an implicit type.
+
+                IF NOT LexMatchToken (
+                    &token, // token
+                    TOKEN_IDENTIFIER, // type
+                    TOKEN_IDENTIFIER_NEW, // subtype
+                ) THEN
+                    LexError ( &token, "Expected undeclared identifier\n" )
+                END
+
+                outvartype = refarg^.Symbol^.SemanticType
+
+            ELSEIF LexMatchToken (
+                &token, // token
+                TOKEN_IDENTIFIER, // type
+                TOKEN_IDENTIFIER_NEW, // subtype
+            ) THEN
+
+                // We're defining a new variable with an explicit type.
+
+                IF NOT LexMatchToken (
+                    NULLPTR, // token
+                    TOKEN_COLON, // type
+                    0, // subtype
+                ) THEN
+
+                    LexError ( &token, "Expected colon for declaration\n" )
+                END
+
+                outvartype = PrsCreateType ()
+
+                PrsType (
+                    outvartype, // type
+                    0, // depth
+                )
+
+                PrsCheckType (
+                    &token, // token
+                    refarg^.Symbol^.SemanticType, // type1
+                    outvartype, // type2
+                    "Can't override OUT type: ", // errstring
+                    FALSE, // equivalence
+                )
+            END
+
+            IF outvartype THEN
+                // We declared a new variable.
+
+                PrsFoundSymbol (
+                    &token, // token
+                    CAST token.Payload TO ^LexSymbol, // symbol
+                    0, // flags
+                    FALSE, // global
+                    outvartype, // newtype
+                )
+
+                // Put back the identifier token so that the PrsExpression
+                // below sees it as a variable reference and we don't have to do
+                // as much ugly twiddling.
+
+                token.Subtype = TOKEN_IDENTIFIER_FOUND
+
+                LexPutbackToken ( &token )
+            END
         END
 
         argnode := PrsExpression ( 0 )
